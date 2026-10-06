@@ -21,22 +21,29 @@ public final class ExcavationJob {
         Codec.intRange(1,64).fieldOf("branch_length").forGetter(j -> j.branchLength),
         Codec.intRange(1,16).fieldOf("branch_pairs").forGetter(j -> j.branchPairs),
         Codec.intRange(0,Integer.MAX_VALUE).fieldOf("cursor").forGetter(j -> j.cursor),
-        Codec.INT.listOf().fieldOf("completed").forGetter(j -> new ArrayList<>(j.completed))
+        Codec.INT.listOf().fieldOf("completed").forGetter(j -> new ArrayList<>(j.completed)),
+        Codec.BOOL.optionalFieldOf("automatic_depth",false).forGetter(j -> j.automaticDepth)
     ).apply(i,ExcavationJob::new));
     public final UUID id;
     public final BlockPos station;
     public final StructureRole role;
     public final Direction facing;
     public final int topY,targetY,branchLength,branchPairs;
+    public final boolean automaticDepth;
     private int cursor;
     private final Set<Integer> completed;
     private final List<MiningLayout.Cut> tunnels;
     private final RoomBounds quarry;
     public ExcavationJob(UUID id,BlockPos station,StructureRole role,Direction facing,int topY,int targetY,
             int branchLength,int branchPairs,int cursor,List<Integer> completed) {
+        this(id,station,role,facing,topY,targetY,branchLength,branchPairs,cursor,completed,false);
+    }
+    public ExcavationJob(UUID id,BlockPos station,StructureRole role,Direction facing,int topY,int targetY,
+            int branchLength,int branchPairs,int cursor,List<Integer> completed,boolean automaticDepth) {
         if(!role.excavates()) throw new IllegalArgumentException("Not an excavation station");
         this.id=id; this.station=station.immutable(); this.role=role; this.facing=facing;
         this.topY=topY; this.targetY=targetY; this.branchLength=branchLength; this.branchPairs=branchPairs;
+        this.automaticDepth=automaticDepth;
         int dx=facing.getStepX(),dz=facing.getStepZ();
         tunnels=role==StructureRole.MINE ? MiningLayout.tunnel(station.getX(),topY,station.getZ(),dx,dz,targetY,branchLength,branchPairs) : List.of();
         quarry=role==StructureRole.QUARRY ? MiningLayout.quarry(station.getX(),station.getZ(),dx,dz,topY,targetY) : null;

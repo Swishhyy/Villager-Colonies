@@ -2,6 +2,7 @@ package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.Config;
 import io.github.swishhyy.wwmc.core.MiningLayout;
+import io.github.swishhyy.wwmc.core.AutomaticDepth;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import java.util.*;
 import net.minecraft.core.BlockPos;
@@ -23,7 +24,7 @@ public final class ExcavationService {
     private static boolean loaded(ServerLevel level,Settlement town,BlockPos pos) {
         return pos.getY()>=level.getMinY() && pos.getY()<level.getMaxY() && town.contains(pos) && level.hasChunkAt(pos);
     }
-    public static ExcavationJob create(ServerLevel level,Settlement town,Station station,int requestedY) {
+    public static ExcavationJob create(ServerLevel level,Settlement town,Station station) {
         int top=station.position().getY(),target;
         if(station.role()==StructureRole.QUARRY) {
             var footprint=MiningLayout.quarry(station.position().getX(),station.position().getZ(),
@@ -34,11 +35,15 @@ public final class ExcavationService {
             top=level.getMinY();
             for(int x=footprint.minX();x<=footprint.maxX();x++) for(int z=footprint.minZ();z<=footprint.maxZ();z++)
                 top=Math.max(top,level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,x,z)-1);
-            target=Math.max(level.getMinY(),Math.min(top,requestedY));
-        } else target=Math.max(level.getMinY()+2,Math.min(top-1,requestedY));
+            target=Math.max(level.getMinY(),Math.min(top,Config.QUARRY_TARGET_Y.get()));
+        } else {
+            var chosen=AutomaticDepth.choose(Config.MINE_MIN_Y.get(),Config.MINE_MAX_Y.get(),level.getMinY(),top,level.random::nextInt);
+            if(chosen.isEmpty()) return null;
+            target=chosen.getAsInt();
+        }
         if(target>=top && station.role()==StructureRole.MINE) return null;
         ExcavationJob job=new ExcavationJob(UUID.randomUUID(),station.position(),station.role(),station.facing(),top,target,
-                Config.MINE_BRANCH_LENGTH.get(),Config.MINE_BRANCH_PAIRS.get(),0,List.of());
+                Config.MINE_BRANCH_LENGTH.get(),Config.MINE_BRANCH_PAIRS.get(),0,List.of(),station.role()==StructureRole.MINE);
         if(station.role()==StructureRole.MINE) {
             for(int i=0;i<job.size();i++) {
                 var cut=job.cut(i);
@@ -50,10 +55,10 @@ public final class ExcavationService {
     public static ExcavationJob job(ServerLevel level,Settlement town,Station station) {
         WorldWorkData data=WorldWorkData.get(level);
         ExcavationJob current=data.excavations.get(station.position());
-        if(current!=null && current.role==station.role() && current.facing==station.facing()) return current;
+        if(current!=null && current.role==station.role() && current.facing==station.facing()
+                && (station.role()!=StructureRole.MINE || current.automaticDepth)) return current;
         if(!station.role().excavates()) return null;
-        int depth=station.role()==StructureRole.MINE ? Config.MINE_TARGET_Y.get() : Config.QUARRY_TARGET_Y.get();
-        current=create(level,town,station,depth);
+        current=create(level,town,station);
         if(current!=null) { data.excavations.put(station.position(),current); data.setDirty(); }
         return current;
     }
@@ -129,7 +134,7 @@ public final class ExcavationService {
     }
     public static String status(ServerLevel level,Settlement town,Station station) {
         ExcavationJob job=job(level,town,station);
-        if(job==null) return "layout is outside the claim or its target chunk is unloaded";
+        if(job==null) return "needs a loaded target inside the claim and a mine entrance above the configured depth band";
         if(job.cursor()>=job.size()) return "excavation complete at Y "+job.targetY;
         String area=job.role==StructureRole.QUARRY ? "chunk "+Math.floorDiv(job.bounds().minX(),16)+", "+Math.floorDiv(job.bounds().minZ(),16) : "descending access + branch tunnels";
         return area+", target Y "+job.targetY+", "+job.cursor()+"/"+job.size()+" excavation steps; blocked faces need clear access, dry terrain, and suitable tools";

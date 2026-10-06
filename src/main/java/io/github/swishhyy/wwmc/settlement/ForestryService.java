@@ -105,7 +105,7 @@ public final class ForestryService {
         }
         return true;
     }
-    public static Task find(ServerLevel level,Settlement town,Station station,Predicate<BlockPos> accessible) {
+    public static Task find(ServerLevel level,Settlement town,Station station,Predicate<BlockPos> accessible,java.util.function.ToIntFunction<net.minecraft.world.item.Item> carried) {
         WorldWorkData data=WorldWorkData.get(level);
         // Replant harvested sites before moving on to another tree.
         for(PlantingSite site:data.plantings) if(site.station().equals(station.position())
@@ -132,7 +132,7 @@ public final class ForestryService {
         // With no accessible tree, plant from the actual saplings already available to the town.
         var storage=SettlementService.storage(level,town);
         for(TreeSpecies species:TreeSpecies.values()) {
-            int available=0;
+            int available=carried.applyAsInt(species.seed);
             for(var container:storage) for(int slot=0;slot<container.getContainerSize();slot++)
                 if(container.getItem(slot).is(species.seed)) available+=container.getItem(slot).getCount();
             if(available<species.width*species.width) continue;

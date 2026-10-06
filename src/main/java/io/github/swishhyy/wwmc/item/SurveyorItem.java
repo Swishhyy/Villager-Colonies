@@ -5,6 +5,8 @@ import io.github.swishhyy.wwmc.event.StationPreviewEvent;
 import io.github.swishhyy.wwmc.settlement.SettlementService;
 import io.github.swishhyy.wwmc.settlement.SettlementData;
 import io.github.swishhyy.wwmc.settlement.ForestryService;
+import io.github.swishhyy.wwmc.settlement.GuardService;
+import io.github.swishhyy.wwmc.core.StructureRole;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
@@ -19,11 +21,14 @@ public final class SurveyorItem extends Item {
         if(player==null) return InteractionResult.PASS;
         var level=context.getLevel();
         var pos=context.getClickedPos();
+        if(level instanceof ServerLevel server && !(level.getBlockState(pos).getBlock() instanceof StationBlock)
+                && GuardService.select(server,player,pos.relative(context.getClickedFace()))) return InteractionResult.SUCCESS;
         if(level.getBlockState(pos).getBlock() instanceof StationBlock block) {
             StationPreviewEvent.show(level,pos,player);
             if(level instanceof ServerLevel server) {
                 SettlementService.registerStation(server,player,pos,block.role());
-                SettlementService.inspectStation(server,player,pos);
+                if(block.role()==StructureRole.GUARD && player.isShiftKeyDown()) GuardService.begin(server,player,pos);
+                else SettlementService.inspectStation(server,player,pos);
             }
             return InteractionResult.SUCCESS;
         }

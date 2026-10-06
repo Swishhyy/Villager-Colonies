@@ -8,6 +8,7 @@ import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.ReservationBook;
 import io.github.swishhyy.wwmc.core.WorkforceBook;
 import io.github.swishhyy.wwmc.core.MiningLayout;
+import io.github.swishhyy.wwmc.core.CitizenNames;
 import io.github.swishhyy.wwmc.core.RoomBounds;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
@@ -39,7 +40,7 @@ public final class SettlementService {
     private static final Map<ServerLevel,ReservationBook<BlockPos>> RESERVATIONS=new WeakHashMap<>();
     private static final Map<ServerLevel,WorkforceBook<BlockPos>> WORKFORCE=new WeakHashMap<>();
     public static WorkforceBook<BlockPos> workers(ServerLevel level) { return WORKFORCE.computeIfAbsent(level,l -> new WorkforceBook<>()); }
-    public static int workerLimit(Station station) { return station.role()==StructureRole.QUARRY ? Config.QUARRY_WORKERS.get() : Config.STATION_WORKERS.get(); }
+    public static int workerLimit(Station station) { return station.role()==StructureRole.QUARRY ? Config.QUARRY_WORKERS.get() : station.role()==StructureRole.GUARD ? Config.GUARD_WORKERS.get() : Config.STATION_WORKERS.get(); }
     public static ReservationBook<BlockPos> reservations(ServerLevel level) {
         return RESERVATIONS.computeIfAbsent(level, l -> new ReservationBook<>());
     }
@@ -135,6 +136,7 @@ public final class SettlementService {
             case FARM -> workBlocks(level,town,station)+" mature crops";
             case LUMBER -> "natural trees + sapling planting sites";
             case MINE,QUARRY -> ExcavationService.status(level,town,station);
+            case GUARD -> GuardService.status(level,station);
         };
         tell(player,station.role().id()+" station: "+found+(station.role().excavates() ? ". Facing "+station.facing().name().toLowerCase(Locale.ROOT)+"." : " in its 7x7x7 range.")+
                 (station.role().providesWork() ? " Crew: "+workers(level).count(pos,level.getGameTime())+"/"+workerLimit(station)+"." : "")+
@@ -180,25 +182,16 @@ public final class SettlementService {
             if(level.setBlock(pos,banner,3)) { town.borderBanners.add(pos); SettlementData.get(level).setDirty(); }
         }
     }
-    private static int setDepth(CommandSourceStack source,int y) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
-        var player=source.getPlayerOrException();
-        HitResult hit=player.pick(6.0,0.0F,false);
-        if(!(hit instanceof BlockHitResult blockHit) || hit.getType()!=HitResult.Type.BLOCK) {
-            source.sendFailure(Component.literal("Look at your mine or quarry station.")); return 0;
+    public static String citizenName(ServerLevel level,Settlement town,UUID citizen) {
+        String saved=town.citizenNames.get(citizen);
+        if(saved!=null) return saved;
+        List<String> used=new ArrayList<>(town.citizenNames.values());
+        for(UUID id:town.citizens) {
+            var entity=level.getEntity(id);
+            if(entity!=null && entity.getCustomName()!=null && !id.equals(citizen)) used.add(entity.getCustomName().getString());
         }
-        ServerLevel level=source.getLevel(); Settlement town=SettlementData.get(level).at(blockHit.getBlockPos());
-        Station station=town==null ? null : town.station(blockHit.getBlockPos());
-        if(!owns(player,town) || station==null || !station.role().excavates()) {
-            source.sendFailure(Component.literal("Look at a mine or quarry station in your own town.")); return 0;
-        }
-        int minimum=level.getMinY()+(station.role()==StructureRole.MINE ? 2 : 0);
-        if(y<minimum || y>=level.getMaxY() || station.role()==StructureRole.MINE && y>=station.position().getY()) {
-            source.sendFailure(Component.literal("Choose a valid underground Y level (minimum "+minimum+").")); return 0;
-        }
-        ExcavationJob job=ExcavationService.create(level,town,station,y);
-        if(job==null) { source.sendFailure(Component.literal("That excavation leaves the claim or its target chunk is unloaded.")); return 0; }
-        WorldWorkData data=WorldWorkData.get(level); data.excavations.put(station.position(),job); data.setDirty();
-        source.sendSuccess(() -> Component.literal("Excavation target set to Y "+job.targetY+". Existing excavated blocks stay excavated."),false); return 1;
+        String name=CitizenNames.choose(citizen,used);
+        town.citizenNames.put(citizen,name); SettlementData.get(level).setDirty(); return name;
     }
     public static String status(ServerLevel level,Settlement settlement) {
         return settlement.name+": "+settlement.citizens.size()+" citizens / "+housingBeds(level,settlement).size()+
@@ -227,7 +220,7 @@ public final class SettlementService {
             }
             if(spawn==null) break;
             citizen.join(settlement.id);
-            citizen.setCustomName(Component.literal("Citizen "+(settlement.citizens.size()+1)));
+            citizen.setCustomName(Component.literal(citizenName(level,settlement,citizen.getUUID())));
             if(level.addFreshEntity(citizen)) { settlement.citizens.add(citizen.getUUID()); added++; }
         }
         SettlementData.get(level).setDirty();
@@ -237,8 +230,6 @@ public final class SettlementService {
     }
     @SubscribeEvent public void commands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("wwmc")
-            .then(Commands.literal("depth").then(Commands.argument("y",IntegerArgumentType.integer(-2048,2048))
-                .executes(c -> setDepth(c.getSource(),IntegerArgumentType.getInteger(c,"y")))))
             .then(Commands.literal("status").executes(c -> {
                 Settlement s=owned(c.getSource());
                 if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
