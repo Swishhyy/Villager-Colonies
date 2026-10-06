@@ -69,35 +69,19 @@ public final class QuarryCraftingChecks {
         System.out.println("Passed "+checks+" quarry staircase checks.");
     }
     @Test @ExtendWith(EphemeralTestServerProvider.class)
-    void craftsmanOrders(MinecraftServer server) {
-        check(Crafting.planks(new ItemStack(Items.OAK_LOG))==Items.OAK_PLANKS && Crafting.planks(new ItemStack(Items.STRIPPED_SPRUCE_LOG))==Items.SPRUCE_PLANKS
-                && Crafting.planks(new ItemStack(Items.CRIMSON_STEM))==Items.CRIMSON_PLANKS && Crafting.planks(new ItemStack(Items.BIRCH_WOOD))==Items.BIRCH_PLANKS,"Every log saws into its own planks");
-        check(Crafting.planks(new ItemStack(Items.OAK_PLANKS))==null && Crafting.planks(new ItemStack(Items.STONE))==null,"Only logs make planks");
-        SimpleContainer warehouse=new SimpleContainer(9),bag=new SimpleContainer(36);
-        warehouse.setItem(0,new ItemStack(Items.OAK_LOG,3));
-        Crafting.Recipe order=Crafting.choose(List.of(warehouse),Set.of());
-        check(order!=null && order.id().equals("planks"),"Logs in storage become planks when planks run short");
-        check(Crafting.choose(List.of(warehouse),Set.of("planks"))==null,"A switched-off order is never made");
-        check(Crafting.fetch(List.of(warehouse),bag,order)==3 && warehouse.getItem(0).isEmpty() && Crafting.ready(bag,order),"The craftsman carries the real logs to the bench");
-        ItemStack made=Crafting.craft(bag,order);
-        check(made.is(Items.OAK_PLANKS) && made.getCount()==4 && InventoryOps.count(List.of(bag),s -> s.is(Items.OAK_LOG))==2,"One log becomes four planks");
+    void cookBread(MinecraftServer server) {
         SimpleContainer pantry=new SimpleContainer(9); pantry.setItem(0,new ItemStack(Items.WHEAT,7)); pantry.setItem(1,new ItemStack(Items.OAK_LOG,8));
         Crafting.Recipe bread=Crafting.choose(List.of(pantry),Set.of(),StructureRole.COOK);
         check(bread!=null && bread.id().equals("bread"),"Wheat is a cook order");
-        check(Crafting.choose(List.of(pantry),Set.of()).id().equals("planks"),"Craftsmen leave bread to cooks");
-        check(Crafting.choose(List.of(pantry),Set.of("bread"),StructureRole.COOK)==null,"The bread switch also controls cooks");
+        check(Crafting.choose(List.of(pantry),Set.of(),StructureRole.CRAFTSMAN)==null,"Fixed orders belong to cooks; craftsmen learn theirs");
+        check(Crafting.choose(List.of(pantry),Set.of("bread"),StructureRole.COOK)==null,"The bread switch controls cooks");
         SimpleContainer baker=new SimpleContainer(36);
         check(Crafting.fetch(List.of(pantry),baker,bread)==2 && pantry.getItem(0).getCount()==1,"Only whole batches of wheat are taken");
         check(Crafting.craft(baker,bread).is(Items.BREAD) && Crafting.craft(baker,bread).is(Items.BREAD) && Crafting.craft(baker,bread).isEmpty(),"Two batches bake two loaves and nothing more");
-        SimpleContainer sticks=new SimpleContainer(9); sticks.setItem(0,new ItemStack(Items.STICK,14));
-        Crafting.Recipe ladders=Crafting.choose(List.of(sticks),Set.of());
-        check(ladders!=null && ladders.id().equals("ladders") && Crafting.batches(List.of(sticks),ladders)==2,"Sticks become ladders, three for every seven");
-        SimpleContainer full=new SimpleContainer(9); full.setItem(0,new ItemStack(Items.OAK_PLANKS,64)); full.setItem(1,new ItemStack(Items.OAK_LOG,8));
-        check(Crafting.choose(List.of(full),Set.of("sticks"))==null,"A stocked product is not overproduced");
         Settlement town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Town",BlockPos.ZERO,240,List.of(),List.of(),"balanced");
-        town.disabledRecipes.add("torches");
+        town.disabledRecipes.add("bread");
         Settlement reloaded=Settlement.CODEC.parse(JsonOps.INSTANCE,Settlement.CODEC.encodeStart(JsonOps.INSTANCE,town).getOrThrow()).getOrThrow();
-        check(reloaded.disabledRecipes.contains("torches"),"Switched-off orders survive a restart");
-        System.out.println("Passed "+checks+" craftsman checks.");
+        check(reloaded.disabledRecipes.contains("bread"),"Switched-off bread survives a restart");
+        System.out.println("Passed "+checks+" cook checks.");
     }
 }

@@ -6,6 +6,8 @@ import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.item.SurveyorItem;
 import io.github.swishhyy.wwmc.item.GuideBook;
+import io.github.swishhyy.wwmc.menu.WwmcMenus;
+import io.github.swishhyy.wwmc.menu.WwmcNetwork;
 import io.github.swishhyy.wwmc.settlement.SettlementService;
 import io.github.swishhyy.wwmc.settlement.WorkProtection;
 import io.github.swishhyy.wwmc.settlement.GuardService;
@@ -63,7 +65,9 @@ public final class WWMC {
         }).build());
     public WWMC(IEventBus bus, ModContainer container) {
         BLOCKS.register(bus); ITEMS.register(bus); ENTITIES.register(bus); TABS.register(bus);
+        WwmcMenus.MENUS.register(bus);
         bus.addListener(this::attributes);
+        bus.addListener(WwmcNetwork::register);
         NeoForge.EVENT_BUS.register(new SettlementService());
         NeoForge.EVENT_BUS.register(new WorkProtection());
         NeoForge.EVENT_BUS.register(new GuardService());

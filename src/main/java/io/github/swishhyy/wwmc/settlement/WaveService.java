@@ -106,7 +106,7 @@ public final class WaveService {
         if(spawned>0) {
             town.waves++; ACTIVE.merge(town.id,spawned,Integer::sum);
             String direction=WavePlan.compass(site.getX()-town.center.getX(),site.getZ()-town.center.getZ());
-            if(owner!=null) SettlementService.tell(owner,"Wave "+town.waves+": "+spawned+" hostiles are attacking "+town.name+" from the "+direction+"!");
+            if(owner!=null) SettlementService.notify(owner,"Wave "+town.waves+": "+spawned+" hostiles are attacking "+town.name+" from the "+direction+"!");
         }
         return spawned;
     }
@@ -141,7 +141,7 @@ public final class WaveService {
         Integer before=alive>0 ? ACTIVE.put(town.id,alive) : ACTIVE.remove(town.id);
         if(before!=null && before>0 && alive==0 && level.hasChunkAt(town.center)) {
             ServerPlayer owner=level.getServer().getPlayerList().getPlayer(town.owner);
-            if(owner!=null) SettlementService.tell(owner,town.name+" has repelled the wave.");
+            if(owner!=null) SettlementService.notify(owner,town.name+" has repelled the wave.");
         }
         if(!Config.WAVES.get()) return;
         if(town.citizens.size()<Config.WAVE_MIN_POPULATION.get()) {

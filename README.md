@@ -6,7 +6,9 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.6.0-alpha
+## Current build: 0.7.0-alpha
+
+0.7.0 replaces chat read-outs with screens: right-click the settlement banner for a town overview (citizens, stations, food, storage, alarm and waves, with buttons for work priority, the alarm and recruiting), a station for its status, crew and storage, or a citizen for their job, health, meals and equipment above their bag. Craftsmen now learn any crafting-table recipe: click the Craftsman Station's teach slot with an item, then set how many to keep with its slider. Barrels near work stations become job storage, and a new **Courier Station** employs couriers who carry finished goods to the warehouse and keep smelters' and cooks' barrels stocked. A Mine Station touching an ore works it as an endless vein. Farms take one farmer each by default. Short notices now appear above the hotbar instead of in chat. Existing towns keep their stations and progress; their craftsman orders become learned orders.
 
 0.6.0 adds a craftable in-game Settlement Guide, shared armor between guard shifts, better armor selection, retirement of equipment below 25% durability, Blacksmith Stations that repair real equipment using warehouse materials, and healing from real meals or food given by the owner. Existing towns and inventories remain compatible.
 
@@ -21,7 +23,8 @@ This is the first settlement foundation, not the completed warfare game.
 Implemented:
 
 - Persistent named settlements, owners, non-overlapping claims, and town priorities.
-- Settlement banner and thirteen role stations, with survival crafting recipes and a creative tab.
+- Settlement banner and fourteen role stations, with survival crafting recipes and a creative tab.
+- Screens for the town, every station, the Craftsman's orders and each citizen, refreshed every second.
 - A 240-block minimum claim radius and red banners at the four claim corners.
 - Automatic 7×7×7 station detection and live updates when nearby furniture/resources change.
   Bed and warehouse locations refresh within one second; inspection and recruitment refresh them immediately. Workers still check detected beds and storage against the live world before using them.
@@ -37,15 +40,16 @@ Implemented:
 - Population-scaled hostile waves that arrive at night while the owner is home.
 - Autonomous harvesting and replanting of existing wheat, carrot, potato, and beetroot crops.
 - Whole-tree felling, player-placement protection, and planting from actual saplings in storage.
-- Automatic mine depth selection between Y −30 and 10, descending tunnels, accessible cave ore gathering, and full-chunk quarries that crews enter by a spiral staircase.
-- Craftsmen who turn warehouse materials into planks, sticks, ladders, torches, stone tools, bows, and arrows.
+- Endless ore veins for mine stations placed against an ore, automatic mine depth selection between Y −30 and 10, descending tunnels, accessible cave ore gathering, and full-chunk quarries that crews enter by a spiral staircase.
+- Craftsmen who learn any crafting-table recipe from an example item and keep the amount you choose in stock.
+- Job barrels at work stations, and couriers who move goods between them and the warehouse.
 - Smelters who supply nearby furnaces/blast furnaces with warehouse raw metals, ores, and fuel, and collect their real results.
 - Cooks who supply smokers or lit campfires with raw food, collect cooked food, and make bread from three wheat.
 - Openable 36-slot personal inventories, saved overflow, local supplies/rations, real tool durability, and warehouse deliveries.
 - Shared station crews, exclusive resource reservations, civilian nighttime rest, and guard duty through the night.
 - Save/reload support for settlement data, player block protection, replanting sites, excavation progress, cargo, tools, and meal timers.
 
-Planned: automatic housing construction, hauling specialists, medical treatment, military squads, raids by rival settlements, independent AI settlements, distant simulation, technology progression, convoys, and countries. A barracks station identifies troop housing in this build; it does not train soldiers yet. A hospital station identifies patient beds; it does not provide medical treatment yet. Citizens can heal by eating food.
+Planned: automatic housing construction, medical treatment, military squads, raids by rival settlements, independent AI settlements, distant simulation, technology progression, convoys, and countries. A barracks station identifies troop housing in this build; it does not train soldiers yet. A hospital station identifies patient beds; it does not provide medical treatment yet. Citizens can heal by eating food.
 
 ## Try the first build
 
@@ -55,17 +59,18 @@ Install the same mod JAR on the NeoForge 26.2 client and server. Use a new test 
 2. Build a small camp with beds. Place a **Housing Station** or **Barracks Station** inside it.
 3. Beds are detected automatically within **three blocks of the station on every axis**: a **7×7×7 cube**, including the station block. Both halves of each bed must fit inside the cube and your claim. No corner selection is required.
 4. Place a **Warehouse Station** within that same range of your chests or barrels. It detects multiple containers, including trapped and double chests. Stock food, axes, appropriate pickaxes, saplings, and cobblestone or other tunnel floor supplies. You can add or remove storage later without registering it again.
-5. Place **Farm** and **Lumber Stations** with crops or tree roots inside their **7×7×7** ranges. A farm, lumber station, or mine supports **four workers** by default; a quarry supports **eight**. Citizens reserve individual trees or excavation positions so a shared crew cannot harvest the same target twice. Housing, hospital, barracks, and warehouse ranges protect their structures from harvesting.
+5. Place **Farm** and **Lumber Stations** with crops or tree roots inside their **7×7×7** ranges. A farm takes **one farmer** by default; a lumber station or mine supports **four workers** and a quarry **eight**. Citizens reserve individual trees or excavation positions so a shared crew cannot harvest the same target twice. Housing, hospital, barracks, and warehouse ranges protect their structures from harvesting.
 6. Prepare farmland and plant crops yourself. Carrots or potatoes supply both food and replanting stock; wheat is collected, and a cook makes it into bread. Put a lumber station by natural trees or accessible clear soil. It fells the connected tree, collects real leaf drops, and replants when storage has enough saplings. If no tree is accessible, it can plant a new one instead. Trees grow at Minecraft's normal rate.
-7. For mining, place a **Mine Station** facing into the intended descent, with open walking space in front. It chooses and saves a random depth between **Y −30 and 10**, then digs a staircase and eight 24-block side branches. Near that depth, workers also walk to accessible exposed cave ores they can reach. Alternatively, place a **Quarry Station** facing the neighboring chunk you want excavated. The quarry removes that complete 16×16 chunk from the surface down to Y −64, preserving bedrock. Keep the station and level, walkable ground outside the target chunk, in line with the station, where the crew's staircase begins. The whole plan must fit inside the town claim.
+7. For mining, the simplest choice is a **Mine Station placed touching an exposed ore** (any of the 26 blocks around it, with at least one open side): its miner works that ore as an endless vein. See [Ore veins](#ore-veins). A Mine Station with no ore beside it digs tunnels instead: place it facing into the intended descent, with open walking space in front. It chooses and saves a random depth between **Y −30 and 10**, then digs a staircase and eight 24-block side branches. Near that depth, workers also walk to accessible exposed cave ores they can reach. Alternatively, place a **Quarry Station** facing the neighboring chunk you want excavated. The quarry removes that complete 16×16 chunk from the surface down to Y −64, preserving bedrock. Keep the station and level, walkable ground outside the target chunk, in line with the station, where the crew's staircase begins. The whole plan must fit inside the town claim.
 8. Run `/wwmc recruit 3`. Recruitment is limited by loaded housing beds and the configured population cap. Citizens choose available crew slots, obtain supplies, work, and deliver cargo in batches.
-9. Right-click your citizen with an empty hand to open their **36-slot inventory** and see their activity. Add food, spare tools, saplings, or guard gear directly. Sneak-right-click releases their job; holding an item while interacting reports status. Use `/wwmc status` to inspect the town. Mine depths are automatic.
+9. Right-click your citizen with an empty hand to open their screen: job, current activity, health, next meal and equipment above their **36-slot bag**. Add food, spare tools, saplings, or guard gear directly. Sneak-right-click releases their job; holding an item while interacting shows their status above the hotbar. Right-click the banner for the town screen. Mine depths are automatic.
 10. Place a **Guard Station**, supply armor stands in its local range, and configure its day/night posts as described below. Up to two citizens become guards automatically; defense slots fill before production jobs.
-11. Place a **Craftsman Station** near your warehouse for tools and building materials. Add a **Smeltery Station** with a furnace or blast furnace in range, and a **Cook Station** with a smoker or lit campfire in range. Stock raw ores, raw food, wheat, and fuel in the warehouse. See [Smelters and cooks](#smelters-and-cooks).
+11. Place a **Craftsman Station** near your warehouse and teach it what to make (see [Craftsmen](#craftsmen)). Add a **Smeltery Station** with a furnace or blast furnace in range, and a **Cook Station** with a smoker or lit campfire in range. Stock raw ores, raw food, wheat, and fuel in the warehouse. See [Smelters and cooks](#smelters-and-cooks).
 12. Add a **Blacksmith Station** with an anvil within three blocks on each axis. Stock repair materials in the warehouse. Blacksmiths repair damaged tools/weapons and worn guard armor, retaining names and enchantments.
 13. Hang a **bell** inside the town so guards can raise the alarm, and prepare for the first enemy wave once the town has three citizens. See [Alarms and enemy waves](#alarms-and-enemy-waves).
+14. Put **barrels** within three blocks of busy work stations and place a **Courier Station** so goods stop piling up in workers' bags. See [Job barrels and couriers](#job-barrels-and-couriers).
 
-**Range preview:** hold any station block and aim at a block face to see a blue outline at its prospective placement position. The outline accounts for replaceable grass/snow. It turns red when the placement context is blocked. Placing a station displays a green outline for about three seconds. Right-click an existing station with an empty hand to inspect its detected blocks and briefly show its range. The **Station Inspector** also previews an existing station while you aim at it and reports its contents when right-clicked.
+**Range preview:** hold any station block and aim at a block face to see a blue outline at its prospective placement position. The outline accounts for replaceable grass/snow. It turns red when the placement context is blocked. Placing a station displays a green outline for about three seconds. Right-click an existing station with an empty hand to open its screen and briefly show its range. The **Station Inspector** also previews an existing station while you aim at it and opens its screen when right-clicked.
 
 Ordinary stations show their local 7×7×7 area; a quarry shows the neighboring chunk's footprint. The quarry outline indicates its horizontal target, not the complete depth. Mines extend beyond the local outline along their planned tunnels. Inspection reports facing, depth, progress, and active crew size.
 
@@ -113,8 +118,8 @@ When miners encounter caves near the selected depth, they scan a bounded nearby 
 | `/wwmc priority food` | Idle citizens prefer available farm stations. |
 | `/wwmc priority materials` | Idle citizens prefer lumber/mining stations. |
 | `/wwmc citizens` | List each loaded citizen with their job and what they are doing. |
-| `/wwmc craft` | Show craftsman orders with warehouse stock and targets. |
-| `/wwmc craft <order> on\|off` | Switch a craftsman order on or off. |
+| `/wwmc craft` | List craftsman orders with town stock and targets; change them on the Craftsman Station screen. |
+| `/wwmc craft bread on\|off` | Switch the cooks' bread order, also available on the Cook Station screen. |
 | `/wwmc alarm` | Sound the alarm yourself, or call the all-clear early while it rings. |
 | `/wwmc wave` | Bring the next enemy wave forward to now, even in daylight. |
 
@@ -133,16 +138,17 @@ Only loaded blocks inside the settlement claim count. Scanning never loads chunk
 | Housing | Residential beds, recruiting capacity, and rest. | Families, migration, approved housing expansion. |
 | Barracks | Camp/troop beds, currently usable as housing. | Recruiting, training, and organizing military units. |
 | Hospital | Patient beds excluded from housing capacity. | Treatment, medical supplies, casualty evacuation. |
-| Warehouse | Chests, trapped chests, and barrels within its 7×7×7 range. | Dedicated haulers, reserves, convoy loading. |
+| Warehouse | Chests, trapped chests, and barrels within its 7×7×7 range. | Reserves, convoy loading. |
 | Farm | Mature supported crops within its 7×7×7 range. | Planting expansions, varied crops, food processing. |
 | Lumber | Whole trees rooted in range, real sapling planting, and replanting. | Larger forestry areas and better species/terrain handling. |
-| Mine | Automatically chosen depth, staircase/branches, and accessible cave ores. | Cave exploration, reinforcement, lighting. |
+| Mine | An endless vein when placed against an ore; otherwise an automatically chosen depth, staircase/branches, and accessible cave ores. | Cave exploration, reinforcement, lighting. |
 | Quarry | Full neighboring chunk excavation, layer by layer, entered by a spiral staircase. | Machinery, dedicated haulage, liquid management. |
-| Craftsman | Workbench that turns warehouse materials into tools and building goods. | Player-defined orders and more recipes. |
+| Craftsman | Learned crafting-table recipes kept at chosen stock levels from real materials. | Stonecutter and smithing orders. |
 | Smeltery | Warehouse ores/raw metals smelted in nearby furnaces or blast furnaces. | Specialized metallurgy and technology. |
 | Cook | Raw food cooked in smokers or lit campfires; three wheat become bread. | More meals and food orders. |
 | Blacksmith | Repairs warehouse equipment and retired guard-stand armor at nearby anvils. | Repair orders and specialized smithing. |
 | Guard | Day/night posts, patrols, armor and weapons from stands or storage, melee and archery, bell alarms. | Squad orders, training. |
+| Courier | Carries goods from job barrels to the warehouse and stocks smeltery and cook barrels. | Convoys between towns. |
 
 Marker blocks use vanilla textures as placeholder visuals. Stations declare use; this build does not infer enclosed rooms, roofs, or architectural quality. Work validates supplies, protection, reservations, loaded terrain, and access before changing blocks.
 
@@ -170,6 +176,7 @@ All markers use eight planks around a center item in a crafting table.
 | Cook Station | Smoker |
 | Guard Station | Iron helmet |
 | Blacksmith Station | Iron ingot |
+| Courier Station | Barrel |
 
 The Station Inspector is a shapeless recipe with two paper and one stick. The **Settlement Guide** is a shapeless recipe with one book and one blue dye; right-click it to open the native book screen. `/wwmc guide` gives another copy. Tools consumed to craft stations are separate from tools supplied to workers.
 
@@ -181,7 +188,10 @@ The generated WWMC server config controls these defaults:
 | --- | --- | --- |
 | `settlementRadius` | 240 | Horizontal radius of new towns; 240 is also the minimum. |
 | `maxCitizens` | 32 | Population cap, also limited by available housing beds. |
-| `stationWorkers` | 4 | Crew slots per farm, lumber station, or mine. |
+| `stationWorkers` | 4 | Crew slots per lumber station or mine. |
+| `farmWorkers` | 1 | Farmers per Farm Station. |
+| `courierWorkers` | 2 | Couriers per Courier Station. |
+| `oreVeinSeconds` | 15 | Seconds between yields of a common ore vein; gold ×2, diamond and emerald ×6, ancient debris ×8. |
 | `quarryWorkers` | 8 | Crew slots per quarry. |
 | `craftsmanWorkers` | 2 | Crew slots per Craftsman Station. |
 | `processingWorkers` | 2 | Crew slots per Smeltery or Cook Station. |
@@ -202,7 +212,7 @@ The generated WWMC server config controls these defaults:
 
 ### Personal inventories
 
-Citizens keep resources in a persistent **36-slot bag**. Their owner can open it with an empty-hand right-click within eight blocks. Work pauses while the inventory is open; guards continue defending during an alarm. Menus close when the citizen dies, you move out of range, or ownership is no longer valid.
+Citizens keep resources in a persistent **36-slot bag**. Their owner can open it with an empty-hand right-click within eight blocks; the screen also shows the citizen's job, activity, health, next meal and equipment. Work pauses while the inventory is open; guards continue defending during an alarm. Menus close when the citizen dies, you move out of range, or ownership is no longer valid.
 
 Workers use carried food, spare tools, saplings, and floor supplies before requesting replacements. Deliveries retain the tools and gear the current job uses, supplies for the current task, and up to eight food items while sending everything else to the warehouse: a farmer hands in a spare axe, and a craftsman delivers the tools and weapons it makes.
 
@@ -249,22 +259,42 @@ Only loaded, owned appliances in range count. Overlapping stations assign each a
 
 ### Craftsmen
 
-A **Craftsman Station** (eight planks around a crafting table) gives two citizens bench work by default (`craftsmanWorkers`). A craftsman checks the nearest warehouse for the first order below its stock target that storage has materials for, carries up to eight batches of real materials to the bench, crafts them there, and delivers the results. When nothing is short or materials are missing, the craftsman takes other work for a while.
+A **Craftsman Station** (eight planks around a crafting table) gives two citizens bench work by default (`craftsmanWorkers`). Right-click it to open its order screen.
 
-| Order | Materials | Makes | Keeps in stock |
-| --- | --- | --- | --- |
-| `bread` (Cook Station) | 3 wheat | 1 bread | 32 |
-| `stone_pickaxe` | 3 cobblestone, cobbled deepslate or blackstone + 2 sticks | 1 | 2 |
-| `stone_axe` | 3 cobblestone (or equivalent) + 2 sticks | 1 | 2 |
-| `stone_sword` | 2 cobblestone (or equivalent) + 1 stick | 1 | 2 |
-| `bow` | 3 string + 3 sticks | 1 | 1 |
-| `arrows` | flint + stick + feather | 4 | 64 |
-| `torches` | coal or charcoal + stick | 4 | 32 |
-| `ladders` | 7 sticks | 3 | 32 |
-| `sticks` | 2 planks | 4 | 32 |
-| `planks` | 1 log, stem, or wood of any type | 4 of that type | 64 |
+**Teaching.** Click the **Teach** slot while holding any item, or shift-click an item in your inventory, and the craftsmen learn the crafting-table recipe that makes it. You keep the item. Any shaped or shapeless recipe works, including recipes added by other mods and datapacks; special recipes such as dyeing armor, copying maps or fireworks cannot be taught. A town knows up to 27 orders. Teaching any planks makes a **planks (any wood)** order that uses whichever logs the town holds.
 
-Cooks handle the bread order; craftsmen check their orders from the top of the table, so worker tools come before building materials. Intermediate goods are made as needed: logs become planks, planks become sticks, and sticks become ladders, tools, torches, and arrows. Farmers' wheat becomes bread at Cook Stations, workers' broken tools are replaced, and guards find stone swords, bows, and arrows in the warehouse. `/wwmc craft` shows each order's stock against its target; `/wwmc craft <order> off` stops an order, for example to keep logs or coal for yourself.
+**Amounts.** Each order has a slider for how many to **keep in town**, from 0 to 256; 0 pauses it. Stackable items start at 16 and tools at 1. Stock counts the warehouse and every job barrel. The ▲ button raises an order's priority and ✕ forgets it. Each row shows the town's stock and whether the order is stocked, ready to craft, or missing materials.
+
+**Work.** A craftsman takes the highest order below its target that has materials, first from the station's own barrels and otherwise from the warehouse, carries up to eight batches of real items to the bench and crafts them there. Each batch is checked against Minecraft's recipe before it is made, and container items such as milk buckets come back empty. When two orders make each other, such as iron ingots and iron blocks, each only uses the other's stock above its target, so they never convert back and forth. When nothing is short or materials are missing, the craftsman takes other work for a while.
+
+New towns, and towns from earlier builds, start with these orders: stone pickaxe 2, stone axe 2, stone sword 2, bow 1, arrows 64, torches 32, ladders 32, sticks 32 and planks (any wood) 64. Orders switched off in an earlier build start at 0. Cooks still bake one bread from three wheat up to 32 bread; the Cook Station screen or `/wwmc craft bread off` switches it off.
+
+### Settlement screens
+
+Right-click with an empty hand to open:
+
+- **Settlement banner:** the town overview (population and beds, food, warehouse fill, job barrels, claim, work priority, alarm and waves), every loaded citizen with their job, activity and health, and every station with its crew and status. Buttons cycle the work priority, sound the alarm or the all-clear, and recruit a citizen when housing beds are free.
+- **Any station:** its detected resources and job status, its crew and what each member is doing, and the contents of its barrels (or the warehouse's containers). The Cook Station adds a bread switch; the Guard Station a button to choose its posts.
+- **Craftsman Station:** the order screen described above.
+- **Citizen:** their job, activity, health, next meal and equipment above their bag.
+
+Screens refresh every second and close when you move more than eight blocks away. Only the town's owner can open them; other players see a one-line notice. Short notices, including alarms and waves, appear above the hotbar instead of in chat.
+
+### Job barrels and couriers
+
+A **barrel within three blocks of a work station** on every axis becomes that job's storage, unless a Warehouse Station's range also covers it. Overlapping job ranges give each barrel to the nearest station. Guards, blacksmiths and couriers do not use job barrels.
+
+Workers take tools and supplies from their job's barrels before walking to the warehouse: pickaxes, axes, saplings, floor blocks, and for smelters and cooks their ingredients and fuel. Craftsmen use the materials in their barrels first.
+
+**Finished goods** stay in the job's barrels only when a **Courier Station** exists in town, or when there is no reachable warehouse; otherwise workers deliver to the warehouse as before. When a job's barrels are full, workers fall back to the warehouse. A barrel a worker cannot reach within 20 seconds, for example behind a trapdoor, is skipped for a minute.
+
+A **Courier Station** (eight planks around a barrel) employs two couriers by default (`courierWorkers`). Couriers walk to a job's barrels once 32 goods are waiting, the barrels are nearly full, or food is waiting while the warehouse pantry is low, take everything the job does not use and deliver it to the warehouse. When there is nothing bigger to do they also fetch smaller loads, so a pair of new tools never waits for a full load. They leave tools, supplies, 16 floor blocks at mines and quarries, and 32 saplings at lumber stations; worn tools leave for repair. They also bring smeltery and cook barrels two furnace loads of ore or raw food, sixteen fuel, and wheat for bread, while those barrels have free slots. A smelter whose barrel holds ore but no fuel fetches both from the warehouse. Only one courier serves a job's barrels at a time, and couriers take other work when nothing needs moving.
+
+### Ore veins
+
+A **Mine Station placed touching an exposed ore**, in any of the 26 blocks around it, works that ore as an **endless vein**. The ore needs at least one open side, such as air, a torch or a ladder; ore buried on every side does not count, so older mines beside hidden ore keep digging their tunnels. Its miner stands beside the ore, mines it with a pickaxe able to harvest it, and collects the ore's normal drops, including Fortune, while the block stays in place. Only citizens get endless drops; a player who mines the ore breaks it normally. One miner works a vein at a time, and further crew members take other jobs.
+
+A vein replenishes every 15 seconds (`oreVeinSeconds`). Gold takes twice as long, diamond and emerald six times, and ancient debris eight times. Any block in the `c:ores` tag counts, including other mods' ores. Ores sharing a face with the station come first. If the ore is removed, the station looks for another one beside it, and a station with no exposed ore beside it digs tunnels as described above. The miner also needs open standing room within reach of the ore and a clear view of it.
 
 ### Alarms and enemy waves
 
@@ -319,9 +349,9 @@ Use a **Java 25 JDK**, not just a Java runtime. The Gradle wrapper and ModDevGra
 
 On Windows, use `gradlew.bat build` and `gradlew.bat runClient`. Development servers use `./gradlew runServer`.
 
-`build` runs regression checks for ranges, beds/storage, overlap ownership, shared crews, atomic target claims, tunnel/quarry geometry, random depth/shift boundaries, name uniqueness, construction-aware tree recognition, sapling conservation, local inventory conservation/backlog, armor transfers, weapon classification/ranking, quarry staircase geometry and persistence, quarry collision tracing, four-block surface/vertical reach, blocked work rays, clear tree approach candidates, persisted natural-tree proof after access clearing, role-specific crafting orders, appliance recipe eligibility, furnace slot/component conservation, independent station guard shifts and alarm rosters, alarm thresholds and all-clear timing, wave sizes/composition/timing, claim widening, save round-trips, legacy migration, recipe/drop decoding with Minecraft's codecs, shared shift armor, full-bag overflow armor returns and occupied-slot conservation, armor upgrades, the exact durability cutoff, material-funded repairs with preserved names/enchantments, healing meal/bowl conservation and cooldowns, guide-page bounds and anvil eligibility, staggered 30-citizen updates, bounded reachability probes, and shared resource scan expiry/invalidation. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
+`build` runs regression checks for ranges, beds/storage, overlap ownership, shared crews, atomic target claims, tunnel/quarry geometry, random depth/shift boundaries, name uniqueness, construction-aware tree recognition, sapling conservation, local inventory conservation/backlog, armor transfers, weapon classification/ranking, quarry staircase geometry and persistence, quarry collision tracing, four-block surface/vertical reach, blocked work rays, clear tree approach candidates, persisted natural-tree proof after access clearing, role-specific crafting orders, appliance recipe eligibility, furnace slot/component conservation, independent station guard shifts and alarm rosters, alarm thresholds and all-clear timing, wave sizes/composition/timing, claim widening, save round-trips, legacy migration, recipe/drop decoding with Minecraft's codecs, shared shift armor, full-bag overflow armor returns and occupied-slot conservation, armor upgrades, the exact durability cutoff, material-funded repairs with preserved names/enchantments, healing meal/bowl conservation and cooldowns, guide-page bounds and anvil eligibility, learned crafting against the server's real recipes (shaped layout, any-wood planks, container remainders, paused and stocked orders, ingot/block cycle protection, legacy order migration), job barrel collection rules and courier supply loads, ore vein detection and rarity pacing, screen data network round trips, staggered 30-citizen updates, bounded reachability probes, and shared resource scan expiry/invalidation. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
 
-Automated checks do not replace an in-game playtest. Check previews, border placement, shared station crews, protected player logs, large-tree felling/replanting, tunnel/cave pathfinding, quarry staircase descent and climb-out, quarry obstructions and skipped blocks, craftsman/smelter/cook trips, fuel use and appliance output collection, guard shift changes and shared armor returns, blacksmith pickup/repair/return trips, guide crafting/reading, meal healing and direct feeding, armor upgrades/patrol/combat, weapon scavenging and archery, bell runs and civilian cover, wave spawning, inventory menus, tool breakage, bed use, and save/restart behavior before using this alpha in an important world.
+Automated checks do not replace an in-game playtest. Check previews, border placement, shared station crews, protected player logs, large-tree felling/replanting, tunnel/cave pathfinding, quarry staircase descent and climb-out, quarry obstructions and skipped blocks, craftsman/smelter/cook trips, fuel use and appliance output collection, guard shift changes and shared armor returns, blacksmith pickup/repair/return trips, every screen and its buttons, teaching orders and their sliders, courier trips and job barrel use, ore vein mining, guide crafting/reading, meal healing and direct feeding, armor upgrades/patrol/combat, weapon scavenging and archery, bell runs and civilian cover, wave spawning, inventory menus, tool breakage, bed use, and save/restart behavior before using this alpha in an important world.
 
 ## Development stages
 

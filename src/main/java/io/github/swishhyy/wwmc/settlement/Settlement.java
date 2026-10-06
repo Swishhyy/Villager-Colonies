@@ -8,6 +8,7 @@ import java.util.function.Predicate;
 import java.util.List;
 import java.util.UUID;
 import java.util.Map;
+import java.util.Optional;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -28,7 +29,8 @@ public final class Settlement {
         Codec.unboundedMap(UUID_CODEC,Codec.STRING).optionalFieldOf("citizen_names",Map.of()).forGetter(s -> s.citizenNames),
         Codec.LONG.optionalFieldOf("next_wave",0L).forGetter(s -> s.nextWave),
         Codec.INT.optionalFieldOf("waves",0).forGetter(s -> s.waves),
-        Codec.STRING.listOf().optionalFieldOf("disabled_recipes",List.of()).forGetter(s -> new ArrayList<>(s.disabledRecipes))
+        Codec.STRING.listOf().optionalFieldOf("disabled_recipes",List.of()).forGetter(s -> new ArrayList<>(s.disabledRecipes)),
+        Workshop.Order.CODEC.listOf().optionalFieldOf("craft_orders").forGetter(s -> Optional.of(s.craftOrders))
     ).apply(i, Settlement::new));
     public final UUID id, owner;
     public String name, priority;
@@ -37,8 +39,10 @@ public final class Settlement {
     /** Game time of the next enemy wave; zero until the town is populous enough. */
     public long nextWave;
     public int waves;
-    /** Craftsman recipes the owner has switched off. */
+    /** Switched-off fixed recipes; today only "bread", which cooks bake. */
     public final Set<String> disabledRecipes;
+    /** What craftsmen keep in stock, in priority order. */
+    public final List<Workshop.Order> craftOrders;
     public final List<UUID> citizens;
     public final List<Station> stations;
     public final List<BlockPos> borderBanners;
@@ -53,6 +57,10 @@ public final class Settlement {
         this(id,owner,name,center,radius,citizens,stations,priority,borderBanners,citizenNames,0L,0,List.of());
     }
     public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority,List<BlockPos> borderBanners,Map<UUID,String> citizenNames,long nextWave,int waves,List<String> disabledRecipes) {
+        this(id,owner,name,center,radius,citizens,stations,priority,borderBanners,citizenNames,nextWave,waves,disabledRecipes,Optional.empty());
+    }
+    /** Towns saved before orders were learnable start with the default orders, minus any the owner had switched off. */
+    public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority,List<BlockPos> borderBanners,Map<UUID,String> citizenNames,long nextWave,int waves,List<String> disabledRecipes,Optional<List<Workshop.Order>> craftOrders) {
         this.id=id; this.owner=owner; this.name=name; this.center=center.immutable(); this.radius=radius;
         this.citizens=new ArrayList<>(citizens); this.stations=new ArrayList<>(stations); this.priority=priority;
         this.borderBanners=new ArrayList<>();
@@ -60,6 +68,7 @@ public final class Settlement {
         this.citizenNames=new HashMap<>(citizenNames);
         this.nextWave=nextWave; this.waves=waves;
         this.disabledRecipes=new LinkedHashSet<>(disabledRecipes);
+        this.craftOrders=new ArrayList<>(craftOrders.orElseGet(() -> Workshop.defaults(disabledRecipes)));
     }
     public boolean contains(BlockPos pos) {
         return Math.abs((long)pos.getX()-center.getX()) <= radius && Math.abs((long)pos.getZ()-center.getZ()) <= radius;

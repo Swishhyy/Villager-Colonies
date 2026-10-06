@@ -16,5 +16,6 @@
   "block.wwmc.smeltery_station": "Smeltery Station",
   "block.wwmc.cook_station": "Cook Station",
   "item.wwmc.settlement_guide": "Settlement Guide",
-  "block.wwmc.blacksmith_station": "Blacksmith Station"
+  "block.wwmc.blacksmith_station": "Blacksmith Station",
+  "block.wwmc.courier_station": "Courier Station"
 }

@@ -51,24 +51,24 @@ public final class PerformanceChecks {
         AtomicInteger scans=new AtomicInteger();
         BlockPos.MutableBlockPos chest=new BlockPos.MutableBlockPos(1,64,0);
         java.util.function.Supplier<List<BlockPos>> detect=() -> { scans.incrementAndGet(); return List.of(chest); };
-        for(int citizen=0;citizen<30;citizen++) assertEquals(List.of(new BlockPos(1,64,0)),cache.positions(town,warehouse,100,detect));
+        for(int citizen=0;citizen<30;citizen++) assertEquals(List.of(new BlockPos(1,64,0)),cache.positions(town,warehouse,"storage",100,detect));
         assertEquals(1,scans.get(),"Thirty workers share a single cube scan");
         chest.set(2,64,0);
-        assertEquals(List.of(new BlockPos(1,64,0)),cache.positions(town,warehouse,119,detect),"Cached coordinates are immutable");
-        assertEquals(List.of(new BlockPos(2,64,0)),cache.positions(town,warehouse,120,detect),"New furniture is discovered within twenty ticks");
+        assertEquals(List.of(new BlockPos(1,64,0)),cache.positions(town,warehouse,"storage",119,detect),"Cached coordinates are immutable");
+        assertEquals(List.of(new BlockPos(2,64,0)),cache.positions(town,warehouse,"storage",120,detect),"New furniture is discovered within twenty ticks");
         assertEquals(2,scans.get());
 
         town.stations.add(new Station(new BlockPos(2,64,1),StructureRole.WAREHOUSE));
-        cache.positions(town,warehouse,120,detect);
+        cache.positions(town,warehouse,"storage",120,detect);
         assertEquals(3,scans.get(),"Adding an overlapping station invalidates resource ownership immediately");
         town.radius++;
-        cache.positions(town,warehouse,120,detect);
+        cache.positions(town,warehouse,"storage",120,detect);
         assertEquals(4,scans.get(),"Changing claim bounds invalidates the scan immediately");
         cache.refresh(town.id);
-        cache.positions(town,warehouse,120,detect);
+        cache.positions(town,warehouse,"storage",120,detect);
         assertEquals(5,scans.get(),"Inspection and recruitment can explicitly demand current detection");
         cache.prune(140);
-        cache.positions(town,warehouse,140,detect);
+        cache.positions(town,warehouse,"storage",140,detect);
         assertEquals(6,scans.get(),"Expired scans can be discarded and rebuilt");
     }
 }

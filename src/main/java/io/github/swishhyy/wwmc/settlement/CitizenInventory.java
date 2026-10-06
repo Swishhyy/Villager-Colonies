@@ -9,9 +9,7 @@ import java.util.function.ToIntFunction;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.ChestMenu;
-import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -20,14 +18,11 @@ public final class CitizenInventory extends SimpleContainer {
     public static final int SIZE=36;
     private final List<ItemStack> pending=new ArrayList<>();
     private final Predicate<Player> allowed;
-    private final Map<Player,ChestMenu> viewers=new HashMap<>();
+    private final Map<Player,AbstractContainerMenu> viewers=new HashMap<>();
     public CitizenInventory(Predicate<Player> allowed) { super(SIZE); this.allowed=allowed; }
     @Override public boolean stillValid(Player player) { return allowed.test(player); }
-    public ChestMenu createMenu(int id,Inventory inventory,Player viewer) {
-        ChestMenu menu=new ChestMenu(MenuType.GENERIC_9x4,id,inventory,this,4);
-        viewers.put(viewer,menu);
-        return menu;
-    }
+    /** A menu showing this bag; work pauses while its owner has it open. */
+    public void opened(Player viewer,AbstractContainerMenu menu) { viewers.put(viewer,menu); }
     public boolean isOpen() {
         viewers.entrySet().removeIf(e -> e.getKey().isRemoved() || !e.getKey().isAlive()
                 || !allowed.test(e.getKey()) || e.getKey().containerMenu!=e.getValue());

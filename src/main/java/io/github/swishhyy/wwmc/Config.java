@@ -6,12 +6,15 @@ public final class Config {
     private static final ModConfigSpec.Builder B = new ModConfigSpec.Builder();
     public static final ModConfigSpec.IntValue SETTLEMENT_RADIUS = B.comment("Horizontal claim radius of new settlements; never below 240.").defineInRange("settlementRadius", Settlement.MIN_RADIUS, Settlement.MIN_RADIUS, 512);
     public static final ModConfigSpec.IntValue MAX_CITIZENS = B.comment("Citizen limit; housing beds are also required.").defineInRange("maxCitizens", 32, 1, 128);
-    public static final ModConfigSpec.IntValue STATION_WORKERS = B.comment("Workers sharing each farm, lumber or mine station.").defineInRange("stationWorkers", 4, 1, 32);
+    public static final ModConfigSpec.IntValue STATION_WORKERS = B.comment("Workers sharing each lumber or mine station.").defineInRange("stationWorkers", 4, 1, 32);
+    public static final ModConfigSpec.IntValue FARM_WORKERS = B.comment("Farmers per farm station; one farmer tends a whole 7x7x7 plot.").defineInRange("farmWorkers", 1, 1, 16);
+    public static final ModConfigSpec.IntValue COURIER_WORKERS = B.comment("Couriers per courier station.").defineInRange("courierWorkers", 2, 1, 16);
     public static final ModConfigSpec.IntValue QUARRY_WORKERS = B.comment("Workers sharing each quarry station.").defineInRange("quarryWorkers", 8, 1, 32);
     public static final ModConfigSpec.IntValue CRAFTSMAN_WORKERS = B.comment("Craftsmen sharing each craftsman station.").defineInRange("craftsmanWorkers", 2, 1, 16);
     public static final ModConfigSpec.IntValue GUARD_WORKERS = B.comment("Guard crew slots per guard station.").defineInRange("guardWorkers", 2, 1, 16);
     public static final ModConfigSpec.IntValue PROCESSING_WORKERS = B.comment("Workers sharing each smeltery or cook station.").defineInRange("processingWorkers", 2, 1, 16);
     public static final ModConfigSpec.IntValue BLACKSMITH_WORKERS = B.comment("Blacksmiths sharing each repair station.").defineInRange("blacksmithWorkers", 2, 1, 16);
+    public static final ModConfigSpec.IntValue ORE_VEIN_SECONDS = B.comment("Seconds an ore vein beside a mine station needs between yields; gold takes twice as long, diamond and emerald six times, ancient debris eight.").defineInRange("oreVeinSeconds", 15, 1, 600);
     public static final ModConfigSpec.IntValue MINE_MIN_Y = B.comment("Lowest randomly chosen strip-mine floor Y; saved per mine.").defineInRange("mineMinY", -30, -64, 319);
     public static final ModConfigSpec.IntValue MINE_MAX_Y = B.comment("Highest randomly chosen strip-mine floor Y.").defineInRange("mineMaxY", 10, -64, 319);
     public static final ModConfigSpec.IntValue QUARRY_TARGET_Y = B.comment("Default quarry bottom Y; bedrock is preserved.").defineInRange("quarryTargetY", -64, -64, 319);
