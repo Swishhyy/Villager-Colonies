@@ -6,7 +6,9 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.4.0-alpha
+## Current build: 0.4.1-alpha
+
+0.4.1 fixes a crash when quarry crews search for a place to stand. Existing worlds and quarry progress remain compatible.
 
 This is the first settlement foundation, not the completed warfare game.
 

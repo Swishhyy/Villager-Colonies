@@ -9,7 +9,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
@@ -19,6 +18,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
 
 public final class ExcavationService {
     /** A reserved cut. Quarry crews stand next to their block inside the pit; {@code remote} cuts are worked from the control block. */
@@ -118,6 +118,11 @@ public final class ExcavationService {
         return Math.clamp(Math.round(state.getDestroySpeed(level,target)*30.0F/speed),10,Config.WORK_TICKS.get());
     }
     private static BlockPos pos(ExcavationJob job,int index) { return pos(job.cut(index).block()); }
+    /** A prospective worker position has no entity yet; ray tracing must use an explicit collision context. */
+    public static ClipContext quarrySight(BlockPos stand,BlockPos target) {
+        Vec3 eye=new Vec3(stand.getX()+0.5,stand.getY()+1.6,stand.getZ()+0.5);
+        return new ClipContext(eye,Vec3.atCenterOf(target),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,CollisionContext.empty());
+    }
     /** Closest dry, headroom-clear spot within two blocks of the cut with a clear view of it, never on top of it. */
     private static BlockPos quarryStand(ServerLevel level,Settlement town,BlockPos target,BlockPos from) {
         BlockPos best=null; double distance=Double.MAX_VALUE;
@@ -125,8 +130,7 @@ public final class ExcavationService {
             if(dx==0 && dz==0) continue;
             BlockPos stand=target.offset(dx,dy,dz);
             if(stand.distSqr(from)>=distance || !standable(level,town,stand)) continue;
-            Vec3 eye=new Vec3(stand.getX()+0.5,stand.getY()+1.6,stand.getZ()+0.5);
-            if(!level.clip(new ClipContext(eye,Vec3.atCenterOf(target),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,(Entity)null)).getBlockPos().equals(target)) continue;
+            if(!level.clip(quarrySight(stand,target)).getBlockPos().equals(target)) continue;
             best=stand; distance=stand.distSqr(from);
         }
         return best;
