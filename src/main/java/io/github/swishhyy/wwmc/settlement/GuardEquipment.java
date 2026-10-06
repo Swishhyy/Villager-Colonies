@@ -27,6 +27,37 @@ public final class GuardEquipment {
             if(entry.attribute().equals(Attributes.ARMOR) && entry.modifier().amount()>0) return true;
         return false;
     }
+    /** Exactly 25% remaining is usable; below that the item goes back for repair. */
+    public static boolean worn(ItemStack stack) {
+        return !stack.isEmpty() && stack.isDamageableItem()
+                && (long)(stack.getMaxDamage()-stack.getDamageValue())*4<stack.getMaxDamage();
+    }
+    public static boolean usable(ItemStack stack) { return !stack.isEmpty() && !worn(stack); }
+    public static double protection(ItemStack stack) {
+        double result=0;
+        for(var entry:stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS,ItemAttributeModifiers.EMPTY).modifiers()) {
+            if(entry.attribute().equals(Attributes.ARMOR)) result+=entry.modifier().amount();
+            if(entry.attribute().equals(Attributes.ARMOR_TOUGHNESS)) result+=entry.modifier().amount()*0.1;
+        }
+        return result;
+    }
+    public static boolean upgrade(ItemStack next,ItemStack current,EquipmentSlot slot) {
+        return armor(next,slot) && protective(next) && usable(next)
+                && (current.isEmpty() || worn(current) || protection(next)>protection(current)+0.001);
+    }
+    /** Exchange actual pieces, preserving both sets of components and all durability. */
+    public static boolean upgrade(Equipment source,Equipment target,EquipmentSlot slot) {
+        ItemStack next=source.get(slot),previous=target.get(slot);
+        if(!upgrade(next,previous,slot)) return false;
+        if(!previous.isEmpty() && next.getCount()!=1) return false;
+        ItemStack moved=next.split(1);
+        source.set(slot,previous.isEmpty() ? (next.isEmpty() ? ItemStack.EMPTY : next) : previous);
+        target.set(slot,moved); return true;
+    }
+    /** Returning armor only ever fills an empty matching slot. */
+    public static boolean deposit(Equipment source,Equipment stand,EquipmentSlot slot) {
+        return transfer(source,stand,slot);
+    }
     public static boolean transfer(Equipment source,Equipment target,EquipmentSlot slot) {
         ItemStack item=source.get(slot);
         if(!target.get(slot).isEmpty() || !armor(item,slot)) return false;

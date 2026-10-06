@@ -39,7 +39,8 @@ public final class GuardService {
     public static String status(ServerLevel level,Station station) {
         GuardPosts p=posts(level,station);
         return "day post "+p.day().toShortString()+", night post "+p.night().toShortString()
-                +"; one guard on duty per staffed station, full crew during alarms. Sneak-use the Inspector to set both posts. Armor stands in the station's 7x7x7 range supply armor, and weapons held in their hands";
+                +"; one guard on duty per staffed station, full crew during alarms. Sneak-use the Inspector to set both posts. "
+                +"Armor stands in the station's 7x7x7 range supply shared shift armor and hand-held weapons. Sleeping guards return armor; below 25% durability gear waits for repair";
     }
     public static void begin(ServerLevel level,Player player,BlockPos station) {
         Settlement town=SettlementData.get(level).at(station);

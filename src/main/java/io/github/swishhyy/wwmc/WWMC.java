@@ -5,6 +5,7 @@ import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.item.SurveyorItem;
+import io.github.swishhyy.wwmc.item.GuideBook;
 import io.github.swishhyy.wwmc.settlement.SettlementService;
 import io.github.swishhyy.wwmc.settlement.WorkProtection;
 import io.github.swishhyy.wwmc.settlement.GuardService;
@@ -20,6 +21,8 @@ import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.WrittenBookItem;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.level.material.MapColor;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -49,11 +52,13 @@ public final class WWMC {
         }
     }
     public static final DeferredItem<SurveyorItem> SURVEYOR=ITEMS.registerItem("surveyor",SurveyorItem::new,p -> p.stacksTo(1));
+    public static final DeferredItem<WrittenBookItem> GUIDE=ITEMS.registerItem("settlement_guide",WrittenBookItem::new,
+            p -> p.stacksTo(1).component(DataComponents.WRITTEN_BOOK_CONTENT,GuideBook.content()));
     public static final DeferredHolder<EntityType<?>,EntityType<CitizenEntity>> CITIZEN=ENTITIES.registerEntityType("citizen",CitizenEntity::new,MobCategory.CREATURE,b -> b.sized(0.6F,1.95F).clientTrackingRange(10));
     public static final DeferredHolder<CreativeModeTab,CreativeModeTab> TAB=TABS.register("settlement",() -> CreativeModeTab.builder()
         .title(Component.translatable("itemGroup.wwmc")).withTabsBefore(CreativeModeTabs.COMBAT)
         .icon(() -> BANNER_ITEM.get().getDefaultInstance()).displayItems((p,out) -> {
-            out.accept(BANNER_ITEM.get()); out.accept(SURVEYOR.get());
+            out.accept(BANNER_ITEM.get()); out.accept(SURVEYOR.get()); out.accept(GUIDE.get());
             for(StructureRole role:StructureRole.values()) out.accept(STATION_ITEMS.get(role).get());
         }).build());
     public WWMC(IEventBus bus, ModContainer container) {

@@ -37,7 +37,7 @@ public final class MinecraftChecks {
         var ops=server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
         List<String> markers=new java.util.ArrayList<>(List.of("settlement_banner"));
         for(StructureRole role:StructureRole.values()) markers.add(role.id()+"_station");
-        List<String> recipes=new java.util.ArrayList<>(markers); recipes.add("surveyor");
+        List<String> recipes=new java.util.ArrayList<>(markers); recipes.add("surveyor"); recipes.add("settlement_guide");
         for(String id:recipes) {
             try(var input=MinecraftChecks.class.getResourceAsStream("/data/wwmc/recipe/"+id+".json")) {
                 if(input==null) throw new AssertionError("Missing recipe: "+id);
