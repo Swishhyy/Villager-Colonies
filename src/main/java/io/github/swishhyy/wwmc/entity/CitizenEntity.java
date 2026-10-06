@@ -280,7 +280,11 @@ public final class CitizenEntity extends Villager {
         getNavigation().stop();
         List<Container> storage=SettlementService.storageAt(level,town,warehouse);
         int[] foodReserve={role==StructureRole.COOK ? 0 : 8};
+        int[] fuelReserve={ProcessingService.FUEL_LOAD};
         cargo.deposit(storage,stack -> {
+            if(role.processes() && ProcessingService.fuel(level,stack)) {
+                int keep=Math.min(fuelReserve[0],stack.getCount()); fuelReserve[0]-=keep; return keep;
+            }
             if(retainSupply(stack)) return stack.getCount();
             if(food(stack)) { int keep=Math.min(foodReserve[0],stack.getCount()); foodReserve[0]-=keep; return keep; }
             return 0;
