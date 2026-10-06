@@ -127,6 +127,9 @@ public final class LogisticsChecks {
         SimpleContainer warehouse=box(new ItemStack(Items.RAW_GOLD,40),new ItemStack(Items.CHARCOAL,20)),empty=new SimpleContainer(27);
         check(JobStorage.needsSupplies(level,StructureRole.SMELTERY,List.of(empty),List.of(warehouse)),"An empty smeltery barrel is restocked");
         check(!JobStorage.needsSupplies(level,StructureRole.FARM,List.of(empty),List.of(warehouse)),"Only smelters and cooks are stocked");
+        SimpleContainer packed=new SimpleContainer(27);
+        for(int slot=0;slot<27;slot++) packed.setItem(slot,new ItemStack(Items.COBBLESTONE,64));
+        check(!JobStorage.needsSupplies(level,StructureRole.SMELTERY,List.of(packed),List.of(warehouse)),"A full barrel is not restocked, so supplies never shuttle back and forth");
         CitizenInventory load=new CitizenInventory(player -> true);
         check(JobStorage.load(level,StructureRole.SMELTERY,List.of(empty),List.of(warehouse),load)==48
                 && load.count(Items.RAW_GOLD)==32 && load.count(Items.CHARCOAL)==16,"A load is two furnace batches of ore and sixteen fuel");
@@ -145,7 +148,7 @@ public final class LogisticsChecks {
         world.put(mine.offset(1,1,1),Blocks.DIAMOND_ORE.defaultBlockState());
         world.put(mine.east(),Blocks.IRON_ORE.defaultBlockState());
         world.put(mine.below(2),Blocks.GOLD_ORE.defaultBlockState());
-        java.util.function.Function<BlockPos,BlockState> blocks=pos -> world.getOrDefault(pos,Blocks.STONE.defaultBlockState());
+        java.util.function.Function<BlockPos,BlockState> blocks=pos -> world.getOrDefault(pos,Blocks.AIR.defaultBlockState());
         Station station=new Station(mine,StructureRole.MINE);
         Settlement town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Vein town",BlockPos.ZERO,240,List.of(),List.of(station),"balanced");
         check(mine.east().equals(OreVeins.find(pos -> true,blocks,town,station)),"An ore touching the station's face is its vein");
@@ -156,6 +159,13 @@ public final class LogisticsChecks {
         check(OreVeins.find(pos -> true,blocks,town,station)==null,"Without an ore the mine digs tunnels as before");
         world.put(mine.east(),Blocks.IRON_ORE.defaultBlockState());
         check(OreVeins.find(pos -> true,blocks,town,new Station(mine,StructureRole.QUARRY))==null,"Only mine stations work veins");
+        world.remove(mine.east());
+        BlockPos buried=mine.west();
+        world.put(buried,Blocks.COAL_ORE.defaultBlockState());
+        for(net.minecraft.core.Direction side:net.minecraft.core.Direction.values()) world.put(buried.relative(side),Blocks.STONE.defaultBlockState());
+        check(OreVeins.find(pos -> true,blocks,town,station)==null,"Ore buried on every side is not a vein, so older mines keep tunnelling");
+        world.put(buried.north(),Blocks.TORCH.defaultBlockState());
+        check(buried.equals(OreVeins.find(pos -> true,blocks,town,station)),"One open side, even with a torch in it, exposes the vein");
         System.out.println("Passed "+checks+" ore vein checks.");
     }
 

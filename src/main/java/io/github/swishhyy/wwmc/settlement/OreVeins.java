@@ -8,7 +8,9 @@ import java.util.WeakHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.common.Tags;
 
@@ -20,16 +22,27 @@ public final class OreVeins {
     /** Game time each vein can yield again; a restart simply lets every vein yield once more. */
     private static final Map<ServerLevel,Map<BlockPos,Long>> READY=new WeakHashMap<>();
     private OreVeins() {}
-    /** The ore in the 3x3x3 cube around a mine station, preferring blocks that share a face with it. */
+    /**
+     * The exposed ore in the 3x3x3 cube around a mine station, preferring blocks that share a face with it. Ore buried
+     * on every side does not count, so an older mine next to hidden ore keeps digging its tunnels.
+     */
     public static BlockPos find(ServerLevel level,Settlement town,Station station) { return find(level::hasChunkAt,level::getBlockState,town,station); }
     public static BlockPos find(Predicate<BlockPos> loaded,Function<BlockPos,BlockState> blocks,Settlement town,Station station) {
         if(station.role()!=StructureRole.MINE) return null;
         BlockPos center=station.position(),best=null;
         for(BlockPos pos:BlockPos.betweenClosed(center.offset(-1,-1,-1),center.offset(1,1,1))) {
-            if(pos.equals(center) || !town.contains(pos) || !loaded.test(pos) || !CaveMining.ore(blocks.apply(pos))) continue;
+            if(pos.equals(center) || !town.contains(pos) || !loaded.test(pos) || !CaveMining.ore(blocks.apply(pos)) || !exposed(loaded,blocks,pos)) continue;
             if(best==null || pos.distSqr(center)<best.distSqr(center)) best=pos.immutable();
         }
         return best;
+    }
+    /** At least one side opens onto a block with no collision, such as air, a torch or water. */
+    private static boolean exposed(Predicate<BlockPos> loaded,Function<BlockPos,BlockState> blocks,BlockPos ore) {
+        for(Direction side:Direction.values()) {
+            BlockPos next=ore.relative(side);
+            if(loaded.test(next) && blocks.apply(next).getCollisionShape(EmptyBlockGetter.INSTANCE,next).isEmpty()) return true;
+        }
+        return false;
     }
     /** How many times longer than common ores a vein takes to replenish. */
     public static int rarity(BlockState ore) {

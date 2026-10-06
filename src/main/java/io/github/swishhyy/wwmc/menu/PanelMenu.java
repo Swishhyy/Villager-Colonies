@@ -26,7 +26,7 @@ public final class PanelMenu extends SettlementMenu {
     @Override protected PanelView build() { return kind==Kind.TOWN ? Panels.town(viewer,pos) : Panels.station(viewer,pos); }
     @Override public ItemStack quickMoveStack(Player player,int index) { return ItemStack.EMPTY; }
     @Override public boolean stillValid(Player player) { return viewer==null || Panels.valid(viewer,pos,kind==Kind.TOWN); }
-    @Override public void act(ServerPlayer player,int action,int index,int value) {
+    @Override public void act(ServerPlayer player,int action,int index,int value,String key) {
         if(kind==Kind.TOWN) Panels.townAction(player,pos,action);
         else Panels.stationAction(player,pos,action);
         refresh();

@@ -8,5 +8,5 @@ public interface ViewMenu {
     /** Client side: the server sent a refresh. */
     void view(PanelView view);
     /** Server side: the owner pressed a control on the screen. */
-    void act(ServerPlayer player,int action,int index,int value);
+    void act(ServerPlayer player,int action,int index,int value,String key);
 }

@@ -55,7 +55,7 @@ public final class CraftsmanMenu extends SettlementMenu {
     }
     @Override protected PanelView build() { return Panels.craftsman(viewer,pos,feedback); }
     @Override public boolean stillValid(Player player) { return viewer==null || Panels.valid(viewer,pos,false); }
-    @Override public void act(ServerPlayer player,int action,int index,int value) {
-        Panels.craftAction(player,pos,action,index,value); refresh();
+    @Override public void act(ServerPlayer player,int action,int index,int value,String key) {
+        Panels.craftAction(player,pos,action,index,value,key); refresh();
     }
 }

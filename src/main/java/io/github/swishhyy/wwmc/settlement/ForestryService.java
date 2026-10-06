@@ -163,8 +163,9 @@ public final class ForestryService {
                     return new Task(tree.root(),tree,null);
             }
         }
-        // With no accessible tree, plant from the actual saplings already available to the town.
-        var storage=SettlementService.storage(level,town);
+        // With no accessible tree, plant from the actual saplings already available: the warehouse and this job's barrels.
+        List<net.minecraft.world.Container> storage=new ArrayList<>(SettlementService.storage(level,town));
+        storage.addAll(SettlementService.jobStorage(level,town,station));
         for(TreeSpecies species:TreeSpecies.values()) {
             int available=carried.applyAsInt(species.seed);
             for(var container:storage) for(int slot=0;slot<container.getContainerSize();slot++)

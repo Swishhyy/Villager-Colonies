@@ -10,6 +10,7 @@ import io.github.swishhyy.wwmc.menu.PanelView.Tab;
 import io.github.swishhyy.wwmc.settlement.*;
 import java.util.*;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -272,6 +273,8 @@ public final class Panels {
                 Component.literal(feedback.isEmpty() ? "Click the slot with an item, or shift-click one, to teach its recipe" : feedback),
                 List.of(new Tab("Orders",orders),new Tab("Crew",crewRows(level,town,station))),List.of());
     }
+    /** How a craft order's row is named: its item's id, which the screen also reads from the row's icon. */
+    public static String rowKey(Workshop.Order order) { return BuiltInRegistries.ITEM.getKey(order.resolve()).toString(); }
     public static String teach(ServerPlayer player,BlockPos pos,ItemStack example) {
         Station station=stationAt(player,pos);
         if(station==null || station.role()!=StructureRole.CRAFTSMAN) return "";
@@ -281,12 +284,13 @@ public final class Panels {
         if(town.craftOrders.size()!=before) dirty(player);
         return result;
     }
-    public static void craftAction(ServerPlayer player,BlockPos pos,int action,int index,int value) {
+    /** The row's item key must still name the order at that index; a click on a list that has changed is dropped. */
+    public static void craftAction(ServerPlayer player,BlockPos pos,int action,int index,int value,String key) {
         Station station=stationAt(player,pos);
         if(station==null || station.role()!=StructureRole.CRAFTSMAN) return;
         Settlement town=owned(player,pos);
         List<Workshop.Order> orders=town.craftOrders;
-        if(index<0 || index>=orders.size()) return;
+        if(index<0 || index>=orders.size() || !key.equals(rowKey(orders.get(index)))) return;
         switch(action) {
             case TARGET -> orders.set(index,orders.get(index).withTarget(value));
             case RAISE -> { if(index>0) Collections.swap(orders,index,index-1); }

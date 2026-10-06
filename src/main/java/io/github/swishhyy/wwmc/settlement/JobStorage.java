@@ -94,9 +94,10 @@ public final class JobStorage {
     private static Predicate<ItemStack> ingredient(Supplies supplies,StructureRole role) {
         return s -> !supplies.fuel(s) && !s.is(Items.WHEAT) && supplies.ingredient(role,s);
     }
-    /** Inputs a processing job's barrels are short of that the warehouse can supply. */
+    /** Inputs a processing job's barrels are short of, have room for, and the warehouse can supply. */
     public static boolean needsSupplies(Supplies supplies,StructureRole role,List<Container> barrels,List<Container> warehouse) {
-        if(!role.processes()) return false;
+        // A full barrel would send the load straight back to the warehouse, errand after errand.
+        if(!role.processes() || freeSlots(barrels)<2) return false;
         Predicate<ItemStack> ingredients=ingredient(supplies,role),fuel=supplies::fuel,wheat=s -> s.is(Items.WHEAT);
         return InventoryOps.count(barrels,ingredients)<ProcessingService.INPUT_LOAD && InventoryOps.count(warehouse,ingredients)>0
                 || InventoryOps.count(barrels,fuel)<FUEL_RESERVE && InventoryOps.count(warehouse,fuel)>0

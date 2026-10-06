@@ -11,6 +11,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
 import net.minecraft.world.entity.player.Inventory;
@@ -26,7 +27,8 @@ public final class CraftsmanScreen extends AbstractContainerScreen<CraftsmanMenu
     private PanelView shown;
     private String layout="";
     /** Slider moves wait a quarter second before they are sent, so a drag sends one update. */
-    private final Map<Integer,Integer> pending=new HashMap<>();
+    private record Pending(String key,int target) {}
+    private final Map<Integer,Pending> pending=new HashMap<>();
     private long changedAt;
     public CraftsmanScreen(CraftsmanMenu menu,Inventory inventory,Component title) {
         super(menu,inventory,title,CraftsmanMenu.WIDTH,CraftsmanMenu.HEIGHT);
@@ -36,14 +38,17 @@ public final class CraftsmanScreen extends AbstractContainerScreen<CraftsmanMenu
     /** Slider position from 0 to 1 for a target: squared, so small amounts such as one or two tools are easy to set. */
     static double position(int target) { return Math.sqrt(Math.clamp(target,0,MAX)/(double)MAX); }
     static int amount(double position) { return (int)Math.round(MAX*position*position); }
+    /** The order a row shows, as the server names it: the item id of the row's icon. */
+    private static String key(PanelView.Row row) { return BuiltInRegistries.ITEM.getKey(row.icon().getItem()).toString(); }
     private final class TargetSlider extends AbstractSliderButton {
         private final int index;
-        TargetSlider(int x,int y,int width,int index,int target) {
+        private final String key;
+        TargetSlider(int x,int y,int width,int index,String key,int target) {
             super(x,y,width,15,Component.empty(),position(target));
-            this.index=index; updateMessage();
+            this.index=index; this.key=key; updateMessage();
         }
         @Override protected void updateMessage() { int target=amount(value); setMessage(Component.literal(target==0 ? "Paused" : "Keep "+target)); }
-        @Override protected void applyValue() { pending.put(index,amount(value)); changedAt=Util.getMillis(); }
+        @Override protected void applyValue() { pending.put(index,new Pending(key,amount(value))); changedAt=Util.getMillis(); }
     }
     @Override protected void init() {
         super.init();
@@ -54,12 +59,15 @@ public final class CraftsmanScreen extends AbstractContainerScreen<CraftsmanMenu
             int index=page*PAGE+slot;
             if(index>=orders.size()) break;
             int rowY=topPos+LIST_TOP+slot*ROW;
-            int target=pending.getOrDefault(index,Math.max(0,orders.get(index).value()));
-            addRenderableWidget(new TargetSlider(listX+104,rowY+2,74,index,target));
-            Button up=Button.builder(Component.literal("▲"),b -> send(Panels.RAISE,index,0)).bounds(listX+180,rowY+2,14,15).build();
+            String key=key(orders.get(index));
+            Pending moved=pending.get(index);
+            int target=moved!=null && moved.key().equals(key) ? moved.target() : Math.max(0,orders.get(index).value());
+            addRenderableWidget(new TargetSlider(listX+104,rowY+2,74,index,key,target));
+            // A row button works once per refresh, so a double click cannot also hit the row that moves into its place.
+            Button up=Button.builder(Component.literal("▲"),b -> { b.active=false; send(Panels.RAISE,index,key); }).bounds(listX+180,rowY+2,14,15).build();
             up.active=index>0;
             addRenderableWidget(up);
-            addRenderableWidget(Button.builder(Component.literal("✕"),b -> send(Panels.FORGET,index,0)).bounds(listX+196,rowY+2,14,15).build());
+            addRenderableWidget(Button.builder(Component.literal("✕"),b -> { b.active=false; send(Panels.FORGET,index,key); }).bounds(listX+196,rowY+2,14,15).build());
         }
         Button previous=Button.builder(Component.literal("<"),b -> { flush(); page--; rebuildWidgets(); }).bounds(leftPos+imageWidth-62,topPos+34,16,16).build();
         previous.active=page>0;
@@ -69,12 +77,12 @@ public final class CraftsmanScreen extends AbstractContainerScreen<CraftsmanMenu
         addRenderableWidget(next);
         shown=menu.view(); layout=layout(menu.view());
     }
-    private void send(int action,int index,int value) {
+    private void send(int action,int index,String key) {
         flush();
-        ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,action,index,value));
+        ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,action,index,0,key));
     }
     private void flush() {
-        pending.forEach((index,target) -> ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,Panels.TARGET,index,target)));
+        pending.forEach((index,change) -> ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,Panels.TARGET,index,change.target(),change.key())));
         pending.clear();
     }
     /** The rows' items and targets; the widgets are rebuilt when the server reports a different list. */

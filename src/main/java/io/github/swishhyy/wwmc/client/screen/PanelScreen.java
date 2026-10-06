@@ -38,7 +38,7 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
         int actionWidth=actions.isEmpty() ? 0 : Math.min(120,(imageWidth-14)/actions.size());
         for(int i=0;i<actions.size();i++) {
             PanelView.Action action=actions.get(i);
-            Button button=Button.builder(action.label(),b -> ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,action.id(),0,0)))
+            Button button=Button.builder(action.label(),b -> ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,action.id(),0,0,"")))
                     .bounds(leftPos+7+i*actionWidth,topPos+imageHeight-26,actionWidth-2,20).build();
             button.active=action.enabled();
             addRenderableWidget(button);

@@ -29,7 +29,7 @@ public final class CitizenMenu extends SettlementMenu {
     }
     @Override protected PanelView build() { return citizen==null || !citizen.isAlive() ? null : Panels.citizen(citizen); }
     @Override public boolean stillValid(Player player) { return bag.stillValid(player); }
-    @Override public void act(ServerPlayer player,int action,int index,int value) {}
+    @Override public void act(ServerPlayer player,int action,int index,int value,String key) {}
     /** Shift-click moves stacks between the bag and the player's inventory, like a chest. */
     @Override public ItemStack quickMoveStack(Player player,int index) {
         Slot slot=slots.get(index);
