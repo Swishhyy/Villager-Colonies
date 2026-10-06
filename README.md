@@ -6,9 +6,9 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.4.1-alpha
+## Current build: 0.4.2-alpha
 
-0.4.1 fixes a crash when quarry crews search for a place to stand. Existing worlds and quarry progress remain compatible.
+0.4.2 spreads citizen updates across server ticks, shares bed/warehouse location scans, and bounds work-site path probes to reduce intermittent spikes as population grows. It includes the quarry visibility crash fix from 0.4.1. Existing worlds, inventories, and quarry progress remain compatible.
 
 This is the first settlement foundation, not the completed warfare game.
 
@@ -18,6 +18,7 @@ Implemented:
 - Settlement banner and ten role stations, with survival crafting recipes and a creative tab.
 - A 240-block minimum claim radius and red banners at the four claim corners.
 - Automatic 7×7×7 station detection and live updates when nearby furniture/resources change.
+  Bed and warehouse locations refresh within one second; inspection and recruitment refresh them immediately. Workers still check detected beds and storage against the live world before using them.
 - A placement range outline and a Station Inspector for checking existing stations.
 - Deterministic ownership of overlapping beds, storage, and same-job work targets.
 - Housing and barracks beds count toward recruitment; hospital beds remain patient capacity.
@@ -261,7 +262,7 @@ Use a **Java 25 JDK**, not just a Java runtime. The Gradle wrapper and ModDevGra
 
 On Windows, use `gradlew.bat build` and `gradlew.bat runClient`. Development servers use `./gradlew runServer`.
 
-`build` runs regression checks for ranges, beds/storage, overlap ownership, shared crews, atomic target claims, tunnel/quarry geometry, random depth/shift boundaries, name uniqueness, construction-aware tree recognition, sapling conservation, local inventory conservation/backlog, armor transfers, weapon classification/ranking, quarry staircase geometry and persistence, craftsman orders and material conservation, alarm thresholds and all-clear timing, wave sizes/composition/timing, claim widening, save round-trips, legacy migration, and recipe/drop decoding with Minecraft's codecs. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
+`build` runs regression checks for ranges, beds/storage, overlap ownership, shared crews, atomic target claims, tunnel/quarry geometry, random depth/shift boundaries, name uniqueness, construction-aware tree recognition, sapling conservation, local inventory conservation/backlog, armor transfers, weapon classification/ranking, quarry staircase geometry and persistence, quarry collision tracing, craftsman orders and material conservation, alarm thresholds and all-clear timing, wave sizes/composition/timing, claim widening, save round-trips, legacy migration, recipe/drop decoding with Minecraft's codecs, staggered 30-citizen updates, bounded reachability probes, and shared resource scan expiry/invalidation. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
 
 Automated checks do not replace an in-game playtest. Check previews, border placement, shared station crews, protected player logs, large-tree felling/replanting, tunnel/cave pathfinding, quarry staircase descent and climb-out, quarry obstructions and skipped blocks, craftsman trips, guard armor transfers/patrol/combat, weapon scavenging and archery, bell runs and civilian cover, wave spawning, inventory menus, tool breakage, bed use, and save/restart behavior before using this alpha in an important world.
 
