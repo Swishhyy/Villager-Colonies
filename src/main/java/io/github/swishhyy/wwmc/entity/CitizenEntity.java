@@ -79,7 +79,7 @@ public final class CitizenEntity extends Villager {
     private int processingIdle;
     private final Map<BlockPos,Long> idleStations=new HashMap<>();
     private UUID settlementId;
-    private BlockPos workplace, target, sleepingBed;
+    private BlockPos workplace, target, sleepingBed,workStand,clearingLeaf;
     private final CitizenInventory cargo=new CitizenInventory(this::canOpenInventory);
     private final Map<BlockPos,Long> failedTargets=new HashMap<>();
     private int searchDelay, workProgress, pathTicks, mealTicks=2400;
@@ -224,8 +224,10 @@ public final class CitizenEntity extends Villager {
     }
     private boolean near(BlockPos pos) { return distanceToSqr(Vec3.atCenterOf(pos))<=6.25; }
     private boolean visible(ServerLevel level,BlockPos pos) {
-        return level.clip(new ClipContext(getEyePosition(),Vec3.atCenterOf(pos),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,this)).getBlockPos().equals(pos);
+        return CitizenReach.visible(level,getEyePosition(),pos);
     }
+    private boolean canUse(ServerLevel level,BlockPos pos) { return CitizenReach.canUse(level,getEyePosition(),pos); }
+    private boolean handNear(BlockPos pos) { return CitizenReach.within(getEyePosition(),pos); }
     private boolean walk(BlockPos pos) { return walk(pos,0.65); }
     private boolean walk(BlockPos pos,double speed) {
         lastWalkTick=tickCount;
@@ -252,6 +254,7 @@ public final class CitizenEntity extends Villager {
         if(targetLease!=null) book.release(targetLease,getUUID());
         if(isUsingItem()) stopUsingItem();
         targetLease=null; forestTask=null; excavation=null; action=Action.HARVEST; minimumAxeDurability=1; order=null;
+        workStand=null; clearingLeaf=null;
         processor=null; processingDelivery=false; processingSupplied=false; processingIdle=0; nextProcessingAt=0;
         workplace=null; target=null; patrolTarget=null; activePost=null; setTarget(null); workProgress=0; pathTicks=0; getNavigation().stop();
     }
@@ -296,6 +299,62 @@ public final class CitizenEntity extends Villager {
             if(failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(pos.immutable(),now+1200);
             return false;
         });
+    }
+    private CitizenReach.StandingView standingView(ServerLevel level,Settlement town) {
+        return new CitizenReach.StandingView() {
+            public boolean available(BlockPos p) { return town.contains(p) && p.getY()>=level.getMinY() && p.getY()<level.getMaxY() && level.hasChunkAt(p); }
+            public boolean clear(BlockPos p) { return CitizenEntity.clear(level,p); }
+            public boolean footing(BlockPos p) { return !level.getBlockState(p).is(BlockTags.LEAVES)
+                    && level.getFluidState(p).isEmpty() && level.getBlockState(p).isFaceSturdy(level,p,net.minecraft.core.Direction.UP); }
+        };
+    }
+    private boolean reachableStand(BlockPos pos) {
+        if(pos.equals(blockPosition())) return true;
+        if(failedTargets.containsKey(pos)) return false;
+        return reachBudget.check(() -> {
+            var path=getNavigation().createPath(pos,0);
+            if(path!=null && path.canReach()) return true;
+            if(failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(pos.immutable(),level().getGameTime()+1200);
+            return false;
+        });
+    }
+    /** Select ground from which the resource is in reach, instead of trying to enter a log or canopy. */
+    private boolean workAccessible(ServerLevel level,Settlement town,BlockPos pos) {
+        BlockPos touch=level.getBlockState(pos).isAir() ? pos.below() : pos;
+        var view=standingView(level,town);
+        boolean lumber=TreeSpecies.ofLog(level.getBlockState(touch))!=null;
+        if(handNear(touch) && workSight(level,town,getEyePosition(),touch)
+                && (CitizenReach.standing(view,blockPosition()) || lumber)) { workStand=blockPosition(); return true; }
+        for(BlockPos stand:CitizenReach.stands(view,touch,position(),getEyeHeight())) {
+            if(reachBudget.deferred()) break;
+            if(!reachableStand(stand)) continue;
+            Vec3 eye=Vec3.atBottomCenterOf(stand).add(0,getEyeHeight(),0);
+            if(workSight(level,town,eye,touch)) { workStand=stand; return true; }
+            if(failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(stand,level.getGameTime()+1200);
+        }
+        return false;
+    }
+    private boolean workSight(ServerLevel level,Settlement town,Vec3 eye,BlockPos pos) {
+        if(CitizenReach.canUse(level,eye,pos)) return true;
+        TreeSpecies species=TreeSpecies.ofLog(level.getBlockState(pos));
+        if(species==null) return false;
+        var hit=CitizenReach.hit(level,eye,pos);
+        BlockPos obstacle=hit.getBlockPos();
+        return hit.getType()==net.minecraft.world.phys.HitResult.Type.BLOCK && CitizenReach.within(eye,obstacle)
+                && level.hasChunkAt(obstacle) && town.contains(obstacle) && ForestryService.naturalLeaf(level.getBlockState(obstacle),species)
+                && !WorldWorkData.get(level).protectedBlocks.contains(obstacle) && !SettlementService.protectedFurniture(town,obstacle);
+    }
+    /** The first natural leaf in reach, including leaves intersecting a worker who was already stuck in a canopy. */
+    private BlockPos blockingLeaf(ServerLevel level,Settlement town) {
+        if(forestTask==null || forestTask.tree()==null) return null;
+        AABB body=getBoundingBox().deflate(0.001);
+        for(BlockPos p:BlockPos.betweenClosed(BlockPos.containing(body.minX,body.minY,body.minZ),BlockPos.containing(body.maxX,body.maxY,body.maxZ)))
+            if(CitizenReach.within(getEyePosition(),p) && ForestryService.clearableLeaf(level,town,forestTask.tree(),p)) return p.immutable();
+        var hit=CitizenReach.hit(level,getEyePosition(),target);
+        BlockPos p=hit.getBlockPos();
+        return !p.equals(target) && hit.getType()==net.minecraft.world.phys.HitResult.Type.BLOCK
+                && handNear(p) && getEyePosition().distanceToSqr(hit.getLocation())<=CitizenReach.BLOCKS*CitizenReach.BLOCKS+1.0E-7
+                && ForestryService.clearableLeaf(level,town,forestTask.tree(),p) ? p : null;
     }
     private boolean food(ItemStack stack) {
         var nutrition=stack.get(DataComponents.FOOD);
@@ -346,7 +405,7 @@ public final class CitizenEntity extends Villager {
             // The warehouse is only unloaded: keep the gear in the bag; ordinary deliveries hand it in later.
             returningGear=false; return true;
         }
-        if(warehouse!=null && (!near(warehouse) || !visible(level,warehouse))) {
+        if(warehouse!=null && !canUse(level,warehouse)) {
             pathTicks+=10;
             // A path cannot be planned mid-jump; only a long failure or one on solid ground means the warehouse is out of reach.
             if((walk(warehouse) || !onGround()) && pathTicks<=1200) { activity="Returning my previous job's gear to the warehouse"; return false; }
@@ -387,7 +446,7 @@ public final class CitizenEntity extends Villager {
     private boolean visitWarehouse(ServerLevel level,Settlement town,StructureRole role) {
         BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
         if(warehouse==null) { activity="Needs a loaded warehouse with a chest or barrel in range"; return false; }
-        if(!near(warehouse) || !visible(level,warehouse)) {
+        if(!canUse(level,warehouse)) {
             activity="Carrying supplies / returning for food or tools";
             walk(warehouse); return false;
         }
@@ -468,7 +527,7 @@ public final class CitizenEntity extends Villager {
         var book=SettlementService.reservations(level);
         if(station.role()==StructureRole.LUMBER) {
             forestTask=ForestryService.find(level,town,station,p -> !failedTargets.containsKey(p)
-                    && !reachBudget.deferred() && book.available(p,getUUID(),level.getGameTime()) && canReach(p),
+                    && !reachBudget.deferred() && book.available(p,getUUID(),level.getGameTime()) && workAccessible(level,town,p),
                     item -> cargo.count(item)+(getOffhandItem().is(item) ? getOffhandItem().getCount() : 0));
             if(forestTask==null || !book.claim(forestTask.target(),getUUID(),level.getGameTime(),200)) return null;
             action=forestTask.planting()==null ? Action.FELL : Action.PLANT;
@@ -479,7 +538,7 @@ public final class CitizenEntity extends Villager {
             ExcavationJob job=ExcavationService.job(level,town,station);
             if(station.role()==StructureRole.MINE && job!=null && getY()<=job.targetY+6) {
                 BlockPos ore=CaveMining.find(level,town,blockPosition(),p -> !failedTargets.containsKey(p)
-                        && !reachBudget.deferred() && book.available(p,getUUID(),level.getGameTime()) && canReach(p));
+                        && !reachBudget.deferred() && book.available(p,getUUID(),level.getGameTime()) && workAccessible(level,town,p));
                 if(ore!=null && book.claim(ore,getUUID(),level.getGameTime(),200)) { action=Action.CAVE; return ore; }
                 if(reachBudget.deferred()) return null;
             }
@@ -503,6 +562,7 @@ public final class CitizenEntity extends Villager {
             if(failed && failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(target,level.getGameTime()+1200);
         }
         target=null; targetLease=null; forestTask=null; excavation=null; action=Action.HARVEST; minimumAxeDurability=1;
+        workStand=null; clearingLeaf=null;
         workProgress=0; pathTicks=0; searchDelay=10; getNavigation().stop();
     }
     private void storeDrops(ServerLevel level,List<ItemStack> drops) {
@@ -636,7 +696,7 @@ public final class CitizenEntity extends Villager {
                     && GuardEquipment.armor(stand.getItemBySlot(slot),slot))
                     || needs(stand.getItemBySlot(EquipmentSlot.MAINHAND)) || needs(stand.getItemBySlot(EquipmentSlot.OFFHAND));
             if(!missing) continue;
-            if(distanceToSqr(stand)>6.25 || !hasLineOfSight(stand)) {
+            if(!CitizenReach.within(getEyePosition(),stand.getBoundingBox()) || !hasLineOfSight(stand)) {
                 if(!canReach(stand.blockPosition())) continue;
                 activity="Collecting gear from a stand"; walk(stand.blockPosition()); gearTicks=0; return true;
             }
@@ -732,8 +792,7 @@ public final class CitizenEntity extends Villager {
         if(isUsingItem()) stopUsingItem();
         // Without a melee weapon, put the bow away and fight with fists instead of wearing it out.
         if(!hold(GuardWeapons::melee) && GuardWeapons.bow(getMainHandItem())) wield(ItemStack.EMPTY);
-        double reach=GuardWeapons.reach(getMainHandItem());
-        if(distanceToSqr(enemy)<=reach*reach) {
+        if(CitizenReach.within(getEyePosition(),enemy.getBoundingBox()) && hasLineOfSight(enemy)) {
             getNavigation().stop();
             if(guardAttackTicks==0) {
                 swing(InteractionHand.MAIN_HAND);
@@ -745,7 +804,7 @@ public final class CitizenEntity extends Villager {
     private void runToBell(ServerLevel level,Settlement town,BlockPos bell) {
         setTarget(null);
         if(isUsingItem()) stopUsingItem();
-        if(getEyePosition().distanceToSqr(Vec3.atCenterOf(bell))<=16.0 && visible(level,bell)) {
+        if(canUse(level,bell)) {
             getNavigation().stop(); getLookControl().setLookAt(bell.getX()+0.5,bell.getY()+0.5,bell.getZ()+0.5);
             swing(InteractionHand.MAIN_HAND); activity="Ringing the alarm bell";
             DefenseService.ring(level,town,this,bell); return;
@@ -785,8 +844,8 @@ public final class CitizenEntity extends Villager {
         boolean resupply=alarm ? armoryStocked && !carries(GuardWeapons::weapon) : deliverCargo() || mealTicks<=0 || armoryStocked;
         if(resupply && level.getGameTime()>=guardSupplyAt) {
             BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
-            if(warehouse!=null && (near(warehouse) || canReach(warehouse))
-                    && !visitWarehouse(level,town,StructureRole.GUARD) && !near(warehouse)) return;
+            if(warehouse!=null && (handNear(warehouse) || canReach(warehouse))
+                    && !visitWarehouse(level,town,StructureRole.GUARD) && !canUse(level,warehouse)) return;
             // An empty pantry must not leave the station's only sentry waiting there forever.
             guardSupplyAt=level.getGameTime()+200;
             armoryStocked=false;
@@ -819,7 +878,7 @@ public final class CitizenEntity extends Villager {
             }
             order=next; workProgress=0; pathTicks=0;
         }
-        if(!near(bench) || station.role()==StructureRole.COOK && !visible(level,bench)) {
+        if(!canUse(level,bench)) {
             activity="Carrying materials for "+order.label()+" to the workbench"; pathTicks+=10;
             if(!walk(bench) || pathTicks>1200) { idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); }
             return;
@@ -864,7 +923,7 @@ public final class CitizenEntity extends Villager {
                 if(bread!=null && Crafting.fetch(storage,cargo,bread)>0) { order=bread; workProgress=0; craft(level,town,station,processor); return; }
             }
         }
-        if(!near(processor) || !visible(level,processor)) {
+        if(!canUse(level,processor)) {
             activity="Carrying ingredients/fuel to the "+station.role().id()+" appliance"; pathTicks+=10;
             if(!walk(processor) || pathTicks>1200) {
                 idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level);
@@ -944,7 +1003,7 @@ public final class CitizenEntity extends Villager {
         if(station.role().processes()) { process(level,town,station); return; }
         if(target==null) {
             if(searchDelay>0) { searchDelay-=10; return; }
-            if(!station.role().excavates() && !near(station.position())) {
+            if(!station.role().excavates() && !handNear(station.position())) {
                 activity="Returning to the "+station.role().id()+" worksite"; pathTicks+=10;
                 if(!walk(station.position()) || pathTicks>1200) {
                     idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level);
@@ -966,13 +1025,30 @@ public final class CitizenEntity extends Villager {
         }
         useLocalSupplies(station.role());
         if(!properTool(station.role()) || needsSupply()) { if(!visitWarehouse(level,town,station.role())) return; }
-        BlockPos approach=excavation==null ? target : excavation.stand();
+        if(action==Action.FELL) {
+            BlockPos leaf=blockingLeaf(level,town);
+            if(leaf!=null) {
+                getNavigation().stop(); activity="Clearing natural leaves to reach the trunk";
+                if(!leaf.equals(clearingLeaf)) { clearingLeaf=leaf; workProgress=0; }
+                workProgress+=10;
+                if(workProgress>=20) {
+                    swing(InteractionHand.MAIN_HAND);
+                    var drops=ForestryService.clearLeaf(level,town,station,forestTask.tree(),leaf,this);
+                    if(drops==null) { cancelTarget(level,true); return; }
+                    storeDrops(level,drops); workProgress=0; clearingLeaf=null;
+                }
+                return;
+            }
+        }
+        clearingLeaf=null;
+        BlockPos approach=excavation==null ? (workStand==null ? target : workStand) : excavation.stand();
         BlockPos visibleAt=action==Action.PLANT ? target.below() : excavation!=null && excavation.remote() ? station.position()
-                : action==Action.SUPPORT ? excavation.stand().below() : target;
-        if(!near(approach) || !visible(level,visibleAt)) {
+                : target;
+        BlockPos touch=excavation!=null && excavation.remote() ? station.position() : target;
+        if(!handNear(touch) || !canUse(level,visibleAt)) {
             activity=action==Action.PLANT ? "Walking to plant saplings" : "Walking to "+station.role().id()+" work"; pathTicks+=10;
             // Standing beside the work without a clear view will not fix itself; give up sooner than a long walk.
-            if(!walk(approach) || pathTicks>(near(approach) ? 100 : 1200)) {
+            if(!walk(approach) || pathTicks>(handNear(touch) ? 100 : 1200)) {
                 if(action==Action.EXCAVATE && excavation.quarry() && !excavation.remote()) {
                     // No way into the pit from here: keep the quarry moving from its control block instead.
                     SettlementService.reservations(level).release(excavation.lease(),getUUID());

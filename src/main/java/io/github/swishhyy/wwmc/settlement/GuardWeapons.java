@@ -19,8 +19,8 @@ import net.minecraft.world.item.component.ItemAttributeModifiers;
 public final class GuardWeapons {
     public enum Kind { NONE, SWORD, SPEAR, BOW }
     private static final TagKey<Item> SPEARS=TagKey.create(Registries.ITEM,Identifier.withDefaultNamespace("spears"));
-    /** Center-to-center distance at which a guard strikes; spears keep enemies farther away. */
-    public static final double SWORD_REACH=2.0,SPEAR_REACH=3.25;
+    /** All citizen melee attacks share the four-block hand reach; weapon damage still comes from the actual item. */
+    public static final double SWORD_REACH=CitizenReach.BLOCKS,SPEAR_REACH=CitizenReach.BLOCKS;
     /** Beyond this distance an archer draws the bow instead of closing in. */
     public static final double BOW_MIN_RANGE=5.0,BOW_MAX_RANGE=24.0;
     private GuardWeapons() {}

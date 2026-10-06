@@ -1,5 +1,8 @@
 package io.github.swishhyy.wwmc.settlement;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.*;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
@@ -16,7 +19,18 @@ import net.minecraft.world.phys.AABB;
 /** Bounded tree recognition rejects placed logs, buildings, and incomplete/unloaded trees. */
 public final class ForestryService {
     public static final int MAX_LOGS=256,MAX_HEIGHT=40,CROWN_RADIUS=8;
-    public record Tree(BlockPos root,List<BlockPos> logs,TreeSpecies species,int width) {}
+    public record Tree(BlockPos root,List<BlockPos> logs,TreeSpecies species,int width) {
+        private static final Codec<TreeSpecies> SPECIES=Codec.STRING.comapFlatMap(name -> {
+            try { return DataResult.success(TreeSpecies.valueOf(name)); }
+            catch(IllegalArgumentException e) { return DataResult.error(() -> "Unknown tree species: "+name); }
+        },TreeSpecies::name);
+        public static final Codec<Tree> CODEC=RecordCodecBuilder.create(i -> i.group(
+                BlockPos.CODEC.fieldOf("root").forGetter(Tree::root),
+                BlockPos.CODEC.listOf().fieldOf("logs").forGetter(Tree::logs),
+                SPECIES.fieldOf("species").forGetter(Tree::species),
+                Codec.intRange(1,2).fieldOf("width").forGetter(Tree::width)).apply(i,Tree::new));
+        public Tree { root=root.immutable(); logs=logs.stream().map(BlockPos::immutable).toList(); }
+    }
     public record Task(BlockPos target,Tree tree,PlantingSite planting) {}
     private ForestryService() {}
     private static boolean loaded(ServerLevel level,Settlement town,BlockPos pos) {
@@ -38,16 +52,36 @@ public final class ForestryService {
         boolean blockEntityAt(BlockPos pos);
     }
     public static Tree tree(ServerLevel level,Settlement town,BlockPos root) {
+        var data=WorldWorkData.get(level);
+        Tree saved=data.clearedTrees.get(root);
+        if(saved!=null) {
+            Tree verified=verify(view(level,town),saved);
+            if(verified!=null) return verified;
+            // An unloaded branch cannot invalidate the saved proof of a tree whose leaves we already cleared.
+            if(saved.logs().stream().allMatch(p -> loaded(level,town,p))) { data.clearedTrees.remove(root); data.setDirty(); }
+        }
+        return tree(view(level,town),root);
+    }
+    private static TreeView view(ServerLevel level,Settlement town) {
         WorldWorkData data=WorldWorkData.get(level);
-        return tree(new TreeView() {
+        return new TreeView() {
             public BlockState state(BlockPos pos) { return level.getBlockState(pos); }
             public boolean available(BlockPos pos) { return loaded(level,town,pos); }
             public boolean protectedAt(BlockPos pos) { return data.protectedBlocks.contains(pos); }
             public boolean furnitureAt(BlockPos pos) { return SettlementService.protectedFurniture(town,pos); }
             public boolean blockEntityAt(BlockPos pos) { return level.getBlockEntity(pos)!=null; }
-        },root);
+        };
     }
     public static Tree tree(TreeView world,BlockPos root) {
+        return tree(world,root,4);
+    }
+    /** Revalidate a tree recognized before clearing leaves, retaining every provenance, construction and loading check. */
+    public static Tree verify(TreeView world,Tree saved) {
+        Tree current=tree(world,saved.root(),0);
+        return current!=null && current.species()==saved.species() && current.width()==saved.width()
+                && new HashSet<>(current.logs()).equals(new HashSet<>(saved.logs())) ? current : null;
+    }
+    private static Tree tree(TreeView world,BlockPos root,int minimumLeaves) {
         if(!world.available(root) || !world.available(root.below())) return null;
         TreeSpecies species=TreeSpecies.ofLog(world.state(root));
         if(species==null || !soil(world.state(root.below()))) return null;
@@ -62,7 +96,7 @@ public final class ForestryService {
             if(logs.size()>MAX_LOGS || !world.available(pos) || world.protectedAt(pos)
                     || world.furnitureAt(pos)) return null;
             if(soil(world.state(pos.below()))) roots.add(pos);
-            if(canopy.size()<4 && pos.getY()>=root.getY()+2) {
+            if(minimumLeaves>0 && canopy.size()<minimumLeaves && pos.getY()>=root.getY()+2) {
                 for(BlockPos leaf:BlockPos.betweenClosed(pos.offset(-2,-1,-2),pos.offset(2,3,2)))
                     if(world.available(leaf) && naturalLeaf(world.state(leaf),species)
                             && !world.protectedAt(leaf)) canopy.add(leaf.immutable());
@@ -82,7 +116,7 @@ public final class ForestryService {
                 queue.add(adjacent.immutable());
             }
         }
-        if(canopy.size()<4 || roots.isEmpty() || roots.size()!=1 && roots.size()!=4) return null;
+        if(canopy.size()<minimumLeaves || roots.isEmpty() || roots.size()!=1 && roots.size()!=4) return null;
         int minX=roots.stream().mapToInt(BlockPos::getX).min().orElse(root.getX());
         int minZ=roots.stream().mapToInt(BlockPos::getZ).min().orElse(root.getZ());
         int width=roots.size()==4 ? 2 : species.width;
@@ -157,6 +191,30 @@ public final class ForestryService {
     public static int durability(ItemStack stack) {
         return stack.isDamageableItem() ? stack.getMaxDamage()-stack.getDamageValue() : Integer.MAX_VALUE;
     }
+    /** Only unplaced, unprotected leaves belonging to the selected natural tree may be cleared on the way in. */
+    public static boolean clearableLeaf(TreeView world,Tree tree,BlockPos leaf) {
+        return tree!=null && world.available(leaf) && !world.protectedAt(leaf) && !world.furnitureAt(leaf)
+                && !world.blockEntityAt(leaf) && naturalLeaf(world.state(leaf),tree.species())
+                && tree.logs().stream().anyMatch(log -> Math.abs(log.getX()-leaf.getX())<=3
+                    && Math.abs(log.getY()-leaf.getY())<=3 && Math.abs(log.getZ()-leaf.getZ())<=3);
+    }
+    public static boolean clearableLeaf(ServerLevel level,Settlement town,Tree tree,BlockPos leaf) {
+        return clearableLeaf(view(level,town),tree,leaf);
+    }
+    public static List<ItemStack> clearLeaf(ServerLevel level,Settlement town,Station station,Tree selected,BlockPos leaf,LivingEntity worker) {
+        if(!CitizenReach.within(worker.getEyePosition(),leaf) || !worker.getMainHandItem().is(ItemTags.AXES)
+                || !SettlementService.ownsBlock(level,town,station,selected.root())
+                || leaf.equals(BlockPos.containing(worker.getX(),worker.getY()-0.01,worker.getZ()))
+                || !level.getEntitiesOfClass(LivingEntity.class,new AABB(leaf).expandTowards(0,2,0),e -> e!=worker).isEmpty()) return null;
+        // Recheck the whole tree before changing terrain: a new player log or building cancels this work too.
+        Tree current=tree(level,town,selected.root());
+        if(!clearableLeaf(level,town,current,leaf)) return null;
+        var drops=Block.getDrops(level.getBlockState(leaf),level,leaf,null,worker,worker.getMainHandItem());
+        if(!level.destroyBlock(leaf,false,worker)) return null;
+        var data=WorldWorkData.get(level); data.clearedTrees.put(current.root(),current); data.setDirty();
+        worker.getMainHandItem().hurtAndBreak(1,worker,EquipmentSlot.MAINHAND);
+        return drops;
+    }
     public static List<ItemStack> fell(ServerLevel level,Settlement town,Station station,BlockPos root,LivingEntity worker) {
         Tree tree=tree(level,town,root);
         if(tree==null || !worker.getMainHandItem().is(ItemTags.AXES) || !SettlementService.ownsBlock(level,town,station,tree.root())
@@ -188,7 +246,10 @@ public final class ForestryService {
             var blockDrops=Block.getDrops(level.getBlockState(leaf),level,leaf,null,worker,ItemStack.EMPTY);
             if(level.destroyBlock(leaf,false,worker)) drops.addAll(blockDrops);
         }
-        if(removed>0) WorldWorkData.get(level).queue(new PlantingSite(station.position(),tree.root(),tree.species(),tree.width()));
+        if(removed>0) {
+            var data=WorldWorkData.get(level); data.clearedTrees.remove(tree.root());
+            data.queue(new PlantingSite(station.position(),tree.root(),tree.species(),tree.width())); data.setDirty();
+        }
         return drops;
     }
     public static boolean plant(ServerLevel level,Settlement town,Station station,PlantingSite site,ItemStack seeds) {
