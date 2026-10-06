@@ -6,7 +6,9 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.5.2-alpha
+## Current build: 0.6.0-alpha
+
+0.6.0 adds a craftable in-game Settlement Guide, shared armor between guard shifts, better armor selection, retirement of equipment below 25% durability, Blacksmith Stations that repair real equipment using warehouse materials, and healing from real meals or food given by the owner. Existing towns and inventories remain compatible.
 
 0.5.2 gives citizens four-block work and melee reach, measured from their eyes to block faces or enemy hitboxes. Lumberjacks choose clear standing spots beside trees and cut unprotected natural leaves that block the trunk or trap their body, keeping real drops and consuming axe durability. The tree’s original natural recognition is saved after access clearing, so work can resume after a restart while all player-block and building checks still apply.
 
@@ -19,7 +21,7 @@ This is the first settlement foundation, not the completed warfare game.
 Implemented:
 
 - Persistent named settlements, owners, non-overlapping claims, and town priorities.
-- Settlement banner and twelve role stations, with survival crafting recipes and a creative tab.
+- Settlement banner and thirteen role stations, with survival crafting recipes and a creative tab.
 - A 240-block minimum claim radius and red banners at the four claim corners.
 - Automatic 7×7×7 station detection and live updates when nearby furniture/resources change.
   Bed and warehouse locations refresh within one second; inspection and recruitment refresh them immediately. Workers still check detected beds and storage against the live world before using them.
@@ -27,7 +29,10 @@ Implemented:
 - Deterministic ownership of overlapping beds, storage, and same-job work targets.
 - Housing and barracks beds count toward recruitment; hospital beds remain patient capacity.
 - Recruitable citizens with individual saved names, personal inventories, and custom job AI.
-- Guards with day/night posts, town patrols, visible armor, and swords, spears, or bows they find themselves.
+- Guards with day/night posts, town patrols, visible shared shift armor, equipment upgrades, and swords, spears, or bows they find themselves.
+- A craftable Settlement Guide with every block recipe and instructions for the playable systems.
+- Blacksmiths who repair tools, weapons, and protective armor at actual anvils with the matching warehouse materials.
+- Nutrition-based citizen healing from carried food and direct feeding, with a five-second cooldown.
 - Bell alarms: manual, projectile, redstone, and guard bell rings activate every assigned guard; civilians take cover until the all-clear. Guards also run to the bell when citizens sight a large hostile force.
 - Population-scaled hostile waves that arrive at night while the owner is home.
 - Autonomous harvesting and replanting of existing wheat, carrot, potato, and beetroot crops.
@@ -40,11 +45,11 @@ Implemented:
 - Shared station crews, exclusive resource reservations, civilian nighttime rest, and guard duty through the night.
 - Save/reload support for settlement data, player block protection, replanting sites, excavation progress, cargo, tools, and meal timers.
 
-Planned: automatic housing construction, hauling specialists, medical treatment, military squads, raids by rival settlements, independent AI settlements, distant simulation, technology progression, convoys, and countries. A barracks station identifies troop housing in this build; it does not train soldiers yet. A hospital station identifies patient beds; it does not heal NPCs yet.
+Planned: automatic housing construction, hauling specialists, medical treatment, military squads, raids by rival settlements, independent AI settlements, distant simulation, technology progression, convoys, and countries. A barracks station identifies troop housing in this build; it does not train soldiers yet. A hospital station identifies patient beds; it does not provide medical treatment yet. Citizens can heal by eating food.
 
 ## Try the first build
 
-Install the same mod JAR on the NeoForge 26.2 client and server. Use a new test world for this alpha.
+Install the same mod JAR on the NeoForge 26.2 client and server. Use a new test world for this alpha. Craft a **Settlement Guide** from one book and one blue dye, or run `/wwmc guide`, then right-click it to read the instructions.
 
 1. Craft or obtain a **Settlement Banner**, place it on solid ground with open space around it, and right-click it with an empty hand to found your town. New towns extend **240 blocks in each horizontal direction**, a 481×481 block footprint including the center. Red banners appear at the four corners when those chunks are loaded and the ground can support a banner. The mod does not load distant chunks to place them or replace obstructing blocks.
 2. Build a small camp with beds. Place a **Housing Station** or **Barracks Station** inside it.
@@ -57,7 +62,8 @@ Install the same mod JAR on the NeoForge 26.2 client and server. Use a new test 
 9. Right-click your citizen with an empty hand to open their **36-slot inventory** and see their activity. Add food, spare tools, saplings, or guard gear directly. Sneak-right-click releases their job; holding an item while interacting reports status. Use `/wwmc status` to inspect the town. Mine depths are automatic.
 10. Place a **Guard Station**, supply armor stands in its local range, and configure its day/night posts as described below. Up to two citizens become guards automatically; defense slots fill before production jobs.
 11. Place a **Craftsman Station** near your warehouse for tools and building materials. Add a **Smeltery Station** with a furnace or blast furnace in range, and a **Cook Station** with a smoker or lit campfire in range. Stock raw ores, raw food, wheat, and fuel in the warehouse. See [Smelters and cooks](#smelters-and-cooks).
-12. Hang a **bell** inside the town so guards can raise the alarm, and prepare for the first enemy wave once the town has three citizens. See [Alarms and enemy waves](#alarms-and-enemy-waves).
+12. Add a **Blacksmith Station** with an anvil within three blocks on each axis. Stock repair materials in the warehouse. Blacksmiths repair damaged tools/weapons and worn guard armor, retaining names and enchantments.
+13. Hang a **bell** inside the town so guards can raise the alarm, and prepare for the first enemy wave once the town has three citizens. See [Alarms and enemy waves](#alarms-and-enemy-waves).
 
 **Range preview:** hold any station block and aim at a block face to see a blue outline at its prospective placement position. The outline accounts for replaceable grass/snow. It turns red when the placement context is blocked. Placing a station displays a green outline for about three seconds. Right-click an existing station with an empty hand to inspect its detected blocks and briefly show its range. The **Station Inspector** also previews an existing station while you aim at it and reports its contents when right-clicked.
 
@@ -99,6 +105,7 @@ When miners encounter caves near the selected depth, they scan a bounded nearby 
 
 | Command | Purpose |
 | --- | --- |
+| `/wwmc guide` | Receive a readable Settlement Guide with crafting recipes and instructions. |
 | `/wwmc status` | Inspect your town's population, loaded beds, stations, and priority. |
 | `/wwmc recruit [1-8]` | Recruit citizens up to the housing/population limit. Defaults to one. |
 | `/wwmc name <name>` | Rename your town, up to 48 characters. |
@@ -134,6 +141,7 @@ Only loaded blocks inside the settlement claim count. Scanning never loads chunk
 | Craftsman | Workbench that turns warehouse materials into tools and building goods. | Player-defined orders and more recipes. |
 | Smeltery | Warehouse ores/raw metals smelted in nearby furnaces or blast furnaces. | Specialized metallurgy and technology. |
 | Cook | Raw food cooked in smokers or lit campfires; three wheat become bread. | More meals and food orders. |
+| Blacksmith | Repairs warehouse equipment and retired guard-stand armor at nearby anvils. | Repair orders and specialized smithing. |
 | Guard | Day/night posts, patrols, armor and weapons from stands or storage, melee and archery, bell alarms. | Squad orders, training. |
 
 Marker blocks use vanilla textures as placeholder visuals. Stations declare use; this build does not infer enclosed rooms, roofs, or architectural quality. Work validates supplies, protection, reservations, loaded terrain, and access before changing blocks.
@@ -161,8 +169,9 @@ All markers use eight planks around a center item in a crafting table.
 | Smeltery Station | Furnace |
 | Cook Station | Smoker |
 | Guard Station | Iron helmet |
+| Blacksmith Station | Iron ingot |
 
-The Station Inspector is a shapeless recipe with two paper and one stick. Tools consumed to craft stations are separate from tools supplied to workers.
+The Station Inspector is a shapeless recipe with two paper and one stick. The **Settlement Guide** is a shapeless recipe with one book and one blue dye; right-click it to open the native book screen. `/wwmc guide` gives another copy. Tools consumed to craft stations are separate from tools supplied to workers.
 
 ### Server configuration
 
@@ -176,6 +185,7 @@ The generated WWMC server config controls these defaults:
 | `quarryWorkers` | 8 | Crew slots per quarry. |
 | `craftsmanWorkers` | 2 | Crew slots per Craftsman Station. |
 | `processingWorkers` | 2 | Crew slots per Smeltery or Cook Station. |
+| `blacksmithWorkers` | 2 | Crew slots per Blacksmith Station. |
 | `guardWorkers` | 2 | Guard crew slots per Guard Station. |
 | `alarmThreshold` | 10 | Hostiles citizens must sight at once before a guard runs to ring the bell. |
 | `enemyWaves` | true | Send hostile waves against towns while their owner is home. |
@@ -200,16 +210,32 @@ Workers use carried food, spare tools, saplings, and floor supplies before reque
 
 **Getting unstuck.** Citizens open doors on their way. A citizen who keeps trying to walk somewhere but stays within a block and a half of the same spot for 30 seconds is moved on top of the settlement banner, or onto clear, firm ground right beside it, and drops the trip that trapped them: a quarry worker carries on from the control block, other workers try a different station for a while. Sleeping citizens are never moved, and nobody is moved into an unloaded part of town. A full warehouse leaves the remainder in the citizen's bag. An unusually large tree harvest has a saved backlog that moves into the bag when space opens; citizens wait for space instead of dropping overflow on the ground. On death, actual carried items and equipped gear drop normally.
 
+### Food and healing
+
+An injured citizen eats safe food from their own bag even if their normal ration timer has not expired. Each meal heals up to its nutrition value in health points, capped at maximum health: steak restores up to eight points (four hearts), bread up to five. Extra healing meals have a **100-tick / five-second cooldown**, saved across reloads. Ordinary scheduled meals also heal. Healing consumes one actual item; stew bowls and other use remainders are retained. Citizens leave raw meat/fish for cooks and reject rotten flesh, spider eyes and poisonous food.
+
+The owner can **right-click an injured citizen with food** to feed them directly under the same cooldown. A healthy citizen or one still finishing their meal does not consume it. Normal right-click with an empty hand still opens the inventory. Put cooked food into the warehouse and citizens' bags to keep food available during work, patrols and rest.
+
 ### Guard stations and posts
 
 1. Craft a **Guard Station** from eight planks around an iron helmet and place it in your claim. Two citizens take its guard slots by default; `guardWorkers` changes that capacity. **Each staffed station keeps one guard on duty**, with its own day/night rotation. The other guard rests, keeps their station assignment, and wakes for their shift. A station with one guard keeps that guard on duty through both shifts. Empty stations receive a guard before existing crews receive extra members; spare guards can transfer to a newly placed empty station. An unstaffed station still needs citizens to recruit.
-2. Put equipped **armor stands within three blocks of the station on each axis**. Guards approach accessible stands and take pieces for empty armor slots. Each actual piece disappears from the stand, keeps its durability/components, and can equip only one guard. Guards leave spare pieces for others once equipped. You can also put armor directly in a guard's inventory, and guards take armor for empty slots from the warehouse, including pieces returned by former guards. Equipped armor is visible on the guard.
+2. Put equipped **armor stands within three blocks of the station on each axis**. On duty, guards take usable protective armor for empty slots and upgrade to pieces with higher armor/toughness attributes. An upgrade exchanges the real old and new pieces on the stand. Guards also check their bags and warehouse storage, preserving durability, names and enchantments. Gear below 25% durability is never taken back into service. Equipped armor is visible.
 3. Guards **look for weapons** themselves: one melee weapon (a **sword** or **spear**), one **bow**, and up to 32 **arrows** for it. They check their own bag, items held in the hands of armor stands in the station range (stands double as weapon racks), the warehouse, and loose weapons or arrows that have lain on the ground in town for five seconds, such as a fallen skeleton's bow. They take the strongest melee weapon available and swap up when they find a better one, returning the weaker weapon to storage. Loose items they cannot reach are skipped for a minute.
 4. In combat, a guard with a bow and arrows shoots enemies 5–24 blocks away when no citizen or player stands in the line of fire; each shot uses one real arrow and bow durability, and arrows are not recoverable. Closer in, they switch to their sword or spear; melee attacks with swords, spears, or fists reach up to four blocks from the guard’s eyes to the target hitbox, with line of sight required. A guard without a melee weapon puts the bow away and fights unarmed. Weapons lose durability in use. Guards defend against nearby visible hostile monsters inside the town claim and prioritize combat over supply trips.
 5. **Sneak-right-click the Guard Station with the Station Inspector.** Then right-click clear ground for the **day post**, followed by clear ground for the **night post**. Both positions need dry footing, headroom, and a location inside the same claim. The pair is saved together. Sneak-click ground during selection cancels it. Until configured, both posts default to the station.
-6. At a shift change the incoming guard wakes and returns to the active post. On-duty guards roam among reachable town stations and nearby paths, and revisit the post periodically. Day duty runs from tick 23000 through 12999; night duty from 13000 through 22999. Post inspection reports both positions and crew size. Unloaded posts/terrain are never force-loaded.
+6. At a shift change the outgoing guard returns armor to empty matching slots on accessible stands before sleeping. The incoming guard wakes, checks for better gear, and gives the outgoing guard up to 20 seconds to return a shared set before beginning an ordinary patrol. Enemies and alarms take priority over this wait. Day/night partners can share one set: six stations normally need six sets, rather than twelve. A full or unreachable rack sends armor to the warehouse; if no storage accepts it, the citizen keeps it in their bag and sleeps without wearing it. During an alarm all twelve guards may be active, so six sets will equip only six of them. On-duty guards roam among reachable town stations and nearby paths, and revisit the post periodically. Day duty runs from tick 23000 through 12999; night duty from 13000 through 22999. Post inspection reports both positions and crew size. Unloaded posts/terrain are never force-loaded.
 
 Citizens are drawn with the villager head, robe, and skin on a humanoid body with free arms, so armor, weapons, and tools are visible. Biome and profession clothing overlays are not drawn. Patrolling does not yet include formation orders or player/faction warfare.
+
+### Worn equipment and blacksmiths
+
+Equipment with **less than 25% durability remaining** retires from use. Exactly 25% is still usable. Guards return worn armor to an empty matching slot on a stand; spare/worn armor falls back to the warehouse when the rack is full. Worn weapons and worker tools are carried into warehouse storage. Guards look for replacements and leave unusable equipment for repair.
+
+A **Blacksmith Station** uses eight planks around an **iron ingot**. Place a separate **anvil, chipped anvil or damaged anvil within three blocks on each axis**; a smithing table alone does not count. Two citizens can share the station (`blacksmithWorkers`). Keep its route and anvil accessible.
+
+Blacksmiths choose damaged tools, weapons and protective armor in the nearest warehouse. They also collect armor below 25% from loaded, registered Guard Station stands inside the same town. They fetch the item's normal repair material from the warehouse, carry the original equipment to the anvil, and spend 40 working ticks per material. Each unit repairs up to one quarter of maximum durability, using Minecraft's repair-material component rather than guessed item names. Iron gear uses iron ingots, gold uses gold ingots, diamond uses diamonds, netherite uses netherite ingots and leather armor uses leather. Other supported gear follows its own component. Items without a repair material are left untouched.
+
+A smith can perform a partial repair with one material and returns it when no more matching stock is available. Warehouse items return to storage. Stand armor returns to its original stand if the matching slot is empty; otherwise it goes to the warehouse. Full storage leaves the item with the blacksmith, and the in-progress original item is saved across restarts and drops on death. Repairs retain enchantments, custom names and other components, consume actual materials, and require no player XP. Blacksmiths do not create replacement equipment; craftsmen handle new tools.
 
 ### Smelters and cooks
 
@@ -293,9 +319,9 @@ Use a **Java 25 JDK**, not just a Java runtime. The Gradle wrapper and ModDevGra
 
 On Windows, use `gradlew.bat build` and `gradlew.bat runClient`. Development servers use `./gradlew runServer`.
 
-`build` runs regression checks for ranges, beds/storage, overlap ownership, shared crews, atomic target claims, tunnel/quarry geometry, random depth/shift boundaries, name uniqueness, construction-aware tree recognition, sapling conservation, local inventory conservation/backlog, armor transfers, weapon classification/ranking, quarry staircase geometry and persistence, quarry collision tracing, four-block surface/vertical reach, blocked work rays, clear tree approach candidates, persisted natural-tree proof after access clearing, role-specific crafting orders, appliance recipe eligibility, furnace slot/component conservation, independent station guard shifts and alarm rosters, alarm thresholds and all-clear timing, wave sizes/composition/timing, claim widening, save round-trips, legacy migration, recipe/drop decoding with Minecraft's codecs, staggered 30-citizen updates, bounded reachability probes, and shared resource scan expiry/invalidation. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
+`build` runs regression checks for ranges, beds/storage, overlap ownership, shared crews, atomic target claims, tunnel/quarry geometry, random depth/shift boundaries, name uniqueness, construction-aware tree recognition, sapling conservation, local inventory conservation/backlog, armor transfers, weapon classification/ranking, quarry staircase geometry and persistence, quarry collision tracing, four-block surface/vertical reach, blocked work rays, clear tree approach candidates, persisted natural-tree proof after access clearing, role-specific crafting orders, appliance recipe eligibility, furnace slot/component conservation, independent station guard shifts and alarm rosters, alarm thresholds and all-clear timing, wave sizes/composition/timing, claim widening, save round-trips, legacy migration, recipe/drop decoding with Minecraft's codecs, shared shift armor and occupied-slot conservation, armor upgrades, the exact durability cutoff, material-funded repairs with preserved names/enchantments, healing meal/bowl conservation and cooldowns, guide-page bounds and anvil eligibility, staggered 30-citizen updates, bounded reachability probes, and shared resource scan expiry/invalidation. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
 
-Automated checks do not replace an in-game playtest. Check previews, border placement, shared station crews, protected player logs, large-tree felling/replanting, tunnel/cave pathfinding, quarry staircase descent and climb-out, quarry obstructions and skipped blocks, craftsman/smelter/cook trips, fuel use and appliance output collection, guard shift changes, armor transfers/patrol/combat, weapon scavenging and archery, bell runs and civilian cover, wave spawning, inventory menus, tool breakage, bed use, and save/restart behavior before using this alpha in an important world.
+Automated checks do not replace an in-game playtest. Check previews, border placement, shared station crews, protected player logs, large-tree felling/replanting, tunnel/cave pathfinding, quarry staircase descent and climb-out, quarry obstructions and skipped blocks, craftsman/smelter/cook trips, fuel use and appliance output collection, guard shift changes and shared armor returns, blacksmith pickup/repair/return trips, guide crafting/reading, meal healing and direct feeding, armor upgrades/patrol/combat, weapon scavenging and archery, bell runs and civilian cover, wave spawning, inventory menus, tool breakage, bed use, and save/restart behavior before using this alpha in an important world.
 
 ## Development stages
 

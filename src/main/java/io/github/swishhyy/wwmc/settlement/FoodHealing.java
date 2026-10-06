@@ -28,7 +28,7 @@ public final class FoodHealing {
     public static ItemStack take(List<Container> storage,Consumer<ItemStack> remainder) {
         ItemStack meal=InventoryOps.takeOne(storage,FoodHealing::food);
         var container=meal.get(DataComponents.USE_REMAINDER);
-        if(container!=null) remainder.accept(container.convertInto().copy());
+        if(container!=null) remainder.accept(container.convertInto().create());
         return meal;
     }
 }

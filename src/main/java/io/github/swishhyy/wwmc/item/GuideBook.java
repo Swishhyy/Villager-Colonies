@@ -45,7 +45,7 @@ public final class GuideBook {
     );
     public static WrittenBookContent content() {
         return new WrittenBookContent(Filterable.passThrough("Settlement Guide"),"World War MC",0,
-                pages().stream().map(s -> Filterable.passThrough(Component.literal(s))).toList(),true);
+                pages().stream().map(s -> Filterable.<Component>passThrough(Component.literal(s))).toList(),true);
     }
     /** Conservative widths fit the native 114-pixel page; chapters can continue onto another page. */
     public static List<String> pages() {

@@ -211,7 +211,7 @@ public final class CitizenEntity extends Villager {
                     consumeMeal(meal);
                     if(!player.getAbilities().instabuild) {
                         var remainder=meal.get(DataComponents.USE_REMAINDER);
-                        if(remainder!=null) cargo.offer(remainder.convertInto().copy());
+                        if(remainder!=null) cargo.offer(remainder.convertInto().create());
                     }
                 } else SettlementService.tell(player,getName().getString()+": "+(getHealth()>=getMaxHealth() ? "Already healthy." : "Finishing the last meal."));
             } else {
@@ -391,7 +391,7 @@ public final class CitizenEntity extends Villager {
             if(level() instanceof ServerLevel server) server.sendParticles(net.minecraft.core.particles.ParticleTypes.HEART,getX(),getY()+1.5,getZ(),3,0.3,0.2,0.3,0);
         }
         mealTicks=Config.RATION_TICKS.get(); healingTicks=FoodHealing.COOLDOWN;
-        playSound(SoundEvents.GENERIC_EAT,0.5F,1.0F);
+        playSound(SoundEvents.GENERIC_EAT.value(),0.5F,1.0F);
     }
     private void eatFrom(List<Container> supplies) {
         if(!wantsMeal()) return;
@@ -460,6 +460,7 @@ public final class CitizenEntity extends Villager {
             if(stack.isEmpty() || !gear(stack) || retainSupply(stack)) continue;
             ItemStack rest=stack.copy();
             for(Container container:storage) rest=InventoryOps.insert(container,rest);
+            if(!rest.isEmpty() && GuardEquipment.worn(stack)) { cargo.setItem(slot,rest); continue; }
             if(!rest.isEmpty()) Containers.dropItemStack(level,getX(),getY(),getZ(),rest);
             cargo.setItem(slot,ItemStack.EMPTY);
         }
@@ -931,6 +932,9 @@ public final class CitizenEntity extends Villager {
     private void guard(ServerLevel level,Settlement town,Station station) {
         ignoredStands.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
         retireWeapon();
+        for(EquipmentSlot slot:GuardEquipment.ARMOR) if(GuardEquipment.worn(getItemBySlot(slot))) {
+            cargo.offer(getItemBySlot(slot)); setItemSlot(slot,ItemStack.EMPTY);
+        }
         BlockPos bell=DefenseService.bellRun(town,getUUID());
         if(bell!=null) { wakeForAlarm(); runToBell(level,town,bell); return; }
         boolean alarm=DefenseService.alarmed(town);
