@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PPP",
+    "PIP",
+    "PPP"
+  ],
+  "key": {
+    "P": "#minecraft:planks",
+    "I": "minecraft:blue_wool"
+  },
+  "result": {
+    "id": "wwmc:settlement_banner",
+    "count": 1
+  }
+}

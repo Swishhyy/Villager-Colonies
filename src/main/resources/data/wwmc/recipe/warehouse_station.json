@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PPP",
+    "PIP",
+    "PPP"
+  ],
+  "key": {
+    "P": "#minecraft:planks",
+    "I": "minecraft:chest"
+  },
+  "result": {
+    "id": "wwmc:warehouse_station",
+    "count": 1
+  }
+}

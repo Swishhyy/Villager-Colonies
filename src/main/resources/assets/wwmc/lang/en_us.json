@@ -1,13 +1,13 @@
 {
-  "itemGroup.wwmc": "Example Mod Tab",
-  "block.wwmc.example_block": "Example Block",
-  "item.wwmc.example_item": "Example Item",
-
-  "wwmc.configuration.title": "WWMC Configs",
-  "wwmc.configuration.section.wwmc.common.toml": "WWMC Configs",
-  "wwmc.configuration.section.wwmc.common.toml.title": "WWMC Configs",
-  "wwmc.configuration.items": "Item List",
-  "wwmc.configuration.logDirtBlock": "Log Dirt Block",
-  "wwmc.configuration.magicNumberIntroduction": "Magic Number Text",
-  "wwmc.configuration.magicNumber": "Magic Number"
+  "itemGroup.wwmc": "World War MC",
+  "item.wwmc.surveyor": "Settlement Surveyor",
+  "entity.wwmc.citizen": "Citizen",
+  "block.wwmc.settlement_banner": "Settlement Banner",
+  "block.wwmc.housing_station": "Housing Station",
+  "block.wwmc.barracks_station": "Barracks Station",
+  "block.wwmc.hospital_station": "Hospital Station",
+  "block.wwmc.warehouse_station": "Warehouse Station",
+  "block.wwmc.farm_station": "Farm Station",
+  "block.wwmc.lumber_station": "Lumber Station",
+  "block.wwmc.mine_station": "Mine Station"
 }

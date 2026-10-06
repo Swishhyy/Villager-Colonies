@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PPP",
+    "PIP",
+    "PPP"
+  ],
+  "key": {
+    "P": "#minecraft:planks",
+    "I": "minecraft:wheat_seeds"
+  },
+  "result": {
+    "id": "wwmc:farm_station",
+    "count": 1
+  }
+}
