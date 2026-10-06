@@ -653,7 +653,11 @@ public final class CitizenEntity extends Villager {
             releaseWork(level);
             if(searchDelay>0) { searchDelay-=10; return; }
             station=chooseJob(level,town);
-            if(station==null) { activity="Waiting for a free crew slot"; searchDelay=40; return; }
+            if(station==null) {
+                // Stations that just reported no work are retried after a short pause rather than counted as full.
+                activity=idleStations.isEmpty() ? "Waiting for a free crew slot" : "Open stations have no work I can reach right now; checking again soon";
+                searchDelay=40; return;
+            }
             workplace=station.position();
         }
         if(cargo.isOpen()) {
