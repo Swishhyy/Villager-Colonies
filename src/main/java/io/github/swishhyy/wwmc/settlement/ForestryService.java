@@ -23,7 +23,9 @@ public final class ForestryService {
         return pos.getY()>=level.getMinY() && pos.getY()<level.getMaxY() && town.contains(pos) && level.hasChunkAt(pos);
     }
     private static boolean soil(BlockState state) {
-        return state.is(BlockTags.DIRT) || state.is(Blocks.MUD) || state.is(Blocks.MANGROVE_ROOTS) || state.is(Blocks.MUDDY_MANGROVE_ROOTS);
+        return state.is(BlockTags.DIRT) || state.is(Blocks.GRASS_BLOCK) || state.is(Blocks.PODZOL)
+                || state.is(Blocks.MYCELIUM) || state.is(Blocks.MUD)
+                || state.is(Blocks.MANGROVE_ROOTS) || state.is(Blocks.MUDDY_MANGROVE_ROOTS);
     }
     public static boolean naturalLeaf(BlockState state,TreeSpecies species) {
         return state.is(species.leaves) && !state.getValue(LeavesBlock.PERSISTENT);
