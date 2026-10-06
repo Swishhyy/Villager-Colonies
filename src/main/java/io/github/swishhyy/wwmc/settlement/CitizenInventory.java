@@ -1,12 +1,17 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -15,12 +20,19 @@ public final class CitizenInventory extends SimpleContainer {
     public static final int SIZE=36;
     private final List<ItemStack> pending=new ArrayList<>();
     private final Predicate<Player> allowed;
-    private int viewers;
+    private final Map<Player,ChestMenu> viewers=new HashMap<>();
     public CitizenInventory(Predicate<Player> allowed) { super(SIZE); this.allowed=allowed; }
     @Override public boolean stillValid(Player player) { return allowed.test(player); }
-    @Override public void startOpen(Player player) { if(allowed.test(player)) viewers++; }
-    @Override public void stopOpen(Player player) { viewers=Math.max(0,viewers-1); }
-    public boolean isOpen() { return viewers>0; }
+    public ChestMenu createMenu(int id,Inventory inventory,Player viewer) {
+        ChestMenu menu=new ChestMenu(MenuType.GENERIC_9x4,id,inventory,this,4);
+        viewers.put(viewer,menu);
+        return menu;
+    }
+    public boolean isOpen() {
+        viewers.entrySet().removeIf(e -> e.getKey().isRemoved() || !e.getKey().isAlive()
+                || !allowed.test(e.getKey()) || e.getKey().containerMenu!=e.getValue());
+        return !viewers.isEmpty();
+    }
     public void offer(ItemStack stack) {
         ItemStack rest=InventoryOps.insert(this,stack);
         if(!rest.isEmpty()) pending.add(rest);

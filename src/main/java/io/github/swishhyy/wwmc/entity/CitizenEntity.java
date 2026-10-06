@@ -18,8 +18,6 @@ import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
-import net.minecraft.world.inventory.ChestMenu;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.damagesource.DamageSource;
@@ -101,8 +99,7 @@ public final class CitizenEntity extends Villager {
                 releaseWork(server); searchDelay=0;
                 SettlementService.tell(player,"Worker released their job and will choose an available station.");
             } else if(canOpenInventory(player) && player.getItemInHand(hand).isEmpty()) {
-                player.openMenu(new SimpleMenuProvider((id,inventory,viewer) ->
-                        new ChestMenu(MenuType.GENERIC_9x4,id,inventory,cargo,4),getName().copy().append(" — Inventory")));
+                player.openMenu(new SimpleMenuProvider(cargo::createMenu,getName().copy().append(" — Inventory")));
                 SettlementService.tell(player,getName().getString()+": "+activity+(cargo.hasPending() ? ". Large harvest waiting for bag space" : ""));
             } else {
                 SettlementService.tell(player,getName().getString()+": "+activity+
