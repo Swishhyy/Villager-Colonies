@@ -242,6 +242,13 @@ public final class CitizenEntity extends Villager {
             if(!ration.isEmpty()) mealTicks=Config.RATION_TICKS.get();
             else if(role!=StructureRole.FARM) { activity="Waiting for food in the warehouse"; return false; }
         }
+        int rations=0;
+        for(int slot=0;slot<cargo.getContainerSize();slot++) if(food(cargo.getItem(slot))) rations+=cargo.getItem(slot).getCount();
+        for(int count=rations;count<8;count++) {
+            ItemStack ration=InventoryOps.takeOne(storage,this::food);
+            if(ration.isEmpty()) break;
+            cargo.offer(ration);
+        }
         if(role==StructureRole.GUARD && !getMainHandItem().is(ItemTags.SWORDS)) {
             ItemStack sword=InventoryOps.takeOne(storage,s -> s.is(ItemTags.SWORDS));
             if(!sword.isEmpty()) { cargo.offer(getMainHandItem()); setItemSlot(EquipmentSlot.MAINHAND,sword); }
@@ -441,9 +448,13 @@ public final class CitizenEntity extends Villager {
             return;
         }
         setTarget(null);
-        useLocalSupplies(StructureRole.GUARD);
-        if(deliverCargo() || mealTicks<=0) { if(!visitWarehouse(level,town,StructureRole.GUARD)) return; }
         if(equipFromStand(level,town,station)) return;
+        useLocalSupplies(StructureRole.GUARD);
+        boolean stockedSword=!getMainHandItem().is(ItemTags.SWORDS) && SettlementService.storage(level,town).stream().anyMatch(container -> {
+            for(int slot=0;slot<container.getContainerSize();slot++) if(container.getItem(slot).is(ItemTags.SWORDS)) return true;
+            return false;
+        });
+        if(deliverCargo() || mealTicks<=0 || stockedSword) { if(!visitWarehouse(level,town,StructureRole.GUARD)) return; }
         BlockPos post=GuardService.posts(level,station).active(night(level));
         if(!Objects.equals(activePost,post)) { activePost=post; patrolTarget=post; patrolTicks=0; pathTicks=0; getNavigation().stop(); }
         if(!town.contains(post) || !level.hasChunkAt(post)) { activity="Waiting for the shift post to be loaded"; return; }
@@ -470,6 +481,9 @@ public final class CitizenEntity extends Villager {
             if(station==null) { activity="Waiting for a free crew slot"; searchDelay=40; return; }
             workplace=station.position();
         }
+        if(cargo.isOpen()) {
+            getNavigation().stop(); return;
+        }
         if(station.role()==StructureRole.GUARD) { guard(level,town,station); return; }
         useLocalSupplies(station.role());
         // Deliver only full loads; use personal supplies before returning for replacements.
@@ -487,7 +501,7 @@ public final class CitizenEntity extends Villager {
             }
             target=findTarget(level,town,station);
             if(target==null) {
-                if(cargo.hasDeliverable(s -> retainSupply(s) || food(s))) { visitWarehouse(level,town,station.role()); return; }
+                if(cargo.hasDeliverable(this::retainSupply,this::food)) { visitWarehouse(level,town,station.role()); return; }
                 activity=station.role().excavates() ? ExcavationService.status(level,town,station)
                         : station.role()==StructureRole.LUMBER ? "No accessible natural tree; needs saplings and clear soil in range" : "No mature accessible crops";
                 idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); searchDelay=20; return;

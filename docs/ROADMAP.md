@@ -39,7 +39,7 @@ The first alpha intentionally pauses unloaded towns. Keep that safe behavior unt
 
 ## Structure and room progression
 
-Furniture stations and farms currently declare use within an automatic 7×7×7 range. Lumber stations find roots in that range, fell whole recognized trees, and plant actual saplings. Mines use descending access and branch-tunnel plans; quarries excavate one neighboring chunk. Shared crews, player-placement protection, floor support, and saved excavation progress are implemented. Better forestry terrain handling, tunnel reinforcement/lighting, liquid management, and physical quarry machinery remain future work.
+Furniture stations and farms currently declare use within an automatic 7×7×7 range. Lumber stations find roots in that range, fell whole recognized trees, and plant actual saplings. Mines choose and persist a random depth, dig descending access and branch tunnels, and collect reachable cave ores; quarries excavate one neighboring chunk. Shared crews, personal inventories with saved overflow, player-placement protection, floor support, and saved excavation progress are implemented. Citizen names and paired guard day/night posts persist; guards patrol and take actual missing armor from stands. Better forestry terrain handling, tunnel reinforcement/lighting, liquid management, and physical quarry machinery remain future work.
 
 Complete beds and deterministic overlap ownership are implemented; roofs, connected floor space, detailed room quality, and comprehensive reachability validation are future work. Keep the immediate placement preview as richer room validation is added. Later a builder consumes materials against an approved blueprint and changes individual blocks; proposed autonomous expansion still obeys player-selected limits.
 
@@ -47,7 +47,7 @@ Hospital capacity is separate from permanent population capacity. Barracks housi
 
 ## Warfare and world progression
 
-Introduce squads after the economy works reliably. Soldiers consume equipment and food from actual production. Convoys have persistent IDs, source/destination, real reserved cargo, escort strength, and progress. Visible convoys instantiate that same cargo; raiding them consumes or transfers it once and affects the recipient's economy.
+Town guards currently provide local melee defense, patrols, and day/night posts. A dedicated visible armor model, ranged weapons, training, and coordinated squads come next after the economy works reliably. Soldiers consume equipment and food from actual production. Convoys have persistent IDs, source/destination, real reserved cargo, escort strength, and progress. Visible convoys instantiate that same cargo; raiding them consumes or transfers it once and affects the recipient's economy.
 
 Independent settlements can grow into countries composed of multiple towns and shared territory. Local factions may have simpler technology alongside different terrain knowledge, motives, and combat strengths. Technology research should unlock actual production capabilities; its final ceiling is not decided yet.
 

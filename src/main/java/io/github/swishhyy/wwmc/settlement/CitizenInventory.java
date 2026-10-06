@@ -15,8 +15,12 @@ public final class CitizenInventory extends SimpleContainer {
     public static final int SIZE=36;
     private final List<ItemStack> pending=new ArrayList<>();
     private final Predicate<Player> allowed;
+    private int viewers;
     public CitizenInventory(Predicate<Player> allowed) { super(SIZE); this.allowed=allowed; }
     @Override public boolean stillValid(Player player) { return allowed.test(player); }
+    @Override public void startOpen(Player player) { if(allowed.test(player)) viewers++; }
+    @Override public void stopOpen(Player player) { viewers=Math.max(0,viewers-1); }
+    public boolean isOpen() { return viewers>0; }
     public void offer(ItemStack stack) {
         ItemStack rest=InventoryOps.insert(this,stack);
         if(!rest.isEmpty()) pending.add(rest);
@@ -70,8 +74,15 @@ public final class CitizenInventory extends SimpleContainer {
         }
         flush();
     }
-    public boolean hasDeliverable(Predicate<ItemStack> retained) {
-        for(int slot=0;slot<SIZE;slot++) if(!getItem(slot).isEmpty() && !retained.test(getItem(slot))) return true;
-        return pending.stream().anyMatch(s -> !retained.test(s));
+    public boolean hasDeliverable(Predicate<ItemStack> retained,Predicate<ItemStack> food) {
+        int rations=0;
+        var all=new ArrayList<>(pending);
+        for(int slot=0;slot<SIZE;slot++) all.add(getItem(slot));
+        for(ItemStack stack:all) {
+            if(stack.isEmpty() || retained.test(stack)) continue;
+            if(!food.test(stack)) return true;
+            rations+=stack.getCount();
+        }
+        return rations>8;
     }
 }

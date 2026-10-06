@@ -37,7 +37,7 @@ public final class ExcavationService {
                 top=Math.max(top,level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,x,z)-1);
             target=Math.max(level.getMinY(),Math.min(top,Config.QUARRY_TARGET_Y.get()));
         } else {
-            var chosen=AutomaticDepth.choose(Config.MINE_MIN_Y.get(),Config.MINE_MAX_Y.get(),level.getMinY(),top,level.random::nextInt);
+            var chosen=AutomaticDepth.choose(Config.MINE_MIN_Y.get(),Config.MINE_MAX_Y.get(),level.getMinY(),top,level.getRandom()::nextInt);
             if(chosen.isEmpty()) return null;
             target=chosen.getAsInt();
         }

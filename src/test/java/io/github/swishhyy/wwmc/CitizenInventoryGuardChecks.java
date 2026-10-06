@@ -49,8 +49,11 @@ public final class CitizenInventoryGuardChecks {
         SimpleContainer pantry=new SimpleContainer(1); int[] reserve={8};
         food.deposit(List.of(pantry),s -> { int keep=Math.min(reserve[0],s.getCount()); reserve[0]-=keep; return keep; });
         check(food.count(Items.BREAD)==8 && pantry.getItem(0).getCount()==56,"Workers keep local rations while the town receives the surplus");
+        check(!food.hasDeliverable(s -> false,s -> s.is(Items.BREAD)),"Keeping eight rations does not cause repeated empty delivery trips");
+        food.offer(new ItemStack(Items.BREAD,1));
+        check(food.hasDeliverable(s -> false,s -> s.is(Items.BREAD)),"Food beyond the reserve is still delivered to feed the town");
         ItemStack ration=InventoryOps.takeOne(List.of(food),s -> s.is(Items.BREAD));
-        check(ration.getCount()==1 && food.count(Items.BREAD)==7,"A local meal consumes an actual stored item");
+        check(ration.getCount()==1 && food.count(Items.BREAD)==8,"A local meal consumes an actual stored item");
 
         Gear stand=new Gear(),guard=new Gear(),otherGuard=new Gear();
         ItemStack helmet=new ItemStack(Items.IRON_HELMET); helmet.setDamageValue(7);
