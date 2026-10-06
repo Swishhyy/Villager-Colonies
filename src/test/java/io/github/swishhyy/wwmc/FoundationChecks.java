@@ -1,8 +1,10 @@
 package io.github.swishhyy.wwmc;
 import io.github.swishhyy.wwmc.core.*;
 import java.util.UUID;
+import org.junit.jupiter.api.Test;
 
 public final class FoundationChecks {
+    @Test void boundsAndReservations() { main(new String[0]); }
     private static int checks;
     private static void check(boolean result,String message) { checks++; if(!result) throw new AssertionError(message); }
     public static void main(String[] args) {

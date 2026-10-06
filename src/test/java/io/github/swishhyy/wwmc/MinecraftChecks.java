@@ -13,8 +13,10 @@ import net.minecraft.server.Bootstrap;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import org.junit.jupiter.api.Test;
 
 public final class MinecraftChecks {
+    @Test void inventoryAndPersistence() { main(new String[0]); }
     private static int checks;
     private static void check(boolean result,String message) { checks++; if(!result) throw new AssertionError(message); }
     public static void main(String[] args) {
