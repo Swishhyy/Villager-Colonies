@@ -4,7 +4,7 @@ package io.github.swishhyy.wwmc.core;
 public enum StructureRole {
     HOUSING("housing", true, false), BARRACKS("barracks", true, false),
     HOSPITAL("hospital", false, false), WAREHOUSE("warehouse", false, false),
-    FARM("farm", false, true), LUMBER("lumber", false, true), MINE("mine", false, true);
+    FARM("farm", false, true), LUMBER("lumber", false, true), MINE("mine", false, true), QUARRY("quarry", false, true);
     private final String id;
     private final boolean residential;
     private final boolean worker;
@@ -15,4 +15,5 @@ public enum StructureRole {
     public boolean providesHousing() { return residential; }
     public boolean detectsBeds() { return residential || this==HOSPITAL; }
     public boolean providesWork() { return worker; }
+    public boolean excavates() { return this==MINE || this==QUARRY; }
 }

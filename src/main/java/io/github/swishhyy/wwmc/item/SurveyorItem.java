@@ -3,6 +3,9 @@ package io.github.swishhyy.wwmc.item;
 import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.event.StationPreviewEvent;
 import io.github.swishhyy.wwmc.settlement.SettlementService;
+import io.github.swishhyy.wwmc.settlement.SettlementData;
+import io.github.swishhyy.wwmc.settlement.ForestryService;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.Item;
@@ -22,6 +25,14 @@ public final class SurveyorItem extends Item {
                 SettlementService.registerStation(server,player,pos,block.role());
                 SettlementService.inspectStation(server,player,pos);
             }
+            return InteractionResult.SUCCESS;
+        }
+        if(level instanceof ServerLevel server && level.getBlockState(pos).is(BlockTags.LOGS)) {
+            var town=SettlementData.get(server).at(pos);
+            if(SettlementService.owns(player,town)) {
+                int count=ForestryService.protectConnectedLogs(server,town,pos);
+                SettlementService.tell(player,"Protected "+count+" connected logs from your workers.");
+            } else SettlementService.tell(player,"Protect existing log structures inside your own town.");
             return InteractionResult.SUCCESS;
         }
         if(level instanceof ServerLevel) SettlementService.tell(player,"Aim at a station to see its 7x7x7 range. Stations find nearby blocks automatically.");

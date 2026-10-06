@@ -6,6 +6,7 @@ import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.item.SurveyorItem;
 import io.github.swishhyy.wwmc.settlement.SettlementService;
+import io.github.swishhyy.wwmc.settlement.WorkProtection;
 import java.util.EnumMap;
 import java.util.Map;
 import net.minecraft.core.registries.Registries;
@@ -56,6 +57,7 @@ public final class WWMC {
         BLOCKS.register(bus); ITEMS.register(bus); ENTITIES.register(bus); TABS.register(bus);
         bus.addListener(this::attributes);
         NeoForge.EVENT_BUS.register(new SettlementService());
+        NeoForge.EVENT_BUS.register(new WorkProtection());
         container.registerConfig(ModConfig.Type.SERVER,Config.SPEC);
     }
     private void attributes(EntityAttributeCreationEvent event) { event.put(CITIZEN.get(),Villager.createAttributes().build()); }

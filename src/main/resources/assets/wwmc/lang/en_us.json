@@ -9,5 +9,6 @@
   "block.wwmc.warehouse_station": "Warehouse Station",
   "block.wwmc.farm_station": "Farm Station",
   "block.wwmc.lumber_station": "Lumber Station",
-  "block.wwmc.mine_station": "Mine Station"
+  "block.wwmc.mine_station": "Mine Station",
+  "block.wwmc.quarry_station": "Quarry Station"
 }

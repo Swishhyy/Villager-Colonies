@@ -6,6 +6,8 @@ import io.github.swishhyy.wwmc.Config;
 import io.github.swishhyy.wwmc.WWMC;
 import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.ReservationBook;
+import io.github.swishhyy.wwmc.core.WorkforceBook;
+import io.github.swishhyy.wwmc.core.MiningLayout;
 import io.github.swishhyy.wwmc.core.RoomBounds;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
@@ -13,6 +15,11 @@ import java.util.*;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,6 +37,9 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 public final class SettlementService {
     private static final Map<ServerLevel,ReservationBook<BlockPos>> RESERVATIONS=new WeakHashMap<>();
+    private static final Map<ServerLevel,WorkforceBook<BlockPos>> WORKFORCE=new WeakHashMap<>();
+    public static WorkforceBook<BlockPos> workers(ServerLevel level) { return WORKFORCE.computeIfAbsent(level,l -> new WorkforceBook<>()); }
+    public static int workerLimit(Station station) { return station.role()==StructureRole.QUARRY ? Config.QUARRY_WORKERS.get() : Config.STATION_WORKERS.get(); }
     public static ReservationBook<BlockPos> reservations(ServerLevel level) {
         return RESERVATIONS.computeIfAbsent(level, l -> new ReservationBook<>());
     }
@@ -48,6 +58,7 @@ public final class SettlementService {
         if(data.settlements.stream().anyMatch(s -> s.owner.equals(player.getUUID()))) { tell(player,"You already own a settlement. Multiple towns are planned for a later build."); return; }
         Settlement settlement=new Settlement(UUID.randomUUID(),player.getUUID(),player.getName().getString()+"'s settlement",pos,radius,List.of(),List.of(),"balanced");
         data.settlements.add(settlement); data.setDirty();
+        placeBorders(level,settlement);
         tell(player,"Founded "+settlement.name+". Place housing, warehouse, and work stations inside the "+radius+"-block claim.");
     }
     public static void registerStation(ServerLevel level,Player player,BlockPos pos,StructureRole role) {
@@ -55,8 +66,16 @@ public final class SettlementService {
         Settlement settlement=data.at(pos);
         if(!owns(player,settlement)) { tell(player,"Place stations inside your own settlement claim."); return; }
         if(settlement.station(pos)==null) {
-            settlement.stations.add(new Station(pos,role)); data.setDirty();
-            tell(player,"Registered "+role.id()+" station. Nearby blocks are detected automatically in its 7x7x7 range.");
+            var state=level.getBlockState(pos);
+            Station station=new Station(pos,role,state.getValue(StationBlock.FACING));
+            if(role==StructureRole.QUARRY) {
+                var bounds=MiningLayout.quarry(pos.getX(),pos.getZ(),station.facing().getStepX(),station.facing().getStepZ(),pos.getY(),pos.getY());
+                if(!settlement.contains(new BlockPos(bounds.minX(),pos.getY(),bounds.minZ())) || !settlement.contains(new BlockPos(bounds.maxX(),pos.getY(),bounds.maxZ()))) {
+                    tell(player,"The full chunk in front of this quarry must fit inside your town claim. Move or turn the station."); return;
+                }
+            }
+            settlement.stations.add(station); data.setDirty();
+            tell(player,"Registered "+role.id()+" station."+(role.excavates() ? " Excavation plans stay inside your claim." : " Nearby blocks are detected automatically in its 7x7x7 range."));
             inspectStation(level,player,pos);
         }
     }
@@ -114,10 +133,12 @@ public final class SettlementService {
             case HOSPITAL -> beds(level,town,station).size()+" patient beds (medical treatment is planned)";
             case WAREHOUSE -> storageAt(level,town,pos).size()+" chest/barrel storage blocks";
             case FARM -> workBlocks(level,town,station)+" mature crops";
-            case LUMBER -> workBlocks(level,town,station)+" logs";
-            case MINE -> workBlocks(level,town,station)+" stone/ore blocks";
+            case LUMBER -> "natural trees + sapling planting sites";
+            case MINE,QUARRY -> ExcavationService.status(level,town,station);
         };
-        tell(player,station.role().id()+" station: "+found+" in its 7x7x7 range. Only loaded blocks inside the claim count.");
+        tell(player,station.role().id()+" station: "+found+(station.role().excavates() ? ". Facing "+station.facing().name().toLowerCase(Locale.ROOT)+"." : " in its 7x7x7 range.")+
+                (station.role().providesWork() ? " Crew: "+workers(level).count(pos,level.getGameTime())+"/"+workerLimit(station)+"." : "")+
+                " Only loaded blocks inside the claim count.");
     }
     public static List<Container> storage(ServerLevel level,Settlement settlement) {
         return storageAt(level,settlement,null);
@@ -143,8 +164,41 @@ public final class SettlementService {
                 .min(Comparator.comparingDouble(s -> s.position().distSqr(from))).map(Station::position).orElse(null);
     }
     public static boolean protectedFurniture(Settlement settlement,BlockPos pos) {
-        return settlement.center.equals(pos) || settlement.stations.stream().anyMatch(s -> s.position().equals(pos) ||
+        return settlement.center.equals(pos) || settlement.borderBanners.contains(pos) || settlement.stations.stream().anyMatch(s -> s.position().equals(pos) ||
                 (!s.role().providesWork() && s.contains(pos)));
+    }
+    private static void placeBorders(ServerLevel level,Settlement town) {
+        var banner=BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath("minecraft","red_banner")).defaultBlockState();
+        for(int x:new int[]{-town.radius,town.radius}) for(int z:new int[]{-town.radius,town.radius}) {
+            int cornerX=town.center.getX()+x,cornerZ=town.center.getZ()+z;
+            if(town.borderBanners.stream().anyMatch(p -> p.getX()==cornerX && p.getZ()==cornerZ)) continue;
+            BlockPos chunkCheck=new BlockPos(cornerX,town.center.getY(),cornerZ);
+            if(!level.hasChunkAt(chunkCheck)) continue;
+            int y=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,cornerX,cornerZ);
+            BlockPos pos=new BlockPos(cornerX,y,cornerZ);
+            if(y>=level.getMaxY() || !level.getBlockState(pos).isAir() || !level.getFluidState(pos).isEmpty() || !banner.canSurvive(level,pos)) continue;
+            if(level.setBlock(pos,banner,3)) { town.borderBanners.add(pos); SettlementData.get(level).setDirty(); }
+        }
+    }
+    private static int setDepth(CommandSourceStack source,int y) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        var player=source.getPlayerOrException();
+        HitResult hit=player.pick(6.0,0.0F,false);
+        if(!(hit instanceof BlockHitResult blockHit) || hit.getType()!=HitResult.Type.BLOCK) {
+            source.sendFailure(Component.literal("Look at your mine or quarry station.")); return 0;
+        }
+        ServerLevel level=source.getLevel(); Settlement town=SettlementData.get(level).at(blockHit.getBlockPos());
+        Station station=town==null ? null : town.station(blockHit.getBlockPos());
+        if(!owns(player,town) || station==null || !station.role().excavates()) {
+            source.sendFailure(Component.literal("Look at a mine or quarry station in your own town.")); return 0;
+        }
+        int minimum=level.getMinY()+(station.role()==StructureRole.MINE ? 2 : 0);
+        if(y<minimum || y>=level.getMaxY() || station.role()==StructureRole.MINE && y>=station.position().getY()) {
+            source.sendFailure(Component.literal("Choose a valid underground Y level (minimum "+minimum+").")); return 0;
+        }
+        ExcavationJob job=ExcavationService.create(level,town,station,y);
+        if(job==null) { source.sendFailure(Component.literal("That excavation leaves the claim or its target chunk is unloaded.")); return 0; }
+        WorldWorkData data=WorldWorkData.get(level); data.excavations.put(station.position(),job); data.setDirty();
+        source.sendSuccess(() -> Component.literal("Excavation target set to Y "+job.targetY+". Existing excavated blocks stay excavated."),false); return 1;
     }
     public static String status(ServerLevel level,Settlement settlement) {
         return settlement.name+": "+settlement.citizens.size()+" citizens / "+housingBeds(level,settlement).size()+
@@ -183,6 +237,8 @@ public final class SettlementService {
     }
     @SubscribeEvent public void commands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("wwmc")
+            .then(Commands.literal("depth").then(Commands.argument("y",IntegerArgumentType.integer(-2048,2048))
+                .executes(c -> setDepth(c.getSource(),IntegerArgumentType.getInteger(c,"y")))))
             .then(Commands.literal("status").executes(c -> {
                 Settlement s=owned(c.getSource());
                 if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
@@ -223,13 +279,16 @@ public final class SettlementService {
     @SubscribeEvent public void tick(LevelTickEvent.Post event) {
         if(!(event.getLevel() instanceof ServerLevel level) || level.getGameTime()%200!=0) return;
         reservations(level).prune(level.getGameTime());
+        workers(level).prune(level.getGameTime());
         SettlementData data=SettlementData.get(level);
         if(data.settlements.removeIf(s -> s.citizens.isEmpty() && level.hasChunkAt(s.center) && !level.getBlockState(s.center).is(WWMC.BANNER.get()))) data.setDirty();
         for(Settlement s:data.settlements) {
+            placeBorders(level,s);
             if(s.stations.removeIf(station -> level.hasChunkAt(station.position()) && !active(level,station))) data.setDirty();
         }
     }
     @SubscribeEvent public void stopped(ServerStoppedEvent event) {
         RESERVATIONS.keySet().removeIf(level -> level.getServer()==event.getServer());
+        WORKFORCE.keySet().removeIf(level -> level.getServer()==event.getServer());
     }
 }

@@ -13,10 +13,11 @@ public final class Settlement {
     public static final Codec<Settlement> CODEC = RecordCodecBuilder.create(i -> i.group(
         UUID_CODEC.fieldOf("id").forGetter(s -> s.id), UUID_CODEC.fieldOf("owner").forGetter(s -> s.owner),
         Codec.STRING.fieldOf("name").forGetter(s -> s.name), BlockPos.CODEC.fieldOf("center").forGetter(s -> s.center),
-        Codec.intRange(16,128).fieldOf("radius").forGetter(s -> s.radius),
+        Codec.intRange(16,512).fieldOf("radius").forGetter(s -> s.radius),
         UUID_CODEC.listOf().fieldOf("citizens").forGetter(s -> s.citizens),
         Station.CODEC.listOf().fieldOf("stations").forGetter(s -> s.stations),
-        Codec.STRING.optionalFieldOf("priority", "balanced").forGetter(s -> s.priority)
+        Codec.STRING.optionalFieldOf("priority", "balanced").forGetter(s -> s.priority),
+        BlockPos.CODEC.listOf().optionalFieldOf("border_banners",List.of()).forGetter(s -> s.borderBanners)
     ).apply(i, Settlement::new));
     public final UUID id, owner;
     public String name, priority;
@@ -24,9 +25,15 @@ public final class Settlement {
     public final int radius;
     public final List<UUID> citizens;
     public final List<Station> stations;
+    public final List<BlockPos> borderBanners;
     public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority) {
+        this(id,owner,name,center,radius,citizens,stations,priority,List.of());
+    }
+    public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority,List<BlockPos> borderBanners) {
         this.id=id; this.owner=owner; this.name=name; this.center=center.immutable(); this.radius=radius;
         this.citizens=new ArrayList<>(citizens); this.stations=new ArrayList<>(stations); this.priority=priority;
+        this.borderBanners=new ArrayList<>();
+        borderBanners.forEach(p -> this.borderBanners.add(p.immutable()));
     }
     public boolean contains(BlockPos pos) {
         return Math.abs((long)pos.getX()-center.getX()) <= radius && Math.abs((long)pos.getZ()-center.getZ()) <= radius;

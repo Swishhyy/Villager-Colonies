@@ -3,6 +3,8 @@ package io.github.swishhyy.wwmc.client;
 import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.RoomBounds;
 import io.github.swishhyy.wwmc.core.StationRange;
+import io.github.swishhyy.wwmc.core.StructureRole;
+import io.github.swishhyy.wwmc.core.MiningLayout;
 import io.github.swishhyy.wwmc.event.StationPreviewEvent;
 import io.github.swishhyy.wwmc.item.SurveyorItem;
 import java.util.Iterator;
@@ -11,6 +13,7 @@ import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gizmos.Gizmo;
 import net.minecraft.gizmos.GizmoPrimitives;
 import net.minecraft.gizmos.Gizmos;
@@ -57,25 +60,31 @@ public final class StationRangePreview {
                 iterator.remove(); continue;
             }
             float alpha=(float)Math.min(1.0,(entry.getValue()-now)/750_000_000.0);
-            outline(entry.getKey(),ARGB.multiplyAlpha(0xff80ed99,alpha));
+            StationBlock block=(StationBlock)mc.level.getBlockState(entry.getKey()).getBlock();
+            outline(entry.getKey(),block.role(),mc.level.getBlockState(entry.getKey()).getValue(StationBlock.FACING),ARGB.multiplyAlpha(0xff80ed99,alpha));
         }
         if(!(mc.hitResult instanceof BlockHitResult hit) || hit.getType()!=HitResult.Type.BLOCK) return;
         for(InteractionHand hand:InteractionHand.values()) {
             ItemStack held=mc.player.getItemInHand(hand);
-            if(held.getItem() instanceof BlockItem item && item.getBlock() instanceof StationBlock) {
+            if(held.getItem() instanceof BlockItem item && item.getBlock() instanceof StationBlock block) {
                 // The placement context handles replaceable blocks such as grass and snow.
                 BlockPlaceContext placement=new BlockPlaceContext(new UseOnContext(mc.player,hand,hit));
-                outline(placement.getClickedPos(),placement.canPlace() ? 0xff66d9ff : 0xffff6666);
+                outline(placement.getClickedPos(),block.role(),placement.getHorizontalDirection(),placement.canPlace() ? 0xff66d9ff : 0xffff6666);
                 return;
             }
             if(held.getItem() instanceof SurveyorItem && mc.level.getBlockState(hit.getBlockPos()).getBlock() instanceof StationBlock) {
-                outline(hit.getBlockPos(),0xff66d9ff);
+                StationBlock block=(StationBlock)mc.level.getBlockState(hit.getBlockPos()).getBlock();
+                outline(hit.getBlockPos(),block.role(),mc.level.getBlockState(hit.getBlockPos()).getValue(StationBlock.FACING),0xff66d9ff);
                 return;
             }
         }
     }
-    private static void outline(BlockPos pos,int color) {
-        Gizmos.addGizmo(new RangeGizmo(StationRange.around(pos.getX(),pos.getY(),pos.getZ()),color)).setAlwaysOnTop();
+    private static void outline(BlockPos pos,StructureRole role,Direction facing,int color) {
+        RoomBounds bounds=StationRange.around(pos.getX(),pos.getY(),pos.getZ());
+        if(role==StructureRole.QUARRY) {
+            bounds=MiningLayout.quarry(pos.getX(),pos.getZ(),facing.getStepX(),facing.getStepZ(),pos.getY()+StationRange.RADIUS,pos.getY()-StationRange.RADIUS);
+        }
+        Gizmos.addGizmo(new RangeGizmo(bounds,color)).setAlwaysOnTop();
     }
     private record RangeGizmo(RoomBounds bounds,int color) implements Gizmo {
         @Override public void emit(GizmoPrimitives primitives,float alphaMultiplier) {

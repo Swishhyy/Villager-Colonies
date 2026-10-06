@@ -39,7 +39,9 @@ The first alpha intentionally pauses unloaded towns. Keep that safe behavior unt
 
 ## Structure and room progression
 
-Role stations currently declare use within an automatic 7×7×7 range. Complete beds and deterministic overlap ownership are implemented; roofs, connected floor space, detailed room quality, and reachability validation are future work. Keep the immediate placement preview as richer room validation is added. Later a builder consumes materials against an approved blueprint and changes individual blocks; proposed autonomous expansion still obeys player-selected limits.
+Furniture stations and farms currently declare use within an automatic 7×7×7 range. Lumber stations find roots in that range, fell whole recognized trees, and plant actual saplings. Mines use descending access and branch-tunnel plans; quarries excavate one neighboring chunk. Shared crews, player-placement protection, floor support, and saved excavation progress are implemented. Better forestry terrain handling, tunnel reinforcement/lighting, liquid management, and physical quarry machinery remain future work.
+
+Complete beds and deterministic overlap ownership are implemented; roofs, connected floor space, detailed room quality, and comprehensive reachability validation are future work. Keep the immediate placement preview as richer room validation is added. Later a builder consumes materials against an approved blueprint and changes individual blocks; proposed autonomous expansion still obeys player-selected limits.
 
 Hospital capacity is separate from permanent population capacity. Barracks housing later links to military recruitment. Medical care consumes supplies and uses patient reservations. Owners should be able to authorize some routine construction while reserving major changes for their approval.
 
