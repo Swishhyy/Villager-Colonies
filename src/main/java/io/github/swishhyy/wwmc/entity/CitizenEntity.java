@@ -67,6 +67,8 @@ public final class CitizenEntity extends Villager {
     private UUID repairStand;
     private EquipmentSlot repairSlot;
     private BlockPos repairAnvil;
+    private boolean repairDelivery;
+    private long nextFoodTripAt;
     /** Ticks a craftsman works one batch at the bench. */
     private static final int CRAFT_TICKS=40;
     private static final int MAX_FAILED_TARGETS=2048;
@@ -421,7 +423,7 @@ public final class CitizenEntity extends Villager {
     /** A new job: put away the previous one's equipment and return it before starting. */
     private void changeRole(StructureRole role) {
         if(role!=StructureRole.BLACKSMITH && !repairItem.isEmpty()) { cargo.offer(repairItem); repairItem=ItemStack.EMPTY; repairStand=null; repairSlot=null; repairAnvil=null; }
-        if(role!=StructureRole.BLACKSMITH) { repairStand=null; repairSlot=null; repairAnvil=null; }
+        if(role!=StructureRole.BLACKSMITH) { repairStand=null; repairSlot=null; repairAnvil=null; repairDelivery=false; }
         guardWasActive=false;
         if(isUsingItem()) stopUsingItem();
         if(role!=StructureRole.GUARD) for(EquipmentSlot slot:GuardEquipment.ARMOR) if(!getItemBySlot(slot).isEmpty()) {
@@ -770,26 +772,20 @@ public final class CitizenEntity extends Villager {
     private ItemStack returnableArmor(EquipmentSlot slot,boolean all) {
         ItemStack worn=getItemBySlot(slot);
         if(!worn.isEmpty() && (all || GuardEquipment.worn(worn))) return worn;
-        for(int index=0;index<cargo.getContainerSize();index++) {
-            ItemStack stack=cargo.getItem(index);
-            if(GuardEquipment.armor(stack,slot) && (all || !GuardEquipment.upgrade(stack,worn,slot))) return stack;
-        }
-        return ItemStack.EMPTY;
+        return cargo.first(stack -> GuardEquipment.armor(stack,slot) && (all || !GuardEquipment.upgrade(stack,worn,slot)));
     }
     private boolean hasArmorToReturn(boolean all) { return Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> !returnableArmor(slot,all).isEmpty()); }
     private GuardEquipment.Equipment returningArmor(boolean all) {
-        Map<EquipmentSlot,Integer> sources=new EnumMap<>(EquipmentSlot.class);
+        Map<EquipmentSlot,ItemStack> sources=new EnumMap<>(EquipmentSlot.class);
+        Set<EquipmentSlot> worn=new HashSet<>();
         for(EquipmentSlot slot:GuardEquipment.ARMOR) {
-            if(!getItemBySlot(slot).isEmpty() && (all || GuardEquipment.worn(getItemBySlot(slot)))) sources.put(slot,-1);
-            else for(int index=0;index<cargo.getContainerSize();index++) if(GuardEquipment.armor(cargo.getItem(index),slot)
-                    && (all || !GuardEquipment.upgrade(cargo.getItem(index),getItemBySlot(slot),slot))) { sources.put(slot,index); break; }
+            sources.put(slot,returnableArmor(slot,all));
+            if(!getItemBySlot(slot).isEmpty() && (all || GuardEquipment.worn(getItemBySlot(slot)))) worn.add(slot);
         }
         return new GuardEquipment.Equipment() {
-            public ItemStack get(EquipmentSlot slot) {
-                Integer source=sources.get(slot); return source==null ? ItemStack.EMPTY : source<0 ? getItemBySlot(slot) : cargo.getItem(source);
-            }
+            public ItemStack get(EquipmentSlot slot) { return sources.getOrDefault(slot,ItemStack.EMPTY); }
             public void set(EquipmentSlot slot,ItemStack stack) {
-                Integer source=sources.get(slot); if(source!=null) { if(source<0) setItemSlot(slot,stack); else cargo.setItem(source,stack); }
+                if(worn.contains(slot)) setItemSlot(slot,stack); else cargo.replace(sources.get(slot),stack);
             }
         };
     }
@@ -824,7 +820,7 @@ public final class CitizenEntity extends Villager {
     }
     private boolean wornWeapons() {
         return GuardWeapons.weapon(getMainHandItem()) && GuardEquipment.worn(getMainHandItem())
-                || InventoryOps.count(List.of(cargo),s -> GuardWeapons.weapon(s) && GuardEquipment.worn(s))>0;
+                || !cargo.first(s -> GuardWeapons.weapon(s) && GuardEquipment.worn(s)).isEmpty();
     }
     private void retireWeapon() {
         if(GuardWeapons.weapon(getMainHandItem()) && GuardEquipment.worn(getMainHandItem())) { cargo.offer(getMainHandItem()); setItemSlot(EquipmentSlot.MAINHAND,ItemStack.EMPTY); }
@@ -1106,12 +1102,12 @@ public final class CitizenEntity extends Villager {
             for(Container storage:SettlementService.storageAt(level,town,warehouse)) repairItem=InventoryOps.insert(storage,repairItem);
             if(!repairItem.isEmpty()) { activity="Holding repaired equipment: warehouse is full"; return; }
         }
-        repairStand=null; repairSlot=null; repairAnvil=null; workProgress=0; nextSmithAt=level.getGameTime()+20;
+        repairStand=null; repairSlot=null; repairAnvil=null; repairDelivery=false; workProgress=0; nextSmithAt=level.getGameTime()+20;
         activity="Repair delivered";
     }
     private void blacksmith(ServerLevel level,Settlement town,Station station) {
         eatFrom(List.of(cargo));
-        if(!repairItem.isEmpty() && !BlacksmithRepair.damaged(repairItem)) { finishRepair(level,town); return; }
+        if(!repairItem.isEmpty() && (repairDelivery || !BlacksmithRepair.damaged(repairItem))) { finishRepair(level,town); return; }
         if(level.getGameTime()<nextSmithAt) return;
         List<BlockPos> anvils=SettlementService.anvils(level,town,station);
         if(repairAnvil==null || !anvils.contains(repairAnvil)) {
@@ -1174,7 +1170,9 @@ public final class CitizenEntity extends Villager {
             workProgress=0;
         }
         if(!BlacksmithRepair.damaged(repairItem)
-                || !BlacksmithRepair.supplied(repairItem,List.of(cargo)) && !BlacksmithRepair.supplied(repairItem,storage)) finishRepair(level,town);
+                || !BlacksmithRepair.supplied(repairItem,List.of(cargo)) && !BlacksmithRepair.supplied(repairItem,storage)) {
+            repairDelivery=true; finishRepair(level,town);
+        }
     }
     /** Station role this citizen works, or "none". */
     public String job() {
@@ -1225,6 +1223,12 @@ public final class CitizenEntity extends Villager {
         if(station.role()==StructureRole.GUARD) { guard(level,town,station); return; }
         if(station.role()==StructureRole.BLACKSMITH) { blacksmith(level,town,station); return; }
         useLocalSupplies(station.role());
+        if(getHealth()<getMaxHealth() && wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0
+                && level.getGameTime()>=nextFoodTripAt) {
+            BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
+            if(warehouse!=null && (handNear(warehouse) || canReach(warehouse)) && !visitWarehouse(level,town,station.role()) && !canUse(level,warehouse)) return;
+            nextFoodTripAt=level.getGameTime()+200;
+        }
         // Deliver only full loads; use personal supplies before returning for replacements.
         if(deliverCargo() || mealTicks<=0 && station.role()!=StructureRole.FARM && station.role()!=StructureRole.COOK && station.role()!=StructureRole.CRAFTSMAN) {
             if(!visitWarehouse(level,town,station.role())) return;
@@ -1377,6 +1381,7 @@ public final class CitizenEntity extends Villager {
         output.putInt("wwmc_meal_ticks",mealTicks);
         output.putInt("wwmc_healing_ticks",healingTicks);
         output.store("wwmc_repair_item",ItemStack.OPTIONAL_CODEC,repairItem);
+        output.putBoolean("wwmc_repair_delivery",repairDelivery);
         if(repairStand!=null) output.putString("wwmc_repair_stand",repairStand.toString());
         if(repairSlot!=null) output.putString("wwmc_repair_slot",repairSlot.name());
         output.store("wwmc_cargo",ItemStack.OPTIONAL_CODEC.listOf(),cargo.contents());
@@ -1390,6 +1395,7 @@ public final class CitizenEntity extends Villager {
         mealTicks=input.getIntOr("wwmc_meal_ticks",2400);
         healingTicks=Math.clamp(input.getIntOr("wwmc_healing_ticks",0),0,FoodHealing.COOLDOWN);
         repairItem=input.read("wwmc_repair_item",ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY);
+        repairDelivery=input.getBooleanOr("wwmc_repair_delivery",false);
         try { repairStand=UUID.fromString(input.getStringOr("wwmc_repair_stand","")); } catch(IllegalArgumentException e) { repairStand=null; }
         try { repairSlot=EquipmentSlot.valueOf(input.getStringOr("wwmc_repair_slot","")); } catch(IllegalArgumentException e) { repairSlot=null; }
         var stacks=input.read("wwmc_cargo",ItemStack.OPTIONAL_CODEC.listOf()).orElse(List.of());

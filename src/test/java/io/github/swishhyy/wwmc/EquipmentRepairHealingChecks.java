@@ -51,6 +51,23 @@ public final class EquipmentRepairHealingChecks {
         assertTrue(night.get(EquipmentSlot.CHEST).is(Items.DIAMOND_CHESTPLATE));
     }
     @Test @ExtendWith(EphemeralTestServerProvider.class)
+    void aFullBagCanStillReturnOverflowArmorForTheNextShift(MinecraftServer server) {
+        CitizenInventory bag=new CitizenInventory(player -> true);
+        for(int slot=0;slot<bag.getContainerSize();slot++) bag.setItem(slot,new ItemStack(Items.COBBLESTONE,64));
+        ItemStack helmet=new ItemStack(Items.IRON_HELMET); helmet.setDamageValue(50); bag.offer(helmet);
+        assertTrue(bag.hasPending()); Kit rack=new Kit();
+        ItemStack source=bag.first(s -> GuardEquipment.armor(s,EquipmentSlot.HEAD));
+        GuardEquipment.Equipment overflow=new GuardEquipment.Equipment() {
+            public ItemStack get(EquipmentSlot slot) { return source; }
+            public void set(EquipmentSlot slot,ItemStack replacement) { bag.replace(source,replacement); }
+        };
+        assertTrue(GuardEquipment.deposit(overflow,rack,EquipmentSlot.HEAD));
+        assertFalse(bag.hasPending()); assertEquals(50,rack.get(EquipmentSlot.HEAD).getDamageValue());
+        assertEquals(36*64,InventoryOps.count(List.of(bag),s -> s.is(Items.COBBLESTONE)));
+        CitizenInventory restored=new CitizenInventory(player -> true); restored.restore(bag.contents(),bag.pendingItems());
+        assertTrue(restored.first(s -> GuardEquipment.armor(s,EquipmentSlot.HEAD)).isEmpty(),"The returned set cannot reappear from saved overflow");
+    }
+    @Test @ExtendWith(EphemeralTestServerProvider.class)
     void durabilityCutoffCannotRecycleWornEquipment(MinecraftServer server) {
         ItemStack tool=new ItemStack(Items.IRON_PICKAXE);
         tool.set(DataComponents.MAX_DAMAGE,100); tool.setDamageValue(75);
