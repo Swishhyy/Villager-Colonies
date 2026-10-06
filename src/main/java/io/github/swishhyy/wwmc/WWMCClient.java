@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc;
+import io.github.swishhyy.wwmc.client.CitizenRenderer;
 import io.github.swishhyy.wwmc.client.StationRangePreview;
-import net.minecraft.client.renderer.entity.VillagerRenderer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -15,7 +15,9 @@ public final class WWMCClient {
     public WWMCClient(IEventBus bus, ModContainer container) {
         container.registerExtensionPoint(IConfigScreenFactory.class,ConfigurationScreen::new);
         bus.addListener(WWMCClient::renderers);
+        bus.addListener(WWMCClient::layers);
         NeoForge.EVENT_BUS.register(new StationRangePreview());
     }
-    private static void renderers(EntityRenderersEvent.RegisterRenderers event) { event.registerEntityRenderer(WWMC.CITIZEN.get(),VillagerRenderer::new); }
+    private static void renderers(EntityRenderersEvent.RegisterRenderers event) { event.registerEntityRenderer(WWMC.CITIZEN.get(),CitizenRenderer::new); }
+    private static void layers(EntityRenderersEvent.RegisterLayerDefinitions event) { event.registerLayerDefinition(CitizenRenderer.LAYER,CitizenRenderer::createBodyLayer); }
 }

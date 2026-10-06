@@ -8,6 +8,8 @@ import io.github.swishhyy.wwmc.item.SurveyorItem;
 import io.github.swishhyy.wwmc.settlement.SettlementService;
 import io.github.swishhyy.wwmc.settlement.WorkProtection;
 import io.github.swishhyy.wwmc.settlement.GuardService;
+import io.github.swishhyy.wwmc.settlement.DefenseService;
+import io.github.swishhyy.wwmc.settlement.WaveService;
 import java.util.EnumMap;
 import java.util.Map;
 import net.minecraft.core.registries.Registries;
@@ -60,6 +62,8 @@ public final class WWMC {
         NeoForge.EVENT_BUS.register(new SettlementService());
         NeoForge.EVENT_BUS.register(new WorkProtection());
         NeoForge.EVENT_BUS.register(new GuardService());
+        NeoForge.EVENT_BUS.register(new DefenseService());
+        NeoForge.EVENT_BUS.register(new WaveService());
         container.registerConfig(ModConfig.Type.SERVER,Config.SPEC);
     }
     private void attributes(EntityAttributeCreationEvent event) {

@@ -10,6 +10,7 @@ import io.github.swishhyy.wwmc.core.WorkforceBook;
 import io.github.swishhyy.wwmc.core.MiningLayout;
 import io.github.swishhyy.wwmc.core.CitizenNames;
 import io.github.swishhyy.wwmc.core.RoomBounds;
+import io.github.swishhyy.wwmc.core.ShiftClock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.util.*;
@@ -25,6 +26,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
+import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -48,6 +50,9 @@ public final class SettlementService {
         if(player instanceof ServerPlayer serverPlayer) serverPlayer.sendSystemMessage(Component.literal(text));
     }
     public static boolean owns(Player player,Settlement settlement) { return settlement!=null && settlement.owner.equals(player.getUUID()); }
+    public static boolean night(ServerLevel level) {
+        return ShiftClock.night(level.clockManager().getTotalTicks(level.registryAccess().getOrThrow(WorldClocks.OVERWORLD)));
+    }
 
     public static void foundOrInspect(ServerLevel level,Player player,BlockPos pos) {
         if(!level.dimension().equals(Level.OVERWORLD)) { tell(player,"Settlements currently belong in the Overworld."); return; }
@@ -195,7 +200,8 @@ public final class SettlementService {
     }
     public static String status(ServerLevel level,Settlement settlement) {
         return settlement.name+": "+settlement.citizens.size()+" citizens / "+housingBeds(level,settlement).size()+
-                " loaded housing beds, "+settlement.stations.size()+" stations, priority: "+settlement.priority+". Claim radius: "+settlement.radius+".";
+                " loaded housing beds, "+settlement.stations.size()+" stations, priority: "+settlement.priority+". Claim radius: "+settlement.radius+
+                ". Defense: "+DefenseService.status(settlement)+"; "+WaveService.status(level,settlement)+".";
     }
     private static Settlement owned(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer player=source.getPlayerOrException();
@@ -251,7 +257,19 @@ public final class SettlementService {
                     if(!List.of("balanced","food","materials").contains(p)) { c.getSource().sendFailure(Component.literal("Choose balanced, food, or materials.")); return 0; }
                     s.priority=p; SettlementData.get(c.getSource().getLevel()).setDirty();
                     c.getSource().sendSuccess(() -> Component.literal("Town priority set to "+p+". Idle workers will prefer those stations."),false); return 1;
-                }))));
+                })))
+            .then(Commands.literal("alarm").executes(c -> {
+                Settlement s=owned(c.getSource());
+                if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
+                DefenseService.toggle(c.getSource().getLevel(),s); return 1;
+            }))
+            .then(Commands.literal("wave").executes(c -> {
+                Settlement s=owned(c.getSource());
+                if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
+                int spawned=WaveService.callNow(c.getSource().getLevel(),s);
+                if(spawned==0) c.getSource().sendFailure(Component.literal("No wave could gather: it needs loaded open ground 40-64 blocks from the banner, away from stations and from you, and a difficulty above peaceful."));
+                return spawned;
+            })));
     }
     @SubscribeEvent public void breakStation(BreakBlockEvent event) {
         if(!(event.getLevel() instanceof ServerLevel level)) return;
@@ -274,6 +292,12 @@ public final class SettlementService {
         SettlementData data=SettlementData.get(level);
         if(data.settlements.removeIf(s -> s.citizens.isEmpty() && level.hasChunkAt(s.center) && !level.getBlockState(s.center).is(WWMC.BANNER.get()))) data.setDirty();
         for(Settlement s:data.settlements) {
+            if(s.widenTo(Settlement.MIN_RADIUS,data.settlements)) {
+                // Old corner banners are no longer the border; they stay in the world as ordinary blocks.
+                s.borderBanners.clear(); data.setDirty();
+                ServerPlayer owner=level.getServer().getPlayerList().getPlayer(s.owner);
+                if(owner!=null) tell(owner,s.name+"'s claim now extends "+s.radius+" blocks from its banner.");
+            }
             placeBorders(level,s);
             if(s.stations.removeIf(station -> level.hasChunkAt(station.position()) && !active(level,station))) data.setDirty();
         }

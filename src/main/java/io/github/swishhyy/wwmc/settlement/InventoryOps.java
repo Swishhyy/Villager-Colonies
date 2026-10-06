@@ -1,6 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.function.ToDoubleFunction;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 
@@ -33,5 +34,25 @@ public final class InventoryOps {
             }
         }
         return ItemStack.EMPTY;
+    }
+    /** Remove one item with the highest score among eligible stacks; earlier slots win ties. */
+    public static ItemStack takeBest(List<Container> sources, Predicate<ItemStack> eligible, ToDoubleFunction<ItemStack> score) {
+        Container best=null; int bestSlot=-1; double bestScore=Double.NEGATIVE_INFINITY;
+        for(Container source:sources) for(int slot=0;slot<source.getContainerSize();slot++) {
+            ItemStack stack=source.getItem(slot);
+            if(stack.isEmpty() || !eligible.test(stack)) continue;
+            double value=score.applyAsDouble(stack);
+            if(value>bestScore) { best=source; bestSlot=slot; bestScore=value; }
+        }
+        if(best==null) return ItemStack.EMPTY;
+        ItemStack result=best.removeItem(bestSlot,1); best.setChanged(); return result;
+    }
+    public static int count(List<Container> sources, Predicate<ItemStack> eligible) {
+        int total=0;
+        for(Container source:sources) for(int slot=0;slot<source.getContainerSize();slot++) {
+            ItemStack stack=source.getItem(slot);
+            if(!stack.isEmpty() && eligible.test(stack)) total+=stack.getCount();
+        }
+        return total;
     }
 }

@@ -30,7 +30,7 @@ public final class GuardService {
     public static String status(ServerLevel level,Station station) {
         GuardPosts p=posts(level,station);
         return "day post "+p.day().toShortString()+", night post "+p.night().toShortString()
-                +"; sneak-use the Inspector here to set both posts. Armor stands are supplied in the station's 7x7x7 range";
+                +"; sneak-use the Inspector here to set both posts. Armor stands in the station's 7x7x7 range supply armor, and swords, spears, bows or arrows held in their hands";
     }
     public static void begin(ServerLevel level,Player player,BlockPos station) {
         Settlement town=SettlementData.get(level).at(station);

@@ -3,17 +3,17 @@ package io.github.swishhyy.wwmc.entity;
 import io.github.swishhyy.wwmc.Config;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.core.CitizenNames;
-import io.github.swishhyy.wwmc.core.ShiftClock;
 import io.github.swishhyy.wwmc.settlement.*;
 import java.util.*;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.Container;
-import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -25,9 +25,11 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.goal.*;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -40,14 +42,17 @@ import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.Tags;
 
-/** Vanilla villager visuals, with an independent station-driven work routine. */
+/** Villager-styled citizen with visible equipment and an independent station-driven work routine. */
 public final class CitizenEntity extends Villager {
     private enum Action { HARVEST,FELL,PLANT,EXCAVATE,SUPPORT,CAVE }
     private Action action=Action.HARVEST;
     private ForestryService.Task forestTask;
     private ExcavationService.Ticket excavation;
     private BlockPos targetLease;
-    private int minimumAxeDurability=1,guardAttackTicks,patrolTicks,gearTicks,patrolVisits;
+    /** Arrows a guard with a bow keeps in their bag. */
+    private static final int ARROW_STOCK=32;
+    private int minimumAxeDurability=1,guardAttackTicks,patrolTicks,gearTicks,patrolVisits,scavengeTicks,armoryTicks;
+    private boolean armoryStocked;
     private BlockPos patrolTarget,activePost;
     private final Map<BlockPos,Long> idleStations=new HashMap<>();
     private UUID settlementId;
@@ -68,6 +73,12 @@ public final class CitizenEntity extends Villager {
             @Override public boolean canUse() { return !isGuard() && super.canUse(); }
             @Override public boolean canContinueToUse() { return !isGuard() && super.canContinueToUse(); }
         });
+        // An alarm makes civilians notice and flee hostiles from much farther away.
+        goalSelector.addGoal(1,new AvoidEntityGoal<>(this,Monster.class,20.0F,0.9,1.1) {
+            @Override public boolean canUse() { return !isGuard() && alarmed() && super.canUse(); }
+            @Override public boolean canContinueToUse() { return !isGuard() && alarmed() && super.canContinueToUse(); }
+        });
+        goalSelector.addGoal(2,new ShelterGoal());
         goalSelector.addGoal(2,new RestGoal());
         goalSelector.addGoal(3,new WorkGoal());
         goalSelector.addGoal(4,new LookAtPlayerGoal(this,Player.class,6.0F));
@@ -112,7 +123,7 @@ public final class CitizenEntity extends Villager {
         if(!(level() instanceof ServerLevel server) || !isAlive() || distanceToSqr(player)>64) return false;
         Settlement town=town(server); return town!=null && town.owner.equals(player.getUUID());
     }
-    private boolean isGuard() {
+    public boolean isGuard() {
         if(!(level() instanceof ServerLevel server) || workplace==null) return false;
         Settlement town=town(server); Station station=town==null ? null : town.station(workplace);
         return station!=null && station.role()==StructureRole.GUARD && SettlementService.active(server,station);
@@ -121,18 +132,21 @@ public final class CitizenEntity extends Villager {
         return town.stations.stream().anyMatch(s -> s.role()==StructureRole.GUARD && SettlementService.active(level,s)
                 && SettlementService.workers(level).count(s.position(),level.getGameTime())<SettlementService.workerLimit(s));
     }
-    private boolean night(ServerLevel level) {
-        return ShiftClock.night(level.clockManager().getTotalTicks(level.registryAccess().getOrThrow(WorldClocks.OVERWORLD)));
+    private boolean night(ServerLevel level) { return SettlementService.night(level); }
+    private boolean alarmed() {
+        if(!(level() instanceof ServerLevel server)) return false;
+        Settlement town=town(server); return town!=null && DefenseService.alarmed(town);
     }
     private boolean near(BlockPos pos) { return distanceToSqr(Vec3.atCenterOf(pos))<=6.25; }
     private boolean visible(ServerLevel level,BlockPos pos) {
         return level.clip(new ClipContext(getEyePosition(),Vec3.atCenterOf(pos),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,this)).getBlockPos().equals(pos);
     }
-    private boolean walk(BlockPos pos) {
+    private boolean walk(BlockPos pos) { return walk(pos,0.65); }
+    private boolean walk(BlockPos pos,double speed) {
         if(getNavigation().isDone() || tickCount%40==0) {
             var path=getNavigation().createPath(pos,1);
             if(path==null) return false;
-            getNavigation().moveTo(path,0.65);
+            getNavigation().moveTo(path,speed);
         }
         getLookControl().setLookAt(pos.getX()+0.5,pos.getY()+0.5,pos.getZ()+0.5);
         return true;
@@ -185,7 +199,8 @@ public final class CitizenEntity extends Villager {
                 && !stack.is(Items.SPIDER_EYE) && !stack.is(Items.POISONOUS_POTATO) && !stack.is(Items.PUFFERFISH);
     }
     private boolean retainSupply(ItemStack stack) {
-        return stack.is(ItemTags.AXES) || stack.is(ItemTags.PICKAXES) || stack.is(ItemTags.SWORDS)
+        return stack.is(ItemTags.AXES) || stack.is(ItemTags.PICKAXES) || GuardWeapons.weapon(stack)
+                || isGuard() && GuardWeapons.arrow(stack)
                 || action==Action.PLANT && forestTask!=null && stack.is(forestTask.planting().species().seed)
                 || action==Action.SUPPORT && ExcavationService.supportMaterial(stack)
                 || isGuard() && java.util.Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> GuardEquipment.armor(stack,slot));
@@ -246,10 +261,7 @@ public final class CitizenEntity extends Villager {
             if(ration.isEmpty()) break;
             cargo.offer(ration);
         }
-        if(role==StructureRole.GUARD && !getMainHandItem().is(ItemTags.SWORDS)) {
-            ItemStack sword=InventoryOps.takeOne(storage,s -> s.is(ItemTags.SWORDS));
-            if(!sword.isEmpty()) { cargo.offer(getMainHandItem()); setItemSlot(EquipmentSlot.MAINHAND,sword); }
-        }
+        if(role==StructureRole.GUARD) stockArmory(storage);
         if(!properTool(role)) {
             ItemStack held=getMainHandItem();
             for(Container container:storage) held=InventoryOps.insert(container,held);
@@ -380,15 +392,58 @@ public final class CitizenEntity extends Villager {
             public void set(EquipmentSlot slot,ItemStack stack) { entity.setItemSlot(slot,stack); }
         };
     }
-    private void equipLocalArmor() {
+    private void wearLocalArmor() {
         for(EquipmentSlot slot:GuardEquipment.ARMOR) if(getItemBySlot(slot).isEmpty()) {
             ItemStack armor=InventoryOps.takeOne(List.of(cargo),s -> GuardEquipment.armor(s,slot));
             if(!armor.isEmpty()) setItemSlot(slot,armor);
         }
-        if(!getMainHandItem().is(ItemTags.SWORDS)) {
-            ItemStack sword=InventoryOps.takeOne(List.of(cargo),s -> s.is(ItemTags.SWORDS));
-            if(!sword.isEmpty()) { cargo.offer(getMainHandItem()); setItemSlot(EquipmentSlot.MAINHAND,sword); }
+    }
+    private int arrows() { return InventoryOps.count(List.of(cargo),GuardWeapons::arrow); }
+    private boolean carries(Predicate<ItemStack> kind) { return kind.test(getMainHandItem()) || InventoryOps.count(List.of(cargo),kind)>0; }
+    /** Weapons a guard is still looking for: one melee weapon, one bow, and arrows for that bow. */
+    private boolean needs(ItemStack stack) {
+        if(GuardWeapons.melee(stack)) return !carries(GuardWeapons::melee);
+        if(GuardWeapons.bow(stack)) return !carries(GuardWeapons::bow);
+        return GuardWeapons.arrow(stack) && carries(GuardWeapons::bow) && arrows()<ARROW_STOCK;
+    }
+    private int wanted(ItemStack stack) { return GuardWeapons.arrow(stack) ? Math.min(stack.getCount(),ARROW_STOCK-arrows()) : 1; }
+    private void wield(ItemStack next) {
+        ItemStack previous=getMainHandItem();
+        setItemSlot(EquipmentSlot.MAINHAND,next);
+        if(!previous.isEmpty()) cargo.offer(previous);
+    }
+    private boolean hold(Predicate<ItemStack> kind) {
+        if(kind.test(getMainHandItem())) return true;
+        ItemStack next=InventoryOps.takeBest(List.of(cargo),kind,GuardWeapons::score);
+        if(next.isEmpty()) return false;
+        wield(next); return true;
+    }
+    /** Off the firing line a guard carries their strongest melee weapon, or the bow if that is all they have. */
+    private void readyMelee() {
+        double held=GuardWeapons.score(getMainHandItem());
+        ItemStack better=InventoryOps.takeBest(List.of(cargo),s -> GuardWeapons.score(s)>held,GuardWeapons::score);
+        if(!better.isEmpty()) wield(better);
+        else if(!GuardWeapons.weapon(getMainHandItem())) hold(GuardWeapons::bow);
+    }
+    private void stockArmory(List<Container> storage) {
+        if(!carries(GuardWeapons::melee)) {
+            ItemStack weapon=InventoryOps.takeBest(storage,GuardWeapons::melee,GuardWeapons::score);
+            if(!weapon.isEmpty()) cargo.offer(weapon);
         }
+        if(!carries(GuardWeapons::bow)) {
+            ItemStack bow=InventoryOps.takeOne(storage,GuardWeapons::bow);
+            if(!bow.isEmpty()) cargo.offer(bow);
+        }
+        while(carries(GuardWeapons::bow) && arrows()<ARROW_STOCK) {
+            ItemStack arrow=InventoryOps.takeOne(storage,GuardWeapons::arrow);
+            if(arrow.isEmpty()) break;
+            cargo.offer(arrow);
+        }
+        readyMelee();
+    }
+    private boolean stocks(Container container) {
+        for(int slot=0;slot<container.getContainerSize();slot++) if(needs(container.getItem(slot))) return true;
+        return false;
     }
     private boolean equipFromStand(ServerLevel level,Settlement town,Station station) {
         if(gearTicks>0) { gearTicks-=10; return false; }
@@ -397,16 +452,43 @@ public final class CitizenEntity extends Villager {
         stands.sort(Comparator.comparingDouble(this::distanceToSqr));
         for(ArmorStand stand:stands) {
             boolean missing=Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> getItemBySlot(slot).isEmpty()
-                    && GuardEquipment.armor(stand.getItemBySlot(slot),slot));
+                    && GuardEquipment.armor(stand.getItemBySlot(slot),slot))
+                    || needs(stand.getItemBySlot(EquipmentSlot.MAINHAND)) || needs(stand.getItemBySlot(EquipmentSlot.OFFHAND));
             if(!missing) continue;
             if(distanceToSqr(stand)>6.25 || !hasLineOfSight(stand)) {
                 if(!canReach(stand.blockPosition())) continue;
-                activity="Collecting armor from a stand"; walk(stand.blockPosition()); gearTicks=0; return true;
+                activity="Collecting gear from a stand"; walk(stand.blockPosition()); gearTicks=0; return true;
             }
             for(EquipmentSlot slot:GuardEquipment.ARMOR) GuardEquipment.transfer(equipment(stand),equipment(this),slot);
+            // Stands double as weapon racks: take a needed weapon, or arrows, from either hand.
+            for(EquipmentSlot slot:new EquipmentSlot[]{EquipmentSlot.MAINHAND,EquipmentSlot.OFFHAND}) {
+                ItemStack held=stand.getItemBySlot(slot);
+                if(!needs(held)) continue;
+                cargo.offer(held.split(wanted(held)));
+                stand.setItemSlot(slot,held.isEmpty() ? ItemStack.EMPTY : held);
+            }
+            readyMelee();
             swing(InteractionHand.MAIN_HAND); return false;
         }
         return false;
+    }
+    /** Pick up loose weapons and arrows, such as a fallen skeleton's bow, that have lain in town for a few seconds. */
+    private boolean scavenge(ServerLevel level,Settlement town) {
+        if(scavengeTicks>0) { scavengeTicks-=10; return false; }
+        ItemEntity loot=level.getEntitiesOfClass(ItemEntity.class,getBoundingBox().inflate(12,4,12),
+                e -> e.isAlive() && e.getAge()>=100 && town.contains(e.blockPosition()) && needs(e.getItem())).stream()
+                .min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
+        if(loot==null) { scavengeTicks=60; return false; }
+        if(distanceToSqr(loot)>2.25) {
+            if(!walk(loot.blockPosition())) { scavengeTicks=200; return false; }
+            activity="Picking up a weapon"; return true;
+        }
+        ItemStack stack=loot.getItem();
+        int amount=wanted(stack);
+        take(loot,amount);
+        cargo.offer(stack.split(amount));
+        if(stack.isEmpty()) loot.discard(); else loot.setItem(stack);
+        readyMelee(); return false;
     }
     private BlockPos patrolPoint(ServerLevel level,Settlement town,BlockPos post) {
         // Visit furnished work sites around town, returning to the active shift post every third leg.
@@ -426,43 +508,98 @@ public final class CitizenEntity extends Villager {
         }
         return post;
     }
-    private void guard(ServerLevel level,Settlement town,Station station) {
-        equipLocalArmor();
-        Monster enemy=level.getEntitiesOfClass(Monster.class,getBoundingBox().inflate(16),
-                m -> m.isAlive() && town.contains(m.blockPosition()) && hasLineOfSight(m)).stream()
-                .min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
-        if(enemy!=null) {
-            setTarget(enemy); activity="Defending the settlement";
-            getLookControl().setLookAt(enemy,30.0F,30.0F);
-            if(distanceToSqr(enemy)<=4.0) {
-                getNavigation().stop();
-                if(guardAttackTicks==0) {
-                    swing(InteractionHand.MAIN_HAND);
-                    if(doHurtTarget(level,enemy)) getMainHandItem().hurtAndBreak(1,this,EquipmentSlot.MAINHAND);
-                    guardAttackTicks=20;
-                }
-            } else walk(enemy.blockPosition());
+    /** No citizen or player may stand within a block of the arrow's straight path. */
+    private boolean clearShot(ServerLevel level,LivingEntity enemy) {
+        Vec3 from=getEyePosition(),to=enemy.getBoundingBox().getCenter(),path=to.subtract(from);
+        for(LivingEntity other:level.getEntitiesOfClass(LivingEntity.class,new AABB(from,to).inflate(1.0),
+                e -> e!=this && e!=enemy && e.isAlive() && (e instanceof CitizenEntity || e instanceof Player))) {
+            Vec3 point=other.getBoundingBox().getCenter();
+            double along=Math.clamp(point.subtract(from).dot(path)/Math.max(1.0E-6,path.lengthSqr()),0.0,1.0);
+            if(point.distanceTo(from.add(path.scale(along)))<1.0) return false;
+        }
+        return true;
+    }
+    private void shoot(ServerLevel level,LivingEntity enemy) {
+        ItemStack ammo=InventoryOps.takeOne(List.of(cargo),GuardWeapons::arrow);
+        if(ammo.isEmpty()) return;
+        ItemStack bow=getMainHandItem();
+        var arrow=ProjectileUtil.getMobArrow(this,ammo,1.0F,bow);
+        double dx=enemy.getX()-getX(),dy=enemy.getY(1.0/3.0)-arrow.getY(),dz=enemy.getZ()-getZ();
+        arrow.shoot(dx,dy+Math.sqrt(dx*dx+dz*dz)*0.2,dz,1.6F,4.0F);
+        level.addFreshEntity(arrow);
+        playSound(SoundEvents.ARROW_SHOOT,1.0F,1.0F/(getRandom().nextFloat()*0.4F+0.8F));
+        bow.hurtAndBreak(1,this,EquipmentSlot.MAINHAND);
+    }
+    private void fight(ServerLevel level,Monster enemy) {
+        setTarget(enemy); activity="Defending the settlement";
+        getLookControl().setLookAt(enemy,30.0F,30.0F);
+        double distance=distanceTo(enemy);
+        // Archers shoot at range with real arrows, switching to a melee weapon once the enemy closes in.
+        if(distance>GuardWeapons.BOW_MIN_RANGE && distance<=GuardWeapons.BOW_MAX_RANGE && arrows()>0
+                && carries(GuardWeapons::bow) && clearShot(level,enemy) && hold(GuardWeapons::bow)) {
+            getNavigation().stop(); activity="Shooting at an attacker";
+            if(!isUsingItem()) { if(guardAttackTicks==0) startUsingItem(InteractionHand.MAIN_HAND); }
+            else if(getTicksUsingItem()>=20) { stopUsingItem(); shoot(level,enemy); guardAttackTicks=20; }
             return;
         }
+        if(isUsingItem()) stopUsingItem();
+        // Without a melee weapon, put the bow away and fight with fists instead of wearing it out.
+        if(!hold(GuardWeapons::melee) && GuardWeapons.bow(getMainHandItem())) wield(ItemStack.EMPTY);
+        double reach=GuardWeapons.reach(getMainHandItem());
+        if(distanceToSqr(enemy)<=reach*reach) {
+            getNavigation().stop();
+            if(guardAttackTicks==0) {
+                swing(InteractionHand.MAIN_HAND);
+                if(doHurtTarget(level,enemy) && GuardWeapons.melee(getMainHandItem())) getMainHandItem().hurtAndBreak(1,this,EquipmentSlot.MAINHAND);
+                guardAttackTicks=20;
+            }
+        } else walk(enemy.blockPosition(),0.8);
+    }
+    private void runToBell(ServerLevel level,Settlement town,BlockPos bell) {
         setTarget(null);
-        if(equipFromStand(level,town,station)) return;
+        if(isUsingItem()) stopUsingItem();
+        if(distanceToSqr(Vec3.atCenterOf(bell))<=9.0 && visible(level,bell)) {
+            getNavigation().stop(); getLookControl().setLookAt(bell.getX()+0.5,bell.getY()+0.5,bell.getZ()+0.5);
+            swing(InteractionHand.MAIN_HAND); activity="Ringing the alarm bell";
+            DefenseService.ring(level,town,this,bell); return;
+        }
+        activity="Running to ring the alarm bell";
+        if(!walk(bell,0.9)) DefenseService.abandon(town,getUUID());
+    }
+    private void guard(ServerLevel level,Settlement town,Station station) {
+        wearLocalArmor();
+        BlockPos bell=DefenseService.bellRun(town,getUUID());
+        if(bell!=null) { runToBell(level,town,bell); return; }
+        boolean alarm=DefenseService.alarmed(town);
+        Monster enemy=level.getEntitiesOfClass(Monster.class,getBoundingBox().inflate(alarm ? 32 : 16),
+                m -> m.isAlive() && town.contains(m.blockPosition()) && hasLineOfSight(m)).stream()
+                .min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
+        if(enemy!=null) { fight(level,enemy); return; }
+        setTarget(null);
+        if(isUsingItem()) stopUsingItem();
+        readyMelee();
+        if(scavenge(level,town) || equipFromStand(level,town,station)) return;
         useLocalSupplies(StructureRole.GUARD);
-        boolean stockedSword=!getMainHandItem().is(ItemTags.SWORDS) && SettlementService.storage(level,town).stream().anyMatch(container -> {
-            for(int slot=0;slot<container.getContainerSize();slot++) if(container.getItem(slot).is(ItemTags.SWORDS)) return true;
-            return false;
-        });
-        if(deliverCargo() || mealTicks<=0 || stockedSword) { if(!visitWarehouse(level,town,StructureRole.GUARD)) return; }
+        if(armoryTicks>0) armoryTicks-=10;
+        else { armoryTicks=100; armoryStocked=SettlementService.storage(level,town).stream().anyMatch(this::stocks); }
+        // While the alarm rings, only an unarmed guard leaves the defense to resupply.
+        boolean resupply=alarm ? armoryStocked && !carries(GuardWeapons::weapon) : deliverCargo() || mealTicks<=0 || armoryStocked;
+        if(resupply) {
+            if(!visitWarehouse(level,town,StructureRole.GUARD)) return;
+            armoryStocked=false;
+        }
+        String shift=(alarm ? "On alert: " : "")+(night(level) ? "night" : "day");
         BlockPos post=GuardService.posts(level,station).active(night(level));
         if(!Objects.equals(activePost,post)) { activePost=post; patrolTarget=post; patrolTicks=0; pathTicks=0; getNavigation().stop(); }
         if(!town.contains(post) || !level.hasChunkAt(post)) { activity="Waiting for the shift post to be loaded"; return; }
-        if(patrolTicks>0) { patrolTicks-=10; activity=night(level) ? "Guarding the night post" : "Guarding the day post"; return; }
+        if(patrolTicks>0) { patrolTicks-=10; activity="Guarding the "+shift+" post"; return; }
         if(patrolTarget==null) { patrolTarget=patrolPoint(level,town,post); pathTicks=0; }
         if(near(patrolTarget)) {
-            getNavigation().stop(); patrolTarget=null; patrolTicks=40; pathTicks=0;
-            activity=night(level) ? "Night patrol" : "Day patrol"; return;
+            getNavigation().stop(); patrolTarget=null; patrolTicks=alarm ? 20 : 40; pathTicks=0;
+            activity="Patrolling the "+shift+" route"; return;
         }
-        activity=night(level) ? "Walking the night patrol" : "Walking the day patrol"; pathTicks+=10;
-        if(!walk(patrolTarget) || pathTicks>600) { patrolTarget=null; patrolTicks=60; pathTicks=0; }
+        activity="Walking the "+shift+" patrol"; pathTicks+=10;
+        if(!walk(patrolTarget,alarm ? 0.8 : 0.65) || pathTicks>600) { patrolTarget=null; patrolTicks=60; pathTicks=0; }
     }
     private void work(ServerLevel level) {
         Settlement town=town(level);
@@ -533,11 +670,38 @@ public final class CitizenEntity extends Villager {
     }
     private final class WorkGoal extends Goal {
         WorkGoal() { setFlags(EnumSet.of(Flag.MOVE,Flag.LOOK)); }
-        @Override public boolean canUse() { return level() instanceof ServerLevel l && town(l)!=null && (!night(l) || isGuard() || guardVacancy(l,town(l))); }
+        @Override public boolean canUse() {
+            if(!(level() instanceof ServerLevel l) || town(l)==null) return false;
+            // Civilians stop work during an alarm; a vacant guard post still draws a volunteer.
+            return isGuard() || guardVacancy(l,town(l)) || !night(l) && !DefenseService.alarmed(town(l));
+        }
         @Override public boolean canContinueToUse() { return canUse(); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
         @Override public void tick() { if(tickCount%10==0 && level() instanceof ServerLevel l) work(l); }
         @Override public void stop() { if(level() instanceof ServerLevel l) releaseWork(l); }
+    }
+    /** "Duck and cover": during a daytime alarm civilians wait at the nearest housing until the all-clear. Night alarms find them in bed. */
+    private final class ShelterGoal extends Goal {
+        private BlockPos refuge;
+        ShelterGoal() { setFlags(EnumSet.of(Flag.MOVE,Flag.LOOK)); }
+        @Override public boolean canUse() {
+            if(!(level() instanceof ServerLevel l)) return false;
+            Settlement town=town(l);
+            return town!=null && !isGuard() && DefenseService.alarmed(town) && !night(l) && !guardVacancy(l,town);
+        }
+        @Override public boolean canContinueToUse() { return canUse(); }
+        @Override public boolean requiresUpdateEveryTick() { return true; }
+        @Override public void start() { refuge=null; }
+        @Override public void tick() {
+            if(tickCount%20!=0 || !(level() instanceof ServerLevel level)) return;
+            Settlement town=town(level); if(town==null) return;
+            if(refuge==null) refuge=DefenseService.refuge(level,town,blockPosition());
+            if(distanceToSqr(Vec3.atCenterOf(refuge))<=9.0 || !walk(refuge,0.9)) {
+                getNavigation().stop(); activity="Taking cover until the all-clear"; return;
+            }
+            activity="Running for cover";
+        }
+        @Override public void stop() { refuge=null; getNavigation().stop(); }
     }
     private final class RestGoal extends Goal {
         RestGoal() { setFlags(EnumSet.of(Flag.MOVE,Flag.LOOK)); }
