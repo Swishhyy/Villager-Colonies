@@ -6,7 +6,7 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.1.0-alpha
+## Current build: 0.1.1-alpha
 
 This is the first settlement foundation, not the completed warfare game.
 
@@ -14,14 +14,16 @@ Implemented:
 
 - Persistent named settlements, owners, non-overlapping claims, and town priorities.
 - Settlement banner and seven role stations, with survival crafting recipes and a creative tab.
-- A surveyor tool for explicitly assigning rooms and storage volumes.
+- Automatic 7×7×7 station detection and live updates when nearby furniture/resources change.
+- A placement range outline and a Station Inspector for checking existing stations.
+- Deterministic ownership of overlapping beds, storage, and same-job work targets.
 - Housing and barracks beds count toward recruitment; hospital beds remain patient capacity.
 - Recruitable citizens using placeholder vanilla villager visuals and custom job AI.
 - Autonomous harvesting and replanting of existing wheat, carrot, potato, and beetroot crops.
 - Lumber workers harvesting nearby logs with leaves and miners harvesting reachable exposed stone/ores.
 - Real tool withdrawal, tool durability, carried cargo, warehouse delivery, and food consumption.
 - Exclusive station/resource reservations, nighttime rest, and avoidance of nearby monsters.
-- Save/reload support for settlement data, room roles, citizens' cargo, tools, and meal timers.
+- Save/reload support for settlement data, station roles, citizens' cargo, tools, and meal timers.
 
 Planned: automatic housing construction, hauling specialists, medical treatment, soldiers, raids, independent AI settlements, distant simulation, technology progression, convoys, and countries. A barracks station identifies troop housing in this build; it does not train soldiers yet. A hospital station identifies patient beds; it does not heal NPCs yet.
 
@@ -31,12 +33,14 @@ Install the same mod JAR on the NeoForge 26.2 client and server. Use a new test 
 
 1. Craft or obtain a **Settlement Banner**, place it on solid ground with open space around it, and right-click it with an empty hand to found your town. The default claim extends 64 blocks in each horizontal direction.
 2. Build a small camp with beds. Place a **Housing Station** or **Barracks Station** inside it.
-3. Use the **Settlement Surveyor** to right-click two opposite block corners around the camp. Include the station and both halves of the beds. Right-click the station to assign that selected volume. Sneak-right-click with the surveyor clears the selection.
-4. Place a **Warehouse Station** directly next to a chest or barrel. Alternatively, survey a warehouse room containing several containers. Fill it with food, axes, and pickaxes.
-5. Place **Farm**, **Lumber**, and **Mine Stations** near appropriate work. Each station supports one active worker. Work searches remain inside your claim and loaded chunks.
+3. Beds are detected automatically within **three blocks of the station on every axis**: a **7×7×7 cube**, including the station block. Both halves of each bed must fit inside the cube and your claim. No corner selection is required.
+4. Place a **Warehouse Station** within that same range of your chests or barrels. It detects multiple containers, including trapped and double chests. Fill them with food, axes, and pickaxes. You can add or remove storage later without registering it again.
+5. Place **Farm**, **Lumber**, and **Mine Stations** with the intended work inside their **7×7×7** ranges. Each station supports one active worker. Work searches remain inside your claim and loaded chunks. Housing, hospital, barracks, and warehouse ranges protect their structures from worker harvesting, so keep work sites outside those areas.
 6. Prepare farmland and plant crops yourself. Carrots or potatoes are the easiest self-supplying food source in this build. Wheat is collected but is not automatically baked into bread yet. Put a lumber station near natural trees and a mining station by reachable exposed stone or ore.
 7. Run `/wwmc recruit 3`. Recruitment is limited by loaded housing beds and the configured population cap. Citizens choose available stations, obtain tools from storage, work, and bring resources back.
 8. Right-click a citizen with an empty hand to inspect their activity. Sneak-right-click your citizen to release their current job so they can choose another. Use `/wwmc status` to inspect the settlement.
+
+**Range preview:** hold any station block and aim at a block face to see a blue outline at its prospective placement position. The outline accounts for replaceable grass/snow. It turns red when the placement context is blocked. Placing a station displays a green outline for about three seconds. Right-click an existing station with an empty hand to inspect its detected blocks and briefly show its range. The **Station Inspector** also previews an existing station while you aim at it and reports its contents when right-clicked.
 
 Keep doors and paths accessible. Stations are solid blocks; citizens need to reach a neighboring block. A full warehouse, missing tools, inaccessible resources, or missing food produces a visible worker status instead of creating supplies out of thin air.
 
@@ -57,19 +61,25 @@ Commands affect your own settlement. A prototype supports one settlement per own
 
 ### Job blocks define building purpose
 
-Beds alone do not determine what a structure is. A **role station plus a selected volume** provides that meaning. Selected volumes cannot overlap and contain one role station, so furniture belongs to one registered structure.
+Beds alone do not determine what a structure is. A **role station and nearby furniture** provide that meaning. Every station scans a fixed 7×7×7 cube centered on itself, from offsets −3 through +3 on X, Y, and Z. Changes to furniture and resources are picked up on the next inspection or worker scan.
+
+Ranges can overlap. A complete bed belongs to the nearest housing, barracks, or hospital station that contains both halves; hospital-owned beds do not recruit citizens. Each chest/barrel block belongs to the nearest warehouse, and work targets belong to the nearest station of that job. Equal distances use station coordinates (X, then Y, then Z) as a stable tie-breaker. A double chest's two physical inventories are each included once.
+
+Only loaded blocks inside the settlement claim count. Scanning never loads chunks. A known station in an unloaded chunk retains ownership of its nearby furniture until it is loaded and validated; its own production/capacity stays paused.
 
 | Station | Current interpretation | Later role |
 | --- | --- | --- |
 | Housing | Residential beds, recruiting capacity, and rest. | Families, migration, approved housing expansion. |
 | Barracks | Camp/troop beds, currently usable as housing. | Recruiting, training, and organizing military units. |
 | Hospital | Patient beds excluded from housing capacity. | Treatment, medical supplies, casualty evacuation. |
-| Warehouse | Adjacent containers or containers in its selected room. | Dedicated haulers, reserves, convoy loading. |
-| Farm | Crop work within the station's search radius. | Planting expansions, varied crops, food processing. |
-| Lumber | Tree-log work within the station's search radius. | Replanting and sustainable forestry. |
-| Mine | Exposed stone and ore within the station's search radius. | Approved shafts, excavation plans, underground safety. |
+| Warehouse | Chests, trapped chests, and barrels within its 7×7×7 range. | Dedicated haulers, reserves, convoy loading. |
+| Farm | Mature supported crops within its 7×7×7 range. | Planting expansions, varied crops, food processing. |
+| Lumber | Tree-log work within its 7×7×7 range. | Replanting and sustainable forestry. |
+| Mine | Exposed stone and ore within its 7×7×7 range. | Approved shafts, excavation plans, underground safety. |
 
-Marker blocks use vanilla textures as placeholder visuals. Surveyed volumes declare use; this build does not automatically infer enclosed rooms, roofs, or architectural quality.
+Marker blocks use vanilla textures as placeholder visuals. Station ranges declare use; this build does not infer enclosed rooms, roofs, or architectural quality. Inspection reports matching work blocks, while actual harvesting still checks tools, tree leaves, exposed faces, and reachability.
+
+Saves from 0.1.0-alpha keep their towns and stations, but old selected room bounds are ignored in favor of the fixed range. Reposition stations or furniture if an earlier selected room extended farther than three blocks. Existing surveyor items become Station Inspectors and retain the `wwmc:surveyor` ID and recipe.
 
 ### Crafting
 
@@ -86,7 +96,7 @@ All markers use eight planks around a center item in a crafting table.
 | Lumber Station | Stone axe |
 | Mine Station | Stone pickaxe |
 
-The surveyor is a shapeless recipe with two paper and one stick. Tools consumed to craft stations are separate from tools supplied to workers.
+The Station Inspector is a shapeless recipe with two paper and one stick. Tools consumed to craft stations are separate from tools supplied to workers.
 
 ## Player direction and citizen autonomy
 
@@ -113,11 +123,11 @@ There is no generative AI or external service dependency. Initial decisions use 
 
 | Area | Responsibility |
 | --- | --- |
-| `core` | Minecraft-independent room bounds, role rules, and expiring reservations. |
-| `settlement` | Saved settlement records, claims, room/storage interpretation, commands, and inventory transfers. |
-| `block` / `item` | Banner, role station interactions, and the two-corner surveyor. |
+| `core` | Minecraft-independent bounds, the shared station range, role rules, and expiring reservations. |
+| `settlement` | Saved settlement records, claims, live block detection, overlap ownership, commands, and inventory transfers. |
+| `block` / `item` | Banner, automatic role stations, and station inspection. |
 | `entity` | Citizen goals, harvesting, supply trips, food, rest, and entity persistence. |
-| `WWMCClient` | Client renderer registration; dedicated servers do not load client classes. |
+| `client` / `WWMCClient` | Client renderer registration and transient range outlines; dedicated servers do not load rendering classes. |
 | `src/main/resources` | Block/item models, language, drops, and recipes. |
 
 Settlement records are dimension SavedData under the `wwmc:settlements` identifier. Mod state is saved by Minecraft's normal world saves; transient reservations expire and are reconstructed after reload. All current gameplay changes happen on the logical server thread. Persistent IDs keep future diplomacy and military systems independent from entity instances.
@@ -133,9 +143,9 @@ Use a **Java 25 JDK**, not just a Java runtime. The Gradle wrapper and ModDevGra
 
 On Windows, use `gradlew.bat build` and `gradlew.bat runClient`. Development servers use `./gradlew runServer`.
 
-`build` runs regression checks for room bounds, exclusive reservations, inventory conservation, ownership, claim overlap, settlement/room save round-trips, and recipe/drop decoding with Minecraft's codecs. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
+`build` runs regression checks for range boundaries, complete beds, storage block matching, deterministic overlap ownership, exclusive reservations, inventory conservation, claim overlap, settlement/station save round-trips, legacy room migration, and recipe/drop decoding with Minecraft's codecs. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
 
-Automated checks do not replace an in-game playtest. Check pathfinding, client visuals, station removal, crop replanting, tool breakage, nighttime bed use, and a server restart before using an alpha with an important world.
+Automated checks do not replace an in-game playtest. Check placement/held range previews, live bed/storage changes, overlapping stations, pathfinding, station removal, crop replanting, tool breakage, nighttime bed use, and a server restart before using an alpha with an important world.
 
 ## Development stages
 

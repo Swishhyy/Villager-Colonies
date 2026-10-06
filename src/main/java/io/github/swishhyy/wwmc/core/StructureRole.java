@@ -13,5 +13,6 @@ public enum StructureRole {
     }
     public String id() { return id; }
     public boolean providesHousing() { return residential; }
+    public boolean detectsBeds() { return residential || this==HOSPITAL; }
     public boolean providesWork() { return worker; }
 }

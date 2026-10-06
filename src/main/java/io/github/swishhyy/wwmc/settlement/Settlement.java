@@ -2,6 +2,8 @@ package io.github.swishhyy.wwmc.settlement;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.function.Predicate;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -31,6 +33,14 @@ public final class Settlement {
     }
     public boolean overlaps(BlockPos pos, int r) {
         return Math.abs((long)pos.getX()-center.getX()) <= (long)radius+r && Math.abs((long)pos.getZ()-center.getZ()) <= (long)radius+r;
+    }
+    /** Nearest eligible station owns a block; coordinate ties are independent of placement/save order. */
+    public Station nearestStation(BlockPos pos, Predicate<Station> eligible) {
+        return stations.stream().filter(s -> s.contains(pos) && eligible.test(s))
+                .min(Comparator.comparingDouble((Station s) -> s.position().distSqr(pos))
+                    .thenComparingInt(s -> s.position().getX())
+                    .thenComparingInt(s -> s.position().getY())
+                    .thenComparingInt(s -> s.position().getZ())).orElse(null);
     }
     public Station station(BlockPos pos) { return stations.stream().filter(s -> s.position().equals(pos)).findFirst().orElse(null); }
 }

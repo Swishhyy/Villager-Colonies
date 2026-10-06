@@ -1,5 +1,6 @@
 package io.github.swishhyy.wwmc.block;
 import io.github.swishhyy.wwmc.core.StructureRole;
+import io.github.swishhyy.wwmc.event.StationPreviewEvent;
 import io.github.swishhyy.wwmc.settlement.SettlementService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -22,9 +23,13 @@ public final class StationBlock extends Block {
         return stack.isEmpty() ? InteractionResult.TRY_WITH_EMPTY_HAND : InteractionResult.PASS;
     }
     @Override public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
-        if (level instanceof ServerLevel server && placer instanceof Player player) SettlementService.registerStation(server,player,pos,role);
+        if(placer instanceof Player player) {
+            if(level instanceof ServerLevel server) SettlementService.registerStation(server,player,pos,role);
+            StationPreviewEvent.show(level,pos,player);
+        }
     }
     @Override protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+        StationPreviewEvent.show(level,pos,player);
         if (level instanceof ServerLevel server) {
             SettlementService.registerStation(server,player,pos,role);
             SettlementService.inspectStation(server,player,pos);

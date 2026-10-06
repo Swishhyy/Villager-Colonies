@@ -39,7 +39,7 @@ The first alpha intentionally pauses unloaded towns. Keep that safe behavior unt
 
 ## Structure and room progression
 
-Role stations declare use. Surveyed rooms define where furniture belongs. Add validators for reachability, complete beds, roofs, connected floor space, and warehouse access. Later a builder consumes materials against an approved blueprint and changes individual blocks; proposed autonomous expansion still obeys player-selected limits.
+Role stations currently declare use within an automatic 7×7×7 range. Complete beds and deterministic overlap ownership are implemented; roofs, connected floor space, detailed room quality, and reachability validation are future work. Keep the immediate placement preview as richer room validation is added. Later a builder consumes materials against an approved blueprint and changes individual blocks; proposed autonomous expansion still obeys player-selected limits.
 
 Hospital capacity is separate from permanent population capacity. Barracks housing later links to military recruitment. Medical care consumes supplies and uses patient reservations. Owners should be able to authorize some routine construction while reserving major changes for their approval.
 

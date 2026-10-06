@@ -19,6 +19,14 @@ public final class FoundationChecks {
         check(!StructureRole.HOSPITAL.providesHousing(),"Patient beds must never increase recruitment capacity");
         check(StructureRole.BARRACKS.providesHousing() && StructureRole.HOUSING.providesHousing(),"Camp and home beds are residential");
         check(StructureRole.FARM.providesWork() && !StructureRole.HOSPITAL.providesWork(),"Only implemented economic jobs enter the worker scheduler");
+        RoomBounds range=StationRange.around(-12,64,25);
+        check(StationRange.SIZE==7 && range.withinLimit(343) && !range.withinLimit(342),"Station scans contain exactly 343 block cells");
+        check(range.contains(-15,61,22) && range.contains(-9,67,28),"All inclusive three-block corners are scanned");
+        check(!range.contains(-16,64,25) && !range.contains(-8,64,25),"Blocks four away horizontally are excluded");
+        check(!range.contains(-12,60,25) && !range.contains(-12,68,25),"Blocks four away vertically are excluded");
+        check(range.maxX()+1-range.minX()==7 && range.maxY()+1-range.minY()==7 && range.maxZ()+1-range.minZ()==7,"Preview outer faces enclose the same seven-block cube");
+        check(StructureRole.HOSPITAL.detectsBeds() && StructureRole.HOUSING.detectsBeds() && StructureRole.BARRACKS.detectsBeds(),"All bed stations share one furniture ownership group");
+        check(!StructureRole.WAREHOUSE.detectsBeds() && !StructureRole.FARM.detectsBeds(),"Unrelated stations cannot claim beds");
         UUID a=UUID.randomUUID(),b=UUID.randomUUID();
         ReservationBook<String> claims=new ReservationBook<>();
         check(claims.claim("ore",a,0,200),"First worker reserves an ore block");

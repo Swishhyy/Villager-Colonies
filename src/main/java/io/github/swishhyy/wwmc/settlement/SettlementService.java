@@ -9,12 +9,10 @@ import io.github.swishhyy.wwmc.core.ReservationBook;
 import io.github.swishhyy.wwmc.core.RoomBounds;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
-import io.github.swishhyy.wwmc.item.SurveyorItem;
 import java.util.*;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,7 +24,6 @@ import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
@@ -58,95 +55,96 @@ public final class SettlementService {
         Settlement settlement=data.at(pos);
         if(!owns(player,settlement)) { tell(player,"Place stations inside your own settlement claim."); return; }
         if(settlement.station(pos)==null) {
-            if(settlement.stations.stream().anyMatch(s -> s.room().isPresent() && s.room().get().contains(pos.getX(),pos.getY(),pos.getZ()))) {
-                tell(player,"This position already belongs to a registered room. Give this station a separate area."); return;
-            }
             settlement.stations.add(new Station(pos,role)); data.setDirty();
-            tell(player,"Registered "+role.id()+" station. Use the surveyor to define its room or storage area.");
+            tell(player,"Registered "+role.id()+" station. Nearby blocks are detected automatically in its 7x7x7 range.");
+            inspectStation(level,player,pos);
         }
     }
     public static boolean active(ServerLevel level,Station station) {
         return level.hasChunkAt(station.position()) && level.getBlockState(station.position()).getBlock() instanceof StationBlock block && block.role()==station.role();
     }
-    public static boolean bindRoom(ServerLevel level,Player player,BlockPos pos,RoomBounds room) {
-        SettlementData data=SettlementData.get(level);
-        Settlement settlement=data.at(pos);
-        if(!owns(player,settlement)) { tell(player,"This station must be in your settlement."); return false; }
-        if(!(level.getBlockState(pos).getBlock() instanceof StationBlock block)) return false;
-        if(settlement.station(pos)==null) registerStation(level,player,pos,block.role());
-        Station station=settlement.station(pos);
-        if(station==null) return false;
-        if(!room.withinLimit(4096)) { tell(player,"Select an area of at most 4096 blocks."); return false; }
-        if(!room.contains(pos.getX(),pos.getY(),pos.getZ())) { tell(player,"The role station must be inside the selected room."); return false; }
-        if(!settlement.contains(new BlockPos(room.minX(),pos.getY(),room.minZ())) || !settlement.contains(new BlockPos(room.maxX(),pos.getY(),room.maxZ()))) {
-            tell(player,"The entire room must be inside your settlement claim."); return false;
-        }
-        if(settlement.stations.stream().anyMatch(s -> !s.position().equals(pos) && s.room().isPresent() && s.room().get().intersects(room))) {
-            tell(player,"This overlaps another registered room. Select separate volumes so beds have one purpose."); return false;
-        }
-        for(BlockPos cell:BlockPos.betweenClosed(room.minX(),room.minY(),room.minZ(),room.maxX(),room.maxY(),room.maxZ())) {
-            if(cell.getY()<level.getMinY() || cell.getY()>=level.getMaxY() || !level.hasChunkAt(cell)) {
-                tell(player,"The room must fit inside the world and all its chunks must be loaded."); return false;
-            }
-            if(!cell.equals(pos) && level.getBlockState(cell).getBlock() instanceof StationBlock) {
-                tell(player,"Keep one role station per selected room."); return false;
-            }
-        }
-        settlement.stations.remove(station);
-        settlement.stations.add(new Station(pos,station.role(),Optional.of(room))); data.setDirty();
-        inspectStation(level,player,pos); return true;
+    private static boolean availableCell(ServerLevel level,Settlement town,BlockPos pos) {
+        return pos.getY()>=level.getMinY() && pos.getY()<level.getMaxY() && town.contains(pos) && level.hasChunkAt(pos);
     }
-    public static List<BlockPos> beds(ServerLevel level,Station station) {
+    private static boolean knownStation(ServerLevel level,Station station) {
+        // Retain ownership across chunk boundaries; never load an absent chunk just to scan it.
+        return !level.hasChunkAt(station.position()) || active(level,station);
+    }
+    public static Iterable<BlockPos> cells(Station station) {
+        RoomBounds r=station.area();
+        return BlockPos.betweenClosed(r.minX(),r.minY(),r.minZ(),r.maxX(),r.maxY(),r.maxZ());
+    }
+    public static boolean ownsBlock(ServerLevel level,Settlement town,Station station,BlockPos pos) {
+        Station owner=town.nearestStation(pos,s -> s.role()==station.role() && knownStation(level,s));
+        return station.equals(owner);
+    }
+    public static List<BlockPos> beds(ServerLevel level,Settlement town,Station station) {
         List<BlockPos> result=new ArrayList<>();
-        if(!active(level,station) || station.room().isEmpty()) return result;
-        RoomBounds room=station.room().get();
-        if(!room.withinLimit(4096)) return result;
-        for(BlockPos pos:BlockPos.betweenClosed(room.minX(),room.minY(),room.minZ(),room.maxX(),room.maxY(),room.maxZ())) {
-            if(!level.hasChunkAt(pos)) continue;
-            var state=level.getBlockState(pos);
-            if(state.getBlock() instanceof BedBlock && state.getValue(BedBlock.PART)==BedPart.HEAD) result.add(pos.immutable());
+        if(!station.role().detectsBeds() || !active(level,station)) return result;
+        for(BlockPos pos:cells(station)) {
+            if(!availableCell(level,town,pos)) continue;
+            var head=level.getBlockState(pos);
+            if(!(head.getBlock() instanceof BedBlock) || head.getValue(BedBlock.PART)!=BedPart.HEAD) continue;
+            BlockPos foot=pos.relative(head.getValue(BedBlock.FACING).getOpposite());
+            if(!availableCell(level,town,foot) || !station.contains(foot)
+                    || !StationDetection.completeBed(head,level.getBlockState(foot))) continue;
+            // Hospital, barracks, and housing compete for the whole bed, rather than counting each half.
+            Station owner=town.nearestStation(pos,s -> s.role().detectsBeds() && s.contains(foot) && knownStation(level,s));
+            if(station.equals(owner)) result.add(pos.immutable());
         }
         return result;
     }
     public static List<BlockPos> housingBeds(ServerLevel level,Settlement settlement) {
-        List<BlockPos> result=new ArrayList<>();
-        for(Station station:settlement.stations) if(station.role().providesHousing()) result.addAll(beds(level,station));
-        return result;
+        Set<BlockPos> result=new LinkedHashSet<>();
+        for(Station station:settlement.stations) if(station.role().providesHousing()) result.addAll(beds(level,settlement,station));
+        return new ArrayList<>(result);
+    }
+    private static int workBlocks(ServerLevel level,Settlement town,Station station) {
+        int count=0;
+        for(BlockPos pos:cells(station)) if(availableCell(level,town,pos) && !protectedFurniture(town,pos)
+                && StationDetection.workBlock(station.role(),level.getBlockState(pos)) && ownsBlock(level,town,station,pos)) count++;
+        return count;
     }
     public static void inspectStation(ServerLevel level,Player player,BlockPos pos) {
-        Settlement settlement=SettlementData.get(level).at(pos);
-        if(settlement==null || settlement.station(pos)==null) return;
-        Station station=settlement.station(pos);
-        int beds=beds(level,station).size();
-        String purpose=station.role()==StructureRole.HOSPITAL ? "patient beds" : station.role().providesHousing() ? "housing beds" : "beds";
-        tell(player,station.role().id()+" station: "+(station.room().isPresent() ? beds+" "+purpose : "no selected room")+". "+
-                (station.role()==StructureRole.HOSPITAL ? "Medical treatment is planned; these beds do not recruit citizens." : ""));
+        Settlement town=SettlementData.get(level).at(pos);
+        if(town==null || town.station(pos)==null) return;
+        Station station=town.station(pos);
+        String found=switch(station.role()) {
+            case HOUSING,BARRACKS -> beds(level,town,station).size()+" housing beds";
+            case HOSPITAL -> beds(level,town,station).size()+" patient beds (medical treatment is planned)";
+            case WAREHOUSE -> storageAt(level,town,pos).size()+" chest/barrel storage blocks";
+            case FARM -> workBlocks(level,town,station)+" mature crops";
+            case LUMBER -> workBlocks(level,town,station)+" logs";
+            case MINE -> workBlocks(level,town,station)+" stone/ore blocks";
+        };
+        tell(player,station.role().id()+" station: "+found+" in its 7x7x7 range. Only loaded blocks inside the claim count.");
     }
     public static List<Container> storage(ServerLevel level,Settlement settlement) {
         return storageAt(level,settlement,null);
     }
     public static List<Container> storageAt(ServerLevel level,Settlement settlement,BlockPos selectedWarehouse) {
-        Set<BlockPos> positions=new HashSet<>();
+        Set<BlockPos> positions=new LinkedHashSet<>();
         for(Station station:settlement.stations) {
             if(station.role()!=StructureRole.WAREHOUSE || !active(level,station)) continue;
             if(selectedWarehouse!=null && !station.position().equals(selectedWarehouse)) continue;
-            if(station.room().isPresent() && station.room().get().withinLimit(4096)) {
-                RoomBounds r=station.room().get();
-                for(BlockPos pos:BlockPos.betweenClosed(r.minX(),r.minY(),r.minZ(),r.maxX(),r.maxY(),r.maxZ())) positions.add(pos.immutable());
-            } else {
-                for(Direction direction:Direction.values()) positions.add(station.position().relative(direction));
+            for(BlockPos pos:cells(station)) {
+                if(availableCell(level,settlement,pos) && StationDetection.storageBlock(level.getBlockState(pos))
+                        && ownsBlock(level,settlement,station,pos)) positions.add(pos.immutable());
             }
         }
         List<Container> containers=new ArrayList<>();
-        for(BlockPos pos:positions) if(settlement.contains(pos) && level.hasChunkAt(pos) && level.getBlockEntity(pos) instanceof Container container) containers.add(container);
+        // Each chest half contributes its actual block inventory once, including double chests.
+        for(BlockPos pos:positions) if(level.getBlockEntity(pos) instanceof Container container) containers.add(container);
         return containers;
     }
-    public static BlockPos warehouse(ServerLevel level,Settlement settlement) {
-        return settlement.stations.stream().filter(s -> s.role()==StructureRole.WAREHOUSE && active(level,s)).map(Station::position).findFirst().orElse(null);
+    public static BlockPos warehouse(ServerLevel level,Settlement settlement,BlockPos from) {
+        return settlement.stations.stream().filter(s -> s.role()==StructureRole.WAREHOUSE && active(level,s))
+                .filter(s -> !storageAt(level,settlement,s.position()).isEmpty())
+                .min(Comparator.comparingDouble(s -> s.position().distSqr(from))).map(Station::position).orElse(null);
     }
     public static boolean protectedFurniture(Settlement settlement,BlockPos pos) {
-        return settlement.stations.stream().anyMatch(s -> s.position().equals(pos) ||
-                (!s.role().providesWork() && s.room().isPresent() && s.room().get().contains(pos.getX(),pos.getY(),pos.getZ())));
+        return settlement.center.equals(pos) || settlement.stations.stream().anyMatch(s -> s.position().equals(pos) ||
+                (!s.role().providesWork() && s.contains(pos)));
     }
     public static String status(ServerLevel level,Settlement settlement) {
         return settlement.name+": "+settlement.citizens.size()+" citizens / "+housingBeds(level,settlement).size()+
@@ -231,11 +229,7 @@ public final class SettlementService {
             if(s.stations.removeIf(station -> level.hasChunkAt(station.position()) && !active(level,station))) data.setDirty();
         }
     }
-    @SubscribeEvent public void logout(PlayerEvent.PlayerLoggedOutEvent event) {
-        if(event.getEntity().level() instanceof ServerLevel level) SurveyorItem.clear(level.getServer(),event.getEntity().getUUID());
-    }
     @SubscribeEvent public void stopped(ServerStoppedEvent event) {
         RESERVATIONS.keySet().removeIf(level -> level.getServer()==event.getServer());
-        SurveyorItem.clear(event.getServer());
     }
 }

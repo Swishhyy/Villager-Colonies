@@ -121,8 +121,8 @@ public final class CitizenEntity extends Villager {
                 && !stack.is(Items.SPIDER_EYE) && !stack.is(Items.POISONOUS_POTATO) && !stack.is(Items.PUFFERFISH);
     }
     private boolean visitWarehouse(ServerLevel level,Settlement town,StructureRole role) {
-        BlockPos warehouse=SettlementService.warehouse(level,town);
-        if(warehouse==null) { activity="Needs a loaded warehouse station beside a chest or barrel"; return false; }
+        BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
+        if(warehouse==null) { activity="Needs a loaded warehouse with a chest or barrel in range"; return false; }
         if(!near(warehouse) || !visible(level,warehouse)) {
             activity="Carrying supplies / returning for food or tools";
             walk(warehouse); return false;
@@ -185,12 +185,11 @@ public final class CitizenEntity extends Villager {
         return null;
     }
     private BlockPos findTarget(ServerLevel level,Settlement town,Station station) {
-        int radius=Config.WORK_RADIUS.get();
-        BlockPos base=station.position();
         List<BlockPos> candidates=new ArrayList<>();
         failedTargets.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
-        for(BlockPos pos:BlockPos.betweenClosed(base.offset(-radius,-3,-radius),base.offset(radius,4,radius))) {
-            if(!failedTargets.containsKey(pos) && harvestable(level,town,station.role(),pos)) candidates.add(pos.immutable());
+        for(BlockPos pos:SettlementService.cells(station)) {
+            if(!failedTargets.containsKey(pos) && SettlementService.ownsBlock(level,town,station,pos)
+                    && harvestable(level,town,station.role(),pos)) candidates.add(pos.immutable());
         }
         candidates.sort(Comparator.comparingDouble(p -> distanceToSqr(Vec3.atCenterOf(p))));
         var book=SettlementService.reservations(level);
@@ -246,7 +245,8 @@ public final class CitizenEntity extends Villager {
             target=findTarget(level,town,station);
             if(target==null) { activity="No harvestable resources near the "+station.role().id()+" station"; searchDelay=100; return; }
         }
-        if(!harvestable(level,town,station.role(),target) || !book.claim(target,getUUID(),level.getGameTime(),200)) { cancelTarget(level,false); return; }
+        if(!SettlementService.ownsBlock(level,town,station,target) || !harvestable(level,town,station.role(),target)
+                || !book.claim(target,getUUID(),level.getGameTime(),200)) { cancelTarget(level,false); return; }
         if(!near(target) || !visible(level,target)) {
             activity="Walking to "+station.role().id()+" work"; pathTicks+=10;
             if(!walk(target) || pathTicks>300) cancelTarget(level,true);
