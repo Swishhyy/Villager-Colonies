@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.UUID;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
@@ -95,13 +97,13 @@ public final class MinecraftChecks {
         check(overlapping.nearestStation(edgeHead,s -> s.role().detectsBeds() && s.contains(edgeFoot)).equals(hospital),"A whole bed must fit the owning station even when another station contains its head");
         check(overlapping.nearestStation(new BlockPos(-3,64,0),s -> s.role().detectsBeds() && s.contains(new BlockPos(-4,64,0)))==null,"A bed straddling the outer boundary supplies no capacity");
 
-        var head=Blocks.RED_BED.defaultBlockState().setValue(BedBlock.PART,BedPart.HEAD).setValue(BedBlock.FACING,Direction.NORTH);
+        var head=BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath("minecraft","red_bed")).defaultBlockState().setValue(BedBlock.PART,BedPart.HEAD).setValue(BedBlock.FACING,Direction.NORTH);
         var foot=head.setValue(BedBlock.PART,BedPart.FOOT);
         check(StationDetection.completeBed(head,foot),"Matching complete bed contributes capacity");
         check(!StationDetection.completeBed(head,Blocks.AIR.defaultBlockState()),"Removed bed foot immediately invalidates capacity");
         check(!StationDetection.completeBed(head,head),"Two bed heads cannot stand in for a complete bed");
         check(!StationDetection.completeBed(head,foot.setValue(BedBlock.FACING,Direction.SOUTH)),"Misaligned bed halves are rejected");
-        check(!StationDetection.completeBed(head,Blocks.WHITE_BED.defaultBlockState().setValue(BedBlock.PART,BedPart.FOOT).setValue(BedBlock.FACING,Direction.NORTH)),"Different bed types cannot supply a phantom bed");
+        check(!StationDetection.completeBed(head,BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath("minecraft","white_bed")).defaultBlockState().setValue(BedBlock.PART,BedPart.FOOT).setValue(BedBlock.FACING,Direction.NORTH)),"Different bed types cannot supply a phantom bed");
         check(StationDetection.storageBlock(Blocks.CHEST.defaultBlockState()) && StationDetection.storageBlock(Blocks.TRAPPED_CHEST.defaultBlockState())
                 && StationDetection.storageBlock(Blocks.BARREL.defaultBlockState()),"Warehouses support chests, trapped chests, and barrels");
         check(!StationDetection.storageBlock(Blocks.FURNACE.defaultBlockState()) && !StationDetection.storageBlock(Blocks.HOPPER.defaultBlockState()),"Warehouse scans do not drain unrelated processing blocks");
