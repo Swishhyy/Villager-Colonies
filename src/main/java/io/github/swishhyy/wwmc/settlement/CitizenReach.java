@@ -1,0 +1,70 @@
+package io.github.swishhyy.wwmc.settlement;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+
+/** Hand reach is measured from the eyes to the target's surface, separately from walking arrival distance. */
+public final class CitizenReach {
+    public static final double BLOCKS=4.0;
+    private CitizenReach() {}
+    public static Vec3 closest(Vec3 eye,AABB target) {
+        return new Vec3(Math.clamp(eye.x,target.minX,target.maxX),Math.clamp(eye.y,target.minY,target.maxY),
+                Math.clamp(eye.z,target.minZ,target.maxZ));
+    }
+    public static boolean within(Vec3 eye,AABB target) { return eye.distanceToSqr(closest(eye,target))<=BLOCKS*BLOCKS; }
+    public static boolean within(Vec3 eye,BlockPos target) { return within(eye,new AABB(target)); }
+    /** Aim just inside the closest face, so a boundary endpoint still intersects a full block. */
+    public static BlockHitResult hit(BlockGetter world,Vec3 eye,BlockPos target) {
+        var shape=world.getBlockState(target).getShape(world,target);
+        AABB bounds=shape.isEmpty() ? new AABB(target) : shape.bounds().move(target.getX(),target.getY(),target.getZ());
+        Vec3 face=closest(eye,bounds);
+        Vec3 end=face.add(bounds.getCenter().subtract(face).scale(0.0001));
+        BlockHitResult nearest=world.clip(new ClipContext(eye,end,ClipContext.Block.OUTLINE,ClipContext.Fluid.NONE,CollisionContext.empty()));
+        if(nearest.getType()==HitResult.Type.BLOCK && nearest.getBlockPos().equals(target)
+                || shape.isEmpty()) return nearest;
+        // Thin blocks and a trunk's shared top edge may need an aim point farther inside the target.
+        return world.clip(new ClipContext(eye,bounds.getCenter(),ClipContext.Block.OUTLINE,ClipContext.Fluid.NONE,CollisionContext.empty()));
+    }
+    public static boolean visible(BlockGetter world,Vec3 eye,BlockPos target) {
+        BlockHitResult hit=hit(world,eye,target);
+        if(!hit.getBlockPos().equals(target)) return false;
+        // Empty planting/support cells have no shape; solid targets must really be hit, not just near the ray's endpoint.
+        return hit.getType()==HitResult.Type.BLOCK || world.getBlockState(target).getShape(world,target).isEmpty();
+    }
+    public static boolean canUse(BlockGetter world,Vec3 eye,BlockPos target) {
+        if(!within(eye,target)) return false;
+        BlockHitResult hit=hit(world,eye,target);
+        return hit.getBlockPos().equals(target) && (hit.getType()==HitResult.Type.BLOCK
+                ? eye.distanceToSqr(hit.getLocation())<=BLOCKS*BLOCKS+1.0E-7 : world.getBlockState(target).getShape(world,target).isEmpty());
+    }
+    public interface StandingView {
+        boolean available(BlockPos pos);
+        boolean clear(BlockPos pos);
+        boolean footing(BlockPos pos);
+    }
+    public static boolean standing(StandingView world,BlockPos pos) {
+        return world.available(pos) && world.available(pos.above()) && world.available(pos.below())
+                && world.clear(pos) && world.clear(pos.above()) && world.footing(pos.below());
+    }
+    /** Bounded alternatives with room for the body and firm footing; never stand on the block being removed. */
+    public static List<BlockPos> stands(StandingView world,BlockPos target,Vec3 from,double eyeHeight) {
+        List<BlockPos> spots=new ArrayList<>();
+        for(int dx=-4;dx<=4;dx++) for(int dz=-4;dz<=4;dz++) for(int dy=-2;dy<=2;dy++) {
+            BlockPos pos=target.offset(dx,dy,dz);
+            if(pos.below().equals(target) || !within(new Vec3(pos.getX()+0.5,pos.getY()+eyeHeight,pos.getZ()+0.5),target)
+                    || !standing(world,pos)) continue;
+            spots.add(pos.immutable());
+        }
+        spots.sort(Comparator.comparingDouble(p -> from.distanceToSqr(Vec3.atBottomCenterOf(p))));
+        return spots;
+    }
+}

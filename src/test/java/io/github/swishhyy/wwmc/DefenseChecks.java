@@ -72,8 +72,9 @@ public final class DefenseChecks {
                 && GuardWeapons.arrow(new ItemStack(Items.SPECTRAL_ARROW)),"Bows fire any real arrow");
         check(GuardWeapons.kind(new ItemStack(Items.IRON_PICKAXE))==GuardWeapons.Kind.NONE && !GuardWeapons.weapon(new ItemStack(Items.BREAD)),"Tools and food are not guard weapons");
         var spear=BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace("iron_spear"));
-        check(spear!=Items.AIR && GuardWeapons.kind(new ItemStack(spear))==GuardWeapons.Kind.SPEAR,"Spears are melee weapons with extra reach");
-        check(GuardWeapons.reach(new ItemStack(spear))>GuardWeapons.reach(new ItemStack(Items.IRON_SWORD)),"Spears strike from farther away");
+        check(spear!=Items.AIR && GuardWeapons.kind(new ItemStack(spear))==GuardWeapons.Kind.SPEAR,"Spears are melee weapons");
+        check(GuardWeapons.reach(new ItemStack(spear))==4 && GuardWeapons.reach(new ItemStack(Items.IRON_SWORD))==4
+                && GuardWeapons.reach(ItemStack.EMPTY)==4,"Swords, spears and fists share four-block citizen melee reach");
         check(GuardWeapons.score(new ItemStack(Items.DIAMOND_SWORD))>GuardWeapons.score(new ItemStack(Items.IRON_SWORD))
                 && GuardWeapons.score(new ItemStack(Items.IRON_SWORD))>GuardWeapons.score(new ItemStack(Items.WOODEN_SWORD)),"Guards rank melee weapons by attack damage");
         ItemStack worn=new ItemStack(Items.IRON_SWORD); worn.setDamageValue(200);
