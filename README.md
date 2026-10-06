@@ -8,7 +8,7 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 ## Current build: 0.5.1-alpha
 
-0.5.1 makes citizens return their previous job's armor, weapons and tools when they change jobs, moves citizens who stay stuck for 30 seconds onto the settlement banner, stops citizens shoving each other off quarry stairs, and only sends quarry crews down a staircase that is intact, rebuilding collapsed steps. Craftsmen now deliver the tools they make.
+0.5.1 makes citizens return their previous job's armor, weapons and tools when they change jobs, moves citizens who stay stuck for 30 seconds onto the settlement banner, stops citizens shoving each other off quarry stairs, and only sends quarry crews down a staircase that is intact, rebuilding collapsed steps. Citizens now open doors, craftsmen deliver the tools they make, smelters and cooks no longer burn equipment, and new mines and cave mining stay out of quarry chunks.
 
 0.5.0 adds Smeltery and Cook Stations, makes guard shifts independent for each station, and activates every assigned guard when a town bell rings. It retains the staggered citizen updates, shared resource scans, bounded path probes, and quarry crash fix from 0.4.2. Existing worlds, inventories, and quarry progress remain compatible.
 
@@ -82,6 +82,8 @@ A quarry targets the **adjacent chunk in the direction you faced when placing it
 **Safety.** Citizens never shove each other, so crews can pass on the one-block stairs. A citizen who falls inside their own town's quarry takes no fall damage. Hostile mobs can still spawn in a dark pit; keep it lit.
 
 **Nothing stalls a layer.** Quarries fell natural trees and leaves in their chunk. Blocks they must not remove are left standing, and the layer carries on around them: anything beside water or lava, containers and other block entities, player-placed or Inspector-protected blocks, planks, and unbreakable blocks. A quarry planned before this version keeps its progress; if its pit is already below the surrounding ground it has no staircase, and its crew works from the control block. Inspection reports the working layer and how the crew gets in.
+
+A new mine plan is refused if any of its tunnels would cross a quarry's chunk, and miners never dig cave ore inside one, so the pit floor stays level. Mines planned before this version keep their tunnels; where one runs through a quarry chunk, the quarry digs down through it and the old tunnels show as trenches in the floor.
 
 Both jobs preserve player-placed blocks, stations, protected furnishing ranges, containers/block entities, and living entities' footing. Mines also skip logs and planks. In a mine, water, lava, protected blocks, or an unsuitable tool can block a tunnel until cleared. Drain or clear obstructions yourself and inspect the worker's status. These jobs do not pump liquids, place lighting, or guarantee safe unsupported terrain. Work only runs in loaded chunks and never forces chunks to load.
 
@@ -190,9 +192,9 @@ Citizens keep resources in a persistent **36-slot bag**. Their owner can open it
 
 Workers use carried food, spare tools, saplings, and floor supplies before requesting replacements. Deliveries retain the tools and gear the current job uses, supplies for the current task, and up to eight food items while sending everything else to the warehouse: a farmer hands in a spare axe, and a craftsman delivers the tools and weapons it makes.
 
-**Changing jobs.** When a citizen moves to a different job, they first take off the previous job's armor and put away its weapons and tools, then carry them back to the nearest warehouse so the next guard, lumberjack, or miner can use them. If no warehouse can be reached or it is full, they drop the gear where they stand. Citizens already wearing armor outside the guard job do the same.
+**Changing jobs.** When a citizen moves to a different job, they first take off the previous job's armor and put away its weapons and tools, then carry them back to the nearest warehouse so the next guard, lumberjack, or miner can use them. If the town has no warehouse, the warehouse cannot be reached, or it is full, they drop the gear where they stand; if the warehouse is merely unloaded they keep it and hand it in with their next delivery. Guards drafted during an alarm defend first and return old gear afterwards. Smelters and cooks never burn bows, wooden tools, or other equipment. Citizens already wearing armor outside the guard job do the same.
 
-**Getting unstuck.** A citizen who keeps trying to walk somewhere but stays within a block and a half of the same spot for 30 seconds is moved on top of the settlement banner and picks a fresh task. Sleeping citizens are never moved. A full warehouse leaves the remainder in the citizen's bag. An unusually large tree harvest has a saved backlog that moves into the bag when space opens; citizens wait for space instead of dropping overflow on the ground. On death, actual carried items and equipped gear drop normally.
+**Getting unstuck.** Citizens open doors on their way. A citizen who keeps trying to walk somewhere but stays within a block and a half of the same spot for 30 seconds is moved on top of the settlement banner, or onto clear, firm ground right beside it, and drops the trip that trapped them: a quarry worker carries on from the control block, other workers try a different station for a while. Sleeping citizens are never moved, and nobody is moved into an unloaded part of town. A full warehouse leaves the remainder in the citizen's bag. An unusually large tree harvest has a saved backlog that moves into the bag when space opens; citizens wait for space instead of dropping overflow on the ground. On death, actual carried items and equipped gear drop normally.
 
 ### Guard stations and posts
 

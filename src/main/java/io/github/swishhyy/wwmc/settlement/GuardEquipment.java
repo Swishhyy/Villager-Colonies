@@ -2,7 +2,10 @@ package io.github.swishhyy.wwmc.settlement;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
+import java.util.Arrays;
 
 /** Transfer the actual stand item; neither side receives a copied award. */
 public final class GuardEquipment {
@@ -16,6 +19,13 @@ public final class GuardEquipment {
         var equippable=stack.get(DataComponents.EQUIPPABLE);
         return !stack.isEmpty() && equippable!=null && equippable.slot()==slot
                 && java.util.Arrays.asList(ARMOR).contains(slot);
+    }
+    /** Real armor that protects its wearer, as opposed to elytra, skulls or carved pumpkins that merely fit the slot. */
+    public static boolean protective(ItemStack stack) {
+        if(Arrays.stream(ARMOR).noneMatch(slot -> armor(stack,slot))) return false;
+        for(var entry:stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS,ItemAttributeModifiers.EMPTY).modifiers())
+            if(entry.attribute().equals(Attributes.ARMOR) && entry.modifier().amount()>0) return true;
+        return false;
     }
     public static boolean transfer(Equipment source,Equipment target,EquipmentSlot slot) {
         ItemStack item=source.get(slot);

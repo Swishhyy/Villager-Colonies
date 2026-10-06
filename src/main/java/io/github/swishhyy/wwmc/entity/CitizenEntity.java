@@ -53,6 +53,8 @@ public final class CitizenEntity extends Villager {
     private BlockPos targetLease;
     /** Arrows a guard with a bow keeps in their bag. */
     private static final int ARROW_STOCK=32;
+    /** Extra attack damage a stored weapon needs before a guard swaps for it; a fresher copy of the same sword is not worth the trip. */
+    private static final double MELEE_UPGRADE=0.5;
     private int minimumAxeDurability=1,guardAttackTicks,patrolTicks,gearTicks,patrolVisits,scavengeTicks,armoryTicks;
     private boolean armoryStocked;
     /** Ticks a craftsman works one batch at the bench. */
@@ -93,6 +95,8 @@ public final class CitizenEntity extends Villager {
     private Settlement town(ServerLevel level) { return settlementId==null ? null : SettlementData.get(level).byId(settlementId); }
     @Override protected void registerGoals() {
         goalSelector.addGoal(0,new FloatGoal(this));
+        // The villager brain that normally opens doors is disabled for citizens, so doors are handled here.
+        goalSelector.addGoal(1,new OpenDoorGoal(this,true));
         goalSelector.addGoal(1,new AvoidEntityGoal<>(this,Monster.class,12.0F,0.8,1.0) {
             @Override public boolean canUse() { return !isGuard() && super.canUse(); }
             @Override public boolean canContinueToUse() { return !isGuard() && super.canContinueToUse(); }
@@ -145,14 +149,32 @@ public final class CitizenEntity extends Villager {
         if(!trying || stuckAnchor==null || position().distanceToSqr(stuckAnchor)>2.25) { stuckAnchor=position(); stuckTicks=0; return; }
         stuckTicks+=20;
         if(stuckTicks<STUCK_TICKS) return;
-        BlockPos top=town.center.above();
-        for(int i=0;i<8 && !(clear(level,top) && clear(level,top.above()));i++) top=top.above();
-        if(!level.hasChunkAt(top)) return;
+        stuckAnchor=null; stuckTicks=0;
+        BlockPos spot=rescueSpot(level,town);
+        if(spot==null) { activity="Stuck, and the settlement banner has no free standing room"; return; }
         getNavigation().stop();
-        if(target!=null) cancelTarget(level,true);
-        setPos(top.getX()+0.5,top.getY(),top.getZ()+0.5); resetFallDistance();
-        stuckAnchor=null; stuckTicks=0; pathTicks=0;
+        // Abandon the trip that went wrong so the citizen does not walk straight back into the same trap.
+        if(action==Action.EXCAVATE && excavation!=null && excavation.quarry() && !excavation.remote() && workplace!=null) {
+            SettlementService.reservations(level).release(excavation.lease(),getUUID());
+            excavation=excavation.fromControlBlock(workplace); targetLease=excavation.lease(); pathTicks=0;
+        } else if(target!=null) cancelTarget(level,true);
+        else if(returningGear) returningGear=false; // the gear stays in the bag and goes back with the next delivery
+        else if(isGuard()) patrolTarget=null;
+        else if(workplace!=null) { idleStations.put(workplace,level.getGameTime()+200); releaseWork(level); }
+        setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5); resetFallDistance();
         activity="Got stuck and returned to the settlement banner";
+    }
+    /** On top of the banner, or failing that a clear spot with firm footing right beside it; never in an unloaded or frozen chunk. */
+    private static BlockPos rescueSpot(ServerLevel level,Settlement town) {
+        BlockPos banner=town.center;
+        if(!level.hasChunkAt(banner) || !level.isPositionEntityTicking(banner)) return null;
+        List<BlockPos> spots=new ArrayList<>(List.of(banner.above()));
+        for(int dy=1;dy>=-1;dy--) for(int dx=-2;dx<=2;dx++) for(int dz=-2;dz<=2;dz++) if(dx!=0 || dz!=0) spots.add(banner.offset(dx,dy,dz));
+        for(BlockPos spot:spots) {
+            if(!level.hasChunkAt(spot) || !level.hasChunkAt(spot.above()) || !level.isPositionEntityTicking(spot)) continue;
+            if(clear(level,spot) && clear(level,spot.above()) && level.getBlockState(spot.below()).isFaceSturdy(level,spot.below(),net.minecraft.core.Direction.UP)) return spot;
+        }
+        return null;
     }
     private static boolean clear(ServerLevel level,BlockPos pos) {
         return level.getBlockState(pos).getCollisionShape(level,pos).isEmpty() && level.getFluidState(pos).isEmpty();
@@ -307,14 +329,27 @@ public final class CitizenEntity extends Villager {
         for(EquipmentSlot hand:new EquipmentSlot[]{EquipmentSlot.MAINHAND,EquipmentSlot.OFFHAND}) if(!getItemBySlot(hand).isEmpty()) {
             cargo.offer(getItemBySlot(hand)); setItemSlot(hand,ItemStack.EMPTY);
         }
-        returningGear=true; pathTicks=0;
+        returningGear=hasReturnableGear(); pathTicks=0;
+    }
+    private boolean hasReturnableGear() {
+        for(int slot=0;slot<cargo.getContainerSize();slot++) {
+            ItemStack stack=cargo.getItem(slot);
+            if(!stack.isEmpty() && gear(stack) && !retainSupply(stack)) return true;
+        }
+        return false;
     }
     /** Carry gear the new job does not use to the warehouse so the next worker in the old job finds it; drop it if no warehouse can be reached. */
     private boolean returnGear(ServerLevel level,Settlement town) {
+        if(!hasReturnableGear()) { returningGear=false; return true; }
         BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
+        if(warehouse==null && town.stations.stream().anyMatch(s -> s.role()==StructureRole.WAREHOUSE)) {
+            // The warehouse is only unloaded: keep the gear in the bag; ordinary deliveries hand it in later.
+            returningGear=false; return true;
+        }
         if(warehouse!=null && (!near(warehouse) || !visible(level,warehouse))) {
             pathTicks+=10;
-            if(walk(warehouse) && pathTicks<=1200) { activity="Returning my previous job's gear to the warehouse"; return false; }
+            // A path cannot be planned mid-jump; only a long failure or one on solid ground means the warehouse is out of reach.
+            if((walk(warehouse) || !onGround()) && pathTicks<=1200) { activity="Returning my previous job's gear to the warehouse"; return false; }
             warehouse=null;
         }
         getNavigation().stop(); pathTicks=0;
@@ -542,8 +577,8 @@ public final class CitizenEntity extends Villager {
     /** Gear a guard is still looking for: armor for empty slots, a better melee weapon, one bow, and arrows for that bow. */
     private boolean needs(ItemStack stack) {
         for(EquipmentSlot slot:GuardEquipment.ARMOR) if(GuardEquipment.armor(stack,slot))
-            return getItemBySlot(slot).isEmpty() && InventoryOps.count(List.of(cargo),s -> GuardEquipment.armor(s,slot))==0;
-        if(GuardWeapons.melee(stack)) return GuardWeapons.score(stack)>bestMelee();
+            return GuardEquipment.protective(stack) && getItemBySlot(slot).isEmpty() && InventoryOps.count(List.of(cargo),s -> GuardEquipment.armor(s,slot))==0;
+        if(GuardWeapons.melee(stack)) return GuardWeapons.score(stack)>bestMelee()+MELEE_UPGRADE;
         if(GuardWeapons.bow(stack)) return !carries(GuardWeapons::bow);
         return GuardWeapons.arrow(stack) && carries(GuardWeapons::bow) && arrows()<ARROW_STOCK;
     }
@@ -568,10 +603,10 @@ public final class CitizenEntity extends Villager {
     }
     private void stockArmory(List<Container> storage) {
         for(EquipmentSlot slot:GuardEquipment.ARMOR) if(getItemBySlot(slot).isEmpty()) {
-            ItemStack armor=InventoryOps.takeOne(storage,s -> GuardEquipment.armor(s,slot));
+            ItemStack armor=InventoryOps.takeOne(storage,s -> GuardEquipment.armor(s,slot) && GuardEquipment.protective(s));
             if(!armor.isEmpty()) setItemSlot(slot,armor);
         }
-        double best=bestMelee();
+        double best=bestMelee()+MELEE_UPGRADE;
         ItemStack weapon=InventoryOps.takeBest(storage,s -> GuardWeapons.melee(s) && GuardWeapons.score(s)>best,GuardWeapons::score);
         if(!weapon.isEmpty()) cargo.offer(weapon);
         if(!carries(GuardWeapons::bow)) {
@@ -630,8 +665,8 @@ public final class CitizenEntity extends Villager {
         if(distanceToSqr(loot)>2.25) {
             // Items on roofs or behind walls are skipped for a minute instead of holding the guard in place.
             scavengePathTicks+=10;
-            if(scavengePathTicks==10 && !canReach(loot.blockPosition()) || scavengePathTicks>300 || !walk(loot.blockPosition())) {
-                ignoredLoot.put(loot.getUUID(),level.getGameTime()+1200); scavengeTicks=60; return false;
+            if(scavengePathTicks==10 && !canReach(loot.blockPosition()) || scavengePathTicks>300 || !walk(loot.blockPosition()) && onGround()) {
+                ignoredLoot.put(loot.getUUID(),level.getGameTime()+1200); scavengeTarget=null; scavengePathTicks=0; scavengeTicks=60; return false;
             }
             activity="Picking up a weapon or gear"; return true;
         }
@@ -892,10 +927,13 @@ public final class CitizenEntity extends Villager {
             getNavigation().stop(); return;
         }
         StructureRole role=station.role();
-        boolean guardKit=Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> !getItemBySlot(slot).isEmpty()) || GuardWeapons.weapon(getMainHandItem());
-        if(lastRole!=null && lastRole!=role || role!=StructureRole.GUARD && guardKit) changeRole(role);
+        // Armor outside the guard job, or a tool or weapon this job does not use, also counts as a change (e.g. after a reload).
+        boolean wrongKit=role!=StructureRole.GUARD && Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> !getItemBySlot(slot).isEmpty())
+                || gear(getMainHandItem()) && !retainSupply(getMainHandItem());
+        if(lastRole!=null && lastRole!=role || wrongKit) changeRole(role);
         lastRole=role;
-        if(returningGear && !returnGear(level,town)) return;
+        // A guard drafted during an alarm defends first and returns old gear afterwards.
+        if(returningGear && !(role==StructureRole.GUARD && DefenseService.alarmed(town)) && !returnGear(level,town)) return;
         if(station.role()==StructureRole.GUARD) { guard(level,town,station); return; }
         useLocalSupplies(station.role());
         // Deliver only full loads; use personal supplies before returning for replacements.

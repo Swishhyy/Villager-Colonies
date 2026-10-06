@@ -62,6 +62,10 @@ public final class QuarryCraftingChecks {
         check(!old.hasStairs() && !old.stair(8,64,31) && old.stepAt(8,40,20)==-1,"Older quarry plans have no stairs until measured");
         old.measureStairs(80);
         check(old.stairTop()==70,"A rim above the pit starts the stairs at its top layer");
+        Settlement quarryTown=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Quarry town",new BlockPos(0,64,0),240,List.of(),
+                List.of(new Station(station,StructureRole.QUARRY,Direction.NORTH)),"balanced");
+        check(ExcavationService.quarryColumn(quarryTown,5,20) && ExcavationService.quarryColumn(quarryTown,15,16),"The quarry's chunk is reserved for the quarry");
+        check(!ExcavationService.quarryColumn(quarryTown,5,35) && !ExcavationService.quarryColumn(quarryTown,16,20),"Mines and cave work may use the chunks around it");
         System.out.println("Passed "+checks+" quarry staircase checks.");
     }
     @Test @ExtendWith(EphemeralTestServerProvider.class)

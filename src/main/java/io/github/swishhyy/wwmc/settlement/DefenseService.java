@@ -30,13 +30,17 @@ public final class DefenseService {
     private static final int INTERVAL=20,GUARD_SIGHT=24,ALERT_SIGHT=32,CIVILIAN_SIGHT=8,BELL_SEARCH=96,REVEAL_RANGE=48,WARNING_TICKS=2400;
     private static final class Alert {
         final AlarmState state=new AlarmState();
-        final Set<UUID> failedRunners=new HashSet<>();
+        /** Guards who failed a bell run, and the game time they may be sent again. */
+        final Map<UUID,Long> failedRunners=new HashMap<>();
+        long now;
         UUID runner;
         BlockPos bell,lastBell;
         long retryAt,warnedAt=Long.MIN_VALUE/2;
         int sighted;
     }
     private static final Map<UUID,Alert> ALERTS=new HashMap<>();
+    /** Two missed runs' worth of time before the same guard is sent to a bell again. */
+    private static final long RUNNER_BACKOFF=AlarmState.RUN_TICKS*2L;
     private record BellRing(ServerLevel level,BlockPos position) {}
     /** Ignore our own alarm/all-clear rings; physical bell sounds otherwise raise the alarm. */
     private static final Set<BellRing> INTERNAL_RINGS=new HashSet<>();
@@ -77,7 +81,7 @@ public final class DefenseService {
     public static void abandon(Settlement town,UUID guard) {
         Alert alert=ALERTS.get(town.id);
         if(alert==null || !guard.equals(alert.runner)) return;
-        alert.failedRunners.add(guard); alert.runner=null; alert.retryAt=0; alert.state.calm();
+        alert.failedRunners.put(guard,alert.now+RUNNER_BACKOFF); alert.runner=null; alert.retryAt=0; alert.state.calm();
     }
     /** Owner command: sound the alarm without waiting for a runner, or call the all-clear early. */
     public static boolean toggle(ServerLevel level,Settlement town) {
@@ -145,13 +149,13 @@ public final class DefenseService {
         alert.retryAt=now+200;
         CitizenEntity runner=null; BlockPos bell=null; double best=Double.MAX_VALUE;
         for(CitizenEntity guard:citizens) {
-            if(!guard.isGuard() || alert.failedRunners.contains(guard.getUUID())) continue;
+            if(!guard.isGuard() || alert.failedRunners.getOrDefault(guard.getUUID(),Long.MIN_VALUE)>now) continue;
             BlockPos found=bellNear(level,town,guard.blockPosition());
             if(found!=null && guard.distanceToSqr(Vec3.atCenterOf(found))<best) { best=guard.distanceToSqr(Vec3.atCenterOf(found)); runner=guard; bell=found; }
         }
         if(runner==null) {
-            // Everyone gets another chance at the next retry, so one bad path cannot disable the alarm for a whole attack.
-            alert.failedRunners.clear();
+            // Failed runners get another chance once their back-off ends, so one bad path cannot disable the alarm for a whole attack.
+            alert.failedRunners.values().removeIf(until -> until<=now);
             if(now-alert.warnedAt>=WARNING_TICKS) {
                 alert.warnedAt=now;
                 announce(level,town,alert.sighted+" hostiles sighted near "+town.name+", but no guard can reach a bell to raise the alarm. "
@@ -178,7 +182,7 @@ public final class DefenseService {
             if(seen.size()<threshold) return;
             alert=new Alert(); ALERTS.put(town.id,alert);
         }
-        alert.sighted=seen.size();
+        alert.sighted=seen.size(); alert.now=level.getGameTime();
         if(alert.state.phase()==AlarmState.Phase.RAISING && alert.runner!=null
                 && !(level.getEntity(alert.runner) instanceof CitizenEntity runner && runner.isAlive() && runner.isGuard())) {
             abandon(town,alert.runner);
@@ -187,7 +191,7 @@ public final class DefenseService {
             case DISPATCH -> dispatch(level,town,alert,citizens);
             case STAND_DOWN -> {
                 // A runner who ran out of time while hostiles remain is replaced; a vanished threat needs nobody.
-                if(alert.sighted>0 && alert.runner!=null) alert.failedRunners.add(alert.runner); else alert.failedRunners.clear();
+                if(alert.sighted>0 && alert.runner!=null) alert.failedRunners.put(alert.runner,alert.now+RUNNER_BACKOFF); else alert.failedRunners.clear();
                 alert.runner=null;
             }
             case ALL_CLEAR -> allClear(level,town,alert);
