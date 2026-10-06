@@ -117,6 +117,7 @@ configurations {
 
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+    testImplementation "net.neoforged:testframework:${neo_version}"
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
@@ -185,7 +186,10 @@ tasks.withType(JavaCompile).configureEach {
 // ModDevGradle launches tests with Minecraft and NeoForge initialized.
 tasks.named('test', Test) {
     useJUnitPlatform()
-    testLogging { events 'passed', 'failed', 'skipped' }
+    testLogging {
+        events 'passed', 'failed', 'skipped'
+        exceptionFormat 'full'
+    }
 }
 
 // IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.

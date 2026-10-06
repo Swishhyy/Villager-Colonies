@@ -10,13 +10,17 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 
 public final class MinecraftChecks {
-    @Test void inventoryAndPersistence() { main(new String[0]); }
+    @Test @ExtendWith(EphemeralTestServerProvider.class)
+    void inventoryAndPersistence(MinecraftServer server) { main(new String[0]); }
     private static int checks;
     private static void check(boolean result,String message) { checks++; if(!result) throw new AssertionError(message); }
     public static void main(String[] args) {
