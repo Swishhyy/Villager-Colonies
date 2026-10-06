@@ -3,6 +3,7 @@ package io.github.swishhyy.wwmc.core;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.List;
 
 /** Shared station slots expire; resource blocks still use exclusive reservations. */
 public final class WorkforceBook<K> {
@@ -17,6 +18,12 @@ public final class WorkforceBook<K> {
         Map<UUID,Long> crew=crews.get(station);
         if(crew==null) return 0;
         crew.values().removeIf(until -> until<=now); return crew.size();
+    }
+    public List<UUID> members(K station,long now) {
+        Map<UUID,Long> crew=crews.get(station);
+        if(crew==null) return List.of();
+        crew.values().removeIf(until -> until<=now);
+        return List.copyOf(crew.keySet());
     }
     public void release(K station,UUID worker) {
         Map<UUID,Long> crew=crews.get(station);

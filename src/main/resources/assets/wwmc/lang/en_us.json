@@ -12,5 +12,7 @@
   "block.wwmc.mine_station": "Mine Station",
   "block.wwmc.quarry_station": "Quarry Station",
   "block.wwmc.guard_station": "Guard Station",
-  "block.wwmc.craftsman_station": "Craftsman Station"
+  "block.wwmc.craftsman_station": "Craftsman Station",
+  "block.wwmc.smeltery_station": "Smeltery Station",
+  "block.wwmc.cook_station": "Cook Station"
 }

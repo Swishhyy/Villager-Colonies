@@ -1,6 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.core.StructureRole;
+import io.github.swishhyy.wwmc.core.GuardDuty;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -13,6 +14,14 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 public final class GuardService {
+    public static boolean onDuty(ServerLevel level,Settlement town,BlockPos station,UUID guard) {
+        return GuardDuty.active(SettlementService.workers(level).members(station,level.getGameTime()),guard,
+                SettlementService.night(level),DefenseService.alarmed(town));
+    }
+    public static Station uncovered(ServerLevel level,Settlement town) {
+        return town.stations.stream().filter(s -> s.role()==StructureRole.GUARD && SettlementService.active(level,s)
+                && SettlementService.workers(level).count(s.position(),level.getGameTime())==0).findFirst().orElse(null);
+    }
     private record Selection(BlockPos station,BlockPos day,long until) {}
     private static final Map<ServerLevel,Map<UUID,Selection>> SELECTING=new WeakHashMap<>();
     public static boolean walkable(ServerLevel level,Settlement town,BlockPos pos) {
@@ -30,7 +39,7 @@ public final class GuardService {
     public static String status(ServerLevel level,Station station) {
         GuardPosts p=posts(level,station);
         return "day post "+p.day().toShortString()+", night post "+p.night().toShortString()
-                +"; sneak-use the Inspector here to set both posts. Armor stands in the station's 7x7x7 range supply armor, and swords, spears, bows or arrows held in their hands";
+                +"; one guard on duty per staffed station, full crew during alarms. Sneak-use the Inspector to set both posts. Armor stands in the station's 7x7x7 range supply armor, and weapons held in their hands";
     }
     public static void begin(ServerLevel level,Player player,BlockPos station) {
         Settlement town=SettlementData.get(level).at(station);
