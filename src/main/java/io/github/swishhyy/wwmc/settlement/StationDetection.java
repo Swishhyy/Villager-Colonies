@@ -7,6 +7,7 @@ import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.CampfireBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.neoforged.neoforge.common.Tags;
@@ -21,6 +22,13 @@ public final class StationDetection {
         return head.getBlock() instanceof BedBlock && foot.is(head.getBlock())
                 && head.getValue(BedBlock.PART)==BedPart.HEAD && foot.getValue(BedBlock.PART)==BedPart.FOOT
                 && head.getValue(BedBlock.FACING)==foot.getValue(BedBlock.FACING);
+    }
+    public static boolean processingBlock(StructureRole role,BlockState state) {
+        return switch(role) {
+            case SMELTERY -> state.is(Blocks.FURNACE) || state.is(Blocks.BLAST_FURNACE);
+            case COOK -> state.is(Blocks.SMOKER) || state.getBlock() instanceof CampfireBlock && state.getValue(CampfireBlock.LIT);
+            default -> false;
+        };
     }
     public static boolean workBlock(StructureRole role, BlockState state) {
         return switch(role) {

@@ -57,6 +57,7 @@ public final class SettlementService {
             case QUARRY -> Config.QUARRY_WORKERS.get();
             case GUARD -> Config.GUARD_WORKERS.get();
             case CRAFTSMAN -> Config.CRAFTSMAN_WORKERS.get();
+            case SMELTERY,COOK -> Config.PROCESSING_WORKERS.get();
             default -> Config.STATION_WORKERS.get();
         };
     }
@@ -161,6 +162,18 @@ public final class SettlementService {
                 && StationDetection.workBlock(station.role(),level.getBlockState(pos)) && ownsBlock(level,town,station,pos)) count++;
         return count;
     }
+    public static List<BlockPos> processingDevices(ServerLevel level,Settlement town,Station station) {
+        if(!station.role().processes() || !active(level,station)) return List.of();
+        return resourcePositions(level,town,station,() -> {
+            List<BlockPos> found=new ArrayList<>();
+            for(BlockPos pos:cells(station)) if(availableCell(level,town,pos)
+                    && StationDetection.processingBlock(station.role(),level.getBlockState(pos))
+                    && ownsBlock(level,town,station,pos)) found.add(pos.immutable());
+            return found;
+        }).stream().filter(pos -> availableCell(level,town,pos)
+                && StationDetection.processingBlock(station.role(),level.getBlockState(pos))
+                && ownsBlock(level,town,station,pos)).toList();
+    }
     public static void inspectStation(ServerLevel level,Player player,BlockPos pos) {
         Settlement town=SettlementData.get(level).at(pos);
         if(town==null || town.station(pos)==null) return;
@@ -175,6 +188,8 @@ public final class SettlementService {
             case MINE,QUARRY -> ExcavationService.status(level,town,station);
             case GUARD -> GuardService.status(level,station);
             case CRAFTSMAN -> "workbench for warehouse orders (stock/target: "+Crafting.status(storage(level,town),town.disabledRecipes)+")";
+            case SMELTERY -> processingDevices(level,town,station).size()+" furnaces/blast furnaces; smelts warehouse raw metals and ores using real fuel";
+            case COOK -> processingDevices(level,town,station).size()+" smokers/lit campfires; cooks raw food and makes bread from three wheat";
         };
         tell(player,station.role().id()+" station: "+found+(station.role().excavates() ? ". Facing "+station.facing().name().toLowerCase(Locale.ROOT)+"." : " in its 7x7x7 range.")+
                 (station.role().providesWork() ? " Crew: "+workers(level).count(pos,level.getGameTime())+"/"+workerLimit(station)+"." : "")+
@@ -279,7 +294,7 @@ public final class SettlementService {
         if(s==null) { source.sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
         if(Crafting.byId(id)==null) { source.sendFailure(Component.literal("Unknown order. Choose one of: "+String.join(", ",Crafting.RECIPES.stream().map(Crafting.Recipe::id).toList())+".")); return 0; }
         if(enabled ? s.disabledRecipes.remove(id) : s.disabledRecipes.add(id)) SettlementData.get(source.getLevel()).setDirty();
-        source.sendSuccess(() -> Component.literal("Craftsmen will "+(enabled ? "" : "no longer ")+"make "+Crafting.byId(id).label()+"."),false);
+        source.sendSuccess(() -> Component.literal((id.equals("bread") ? "Cooks" : "Craftsmen")+" will "+(enabled ? "" : "no longer ")+"make "+Crafting.byId(id).label()+"."),false);
         return 1;
     }
     @SubscribeEvent public void commands(RegisterCommandsEvent event) {

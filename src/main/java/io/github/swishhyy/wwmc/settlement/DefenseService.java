@@ -7,6 +7,7 @@ import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -17,6 +18,7 @@ import net.minecraft.world.level.block.BellBlock;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.PlayLevelSoundEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
@@ -35,6 +37,9 @@ public final class DefenseService {
         int sighted;
     }
     private static final Map<UUID,Alert> ALERTS=new HashMap<>();
+    private record BellRing(ServerLevel level,BlockPos position) {}
+    /** Ignore our own alarm/all-clear rings; physical bell sounds otherwise raise the alarm. */
+    private static final Set<BellRing> INTERNAL_RINGS=new HashSet<>();
     public static boolean alarmed(Settlement town) {
         Alert alert=ALERTS.get(town.id); return alert!=null && alert.state.ringing();
     }
@@ -56,10 +61,11 @@ public final class DefenseService {
     public static void ring(ServerLevel level,Settlement town,CitizenEntity guard,BlockPos bell) {
         Alert alert=ALERTS.get(town.id);
         if(alert==null || !guard.getUUID().equals(alert.runner) || !bell.equals(alert.bell)) return;
-        alert.runner=null;
         if(!ringBell(level,bell,guard)) { abandon(town,guard.getUUID()); return; }
+        alert.runner=null;
         alert.failedRunners.clear(); alert.lastBell=bell;
         if(!alert.state.ring()) return;
+        wakeGuards(level,town);
         // Like a vanilla raid bell, the warning briefly outlines the hostiles near it.
         for(Monster monster:level.getEntitiesOfClass(Monster.class,new AABB(bell).inflate(REVEAL_RANGE),m -> m.isAlive() && town.contains(m.blockPosition())))
             monster.addEffect(new MobEffectInstance(MobEffects.GLOWING,200));
@@ -77,11 +83,33 @@ public final class DefenseService {
         Alert alert=ALERTS.computeIfAbsent(town.id,id -> new Alert());
         if(alert.state.ringing()) { allClear(level,town,alert); return false; }
         alert.runner=null; alert.state.ring();
+        wakeGuards(level,town);
         announce(level,town,"The alarm is raised in "+town.name+". Citizens are taking cover until the all-clear.");
         return true;
     }
     private static boolean ringBell(ServerLevel level,BlockPos pos,Entity ringer) {
-        return level.hasChunkAt(pos) && level.getBlockState(pos).getBlock() instanceof BellBlock bell && bell.attemptToRing(ringer,level,pos,null);
+        BellRing key=new BellRing(level,pos);
+        INTERNAL_RINGS.add(key);
+        try {
+            return level.hasChunkAt(pos) && level.getBlockState(pos).getBlock() instanceof BellBlock bell && bell.attemptToRing(ringer,level,pos,null);
+        } finally { INTERNAL_RINGS.remove(key); }
+    }
+    private static void wakeGuards(ServerLevel level,Settlement town) {
+        for(CitizenEntity citizen:loadedCitizens(level,town)) if(citizen.isGuard()) citizen.wakeForAlarm();
+    }
+    @SubscribeEvent public void bellSound(PlayLevelSoundEvent.AtPosition event) {
+        if(event.isCanceled() || !(event.getLevel() instanceof ServerLevel level) || event.getSound()==null
+                || !event.getSound().value().equals(SoundEvents.BELL_BLOCK)) return;
+        BlockPos pos=BlockPos.containing(event.getPosition());
+        if(INTERNAL_RINGS.contains(new BellRing(level,pos)) || !level.hasChunkAt(pos)
+                || !(level.getBlockState(pos).getBlock() instanceof BellBlock)) return;
+        Settlement town=SettlementData.get(level).at(pos);
+        if(town==null) return;
+        Alert alert=ALERTS.computeIfAbsent(town.id,id -> new Alert());
+        boolean fresh=!alert.state.ringing();
+        alert.runner=null; alert.lastBell=pos; alert.failedRunners.clear(); alert.state.ring();
+        wakeGuards(level,town);
+        if(fresh) announce(level,town,"The bell raised the alarm in "+town.name+". All guards are on duty until the all-clear.");
     }
     private static BlockPos bellNear(ServerLevel level,Settlement town,BlockPos from) {
         return level.getPoiManager().findClosest(type -> type.is(PoiTypes.MEETING),
@@ -167,5 +195,5 @@ public final class DefenseService {
         if(!(event.getLevel() instanceof ServerLevel level) || level.getGameTime()%INTERVAL!=0) return;
         for(Settlement town:SettlementData.get(level).settlements) assess(level,town);
     }
-    @SubscribeEvent public void stopped(ServerStoppedEvent event) { ALERTS.clear(); }
+    @SubscribeEvent public void stopped(ServerStoppedEvent event) { ALERTS.clear(); INTERNAL_RINGS.clear(); }
 }

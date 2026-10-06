@@ -35,6 +35,26 @@ public final class InventoryOps {
         }
         return ItemStack.EMPTY;
     }
+    /** Fill only the requested slot, honoring its rules, capacity and stack components. */
+    public static int moveToSlot(List<Container> sources,Container destination,int slot,Predicate<ItemStack> eligible,int maximum) {
+        int moved=0;
+        for(Container source:sources) {
+            if(source==destination) continue;
+            for(int index=0;index<source.getContainerSize() && moved<maximum;index++) {
+                ItemStack offered=source.getItem(index),present=destination.getItem(slot);
+                if(offered.isEmpty() || !eligible.test(offered) || !destination.canPlaceItem(slot,offered)
+                        || !present.isEmpty() && !ItemStack.isSameItemSameComponents(present,offered)) continue;
+                int capacity=Math.min(offered.getMaxStackSize(),destination.getMaxStackSize())-present.getCount();
+                int amount=Math.min(Math.min(maximum-moved,capacity),offered.getCount());
+                if(amount<=0) continue;
+                ItemStack taken=source.removeItem(index,amount);
+                if(present.isEmpty()) destination.setItem(slot,taken);
+                else { present.grow(taken.getCount()); destination.setItem(slot,present); }
+                source.setChanged(); destination.setChanged(); moved+=taken.getCount();
+            }
+        }
+        return moved;
+    }
     /** Remove one item with the highest score among eligible stacks; earlier slots win ties. */
     public static ItemStack takeBest(List<Container> sources, Predicate<ItemStack> eligible, ToDoubleFunction<ItemStack> score) {
         Container best=null; int bestSlot=-1; double bestScore=Double.NEGATIVE_INFINITY;

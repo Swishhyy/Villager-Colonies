@@ -72,8 +72,10 @@ public final class QuarryCraftingChecks {
         ItemStack made=Crafting.craft(bag,order);
         check(made.is(Items.OAK_PLANKS) && made.getCount()==4 && InventoryOps.count(List.of(bag),s -> s.is(Items.OAK_LOG))==2,"One log becomes four planks");
         SimpleContainer pantry=new SimpleContainer(9); pantry.setItem(0,new ItemStack(Items.WHEAT,7)); pantry.setItem(1,new ItemStack(Items.OAK_LOG,8));
-        Crafting.Recipe bread=Crafting.choose(List.of(pantry),Set.of());
-        check(bread!=null && bread.id().equals("bread"),"Food comes before building materials");
+        Crafting.Recipe bread=Crafting.choose(List.of(pantry),Set.of(),StructureRole.COOK);
+        check(bread!=null && bread.id().equals("bread"),"Wheat is a cook order");
+        check(Crafting.choose(List.of(pantry),Set.of()).id().equals("planks"),"Craftsmen leave bread to cooks");
+        check(Crafting.choose(List.of(pantry),Set.of("bread"),StructureRole.COOK)==null,"The bread switch also controls cooks");
         SimpleContainer baker=new SimpleContainer(36);
         check(Crafting.fetch(List.of(pantry),baker,bread)==2 && pantry.getItem(0).getCount()==1,"Only whole batches of wheat are taken");
         check(Crafting.craft(baker,bread).is(Items.BREAD) && Crafting.craft(baker,bread).is(Items.BREAD) && Crafting.craft(baker,bread).isEmpty(),"Two batches bake two loaves and nothing more");

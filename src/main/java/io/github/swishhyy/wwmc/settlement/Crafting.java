@@ -2,6 +2,7 @@ package io.github.swishhyy.wwmc.settlement;
 
 import java.util.*;
 import java.util.function.Predicate;
+import io.github.swishhyy.wwmc.core.StructureRole;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
@@ -61,7 +62,11 @@ public final class Crafting {
     public static int stock(List<Container> storage,Recipe recipe) { return InventoryOps.count(storage,recipe.product()); }
     /** First enabled recipe the warehouse is short of and holds materials for. */
     public static Recipe choose(List<Container> storage,Collection<String> disabled) {
-        for(Recipe recipe:RECIPES) if(!disabled.contains(recipe.id()) && stock(storage,recipe)<recipe.target() && batches(storage,recipe)>0) return recipe;
+        return choose(storage,disabled,StructureRole.CRAFTSMAN);
+    }
+    public static Recipe choose(List<Container> storage,Collection<String> disabled,StructureRole role) {
+        for(Recipe recipe:RECIPES) if((recipe.id().equals("bread") ? role==StructureRole.COOK : role==StructureRole.CRAFTSMAN)
+                && !disabled.contains(recipe.id()) && stock(storage,recipe)<recipe.target() && batches(storage,recipe)>0) return recipe;
         return null;
     }
     /** Move materials for up to {@link #TRIP_BATCHES} batches, no more than the shortage needs, into the bag. */

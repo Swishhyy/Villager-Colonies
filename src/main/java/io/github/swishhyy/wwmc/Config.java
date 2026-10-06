@@ -10,6 +10,7 @@ public final class Config {
     public static final ModConfigSpec.IntValue QUARRY_WORKERS = B.comment("Workers sharing each quarry station.").defineInRange("quarryWorkers", 8, 1, 32);
     public static final ModConfigSpec.IntValue CRAFTSMAN_WORKERS = B.comment("Craftsmen sharing each craftsman station.").defineInRange("craftsmanWorkers", 2, 1, 16);
     public static final ModConfigSpec.IntValue GUARD_WORKERS = B.comment("Guard crew slots per guard station.").defineInRange("guardWorkers", 2, 1, 16);
+    public static final ModConfigSpec.IntValue PROCESSING_WORKERS = B.comment("Workers sharing each smeltery or cook station.").defineInRange("processingWorkers", 2, 1, 16);
     public static final ModConfigSpec.IntValue MINE_MIN_Y = B.comment("Lowest randomly chosen strip-mine floor Y; saved per mine.").defineInRange("mineMinY", -30, -64, 319);
     public static final ModConfigSpec.IntValue MINE_MAX_Y = B.comment("Highest randomly chosen strip-mine floor Y.").defineInRange("mineMaxY", 10, -64, 319);
     public static final ModConfigSpec.IntValue QUARRY_TARGET_Y = B.comment("Default quarry bottom Y; bedrock is preserved.").defineInRange("quarryTargetY", -64, -64, 319);
