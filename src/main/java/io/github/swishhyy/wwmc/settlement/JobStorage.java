@@ -19,7 +19,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 public final class JobStorage {
     public static final int SUPPORT_RESERVE=16,SAPLING_RESERVE=32,FUEL_RESERVE=8,WHEAT_RESERVE=9;
     /** A courier sets out once this many goods wait, or sooner when a barrel is nearly full. */
-    public static final int COLLECT_LOAD=32;
+    public static final int COLLECT_LOAD=32,PANTRY_LOW=16;
     public record Pickup(Container container,int slot,int amount) {}
     private JobStorage() {}
     private static boolean tool(StructureRole role,ItemStack stack) {
@@ -46,6 +46,15 @@ public final class JobStorage {
         return result;
     }
     public static int goods(List<Pickup> pickups) { return pickups.stream().mapToInt(Pickup::amount).sum(); }
+    /** Meals waiting among the goods; couriers fetch these early when the warehouse pantry runs low. */
+    public static boolean food(List<Pickup> pickups) {
+        return pickups.stream().anyMatch(pickup -> FoodHealing.food(pickup.container().getItem(pickup.slot())));
+    }
+    /** A courier sets out for a worthwhile load, a nearly full barrel, or any food while the pantry is low. */
+    public static boolean worthCollecting(List<Pickup> pickups,int freeSlots,int pantry) {
+        int goods=goods(pickups);
+        return goods>=COLLECT_LOAD || goods>0 && (freeSlots<=2 || pantry<PANTRY_LOW && food(pickups));
+    }
     /** Move collectable goods into the courier's bag until it would need to deliver; returns the items moved. */
     public static int collect(ServerLevel level,Settlement town,StructureRole role,List<Container> barrels,CitizenInventory bag) {
         int moved=0;

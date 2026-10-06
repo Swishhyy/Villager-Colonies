@@ -18,8 +18,7 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
     private PanelView shown;
     private String layout="";
     public PanelScreen(PanelMenu menu,Inventory inventory,Component title) {
-        super(menu,inventory,title);
-        imageWidth=WIDTH; imageHeight=HEIGHT;
+        super(menu,inventory,title,WIDTH,HEIGHT);
     }
     private PanelView view() { return menu.view(); }
     @Override protected void init() {

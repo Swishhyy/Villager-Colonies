@@ -11,8 +11,7 @@ import net.minecraft.world.entity.player.Inventory;
 /** A citizen's job, activity, health, meals and equipment above their bag. */
 public final class CitizenScreen extends AbstractContainerScreen<CitizenMenu> {
     public CitizenScreen(CitizenMenu menu,Inventory inventory,Component title) {
-        super(menu,inventory,title);
-        imageWidth=CitizenMenu.WIDTH; imageHeight=CitizenMenu.HEIGHT;
+        super(menu,inventory,title,CitizenMenu.WIDTH,CitizenMenu.HEIGHT);
     }
     private List<PanelView.Row> tab(int index) { return menu.view().tabs().size()>index ? menu.view().tabs().get(index).rows() : List.of(); }
     @Override public void extractBackground(GuiGraphicsExtractor g,int mouseX,int mouseY,float partialTick) {

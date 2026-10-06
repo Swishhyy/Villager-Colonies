@@ -206,8 +206,8 @@ public final class Panels {
     public static List<Row> status(ServerLevel level,Settlement town,Station station) {
         List<Row> rows=new ArrayList<>();
         switch(station.role()) {
-            case HOUSING,BARRACKS -> rows.add(new Row(icon(Items.RED_BED),"Beds",SettlementService.beds(level,town,station).size()+" complete beds in range house citizens"));
-            case HOSPITAL -> rows.add(new Row(icon(Items.RED_BED),"Patient beds",SettlementService.beds(level,town,station).size()+" beds; treatment is planned"));
+            case HOUSING,BARRACKS -> rows.add(new Row(stationIcon(station.role()),"Beds",SettlementService.beds(level,town,station).size()+" complete beds in range house citizens"));
+            case HOSPITAL -> rows.add(new Row(stationIcon(StructureRole.HOSPITAL),"Patient beds",SettlementService.beds(level,town,station).size()+" beds; treatment is planned"));
             case WAREHOUSE -> rows.add(storage(icon(Items.CHEST),"Storage",SettlementService.storageAt(level,town,station.position()),"Put chests or barrels within 3 blocks"));
             case FARM -> rows.add(new Row(icon(Items.WHEAT),"Crops",SettlementService.workBlocks(level,town,station)+" ripe crops in range"));
             case LUMBER -> rows.add(new Row(icon(Items.OAK_SAPLING),"Forest","Fells whole natural trees and replants saplings in range"));

@@ -30,21 +30,23 @@ public final class Crafting {
         return batches;
     }
     public static int stock(List<Container> storage,Recipe recipe) { return InventoryOps.count(storage,s -> s.is(recipe.product())); }
-    /** The first enabled order the storage is short of and holds materials for; only cooks have fixed orders. */
-    public static Recipe choose(List<Container> storage,Collection<String> disabled,StructureRole role) {
+    public static Recipe choose(List<Container> storage,Collection<String> disabled,StructureRole role) { return choose(storage,storage,disabled,role); }
+    /** The first enabled order the town's {@code stock} is short of that {@code materials} can make; only cooks have fixed orders. */
+    public static Recipe choose(List<Container> stock,List<Container> materials,Collection<String> disabled,StructureRole role) {
         if(role!=StructureRole.COOK) return null;
-        for(Recipe recipe:RECIPES) if(!disabled.contains(recipe.id()) && stock(storage,recipe)<recipe.target() && batches(storage,recipe)>0) return recipe;
+        for(Recipe recipe:RECIPES) if(!disabled.contains(recipe.id()) && stock(stock,recipe)<recipe.target() && batches(materials,recipe)>0) return recipe;
         return null;
     }
-    /** Move materials for up to {@link #TRIP_BATCHES} batches, no more than the shortage needs, into the bag. */
-    public static int fetch(List<Container> storage,Container bag,Recipe recipe) {
-        int needed=(recipe.target()-stock(storage,recipe)+recipe.yield()-1)/recipe.yield();
-        int batches=Math.min(TRIP_BATCHES,Math.min(needed,batches(storage,recipe)));
+    public static int fetch(List<Container> storage,Container bag,Recipe recipe) { return fetch(storage,storage,bag,recipe); }
+    /** Move materials for up to {@link #TRIP_BATCHES} batches, no more than the town's shortage needs, into the bag. */
+    public static int fetch(List<Container> stock,List<Container> materials,Container bag,Recipe recipe) {
+        int needed=(recipe.target()-stock(stock,recipe)+recipe.yield()-1)/recipe.yield();
+        int batches=Math.min(TRIP_BATCHES,Math.min(needed,batches(materials,recipe)));
         for(Input input:recipe.inputs()) for(int i=0;i<input.count()*batches;i++) {
-            ItemStack item=InventoryOps.takeOne(storage,input.item());
+            ItemStack item=InventoryOps.takeOne(materials,input.item());
             ItemStack rest=InventoryOps.insert(bag,item);
             // A full bag returns the material rather than losing it.
-            if(!rest.isEmpty()) for(Container container:storage) rest=InventoryOps.insert(container,rest);
+            if(!rest.isEmpty()) for(Container container:materials) rest=InventoryOps.insert(container,rest);
         }
         return Math.max(0,batches);
     }

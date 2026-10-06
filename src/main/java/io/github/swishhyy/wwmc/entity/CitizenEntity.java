@@ -1089,8 +1089,9 @@ public final class CitizenEntity extends Villager {
             if(!visitWarehouse(level,town,station.role())) return;
             BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
             List<Container> storage=warehouse==null ? List.of() : SettlementService.storageAt(level,town,warehouse);
-            Crafting.Recipe next=Crafting.choose(storage,town.disabledRecipes,station.role());
-            if(next==null || Crafting.fetch(storage,cargo,next)==0) {
+            List<Container> stock=SettlementService.townStorage(level,town);
+            Crafting.Recipe next=Crafting.choose(stock,storage,town.disabledRecipes,station.role());
+            if(next==null || Crafting.fetch(stock,storage,cargo,next)==0) {
                 activity="Nothing to craft: the warehouse is stocked or lacks materials";
                 idleStations.put(station.position(),level.getGameTime()+400); releaseWork(level); searchDelay=20; return;
             }
@@ -1173,15 +1174,18 @@ public final class CitizenEntity extends Villager {
             // Goods already carried reach the warehouse before the next errand.
             if(cargo.hasDeliverable(this::retainSupply,this::food)) { visitWarehouse(level,town,StructureRole.COURIER); return; }
             List<Container> stored=SettlementService.storageAt(level,town,warehouse);
+            int pantry=InventoryOps.count(stored,FoodHealing::food);
             var book=SettlementService.reservations(level);
             Station best=null; int most=0;
             for(Station candidate:town.stations) {
                 List<BlockPos> spots=SettlementService.jobBarrels(level,town,candidate);
                 if(spots.isEmpty() || !book.available(spots.getFirst(),getUUID(),level.getGameTime()) || failedTargets.containsKey(nearest(spots))) continue;
                 List<Container> local=SettlementService.jobStorage(level,town,candidate);
-                int goods=JobStorage.goods(JobStorage.collectable(level,town,candidate.role(),local));
-                // A worthwhile load, or a barrel close to full, is worth the walk; smaller amounts wait.
-                if(goods>most && (goods>=JobStorage.COLLECT_LOAD || JobStorage.freeSlots(local)<=2)) { best=candidate; most=goods; }
+                var pickups=JobStorage.collectable(level,town,candidate.role(),local);
+                // Small amounts wait for a worthwhile load, unless the barrel is nearly full or the pantry needs the food.
+                if(JobStorage.goods(pickups)>most && JobStorage.worthCollecting(pickups,JobStorage.freeSlots(local),pantry)) {
+                    best=candidate; most=JobStorage.goods(pickups);
+                }
             }
             boolean supply=false;
             if(best==null) for(Station candidate:town.stations) {
@@ -1257,7 +1261,7 @@ public final class CitizenEntity extends Villager {
             List<Container> local=SettlementService.jobStorage(level,town,station);
             boolean localDrop=dropOff(level,town,local);
             boolean localSupply=!local.isEmpty() && (ProcessingService.hasInputs(level,station.role(),processor,local)
-                    || station.role()==StructureRole.COOK && Crafting.choose(local,town.disabledRecipes,StructureRole.COOK)!=null);
+                    || station.role()==StructureRole.COOK && Crafting.choose(SettlementService.townStorage(level,town),local,town.disabledRecipes,StructureRole.COOK)!=null);
             // Finished goods go to the barrels only when they may stay there; supplies come from the barrels first.
             boolean useLocal=processingDelivery ? localDrop : localSupply;
             List<Container> storage;
@@ -1276,8 +1280,9 @@ public final class CitizenEntity extends Villager {
             }
             ProcessingService.fetch(level,station.role(),processor,storage,cargo);
             if(station.role()==StructureRole.COOK && !ProcessingService.hasInputs(level,station.role(),processor,List.of(cargo))) {
-                Crafting.Recipe bread=Crafting.choose(storage,town.disabledRecipes,StructureRole.COOK);
-                if(bread!=null && Crafting.fetch(storage,cargo,bread)>0) { order=bread; workProgress=0; craft(level,town,station,processor); return; }
+                List<Container> stock=SettlementService.townStorage(level,town);
+                Crafting.Recipe bread=Crafting.choose(stock,storage,town.disabledRecipes,StructureRole.COOK);
+                if(bread!=null && Crafting.fetch(stock,storage,cargo,bread)>0) { order=bread; workProgress=0; craft(level,town,station,processor); return; }
             }
         }
         if(!canUse(level,processor)) {

@@ -29,8 +29,7 @@ public final class CraftsmanScreen extends AbstractContainerScreen<CraftsmanMenu
     private final Map<Integer,Integer> pending=new HashMap<>();
     private long changedAt;
     public CraftsmanScreen(CraftsmanMenu menu,Inventory inventory,Component title) {
-        super(menu,inventory,title);
-        imageWidth=CraftsmanMenu.WIDTH; imageHeight=CraftsmanMenu.HEIGHT;
+        super(menu,inventory,title,CraftsmanMenu.WIDTH,CraftsmanMenu.HEIGHT);
     }
     private List<PanelView.Row> orders() { return menu.view().tabs().isEmpty() ? List.of() : menu.view().tabs().getFirst().rows(); }
     private int pages() { return Math.max(1,(orders().size()+PAGE-1)/PAGE); }
