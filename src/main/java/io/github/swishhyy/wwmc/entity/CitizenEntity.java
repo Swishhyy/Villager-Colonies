@@ -166,6 +166,8 @@ public final class CitizenEntity extends Villager {
             return false;
         }
         if(role==StructureRole.MINE) {
+            // Start with exposed faces at foot level or higher; planned shafts need an excavation plan.
+            if(pos.getY()<getBlockY()) return false;
             boolean rock=state.is(BlockTags.BASE_STONE_OVERWORLD) || state.is(Tags.Blocks.ORES);
             if(!rock || !getMainHandItem().isCorrectToolForDrops(state)) return false;
             for(var direction:net.minecraft.core.Direction.values()) {

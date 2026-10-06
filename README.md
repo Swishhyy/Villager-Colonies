@@ -40,6 +40,8 @@ Install the same mod JAR on the NeoForge 26.2 client and server. Use a new test 
 
 Keep doors and paths accessible. Stations are solid blocks; citizens need to reach a neighboring block. A full warehouse, missing tools, inaccessible resources, or missing food produces a visible worker status instead of creating supplies out of thin air.
 
+Miners work exposed faces at their foot level or higher. They do not dig the floor below their feet; downward shafts and excavation plans are a later feature.
+
 ### Commands
 
 | Command | Purpose |
