@@ -61,6 +61,7 @@ public final class DefenseService {
     public static void ring(ServerLevel level,Settlement town,CitizenEntity guard,BlockPos bell) {
         Alert alert=ALERTS.get(town.id);
         if(alert==null || !guard.getUUID().equals(alert.runner) || !bell.equals(alert.bell)) return;
+        // A bell destroyed on the way sends another guard to a different one.
         if(!ringBell(level,bell,guard)) { abandon(town,guard.getUUID()); return; }
         alert.runner=null;
         alert.failedRunners.clear(); alert.lastBell=bell;
@@ -149,6 +150,8 @@ public final class DefenseService {
             if(found!=null && guard.distanceToSqr(Vec3.atCenterOf(found))<best) { best=guard.distanceToSqr(Vec3.atCenterOf(found)); runner=guard; bell=found; }
         }
         if(runner==null) {
+            // Everyone gets another chance at the next retry, so one bad path cannot disable the alarm for a whole attack.
+            alert.failedRunners.clear();
             if(now-alert.warnedAt>=WARNING_TICKS) {
                 alert.warnedAt=now;
                 announce(level,town,alert.sighted+" hostiles sighted near "+town.name+", but no guard can reach a bell to raise the alarm. "
@@ -167,7 +170,8 @@ public final class DefenseService {
     private static void assess(ServerLevel level,Settlement town) {
         List<CitizenEntity> citizens=loadedCitizens(level,town);
         Alert alert=ALERTS.get(town.id);
-        if(citizens.isEmpty()) return;
+        // With nobody left to see anything, a raised alarm still counts down to the all-clear.
+        if(citizens.isEmpty() && alert==null) return;
         int threshold=Config.ALARM_THRESHOLD.get();
         Set<Monster> seen=sighted(level,town,citizens,alert!=null && alert.state.ringing());
         if(alert==null) {

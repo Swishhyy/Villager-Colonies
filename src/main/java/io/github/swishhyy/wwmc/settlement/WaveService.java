@@ -171,14 +171,18 @@ public final class WaveService {
     private static final class MarchGoal extends Goal {
         private final PathfinderMob mob;
         private final BlockPos rally;
-        private int repath;
+        private int repath,cooldown;
         MarchGoal(PathfinderMob mob,BlockPos rally) { this.mob=mob; this.rally=rally; setFlags(EnumSet.of(Flag.MOVE)); }
-        @Override public boolean canUse() { return mob.getTarget()==null && mob.distanceToSqr(Vec3.atCenterOf(rally))>8*8; }
+        @Override public boolean canUse() {
+            // A mob that cannot reach the banner waits a little before planning again rather than repathing every tick.
+            if(cooldown>0) { cooldown--; return false; }
+            return mob.getTarget()==null && mob.distanceToSqr(Vec3.atCenterOf(rally))>8*8;
+        }
         @Override public boolean canContinueToUse() { return canUse() && !mob.getNavigation().isDone(); }
         @Override public void start() { repath=0; mob.getNavigation().moveTo(rally.getX()+0.5,rally.getY(),rally.getZ()+0.5,1.0); }
         @Override public void tick() {
             if(++repath%40==0) mob.getNavigation().moveTo(rally.getX()+0.5,rally.getY(),rally.getZ()+0.5,1.0);
         }
-        @Override public void stop() { mob.getNavigation().stop(); }
+        @Override public void stop() { mob.getNavigation().stop(); cooldown=40; }
     }
 }

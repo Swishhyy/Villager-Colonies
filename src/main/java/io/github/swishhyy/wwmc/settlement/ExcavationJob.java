@@ -39,6 +39,8 @@ public final class ExcavationJob {
     private final RoomBounds quarry;
     private final int stairStart;
     private int stairTop;
+    /** Whether the staircase was last found intact down to the working layer; not saved, rechecked on every scan. */
+    private boolean stairsOpen=true;
     public ExcavationJob(UUID id,BlockPos station,StructureRole role,Direction facing,int topY,int targetY,
             int branchLength,int branchPairs,int cursor,List<Integer> completed) {
         this(id,station,role,facing,topY,targetY,branchLength,branchPairs,cursor,completed,false);
@@ -77,6 +79,10 @@ public final class ExcavationJob {
     }
     public RoomBounds bounds() { return quarry; }
     public boolean hasStairs() { return stairTop!=NO_STAIRS; }
+    public boolean stairsOpen() { return hasStairs() && stairsOpen; }
+    public void stairsOpen(boolean open) { stairsOpen=open; }
+    /** Y of the layer being dug, or the bottom once the pit is finished. */
+    public int floorY() { return cursor<size() ? cut(cursor).block().y() : targetY; }
     public int stairTop() { return stairTop; }
     /** Set once from the rim height; the staircase never moves afterwards. */
     public void measureStairs(int top) { if(quarry!=null && stairTop==NO_STAIRS) stairTop=Math.max(targetY,Math.min(topY,top)); }
@@ -88,9 +94,9 @@ public final class ExcavationJob {
         var first=MiningLayout.ringCell(quarry,stairStart,stairTop+1);
         return first.offset(-facing.getStepX(),0,-facing.getStepZ());
     }
-    /** Staircase step level with a position inside the pit, or -1 outside it or above the stairs. */
+    /** Staircase step level with a position inside the dug pit, or -1 outside it, above the stairs or below the working floor. */
     public int stepAt(int x,int y,int z) {
-        if(!hasStairs() || x<quarry.minX() || x>quarry.maxX() || z<quarry.minZ() || z>quarry.maxZ() || y>stairTop+1) return -1;
+        if(!hasStairs() || x<quarry.minX() || x>quarry.maxX() || z<quarry.minZ() || z>quarry.maxZ() || y>stairTop+1 || y<floorY()) return -1;
         return Math.clamp(stairTop+1-y,0,lastStep());
     }
     public int windowEnd() {

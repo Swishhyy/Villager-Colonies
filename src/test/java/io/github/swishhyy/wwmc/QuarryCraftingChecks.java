@@ -47,7 +47,13 @@ public final class QuarryCraftingChecks {
         BlockPos station=new BlockPos(8,65,40);
         ExcavationJob job=new ExcavationJob(UUID.randomUUID(),station,StructureRole.QUARRY,Direction.NORTH,70,-64,24,4,0,List.of(),false,64);
         check(job.hasStairs() && job.rim().equals(new MiningLayout.Cell(8,65,32)),"Crews enter from the ground just outside the first step");
-        check(job.stepAt(8,65,31)==0 && job.stepAt(3,40,20)==25 && job.stepAt(8,65,33)==-1,"Positions in the pit map to the matching staircase level");
+        check(job.floorY()==70 && job.stepAt(8,65,31)==-1,"Nothing below an untouched top layer is routed onto the stairs");
+        ExcavationJob deep=new ExcavationJob(UUID.randomUUID(),station,StructureRole.QUARRY,Direction.NORTH,70,-64,24,4,31*256,List.of(),false,64);
+        check(deep.floorY()==39 && deep.stepAt(8,65,31)==0 && deep.stepAt(3,40,20)==25 && deep.stepAt(8,65,33)==-1,"Positions in the dug pit map to the matching staircase level");
+        check(deep.stepAt(3,30,20)==-1,"Mine tunnels beneath the working floor are never routed onto the quarry stairs");
+        check(deep.stairsOpen(),"Stairs count as open until a scan finds them broken");
+        deep.stairsOpen(false);
+        check(!deep.stairsOpen(),"Broken stairs stop crews being routed down them");
         check(job.stair(8,64,31) && !job.stair(8,63,31),"The plan knows which blocks are steps");
         ExcavationJob saved=ExcavationJob.CODEC.parse(JsonOps.INSTANCE,ExcavationJob.CODEC.encodeStart(JsonOps.INSTANCE,job).getOrThrow()).getOrThrow();
         check(saved.stairTop()==64 && saved.stair(8,64,31),"The staircase survives a restart");
