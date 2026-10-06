@@ -1,5 +1,9 @@
 package io.github.swishhyy.wwmc;
 import com.mojang.serialization.JsonOps;
+import com.google.gson.JsonParser;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import io.github.swishhyy.wwmc.core.*;
 import io.github.swishhyy.wwmc.settlement.*;
 import java.util.List;
@@ -14,13 +18,33 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.level.storage.loot.LootTable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 
 public final class MinecraftChecks {
     @Test @ExtendWith(EphemeralTestServerProvider.class)
-    void inventoryAndPersistence(MinecraftServer server) { main(new String[0]); }
+    void inventoryAndPersistence(MinecraftServer server) throws IOException {
+        main(new String[0]);
+        var ops=server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
+        List<String> markers=new java.util.ArrayList<>(List.of("settlement_banner"));
+        for(StructureRole role:StructureRole.values()) markers.add(role.id()+"_station");
+        List<String> recipes=new java.util.ArrayList<>(markers); recipes.add("surveyor");
+        for(String id:recipes) {
+            try(var input=MinecraftChecks.class.getResourceAsStream("/data/wwmc/recipe/"+id+".json")) {
+                if(input==null) throw new AssertionError("Missing recipe: "+id);
+                Recipe.CODEC.parse(ops,JsonParser.parseReader(new InputStreamReader(input,StandardCharsets.UTF_8))).getOrThrow();
+            }
+        }
+        for(String id:markers) {
+            try(var input=MinecraftChecks.class.getResourceAsStream("/data/wwmc/loot_table/blocks/"+id+".json")) {
+                if(input==null) throw new AssertionError("Missing block drops: "+id);
+                LootTable.DIRECT_CODEC.parse(ops,JsonParser.parseReader(new InputStreamReader(input,StandardCharsets.UTF_8))).getOrThrow();
+            }
+        }
+    }
     private static int checks;
     private static void check(boolean result,String message) { checks++; if(!result) throw new AssertionError(message); }
     public static void main(String[] args) {

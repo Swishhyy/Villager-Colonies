@@ -133,7 +133,7 @@ Use a **Java 25 JDK**, not just a Java runtime. The Gradle wrapper and ModDevGra
 
 On Windows, use `gradlew.bat build` and `gradlew.bat runClient`. Development servers use `./gradlew runServer`.
 
-`build` runs regression checks for room bounds, exclusive reservations, inventory conservation, ownership, claim overlap, and settlement/room save round-trips. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
+`build` runs regression checks for room bounds, exclusive reservations, inventory conservation, ownership, claim overlap, settlement/room save round-trips, and recipe/drop decoding with Minecraft's codecs. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
 
 Automated checks do not replace an in-game playtest. Check pathfinding, client visuals, station removal, crop replanting, tool breakage, nighttime bed use, and a server restart before using an alpha with an important world.
 
