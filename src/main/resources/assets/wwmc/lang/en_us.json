@@ -1,0 +1,13 @@
+{
+  "itemGroup.wwmc": "Example Mod Tab",
+  "block.wwmc.example_block": "Example Block",
+  "item.wwmc.example_item": "Example Item",
+
+  "wwmc.configuration.title": "WWMC Configs",
+  "wwmc.configuration.section.wwmc.common.toml": "WWMC Configs",
+  "wwmc.configuration.section.wwmc.common.toml.title": "WWMC Configs",
+  "wwmc.configuration.items": "Item List",
+  "wwmc.configuration.logDirtBlock": "Log Dirt Block",
+  "wwmc.configuration.magicNumberIntroduction": "Magic Number Text",
+  "wwmc.configuration.magicNumber": "Magic Number"
+}
