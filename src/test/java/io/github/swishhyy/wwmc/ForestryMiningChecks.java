@@ -6,6 +6,7 @@ import io.github.swishhyy.wwmc.settlement.*;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -41,7 +42,10 @@ public final class ForestryMiningChecks {
         BlockPos root=new BlockPos(0,65,0);
         TreeWorld world=oak(root);
         var tree=ForestryService.tree(world,root);
-        check(tree!=null && tree.logs().size()==4,"A rooted natural canopy is recognized");
+        check(tree!=null && tree.logs().size()==4,"A rooted natural canopy is recognized (soil tag="
+                +world.state(root.below()).is(BlockTags.DIRT)+", log tag="+world.state(root).is(BlockTags.LOGS)
+                +", log identity="+world.state(root).is(TreeSpecies.OAK.log)+", natural leaves="
+                +ForestryService.naturalLeaf(world.state(root.offset(1,3,0)),TreeSpecies.OAK)+")");
         world.states.put(root.offset(1,4,0),Blocks.OAK_LOG.defaultBlockState());
         world.states.put(root.offset(2,5,0),Blocks.OAK_LOG.defaultBlockState());
         world.states.put(root.offset(3,6,0),Blocks.OAK_LOG.defaultBlockState());
