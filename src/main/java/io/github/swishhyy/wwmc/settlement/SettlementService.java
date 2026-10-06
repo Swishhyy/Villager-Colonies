@@ -27,7 +27,7 @@ import net.minecraft.world.level.block.state.properties.BedPart;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
@@ -36,7 +36,9 @@ public final class SettlementService {
     public static ReservationBook<BlockPos> reservations(ServerLevel level) {
         return RESERVATIONS.computeIfAbsent(level, l -> new ReservationBook<>());
     }
-    private static void tell(Player player,String text) { player.displayClientMessage(Component.literal(text),false); }
+    public static void tell(Player player,String text) {
+        if(player instanceof ServerPlayer serverPlayer) serverPlayer.sendSystemMessage(Component.literal(text));
+    }
     public static boolean owns(Player player,Settlement settlement) { return settlement!=null && settlement.owner.equals(player.getUUID()); }
 
     public static void foundOrInspect(ServerLevel level,Player player,BlockPos pos) {
@@ -206,7 +208,7 @@ public final class SettlementService {
                     c.getSource().sendSuccess(() -> Component.literal("Town priority set to "+p+". Idle workers will prefer those stations."),false); return 1;
                 }))));
     }
-    @SubscribeEvent public void breakStation(BlockEvent.BreakEvent event) {
+    @SubscribeEvent public void breakStation(BreakBlockEvent event) {
         if(!(event.getLevel() instanceof ServerLevel level)) return;
         SettlementData data=SettlementData.get(level);
         Settlement settlement=data.at(event.getPos());
@@ -214,18 +216,17 @@ public final class SettlementService {
         boolean banner=settlement.center.equals(event.getPos()) && event.getState().is(WWMC.BANNER.get());
         boolean station=event.getState().getBlock() instanceof StationBlock;
         if(!banner && !station) return;
-        if(!owns(event.getPlayer(),settlement)) { event.setCanceled(true); tell(event.getPlayer(),"Only this town's owner can remove its stations."); return; }
+        if(!owns(event.getPlayer(),settlement)) { event.setCanceled(true); event.setNotifyClient(true); tell(event.getPlayer(),"Only this town's owner can remove its stations."); return; }
         if(banner && !settlement.citizens.isEmpty()) {
-            event.setCanceled(true); tell(event.getPlayer(),"This banner belongs to an occupied settlement. Keep it as your town's rally point."); return;
+            event.setCanceled(true); event.setNotifyClient(true); tell(event.getPlayer(),"This banner belongs to an occupied settlement. Keep it as your town's rally point."); return;
         }
-        if(banner) data.settlements.remove(settlement);
-        else settlement.stations.removeIf(s -> s.position().equals(event.getPos()));
-        data.setDirty();
+        // Reconcile after the block is actually gone; another event listener may still cancel the break.
     }
     @SubscribeEvent public void tick(LevelTickEvent.Post event) {
         if(!(event.getLevel() instanceof ServerLevel level) || level.getGameTime()%200!=0) return;
         reservations(level).prune(level.getGameTime());
         SettlementData data=SettlementData.get(level);
+        if(data.settlements.removeIf(s -> s.citizens.isEmpty() && level.hasChunkAt(s.center) && !level.getBlockState(s.center).is(WWMC.BANNER.get()))) data.setDirty();
         for(Settlement s:data.settlements) {
             if(s.stations.removeIf(station -> level.hasChunkAt(station.position()) && !active(level,station))) data.setDirty();
         }

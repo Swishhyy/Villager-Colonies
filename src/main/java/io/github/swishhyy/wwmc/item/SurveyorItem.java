@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
@@ -25,7 +24,7 @@ public final class SurveyorItem extends Item {
         Map<UUID,Selection> selections=SELECTIONS.computeIfAbsent(level.getServer(), s -> new HashMap<>());
         if (player.isShiftKeyDown()) {
             selections.remove(player.getUUID());
-            player.displayClientMessage(Component.literal("Room selection cleared."), true);
+            SettlementService.tell(player,"Room selection cleared.");
             return InteractionResult.SUCCESS;
         }
         BlockPos pos=context.getClickedPos().immutable();
@@ -37,10 +36,10 @@ public final class SurveyorItem extends Item {
         }
         if (selection==null || selection.level()!=level || selection.second()!=null) {
             selections.put(player.getUUID(),new Selection(level,pos,null));
-            player.displayClientMessage(Component.literal("First corner selected. Select the opposite corner, including beds and floor."),false);
+            SettlementService.tell(player,"First corner selected. Select the opposite corner, including beds and floor.");
         } else {
             selections.put(player.getUUID(),new Selection(level,selection.first(),pos));
-            player.displayClientMessage(Component.literal("Second corner selected. Right-click the role station inside this area."),false);
+            SettlementService.tell(player,"Second corner selected. Right-click the role station inside this area.");
         }
         return InteractionResult.SUCCESS;
     }

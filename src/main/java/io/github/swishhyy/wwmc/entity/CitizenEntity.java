@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.Container;
+import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -32,6 +33,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.Tags;
 
 /** Vanilla villager visuals, with an independent station-driven work routine. */
 public final class CitizenEntity extends Villager {
@@ -61,20 +63,23 @@ public final class CitizenEntity extends Villager {
         super.tick();
         if(level() instanceof ServerLevel && mealTicks>0) mealTicks--;
     }
-    @Override protected InteractionResult mobInteract(Player player,InteractionHand hand) {
+    @Override public InteractionResult mobInteract(Player player,InteractionHand hand) {
         if(level() instanceof ServerLevel server && hand==InteractionHand.MAIN_HAND) {
             Settlement town=town(server);
             if(town!=null && town.owner.equals(player.getUUID()) && player.isShiftKeyDown()) {
                 releaseWork(server); searchDelay=0;
-                player.displayClientMessage(Component.literal("Worker released their job and will choose an available station."),false);
+                SettlementService.tell(player,"Worker released their job and will choose an available station.");
             } else {
-                player.displayClientMessage(Component.literal(getName().getString()+": "+activity+
-                        (workplace==null ? "" : " at "+workplace.toShortString())),false);
+                SettlementService.tell(player,getName().getString()+": "+activity+
+                        (workplace==null ? "" : " at "+workplace.toShortString()));
             }
         }
         return InteractionResult.SUCCESS;
     }
-    private boolean night(ServerLevel level) { long time=Math.floorMod(level.getDayTime(),24000L); return time>=13000 && time<23000; }
+    private boolean night(ServerLevel level) {
+        long time=Math.floorMod(level.clockManager().getTotalTicks(level.registryAccess().getOrThrow(WorldClocks.OVERWORLD)),24000L);
+        return time>=13000 && time<23000;
+    }
     private boolean near(BlockPos pos) { return distanceToSqr(Vec3.atCenterOf(pos))<=6.25; }
     private boolean visible(ServerLevel level,BlockPos pos) {
         return level.clip(new ClipContext(getEyePosition(),Vec3.atCenterOf(pos),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,this)).getBlockPos().equals(pos);
@@ -161,9 +166,7 @@ public final class CitizenEntity extends Villager {
             return false;
         }
         if(role==StructureRole.MINE) {
-            boolean rock=state.is(BlockTags.BASE_STONE_OVERWORLD) || state.is(BlockTags.COAL_ORES) || state.is(BlockTags.IRON_ORES)
-                    || state.is(BlockTags.COPPER_ORES) || state.is(BlockTags.GOLD_ORES) || state.is(BlockTags.REDSTONE_ORES)
-                    || state.is(BlockTags.LAPIS_ORES) || state.is(BlockTags.DIAMOND_ORES) || state.is(BlockTags.EMERALD_ORES);
+            boolean rock=state.is(BlockTags.BASE_STONE_OVERWORLD) || state.is(Tags.Blocks.ORES);
             if(!rock || !getMainHandItem().isCorrectToolForDrops(state)) return false;
             for(var direction:net.minecraft.core.Direction.values()) {
                 BlockPos adjacent=pos.relative(direction);
