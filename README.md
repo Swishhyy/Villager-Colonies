@@ -14,13 +14,15 @@ Implemented:
 
 - Persistent named settlements, owners, non-overlapping claims, and town priorities.
 - Settlement banner and nine role stations, with survival crafting recipes and a creative tab.
-- A default 150-block claim radius and red banners at the four claim corners.
+- A 240-block minimum claim radius and red banners at the four claim corners.
 - Automatic 7×7×7 station detection and live updates when nearby furniture/resources change.
 - A placement range outline and a Station Inspector for checking existing stations.
 - Deterministic ownership of overlapping beds, storage, and same-job work targets.
 - Housing and barracks beds count toward recruitment; hospital beds remain patient capacity.
 - Recruitable citizens with individual saved names, personal inventories, and custom job AI.
-- Guards with day/night posts, town patrols, melee defense, and real armor-stand equipment transfers.
+- Guards with day/night posts, town patrols, visible armor, and swords, spears, or bows they find themselves.
+- Bell alarms: when citizens sight a large hostile force, a guard runs to ring the town bell and civilians take cover until the all-clear.
+- Population-scaled hostile waves that arrive at night while the owner is home.
 - Autonomous harvesting and replanting of existing wheat, carrot, potato, and beetroot crops.
 - Whole-tree felling, player-placement protection, and planting from actual saplings in storage.
 - Automatic mine depth selection between Y −30 and 10, descending tunnels, accessible cave ore gathering, and full-chunk quarries.
@@ -28,13 +30,13 @@ Implemented:
 - Shared station crews, exclusive resource reservations, civilian nighttime rest, and guard duty through the night.
 - Save/reload support for settlement data, player block protection, replanting sites, excavation progress, cargo, tools, and meal timers.
 
-Planned: automatic housing construction, hauling specialists, medical treatment, military squads, raids, independent AI settlements, distant simulation, technology progression, convoys, and countries. A barracks station identifies troop housing in this build; it does not train soldiers yet. A hospital station identifies patient beds; it does not heal NPCs yet.
+Planned: automatic housing construction, hauling specialists, medical treatment, military squads, raids by rival settlements, independent AI settlements, distant simulation, technology progression, convoys, and countries. A barracks station identifies troop housing in this build; it does not train soldiers yet. A hospital station identifies patient beds; it does not heal NPCs yet.
 
 ## Try the first build
 
 Install the same mod JAR on the NeoForge 26.2 client and server. Use a new test world for this alpha.
 
-1. Craft or obtain a **Settlement Banner**, place it on solid ground with open space around it, and right-click it with an empty hand to found your town. New towns extend **150 blocks in each horizontal direction**, a 301×301 block footprint including the center. Red banners appear at the four corners when those chunks are loaded and the ground can support a banner. The mod does not load distant chunks to place them or replace obstructing blocks.
+1. Craft or obtain a **Settlement Banner**, place it on solid ground with open space around it, and right-click it with an empty hand to found your town. New towns extend **240 blocks in each horizontal direction**, a 481×481 block footprint including the center. Red banners appear at the four corners when those chunks are loaded and the ground can support a banner. The mod does not load distant chunks to place them or replace obstructing blocks.
 2. Build a small camp with beds. Place a **Housing Station** or **Barracks Station** inside it.
 3. Beds are detected automatically within **three blocks of the station on every axis**: a **7×7×7 cube**, including the station block. Both halves of each bed must fit inside the cube and your claim. No corner selection is required.
 4. Place a **Warehouse Station** within that same range of your chests or barrels. It detects multiple containers, including trapped and double chests. Stock food, axes, appropriate pickaxes, saplings, and cobblestone or other tunnel floor supplies. You can add or remove storage later without registering it again.
@@ -44,6 +46,7 @@ Install the same mod JAR on the NeoForge 26.2 client and server. Use a new test 
 8. Run `/wwmc recruit 3`. Recruitment is limited by loaded housing beds and the configured population cap. Citizens choose available crew slots, obtain supplies, work, and deliver cargo in batches.
 9. Right-click your citizen with an empty hand to open their **36-slot inventory** and see their activity. Add food, spare tools, saplings, or guard gear directly. Sneak-right-click releases their job; holding an item while interacting reports status. Use `/wwmc status` to inspect the town. Mine depths are automatic.
 10. Place a **Guard Station**, supply armor stands in its local range, and configure its day/night posts as described below. Up to two citizens become guards automatically; defense slots fill before production jobs.
+11. Hang a **bell** inside the town so guards can raise the alarm, and prepare for the first enemy wave once the town has three citizens. See [Alarms and enemy waves](#alarms-and-enemy-waves).
 
 **Range preview:** hold any station block and aim at a block face to see a blue outline at its prospective placement position. The outline accounts for replaceable grass/snow. It turns red when the placement context is blocked. Placing a station displays a green outline for about three seconds. Right-click an existing station with an empty hand to inspect its detected blocks and briefly show its range. The **Station Inspector** also previews an existing station while you aim at it and reports its contents when right-clicked.
 
@@ -81,6 +84,8 @@ When miners encounter caves near the selected depth, they scan a bounded nearby 
 | `/wwmc priority balanced` | Idle citizens prefer the nearest available job. |
 | `/wwmc priority food` | Idle citizens prefer available farm stations. |
 | `/wwmc priority materials` | Idle citizens prefer lumber/mining stations. |
+| `/wwmc alarm` | Sound the alarm yourself, or call the all-clear early while it rings. |
+| `/wwmc wave` | Bring the next enemy wave forward to now, even in daylight. |
 
 Commands affect your own settlement. A prototype supports one settlement per owner in the Overworld. Claims do not implement general-purpose land protection; station removal is owner-restricted. An occupied settlement's banner is its fixed rally point and cannot be mined normally.
 
@@ -102,13 +107,13 @@ Only loaded blocks inside the settlement claim count. Scanning never loads chunk
 | Lumber | Whole trees rooted in range, real sapling planting, and replanting. | Larger forestry areas and better species/terrain handling. |
 | Mine | Automatically chosen depth, staircase/branches, and accessible cave ores. | Cave exploration, reinforcement, lighting. |
 | Quarry | Full neighboring chunk excavation, layer by layer. | Machinery, dedicated haulage, liquid management. |
-| Guard | Day/night posts, settlement patrols, armor stand equipment, melee defense. | Squad orders, ranged combat, training. |
+| Guard | Day/night posts, patrols, armor and weapons from stands or storage, melee and archery, bell alarms. | Squad orders, training. |
 
 Marker blocks use vanilla textures as placeholder visuals. Stations declare use; this build does not infer enclosed rooms, roofs, or architectural quality. Work validates supplies, protection, reservations, loaded terrain, and access before changing blocks.
 
 Saves from 0.1.0-alpha keep their towns and stations, but old selected room bounds are ignored in favor of the fixed range. Reposition stations or furniture if an earlier selected room extended farther than three blocks. Existing surveyor items become Station Inspectors and retain the `wwmc:surveyor` ID and recipe.
 
-Existing towns retain their saved claim radius; the 150 default applies to newly founded towns. Older mine stations default to facing north and now use tunnel plans, so inspect or reposition them before assigning workers. Mine plans from 0.2.0-alpha receive a one-time automatic-depth replacement when used; existing excavated blocks remain air and grant no duplicate drops. New automatic plans keep their chosen depth across reloads. Quarry plans retain their existing progress. Legacy numbered citizen labels receive personal names when their citizens load; custom names are preserved. Old nine-slot cargo saves expand into the new inventory. Existing server configs may need `settlementRadius=150` to use the new default.
+Existing towns smaller than 240 blocks widen to the 240 minimum automatically unless the larger square would reach another town, in which case they keep their saved radius. A widened town gets new corner banners; the old ones stay as ordinary blocks you may remove. Older mine stations default to facing north and now use tunnel plans, so inspect or reposition them before assigning workers. Mine plans from 0.2.0-alpha receive a one-time automatic-depth replacement when used; existing excavated blocks remain air and grant no duplicate drops. New automatic plans keep their chosen depth across reloads. Quarry plans retain their existing progress. Legacy numbered citizen labels receive personal names when their citizens load; custom names are preserved. Old nine-slot cargo saves expand into the new inventory. Server configs with a `settlementRadius` below 240 are corrected to 240.
 
 ### Crafting
 
@@ -135,11 +140,18 @@ The generated WWMC server config controls these defaults:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `settlementRadius` | 150 | Horizontal radius of new towns. Saved towns retain their radius. |
+| `settlementRadius` | 240 | Horizontal radius of new towns; 240 is also the minimum. |
 | `maxCitizens` | 32 | Population cap, also limited by available housing beds. |
 | `stationWorkers` | 4 | Crew slots per farm, lumber station, or mine. |
 | `quarryWorkers` | 8 | Crew slots per quarry. |
 | `guardWorkers` | 2 | Guard crew slots per Guard Station. |
+| `alarmThreshold` | 10 | Hostiles citizens must sight at once before a guard runs to ring the bell. |
+| `enemyWaves` | true | Send hostile waves against towns while their owner is home. |
+| `waveMinPopulation` | 3 | Citizens a town needs before waves are scheduled. |
+| `waveIntervalDays` | 2 | Average in-game days between waves, ±25%. |
+| `waveBaseMobs` | 2 | Hostiles in every wave before population scaling. |
+| `waveMobsPerCitizen` | 0.5 | Extra hostiles per citizen, rounded up. |
+| `waveMaxMobs` | 40 | Largest possible wave. |
 | `mineMinY` | −30 | Lower endpoint for a new mine's randomly chosen depth. |
 | `mineMaxY` | 10 | Upper endpoint for a new mine's randomly chosen depth. |
 | `quarryTargetY` | −64 | Bottom depth when a new quarry plan is created. |
@@ -155,12 +167,21 @@ Workers use carried food, spare tools, saplings, and floor supplies before reque
 ### Guard stations and posts
 
 1. Craft a **Guard Station** from eight planks around an iron helmet and place it in your claim. Two citizens take its guard slots by default; `guardWorkers` changes that capacity. Guards stay on duty overnight while civilians rest.
-2. Put equipped **armor stands within three blocks of the station on each axis**. Guards approach accessible stands and take pieces for empty armor slots. Each actual piece disappears from the stand, keeps its durability/components, and can equip only one guard. Guards leave spare pieces for others once equipped. You can also put armor directly in a guard's inventory.
-3. Supply swords in the warehouse or personal inventory. Guards obtain a real sword when stock is available, consume weapon durability in combat, and fight unarmed if they lack one. Guards defend against nearby visible hostile monsters inside the town claim. They prioritize combat over supply trips.
-4. **Sneak-right-click the Guard Station with the Station Inspector.** Then right-click clear ground for the **day post**, followed by clear ground for the **night post**. Both positions need dry footing, headroom, and a location inside the same claim. The pair is saved together. Sneak-click ground during selection cancels it. Until configured, both posts default to the station.
-5. Guards return to the active post when the shift changes, roam among reachable town stations and nearby paths, and revisit the post periodically. Day duty runs from tick 23000 through 12999; night duty from 13000 through 22999. Post inspection reports both positions and crew size. Unloaded posts/terrain are never force-loaded.
+2. Put equipped **armor stands within three blocks of the station on each axis**. Guards approach accessible stands and take pieces for empty armor slots. Each actual piece disappears from the stand, keeps its durability/components, and can equip only one guard. Guards leave spare pieces for others once equipped. You can also put armor directly in a guard's inventory. Equipped armor is visible on the guard.
+3. Guards **look for weapons** themselves: one melee weapon (a **sword** or **spear**), one **bow**, and up to 32 **arrows** for it. They check their own bag, items held in the hands of armor stands in the station range (stands double as weapon racks), the warehouse, and loose weapons or arrows that have lain on the ground in town for five seconds, such as a fallen skeleton's bow. They take the strongest melee weapon available and swap up when they find a better one.
+4. In combat, a guard with a bow and arrows shoots enemies 5–24 blocks away when no citizen or player stands in the line of fire; each shot uses one real arrow and bow durability, and arrows are not recoverable. Closer in, they switch to their sword or spear; spears strike from about a block farther away. A guard without a melee weapon puts the bow away and fights unarmed. Weapons lose durability in use. Guards defend against nearby visible hostile monsters inside the town claim and prioritize combat over supply trips.
+5. **Sneak-right-click the Guard Station with the Station Inspector.** Then right-click clear ground for the **day post**, followed by clear ground for the **night post**. Both positions need dry footing, headroom, and a location inside the same claim. The pair is saved together. Sneak-click ground during selection cancels it. Until configured, both posts default to the station.
+6. Guards return to the active post when the shift changes, roam among reachable town stations and nearby paths, and revisit the post periodically. Day duty runs from tick 23000 through 12999; night duty from 13000 through 22999. Post inspection reports both positions and crew size. Unloaded posts/terrain are never force-loaded.
 
-Citizen visuals currently use vanilla villagers. Equipped guard armor affects the entity's actual equipment and defenses, but a dedicated guard model displaying the complete armor set is future work. Patrolling does not yet include formation orders, ranged weapons, or player/faction warfare.
+Citizens are drawn with the villager head, robe, and skin on a humanoid body with free arms, so armor, weapons, and tools are visible. Biome and profession clothing overlays are not drawn. Patrolling does not yet include formation orders or player/faction warfare.
+
+### Alarms and enemy waves
+
+**Noticing a threat.** Every second, the town counts the hostile monsters its citizens can see inside the claim: guards watch out to 24 blocks (32 during an alarm), other citizens only notice hostiles within 8 blocks. One or two monsters are left to the guards. When at least `alarmThreshold` (default **10**) are in sight at once, the guard closest to a **bell** within 96 blocks runs to ring it. Bells must be inside the claim and loaded. If that guard is killed, cannot find a path, or takes longer than a minute, another guard is sent. Without a reachable bell, you receive a warning instead and the town is not alerted.
+
+**The alarm.** Ringing the bell briefly makes nearby hostiles glow and tells you how many were sighted. While it rings, civilians stop working, flee hostiles from 20 blocks away instead of 12, and **duck and cover** at the nearest housing or barracks station (the banner if there is none). Alarms at night find civilians in their beds. A citizen may still volunteer for an empty guard slot. Guards stay at their posts instead of making supply trips unless they have no weapon, patrol faster, and engage from farther away. After **30 seconds** without a sighted hostile, the bell rings again for the **all-clear** and everyone returns to work. `/wwmc alarm` raises the alarm without a runner, or calls the all-clear early.
+
+**Enemy waves.** Once a town has `waveMinPopulation` (default **3**) citizens, a wave is scheduled about every `waveIntervalDays` (default **2**) in-game days. It arrives after sunset, only while you are online and within 64 blocks of the claim, and never while the previous wave's attackers are still alive. Waves contain `waveBaseMobs + waveMobsPerCitizen × population` hostiles, rounded up and capped at `waveMaxMobs`: four for a three-citizen town, 12 for 20 citizens, 18 for 32. Small towns face zombies; from 6 citizens a quarter of each wave are skeletons, and from 10 citizens 15% are spiders. The wave gathers 40–64 blocks from the banner on loaded open ground inside the claim, away from stations and at least 24 blocks from you, then marches on the banner and attacks citizens on sight. You are told its size and compass direction, and again when it has been repelled. Wave mobs do not despawn and remember their town across restarts. `/wwmc status` shows the alarm state and the next wave; `/wwmc wave` calls the next wave immediately. Peaceful difficulty prevents waves.
 
 ## Player direction and citizen autonomy
 
@@ -188,10 +209,10 @@ There is no generative AI or external service dependency. Initial decisions use 
 | Area | Responsibility |
 | --- | --- |
 | `core` | Minecraft-independent bounds, workforce leases, atomic target reservations, and tunnel/quarry geometry. |
-| `settlement` | Claims, block ownership/protection, forestry, saved excavation plans, commands, and inventory transfers. |
+| `settlement` | Claims, block ownership/protection, forestry, saved excavation plans, commands, inventory transfers, guard weapons, bell alarms, and enemy waves. |
 | `block` / `item` | Banner, automatic role stations, and station inspection. |
 | `entity` | Citizen goals, harvesting, supply trips, food, rest, and entity persistence. |
-| `client` / `WWMCClient` | Client renderer registration and transient range outlines; dedicated servers do not load rendering classes. |
+| `client` / `WWMCClient` | Citizen model/renderer and transient range outlines; dedicated servers do not load rendering classes. |
 | `src/main/resources` | Block/item models, language, drops, and recipes. |
 
 Settlement records are dimension SavedData under `wwmc:settlements`. Placement provenance, planting sites, and excavation progress use a separate `wwmc:world_work` record so older settlement saves remain readable. Normal world saves persist both; temporary crew and target reservations expire and are reconstructed after reload. All current gameplay changes happen on the logical server thread. Persistent IDs keep future diplomacy and military systems independent from entity instances.
@@ -207,16 +228,16 @@ Use a **Java 25 JDK**, not just a Java runtime. The Gradle wrapper and ModDevGra
 
 On Windows, use `gradlew.bat build` and `gradlew.bat runClient`. Development servers use `./gradlew runServer`.
 
-`build` runs regression checks for ranges, beds/storage, overlap ownership, shared crews, atomic target claims, tunnel/quarry geometry, random depth/shift boundaries, name uniqueness, construction-aware tree recognition, sapling conservation, local inventory conservation/backlog, armor transfers, save round-trips, legacy migration, and recipe/drop decoding with Minecraft's codecs. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
+`build` runs regression checks for ranges, beds/storage, overlap ownership, shared crews, atomic target claims, tunnel/quarry geometry, random depth/shift boundaries, name uniqueness, construction-aware tree recognition, sapling conservation, local inventory conservation/backlog, armor transfers, weapon classification/ranking, alarm thresholds and all-clear timing, wave sizes/composition/timing, claim widening, save round-trips, legacy migration, and recipe/drop decoding with Minecraft's codecs. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
 
-Automated checks do not replace an in-game playtest. Check previews, border placement, shared station crews, protected player logs, large-tree felling/replanting, tunnel/cave pathfinding, quarry obstructions, guard armor transfers/patrol/combat, inventory menus, tool breakage, bed use, and save/restart behavior before using this alpha in an important world.
+Automated checks do not replace an in-game playtest. Check previews, border placement, shared station crews, protected player logs, large-tree felling/replanting, tunnel/cave pathfinding, quarry obstructions, guard armor transfers/patrol/combat, weapon scavenging and archery, bell runs and civilian cover, wave spawning, inventory menus, tool breakage, bed use, and save/restart behavior before using this alpha in an important world.
 
 ## Development stages
 
-1. **Settlement foundation — this build:** claims, role blocks, shared crews, real inventory, crop/tree cycles, automatic tunnel/cave mining, quarries, named citizens, inventories, and guards.
+1. **Settlement foundation — this build:** claims, role blocks, shared crews, real inventory, crop/tree cycles, automatic tunnel/cave mining, quarries, named citizens, inventories, armed guards, bell alarms, and the first enemy waves.
 2. **Self-sustaining small town:** dedicated hauling, food processing, approved housing construction, robust room validation, and migration.
 3. **Living neighboring world:** persisted AI settlements, weighted distant events, history, player-distance generation, and mode handoff.
-4. **Military foundation:** build on town guards with trained soldiers, squad orders, ranged weapons, wounded citizens, and hospital treatment.
+4. **Military foundation:** build on town guards with trained soldiers, squad orders, wounded citizens, and hospital treatment.
 5. **Raids and trade:** independent targets, physical convoys, scouting, cargo loss, and supply disruption.
 6. **Countries and progression:** multiple towns, territory, diplomacy, sieges, varied faction technology, and conquest rules.
 

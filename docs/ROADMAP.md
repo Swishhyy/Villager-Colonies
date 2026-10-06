@@ -47,7 +47,7 @@ Hospital capacity is separate from permanent population capacity. Barracks housi
 
 ## Warfare and world progression
 
-Town guards currently provide local melee defense, patrols, and day/night posts. A dedicated visible armor model, ranged weapons, training, and coordinated squads come next after the economy works reliably. Soldiers consume equipment and food from actual production. Convoys have persistent IDs, source/destination, real reserved cargo, escort strength, and progress. Visible convoys instantiate that same cargo; raiding them consumes or transfers it once and affects the recipient's economy.
+Town guards currently wear visible armor, find their own swords, spears, bows, and arrows, patrol day/night posts, and ring the town bell when a large force appears. Population-scaled monster waves test those defenses. Training and coordinated squads come next after the economy works reliably; raids by rival settlements will reuse the alarm and wave machinery. Soldiers consume equipment and food from actual production. Convoys have persistent IDs, source/destination, real reserved cargo, escort strength, and progress. Visible convoys instantiate that same cargo; raiding them consumes or transfers it once and affects the recipient's economy.
 
 Independent settlements can grow into countries composed of multiple towns and shared territory. Local factions may have simpler technology alongside different terrain knowledge, motives, and combat strengths. Technology research should unlock actual production capabilities; its final ceiling is not decided yet.
 

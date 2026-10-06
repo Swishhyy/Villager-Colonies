@@ -6,12 +6,13 @@ import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -35,12 +36,9 @@ public final class WaveService {
     private static final int INTERVAL=100,RETRY_TICKS=1200,SPREAD=4,MIN_DISTANCE=40,MAX_DISTANCE=64;
     /** Wave mobs still alive per town, so the owner hears when a wave is beaten. */
     private static final Map<UUID,Integer> ACTIVE=new HashMap<>();
-    private static EntityType<? extends Mob> type(WavePlan.Attacker attacker) {
-        return switch(attacker) {
-            case ZOMBIE -> EntityType.ZOMBIE;
-            case SKELETON -> EntityType.SKELETON;
-            case SPIDER -> EntityType.SPIDER;
-        };
+    private static Mob create(ServerLevel level,WavePlan.Attacker attacker) {
+        var type=BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.withDefaultNamespace(attacker.name().toLowerCase(Locale.ROOT)));
+        return type.create(level,EntitySpawnReason.EVENT) instanceof Mob mob ? mob : null;
     }
     public static int size(Settlement town) {
         return WavePlan.size(town.citizens.size(),Config.WAVE_BASE_MOBS.get(),Config.WAVE_MOBS_PER_CITIZEN.get(),Config.WAVE_MAX_MOBS.get());
@@ -94,7 +92,7 @@ public final class WaveService {
                 for(int attempt=0;attempt<8 && pos==null;attempt++)
                     pos=ground(level,town,site.getX()+random.nextInt(SPREAD*2+1)-SPREAD,site.getZ()+random.nextInt(SPREAD*2+1)-SPREAD);
                 if(pos==null) pos=site;
-                Mob mob=type(entry.getKey()).create(level,EntitySpawnReason.EVENT);
+                Mob mob=create(level,entry.getKey());
                 if(mob==null) continue;
                 mob.setPos(pos.getX()+0.5,pos.getY(),pos.getZ()+0.5);
                 mob.setYRot(random.nextFloat()*360.0F);
@@ -116,7 +114,7 @@ public final class WaveService {
         mob.setPersistenceRequired(); mob.addTag(WAVE_TAG); mob.addTag(TOWN_TAG+town.id);
     }
     private static Settlement townOf(ServerLevel level,Mob mob) {
-        for(String tag:mob.getTags()) if(tag.startsWith(TOWN_TAG)) {
+        for(String tag:mob.entityTags()) if(tag.startsWith(TOWN_TAG)) {
             try { return SettlementData.get(level).byId(UUID.fromString(tag.substring(TOWN_TAG.length()))); }
             catch(IllegalArgumentException e) { return null; }
         }
@@ -126,7 +124,7 @@ public final class WaveService {
         int reach=town.radius+MAX_DISTANCE;
         AABB area=new AABB(town.center.getX()-reach,level.getMinY(),town.center.getZ()-reach,town.center.getX()+reach+1,level.getMaxY(),town.center.getZ()+reach+1);
         String tag=TOWN_TAG+town.id;
-        return level.getEntitiesOfClass(Mob.class,area,m -> m.isAlive() && m.getTags().contains(tag)).size();
+        return level.getEntitiesOfClass(Mob.class,area,m -> m.isAlive() && m.entityTags().contains(tag)).size();
     }
     private static void schedule(ServerLevel level,Settlement town) {
         town.nextWave=level.getGameTime()+WavePlan.delay(Config.WAVE_INTERVAL_DAYS.get(),level.getRandom()::nextInt);
@@ -162,7 +160,7 @@ public final class WaveService {
     }
     /** Goals are not saved with entities, so wave mobs receive their orders whenever they enter the level. */
     @SubscribeEvent public void join(EntityJoinLevelEvent event) {
-        if(!(event.getLevel() instanceof ServerLevel level) || !(event.getEntity() instanceof Mob mob) || !mob.getTags().contains(WAVE_TAG)) return;
+        if(!(event.getLevel() instanceof ServerLevel level) || !(event.getEntity() instanceof Mob mob) || !mob.entityTags().contains(WAVE_TAG)) return;
         Settlement town=townOf(level,mob);
         if(town==null) return;
         mob.targetSelector.addGoal(3,new NearestAttackableTargetGoal<>(mob,CitizenEntity.class,true));
