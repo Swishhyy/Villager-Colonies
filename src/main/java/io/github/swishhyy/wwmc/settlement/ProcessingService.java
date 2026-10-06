@@ -17,6 +17,7 @@ import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.entity.CampfireBlockEntity;
+import net.minecraft.world.level.block.entity.FuelValues;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.common.Tags;
 
@@ -47,17 +48,26 @@ public final class ProcessingService {
         return input(level,role,type(level,pos),stack);
     }
     public static boolean input(ServerLevel level,StructureRole role,RecipeType<? extends AbstractCookingRecipe> type,ItemStack stack) {
-        return !stack.isEmpty() && (role==StructureRole.SMELTERY ? rawMetal(stack) : role==StructureRole.COOK && rawFood(stack))
+        return ingredient(role,stack)
                 && level.getServer().getRecipeManager().getRecipeFor(type,new SingleRecipeInput(stack),level).isPresent();
     }
+    public static boolean ingredient(StructureRole role,ItemStack stack) {
+        return !stack.isEmpty() && (role==StructureRole.SMELTERY ? rawMetal(stack) : role==StructureRole.COOK && rawFood(stack));
+    }
     public static boolean fuel(ServerLevel level,ItemStack stack) {
+        return fuel(level.fuelValues(),stack);
+    }
+    public static boolean fuel(FuelValues fuels,ItemStack stack) {
         // Bucket fuels would also require hauling the empty remainder; use ordinary consumed fuels here.
         return !stack.isEmpty() && stack.getCraftingRemainder()==null
-                && stack.getBurnTime(RecipeType.SMELTING,level.fuelValues())>0;
+                && stack.getBurnTime(RecipeType.SMELTING,fuels)>0;
     }
     public static boolean supply(ServerLevel level,StructureRole role,ItemStack stack) {
-        return role==StructureRole.SMELTERY && (rawMetal(stack) || fuel(level,stack))
-                || role==StructureRole.COOK && (stack.is(Items.WHEAT) || fuel(level,stack)
+        return supply(level.fuelValues(),role,stack);
+    }
+    public static boolean supply(FuelValues fuels,StructureRole role,ItemStack stack) {
+        return role==StructureRole.SMELTERY && (rawMetal(stack) || fuel(fuels,stack))
+                || role==StructureRole.COOK && (stack.is(Items.WHEAT) || fuel(fuels,stack)
                     || rawFood(stack) && !cookedFood(stack));
     }
     public static boolean hasInputs(ServerLevel level,StructureRole role,BlockPos pos,List<Container> sources) {

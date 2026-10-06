@@ -14,6 +14,10 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.SingleRecipeInput;
+import net.minecraft.world.item.crafting.AbstractCookingRecipe;
+import net.minecraft.world.level.block.entity.FuelValues;
+import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CampfireBlock;
 import org.junit.jupiter.api.Test;
@@ -46,28 +50,33 @@ public final class GuardProcessingChecks {
         assertEquals(List.of(b),book.members("west",205),"A sleeping guard's renewed lease survives the old expiry");
         assertTrue(book.members("east",205).isEmpty(),"Absent guards cannot keep a station falsely staffed");
     }
+    /** Vanilla cooking matching only examines the ingredient; the provider supplies recipes without a live world. */
+    private static boolean processable(MinecraftServer server,StructureRole role,RecipeType<? extends AbstractCookingRecipe> type,ItemStack stack) {
+        return ProcessingService.ingredient(role,stack) && server.getRecipeManager().recipeMap().byType(type).stream()
+                .anyMatch(recipe -> recipe.value().matches(new SingleRecipeInput(stack),null));
+    }
     @Test @ExtendWith(EphemeralTestServerProvider.class)
     void ingredientsUseTheAppliancesLoadedRecipes(MinecraftServer server) {
-        var level=server.overworld();
+        var fuels=FuelValues.vanillaBurnTimes(server.registryAccess(),FeatureFlags.DEFAULT_FLAGS,200);
         for(var item:List.of(Items.RAW_IRON,Items.RAW_COPPER,Items.RAW_GOLD,Items.IRON_ORE,Items.DEEPSLATE_GOLD_ORE)) {
-            assertTrue(ProcessingService.input(level,StructureRole.SMELTERY,RecipeType.SMELTING,new ItemStack(item)));
-            assertTrue(ProcessingService.input(level,StructureRole.SMELTERY,RecipeType.BLASTING,new ItemStack(item)));
+            assertTrue(processable(server,StructureRole.SMELTERY,RecipeType.SMELTING,new ItemStack(item)));
+            assertTrue(processable(server,StructureRole.SMELTERY,RecipeType.BLASTING,new ItemStack(item)));
         }
-        assertTrue(ProcessingService.input(level,StructureRole.SMELTERY,RecipeType.SMELTING,new ItemStack(Items.DIAMOND_ORE)));
-        assertFalse(ProcessingService.input(level,StructureRole.SMELTERY,RecipeType.SMELTING,new ItemStack(Items.COBBLESTONE)),"Smelters only process raw metals and ores");
+        assertTrue(processable(server,StructureRole.SMELTERY,RecipeType.SMELTING,new ItemStack(Items.DIAMOND_ORE)));
+        assertFalse(processable(server,StructureRole.SMELTERY,RecipeType.SMELTING,new ItemStack(Items.COBBLESTONE)),"Smelters only process raw metals and ores");
         for(var item:List.of(Items.BEEF,Items.CHICKEN,Items.PORKCHOP,Items.COD,Items.POTATO,Items.KELP)) {
-            assertTrue(ProcessingService.input(level,StructureRole.COOK,RecipeType.SMOKING,new ItemStack(item)));
-            assertTrue(ProcessingService.input(level,StructureRole.COOK,RecipeType.CAMPFIRE_COOKING,new ItemStack(item)));
+            assertTrue(processable(server,StructureRole.COOK,RecipeType.SMOKING,new ItemStack(item)));
+            assertTrue(processable(server,StructureRole.COOK,RecipeType.CAMPFIRE_COOKING,new ItemStack(item)));
         }
-        assertFalse(ProcessingService.input(level,StructureRole.COOK,RecipeType.SMOKING,new ItemStack(Items.COOKED_BEEF)));
-        assertFalse(ProcessingService.input(level,StructureRole.COOK,RecipeType.SMOKING,new ItemStack(Items.WHEAT)),"Bread uses three real wheat instead of an invented one-wheat smelting recipe");
-        assertTrue(ProcessingService.fuel(level,new ItemStack(Items.COAL)));
-        assertTrue(ProcessingService.fuel(level,new ItemStack(Items.CHARCOAL)));
-        assertFalse(ProcessingService.fuel(level,new ItemStack(Items.STONE)));
-        assertFalse(ProcessingService.fuel(level,new ItemStack(Items.LAVA_BUCKET)),"Container fuels are left for manual loading");
-        assertTrue(ProcessingService.supply(level,StructureRole.COOK,new ItemStack(Items.BEEF)));
-        assertTrue(ProcessingService.supply(level,StructureRole.COOK,new ItemStack(Items.WHEAT)));
-        assertFalse(ProcessingService.supply(level,StructureRole.COOK,new ItemStack(Items.COOKED_BEEF)),"Finished food is delivered instead of retained as an ingredient");
+        assertFalse(processable(server,StructureRole.COOK,RecipeType.SMOKING,new ItemStack(Items.COOKED_BEEF)));
+        assertFalse(processable(server,StructureRole.COOK,RecipeType.SMOKING,new ItemStack(Items.WHEAT)),"Bread uses three real wheat instead of an invented one-wheat smelting recipe");
+        assertTrue(ProcessingService.fuel(fuels,new ItemStack(Items.COAL)));
+        assertTrue(ProcessingService.fuel(fuels,new ItemStack(Items.CHARCOAL)));
+        assertFalse(ProcessingService.fuel(fuels,new ItemStack(Items.STONE)));
+        assertFalse(ProcessingService.fuel(fuels,new ItemStack(Items.LAVA_BUCKET)),"Container fuels are left for manual loading");
+        assertTrue(ProcessingService.supply(fuels,StructureRole.COOK,new ItemStack(Items.BEEF)));
+        assertTrue(ProcessingService.supply(fuels,StructureRole.COOK,new ItemStack(Items.WHEAT)));
+        assertFalse(ProcessingService.supply(fuels,StructureRole.COOK,new ItemStack(Items.COOKED_BEEF)),"Finished food is delivered instead of retained as an ingredient");
     }
     @Test @ExtendWith(EphemeralTestServerProvider.class)
     void furnaceSlotTransfersConserveItemsAndComponents(MinecraftServer server) {

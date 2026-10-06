@@ -621,6 +621,7 @@ public final class CitizenEntity extends Villager {
         if(bell!=null) { wakeForAlarm(); runToBell(level,town,bell); return; }
         boolean alarm=DefenseService.alarmed(town);
         if(!GuardService.onDuty(level,town,station.position(),getUUID())) {
+            if(activePost!=null) { activePost=null; patrolTarget=null; getNavigation().stop(); }
             setTarget(null); if(isUsingItem()) stopUsingItem();
             useLocalSupplies(StructureRole.GUARD); rest(level,town);
             activity="Off duty: "+activity; return;
@@ -641,7 +642,8 @@ public final class CitizenEntity extends Villager {
         boolean resupply=alarm ? armoryStocked && !carries(GuardWeapons::weapon) : deliverCargo() || mealTicks<=0 || armoryStocked;
         if(resupply && level.getGameTime()>=guardSupplyAt) {
             BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
-            if(!visitWarehouse(level,town,StructureRole.GUARD) && warehouse!=null && !near(warehouse)) return;
+            if(warehouse!=null && (near(warehouse) || canReach(warehouse))
+                    && !visitWarehouse(level,town,StructureRole.GUARD) && !near(warehouse)) return;
             // An empty pantry must not leave the station's only sentry waiting there forever.
             guardSupplyAt=level.getGameTime()+200;
             armoryStocked=false;
