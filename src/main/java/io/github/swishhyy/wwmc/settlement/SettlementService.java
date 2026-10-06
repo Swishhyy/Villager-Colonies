@@ -27,6 +27,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Player;
@@ -59,6 +60,7 @@ public final class SettlementService {
             case GUARD -> Config.GUARD_WORKERS.get();
             case CRAFTSMAN -> Config.CRAFTSMAN_WORKERS.get();
             case SMELTERY,COOK -> Config.PROCESSING_WORKERS.get();
+            case BLACKSMITH -> Config.BLACKSMITH_WORKERS.get();
             default -> Config.STATION_WORKERS.get();
         };
     }
@@ -191,10 +193,21 @@ public final class SettlementService {
             case CRAFTSMAN -> "workbench for warehouse orders (stock/target: "+Crafting.status(storage(level,town),town.disabledRecipes)+")";
             case SMELTERY -> processingDevices(level,town,station).size()+" furnaces/blast furnaces; smelts warehouse raw metals and ores using real fuel";
             case COOK -> processingDevices(level,town,station).size()+" smokers/lit campfires; cooks raw food and makes bread from three wheat";
+            case BLACKSMITH -> anvils(level,town,station).size()+" anvils; repairs warehouse tools/weapons and worn guard-stand armor using matching repair materials";
         };
         tell(player,station.role().id()+" station: "+found+(station.role().excavates() ? ". Facing "+station.facing().name().toLowerCase(Locale.ROOT)+"." : " in its 7x7x7 range.")+
                 (station.role().providesWork() ? " Crew: "+workers(level).count(pos,level.getGameTime())+"/"+workerLimit(station)+"." : "")+
                 " Only loaded blocks inside the claim count.");
+    }
+    public static List<BlockPos> anvils(ServerLevel level,Settlement town,Station station) {
+        if(station.role()!=StructureRole.BLACKSMITH || !active(level,station)) return List.of();
+        return resourcePositions(level,town,station,() -> {
+            List<BlockPos> found=new ArrayList<>();
+            for(BlockPos pos:cells(station)) if(availableCell(level,town,pos) && StationDetection.anvil(level.getBlockState(pos))
+                    && ownsBlock(level,town,station,pos)) found.add(pos.immutable());
+            return found;
+        }).stream().filter(pos -> availableCell(level,town,pos) && StationDetection.anvil(level.getBlockState(pos))
+                && ownsBlock(level,town,station,pos)).toList();
     }
     public static List<Container> storage(ServerLevel level,Settlement settlement) {
         return storageAt(level,settlement,null);
@@ -300,6 +313,12 @@ public final class SettlementService {
     }
     @SubscribeEvent public void commands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("wwmc")
+            .then(Commands.literal("guide").executes(c -> {
+                ServerPlayer player=c.getSource().getPlayerOrException();
+                ItemStack book=WWMC.GUIDE.get().getDefaultInstance();
+                if(!player.getInventory().add(book)) player.drop(book,false);
+                tell(player,"Settlement Guide received. Right-click it to read recipes and town instructions."); return 1;
+            }))
             .then(Commands.literal("status").executes(c -> {
                 Settlement s=owned(c.getSource());
                 if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }

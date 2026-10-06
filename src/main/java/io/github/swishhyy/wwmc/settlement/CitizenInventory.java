@@ -50,6 +50,19 @@ public final class CitizenInventory extends SimpleContainer {
     }
     public boolean hasPending() { return !pending.isEmpty(); }
     public List<ItemStack> pendingItems() { return pending.stream().map(ItemStack::copy).toList(); }
+    /** A real stack in either the bag or its saved overflow; used to return armor even when the bag is full. */
+    public ItemStack first(Predicate<ItemStack> eligible) {
+        for(int slot=0;slot<SIZE;slot++) if(!getItem(slot).isEmpty() && eligible.test(getItem(slot))) return getItem(slot);
+        for(ItemStack stack:pending) if(!stack.isEmpty() && eligible.test(stack)) return stack;
+        return ItemStack.EMPTY;
+    }
+    public void replace(ItemStack original,ItemStack replacement) {
+        for(int slot=0;slot<SIZE;slot++) if(getItem(slot)==original) { setItem(slot,replacement); return; }
+        for(int index=0;index<pending.size();index++) if(pending.get(index)==original) {
+            if(replacement.isEmpty()) pending.remove(index); else pending.set(index,replacement);
+            return;
+        }
+    }
     public int count(Item item) {
         int total=0;
         for(int slot=0;slot<SIZE;slot++) if(getItem(slot).is(item)) total+=getItem(slot).getCount();

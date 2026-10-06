@@ -30,6 +30,7 @@ public final class StationDetection {
             default -> false;
         };
     }
+    public static boolean anvil(BlockState state) { return state.is(BlockTags.ANVIL); }
     public static boolean workBlock(StructureRole role, BlockState state) {
         return switch(role) {
             case FARM -> state.getBlock() instanceof CropBlock crop && crop.isMaxAge(state)
