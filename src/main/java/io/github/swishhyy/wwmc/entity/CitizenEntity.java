@@ -727,7 +727,7 @@ public final class CitizenEntity extends Villager {
             return;
         }
         getNavigation().stop(); pathTicks=0;
-        int collected=ProcessingService.service(level,station.role(),processor,cargo);
+        int collected=ProcessingService.service(level,station.role(),processor,cargo,this);
         swing(InteractionHand.MAIN_HAND);
         activity=station.role()==StructureRole.COOK ? "Supplying the kitchen and collecting cooked food" : "Supplying furnaces and collecting smelted ores";
         if(collected==0 && !ProcessingService.busy(level,processor) && !ProcessingService.hasInputs(level,station.role(),processor,List.of(cargo))) {

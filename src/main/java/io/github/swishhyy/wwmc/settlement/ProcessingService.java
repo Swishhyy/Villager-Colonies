@@ -7,6 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -86,7 +87,7 @@ public final class ProcessingService {
         }
     }
     /** Return the number of finished items collected; never synthesize the recipe's result. */
-    public static int service(ServerLevel level,StructureRole role,BlockPos pos,CitizenInventory bag) {
+    public static int service(ServerLevel level,StructureRole role,BlockPos pos,CitizenInventory bag,LivingEntity worker) {
         if(!level.hasChunkAt(pos) || !StationDetection.processingBlock(role,level.getBlockState(pos))) return 0;
         if(level.getBlockEntity(pos) instanceof AbstractFurnaceBlockEntity furnace) {
             ItemStack output=furnace.removeItemNoUpdate(2);
@@ -108,7 +109,7 @@ public final class ProcessingService {
             for(int i=0;i<4;i++) {
                 ItemStack held=InventoryOps.takeOne(List.of(bag),s -> input(level,role,pos,s));
                 if(held.isEmpty()) break;
-                boolean placed=campfire.placeFood(level,held);
+                boolean placed=campfire.placeFood(level,worker,held);
                 if(!held.isEmpty()) bag.offer(held);
                 if(!placed) break;
             }
