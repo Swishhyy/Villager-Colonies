@@ -9,11 +9,12 @@ import net.minecraft.core.BlockPos;
 
 /** Share detected resource locations for one second. Callers still validate each location against the live world. */
 public final class StationResourceCache {
-    private record Key(UUID town,Station station) {}
+    /** One station can own several kinds of resource, such as a smeltery's furnaces and its barrels. */
+    private record Key(UUID town,Station station,String kind) {}
     private record Scan(long until,int radius,List<Station> stations,List<BlockPos> positions) {}
     private final Map<Key,Scan> scans=new HashMap<>();
-    public List<BlockPos> positions(Settlement town,Station station,long now,Supplier<List<BlockPos>> detect) {
-        Key key=new Key(town.id,station);
+    public List<BlockPos> positions(Settlement town,Station station,String kind,long now,Supplier<List<BlockPos>> detect) {
+        Key key=new Key(town.id,station,kind);
         Scan cached=scans.get(key);
         if(cached==null || now>=cached.until() || cached.radius()!=town.radius || !cached.stations().equals(town.stations)) {
             List<BlockPos> positions=detect.get().stream().map(BlockPos::immutable).toList();

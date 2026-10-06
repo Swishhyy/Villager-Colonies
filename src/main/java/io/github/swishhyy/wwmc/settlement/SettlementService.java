@@ -13,6 +13,7 @@ import io.github.swishhyy.wwmc.core.RoomBounds;
 import io.github.swishhyy.wwmc.core.ShiftClock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
+import io.github.swishhyy.wwmc.menu.Panels;
 import java.util.*;
 import java.util.function.Supplier;
 import net.minecraft.commands.CommandSourceStack;
@@ -32,6 +33,7 @@ import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -46,8 +48,8 @@ public final class SettlementService {
     private static final Map<ServerLevel,WorkforceBook<BlockPos>> WORKFORCE=new WeakHashMap<>();
     /** Cache locations briefly, never inventory contents or loaded chunk references. */
     private static final Map<ServerLevel,StationResourceCache> RESOURCE_SCANS=new WeakHashMap<>();
-    private static List<BlockPos> resourcePositions(ServerLevel level,Settlement town,Station station,Supplier<List<BlockPos>> scan) {
-        return RESOURCE_SCANS.computeIfAbsent(level,l -> new StationResourceCache()).positions(town,station,level.getGameTime(),scan);
+    private static List<BlockPos> resourcePositions(ServerLevel level,Settlement town,Station station,String kind,Supplier<List<BlockPos>> scan) {
+        return RESOURCE_SCANS.computeIfAbsent(level,l -> new StationResourceCache()).positions(town,station,kind,level.getGameTime(),scan);
     }
     private static void refreshResources(ServerLevel level,Settlement town) {
         StationResourceCache scans=RESOURCE_SCANS.get(level);
@@ -56,6 +58,8 @@ public final class SettlementService {
     public static WorkforceBook<BlockPos> workers(ServerLevel level) { return WORKFORCE.computeIfAbsent(level,l -> new WorkforceBook<>()); }
     public static int workerLimit(Station station) {
         return switch(station.role()) {
+            case FARM -> Config.FARM_WORKERS.get();
+            case COURIER -> Config.COURIER_WORKERS.get();
             case QUARRY -> Config.QUARRY_WORKERS.get();
             case GUARD -> Config.GUARD_WORKERS.get();
             case CRAFTSMAN -> Config.CRAFTSMAN_WORKERS.get();
@@ -70,19 +74,27 @@ public final class SettlementService {
     public static void tell(Player player,String text) {
         if(player instanceof ServerPlayer serverPlayer) serverPlayer.sendSystemMessage(Component.literal(text));
     }
+    /** A short notice above the hotbar instead of a chat line. */
+    public static void notify(Player player,String text) {
+        if(player instanceof ServerPlayer serverPlayer) serverPlayer.sendOverlayMessage(Component.literal(text));
+    }
     public static boolean owns(Player player,Settlement settlement) { return settlement!=null && settlement.owner.equals(player.getUUID()); }
     public static boolean night(ServerLevel level) {
         return ShiftClock.night(level.clockManager().getTotalTicks(level.registryAccess().getOrThrow(WorldClocks.OVERWORLD)));
     }
 
     public static void foundOrInspect(ServerLevel level,Player player,BlockPos pos) {
-        if(!level.dimension().equals(Level.OVERWORLD)) { tell(player,"Settlements currently belong in the Overworld."); return; }
+        if(!level.dimension().equals(Level.OVERWORLD)) { notify(player,"Settlements currently belong in the Overworld."); return; }
         SettlementData data=SettlementData.get(level);
         Settlement present=data.at(pos);
-        if(present!=null) { tell(player,status(level,present)); return; }
+        if(present!=null) {
+            if(owns(player,present) && present.center.equals(pos) && player instanceof ServerPlayer viewer) Panels.openTown(viewer,present);
+            else notify(player,present.name+": "+present.citizens.size()+" citizens"+(owns(player,present) ? ". Open the town screen at its banner." : "."));
+            return;
+        }
         int radius=Config.SETTLEMENT_RADIUS.get();
-        if(data.settlements.stream().anyMatch(s -> s.overlaps(pos,radius))) { tell(player,"Move your banner farther away: settlement claims cannot overlap."); return; }
-        if(data.settlements.stream().anyMatch(s -> s.owner.equals(player.getUUID()))) { tell(player,"You already own a settlement. Multiple towns are planned for a later build."); return; }
+        if(data.settlements.stream().anyMatch(s -> s.overlaps(pos,radius))) { notify(player,"Move your banner farther away: settlement claims cannot overlap."); return; }
+        if(data.settlements.stream().anyMatch(s -> s.owner.equals(player.getUUID()))) { notify(player,"You already own a settlement. Multiple towns are planned for a later build."); return; }
         Settlement settlement=new Settlement(UUID.randomUUID(),player.getUUID(),player.getName().getString()+"'s settlement",pos,radius,List.of(),List.of(),"balanced");
         data.settlements.add(settlement); data.setDirty();
         placeBorders(level,settlement);
@@ -91,19 +103,18 @@ public final class SettlementService {
     public static void registerStation(ServerLevel level,Player player,BlockPos pos,StructureRole role) {
         SettlementData data=SettlementData.get(level);
         Settlement settlement=data.at(pos);
-        if(!owns(player,settlement)) { tell(player,"Place stations inside your own settlement claim."); return; }
+        if(!owns(player,settlement)) { notify(player,"Place stations inside your own settlement claim."); return; }
         if(settlement.station(pos)==null) {
             var state=level.getBlockState(pos);
             Station station=new Station(pos,role,state.getValue(StationBlock.FACING));
             if(role==StructureRole.QUARRY) {
                 var bounds=MiningLayout.quarry(pos.getX(),pos.getZ(),station.facing().getStepX(),station.facing().getStepZ(),pos.getY(),pos.getY());
                 if(!settlement.contains(new BlockPos(bounds.minX(),pos.getY(),bounds.minZ())) || !settlement.contains(new BlockPos(bounds.maxX(),pos.getY(),bounds.maxZ()))) {
-                    tell(player,"The full chunk in front of this quarry must fit inside your town claim. Move or turn the station."); return;
+                    notify(player,"The full chunk in front of this quarry must fit inside your town claim. Move or turn the station."); return;
                 }
             }
             settlement.stations.add(station); data.setDirty();
-            tell(player,"Registered "+role.id()+" station."+(role.excavates() ? " Excavation plans stay inside your claim." : " Nearby blocks are detected automatically in its 7x7x7 range."));
-            inspectStation(level,player,pos);
+            notify(player,"Registered the "+role.title()+" Station. Right-click it to open its screen.");
         }
     }
     public static boolean active(ServerLevel level,Station station) {
@@ -127,7 +138,7 @@ public final class SettlementService {
     public static List<BlockPos> beds(ServerLevel level,Settlement town,Station station) {
         if(!station.role().detectsBeds() || !active(level,station)) return List.of();
         List<BlockPos> result=new ArrayList<>();
-        for(BlockPos pos:resourcePositions(level,town,station,() -> scanBeds(level,town,station))) {
+        for(BlockPos pos:resourcePositions(level,town,station,"beds",() -> scanBeds(level,town,station))) {
             // A cached location cannot keep a broken, obstructed, reassigned or unloaded bed usable.
             if(!availableCell(level,town,pos)) continue;
             var head=level.getBlockState(pos);
@@ -159,7 +170,7 @@ public final class SettlementService {
         for(Station station:settlement.stations) if(station.role().providesHousing()) result.addAll(beds(level,settlement,station));
         return new ArrayList<>(result);
     }
-    private static int workBlocks(ServerLevel level,Settlement town,Station station) {
+    public static int workBlocks(ServerLevel level,Settlement town,Station station) {
         int count=0;
         for(BlockPos pos:cells(station)) if(availableCell(level,town,pos) && !protectedFurniture(town,pos)
                 && StationDetection.workBlock(station.role(),level.getBlockState(pos)) && ownsBlock(level,town,station,pos)) count++;
@@ -167,7 +178,7 @@ public final class SettlementService {
     }
     public static List<BlockPos> processingDevices(ServerLevel level,Settlement town,Station station) {
         if(!station.role().processes() || !active(level,station)) return List.of();
-        return resourcePositions(level,town,station,() -> {
+        return resourcePositions(level,town,station,"devices",() -> {
             List<BlockPos> found=new ArrayList<>();
             for(BlockPos pos:cells(station)) if(availableCell(level,town,pos)
                     && StationDetection.processingBlock(station.role(),level.getBlockState(pos))
@@ -177,31 +188,18 @@ public final class SettlementService {
                 && StationDetection.processingBlock(station.role(),level.getBlockState(pos))
                 && ownsBlock(level,town,station,pos)).toList();
     }
+    /** The owner gets the station's screen; anyone else a one-line notice. */
     public static void inspectStation(ServerLevel level,Player player,BlockPos pos) {
         Settlement town=SettlementData.get(level).at(pos);
         if(town==null || town.station(pos)==null) return;
         Station station=town.station(pos);
         refreshResources(level,town);
-        String found=switch(station.role()) {
-            case HOUSING,BARRACKS -> beds(level,town,station).size()+" housing beds";
-            case HOSPITAL -> beds(level,town,station).size()+" patient beds (medical treatment is planned)";
-            case WAREHOUSE -> storageAt(level,town,pos).size()+" chest/barrel storage blocks";
-            case FARM -> workBlocks(level,town,station)+" mature crops";
-            case LUMBER -> "natural trees + sapling planting sites";
-            case MINE,QUARRY -> ExcavationService.status(level,town,station);
-            case GUARD -> GuardService.status(level,station);
-            case CRAFTSMAN -> "workbench for warehouse orders (stock/target: "+Crafting.status(storage(level,town),town.disabledRecipes)+")";
-            case SMELTERY -> processingDevices(level,town,station).size()+" furnaces/blast furnaces; smelts warehouse raw metals and ores using real fuel";
-            case COOK -> processingDevices(level,town,station).size()+" smokers/lit campfires; cooks raw food and makes bread from three wheat";
-            case BLACKSMITH -> anvils(level,town,station).size()+" anvils; repairs warehouse tools/weapons and worn guard-stand armor using matching repair materials";
-        };
-        tell(player,station.role().id()+" station: "+found+(station.role().excavates() ? ". Facing "+station.facing().name().toLowerCase(Locale.ROOT)+"." : " in its 7x7x7 range.")+
-                (station.role().providesWork() ? " Crew: "+workers(level).count(pos,level.getGameTime())+"/"+workerLimit(station)+"." : "")+
-                " Only loaded blocks inside the claim count.");
+        if(owns(player,town) && player instanceof ServerPlayer viewer) Panels.openStation(viewer,town,station);
+        else notify(player,"This "+station.role().title()+" Station belongs to "+town.name+".");
     }
     public static List<BlockPos> anvils(ServerLevel level,Settlement town,Station station) {
         if(station.role()!=StructureRole.BLACKSMITH || !active(level,station)) return List.of();
-        return resourcePositions(level,town,station,() -> {
+        return resourcePositions(level,town,station,"anvils",() -> {
             List<BlockPos> found=new ArrayList<>();
             for(BlockPos pos:cells(station)) if(availableCell(level,town,pos) && StationDetection.anvil(level.getBlockState(pos))
                     && ownsBlock(level,town,station,pos)) found.add(pos.immutable());
@@ -217,7 +215,7 @@ public final class SettlementService {
         for(Station station:settlement.stations) {
             if(station.role()!=StructureRole.WAREHOUSE || !active(level,station)) continue;
             if(selectedWarehouse!=null && !station.position().equals(selectedWarehouse)) continue;
-            for(BlockPos pos:resourcePositions(level,settlement,station,() -> scanStorage(level,settlement,station))) {
+            for(BlockPos pos:resourcePositions(level,settlement,station,"storage",() -> scanStorage(level,settlement,station))) {
                 if(availableCell(level,settlement,pos) && StationDetection.storageBlock(level.getBlockState(pos))
                         && ownsBlock(level,settlement,station,pos)) positions.add(pos.immutable());
             }
@@ -232,6 +230,35 @@ public final class SettlementService {
         for(BlockPos pos:cells(station)) if(availableCell(level,town,pos) && StationDetection.storageBlock(level.getBlockState(pos))
                 && ownsBlock(level,town,station,pos)) positions.add(pos.immutable());
         return positions;
+    }
+    /** Barrels in a work station's range that no warehouse range covers. Where job ranges overlap, the nearest job owns each barrel. */
+    public static List<BlockPos> jobBarrels(ServerLevel level,Settlement town,Station station) {
+        if(!station.role().keepsJobStorage() || !active(level,station)) return List.of();
+        return resourcePositions(level,town,station,"barrels",() -> {
+            List<BlockPos> found=new ArrayList<>();
+            for(BlockPos pos:cells(station)) if(jobBarrel(level,town,station,pos)) found.add(pos.immutable());
+            return found;
+        }).stream().filter(pos -> jobBarrel(level,town,station,pos)).toList();
+    }
+    private static boolean jobBarrel(ServerLevel level,Settlement town,Station station,BlockPos pos) {
+        return availableCell(level,town,pos) && level.getBlockState(pos).getBlock() instanceof BarrelBlock
+                && town.nearestStation(pos,s -> s.role()==StructureRole.WAREHOUSE && knownStation(level,s))==null
+                && station.equals(town.nearestStation(pos,s -> s.role().keepsJobStorage() && knownStation(level,s)));
+    }
+    public static List<Container> jobStorage(ServerLevel level,Settlement town,Station station) {
+        List<Container> containers=new ArrayList<>();
+        for(BlockPos pos:jobBarrels(level,town,station)) if(level.getBlockEntity(pos) instanceof Container container) containers.add(container);
+        return containers;
+    }
+    /** Warehouse containers and every loaded job barrel: all the goods the town holds. */
+    public static List<Container> townStorage(ServerLevel level,Settlement town) {
+        List<Container> containers=new ArrayList<>(storage(level,town));
+        for(Station station:town.stations) containers.addAll(jobStorage(level,town,station));
+        return containers;
+    }
+    /** With a courier station in town, jobs leave finished goods in their barrels for couriers to collect. */
+    public static boolean couriers(ServerLevel level,Settlement town) {
+        return town.stations.stream().anyMatch(s -> s.role()==StructureRole.COURIER && active(level,s));
     }
     public static BlockPos warehouse(ServerLevel level,Settlement settlement,BlockPos from) {
         return settlement.stations.stream().filter(s -> s.role()==StructureRole.WAREHOUSE && active(level,s))
@@ -279,6 +306,12 @@ public final class SettlementService {
         Settlement settlement=owned(source);
         if(settlement==null) { source.sendFailure(Component.literal("Right-click a settlement banner to found a town first.")); return 0; }
         ServerLevel level=source.getLevel();
+        final int result=recruit(level,settlement,count);
+        source.sendSuccess(() -> Component.literal("Recruited "+result+" citizens. "+status(level,settlement)+" Supply food and tools in the warehouse."),false);
+        return result;
+    }
+    /** New citizens appear beside the banner while housing beds and the population limit allow; returns how many joined. */
+    public static int recruit(ServerLevel level,Settlement settlement,int count) {
         refreshResources(level,settlement);
         List<BlockPos> beds=housingBeds(level,settlement);
         int limit=Math.min(beds.size(),Config.MAX_CITIZENS.get());
@@ -299,16 +332,13 @@ public final class SettlementService {
             if(level.addFreshEntity(citizen)) { settlement.citizens.add(citizen.getUUID()); added++; }
         }
         SettlementData.get(level).setDirty();
-        final int result=added;
-        source.sendSuccess(() -> Component.literal("Recruited "+result+" citizens. "+status(level,settlement)+" Supply food and tools in the warehouse."),false);
         return added;
     }
-    private static int craftOrder(CommandSourceStack source,String id,boolean enabled) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+    private static int bread(CommandSourceStack source,boolean enabled) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         Settlement s=owned(source);
         if(s==null) { source.sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
-        if(Crafting.byId(id)==null) { source.sendFailure(Component.literal("Unknown order. Choose one of: "+String.join(", ",Crafting.RECIPES.stream().map(Crafting.Recipe::id).toList())+".")); return 0; }
-        if(enabled ? s.disabledRecipes.remove(id) : s.disabledRecipes.add(id)) SettlementData.get(source.getLevel()).setDirty();
-        source.sendSuccess(() -> Component.literal((id.equals("bread") ? "Cooks" : "Craftsmen")+" will "+(enabled ? "" : "no longer ")+"make "+Crafting.byId(id).label()+"."),false);
+        if(enabled ? s.disabledRecipes.remove("bread") : s.disabledRecipes.add("bread")) SettlementData.get(source.getLevel()).setDirty();
+        source.sendSuccess(() -> Component.literal("Cooks will "+(enabled ? "" : "no longer ")+"bake bread."),false);
         return 1;
     }
     @SubscribeEvent public void commands(RegisterCommandsEvent event) {
@@ -317,7 +347,7 @@ public final class SettlementService {
                 ServerPlayer player=c.getSource().getPlayerOrException();
                 ItemStack book=WWMC.GUIDE.get().getDefaultInstance();
                 if(!player.getInventory().add(book)) player.drop(book,false);
-                tell(player,"Settlement Guide received. Right-click it to read recipes and town instructions."); return 1;
+                notify(player,"Settlement Guide received. Right-click it to read recipes and town instructions."); return 1;
             }))
             .then(Commands.literal("status").executes(c -> {
                 Settlement s=owned(c.getSource());
@@ -352,12 +382,14 @@ public final class SettlementService {
             .then(Commands.literal("craft").executes(c -> {
                 Settlement s=owned(c.getSource());
                 if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
-                String stock=Crafting.status(storage(c.getSource().getLevel(),s),s.disabledRecipes);
-                c.getSource().sendSuccess(() -> Component.literal("Craftsman orders, warehouse stock/target: "+stock+". Use /wwmc craft <order> on|off."),false); return 1;
-            }).then(Commands.argument("order",StringArgumentType.word())
-                .suggests((c,b) -> { for(Crafting.Recipe r:Crafting.RECIPES) b.suggest(r.id()); return b.buildFuture(); })
-                .then(Commands.literal("on").executes(c -> craftOrder(c.getSource(),StringArgumentType.getString(c,"order"),true)))
-                .then(Commands.literal("off").executes(c -> craftOrder(c.getSource(),StringArgumentType.getString(c,"order"),false)))))
+                List<Container> stock=townStorage(c.getSource().getLevel(),s);
+                StringBuilder text=new StringBuilder("Craftsman orders, town stock/target:");
+                for(Workshop.Order order:s.craftOrders) text.append(" ").append(order.item().replace("minecraft:","")).append(" ").append(Workshop.stock(stock,order)).append("/").append(order.target()).append(",");
+                text.setLength(text.length()-1);
+                c.getSource().sendSuccess(() -> Component.literal(text+". Teach recipes and set amounts on the Craftsman Station screen."),false); return 1;
+            }).then(Commands.literal("bread")
+                .then(Commands.literal("on").executes(c -> bread(c.getSource(),true)))
+                .then(Commands.literal("off").executes(c -> bread(c.getSource(),false)))))
             .then(Commands.literal("alarm").executes(c -> {
                 Settlement s=owned(c.getSource());
                 if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
@@ -379,9 +411,9 @@ public final class SettlementService {
         boolean banner=settlement.center.equals(event.getPos()) && event.getState().is(WWMC.BANNER.get());
         boolean station=event.getState().getBlock() instanceof StationBlock;
         if(!banner && !station) return;
-        if(!owns(event.getPlayer(),settlement)) { event.setCanceled(true); event.setNotifyClient(true); tell(event.getPlayer(),"Only this town's owner can remove its stations."); return; }
+        if(!owns(event.getPlayer(),settlement)) { event.setCanceled(true); event.setNotifyClient(true); notify(event.getPlayer(),"Only this town's owner can remove its stations."); return; }
         if(banner && !settlement.citizens.isEmpty()) {
-            event.setCanceled(true); event.setNotifyClient(true); tell(event.getPlayer(),"This banner belongs to an occupied settlement. Keep it as your town's rally point."); return;
+            event.setCanceled(true); event.setNotifyClient(true); notify(event.getPlayer(),"This banner belongs to an occupied settlement. Keep it as your town's rally point."); return;
         }
         // Reconcile after the block is actually gone; another event listener may still cancel the break.
     }

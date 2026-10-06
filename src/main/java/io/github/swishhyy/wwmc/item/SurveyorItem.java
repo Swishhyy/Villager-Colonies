@@ -36,11 +36,11 @@ public final class SurveyorItem extends Item {
             var town=SettlementData.get(server).at(pos);
             if(SettlementService.owns(player,town)) {
                 int count=ForestryService.protectConnectedLogs(server,town,pos);
-                SettlementService.tell(player,"Protected "+count+" connected logs from your workers.");
-            } else SettlementService.tell(player,"Protect existing log structures inside your own town.");
+                SettlementService.notify(player,"Protected "+count+" connected logs from your workers.");
+            } else SettlementService.notify(player,"Protect existing log structures inside your own town.");
             return InteractionResult.SUCCESS;
         }
-        if(level instanceof ServerLevel) SettlementService.tell(player,"Aim at a station to see its 7x7x7 range. Stations find nearby blocks automatically.");
+        if(level instanceof ServerLevel) SettlementService.notify(player,"Aim at a station to see its 7x7x7 range. Stations find nearby blocks automatically.");
         return InteractionResult.SUCCESS;
     }
 }

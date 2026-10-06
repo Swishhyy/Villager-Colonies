@@ -46,33 +46,33 @@ public final class GuardService {
         Settlement town=SettlementData.get(level).at(station);
         Station s=town==null ? null : town.station(station);
         if(!SettlementService.owns(player,town) || s==null || s.role()!=StructureRole.GUARD) {
-            SettlementService.tell(player,"Choose a Guard Station in your own town."); return;
+            SettlementService.notify(player,"Choose a Guard Station in your own town."); return;
         }
         SELECTING.computeIfAbsent(level,l -> new HashMap<>()).put(player.getUUID(),new Selection(station.immutable(),null,level.getGameTime()+12000));
-        SettlementService.tell(player,"Right-click the ground for the daytime post, then the nighttime post. Both must be walkable inside your town.");
+        SettlementService.notify(player,"Right-click the ground for the daytime post, then the nighttime post. Both must be walkable inside your town.");
     }
     public static boolean select(ServerLevel level,Player player,BlockPos post) {
         Map<UUID,Selection> choices=SELECTING.get(level);
         Selection choice=choices==null ? null : choices.get(player.getUUID());
         if(choice==null) return false;
         if(player.isShiftKeyDown() || choice.until()<=level.getGameTime()) {
-            choices.remove(player.getUUID()); SettlementService.tell(player,"Guard post selection canceled."); return true;
+            choices.remove(player.getUUID()); SettlementService.notify(player,"Guard post selection canceled."); return true;
         }
         Settlement town=SettlementData.get(level).at(choice.station());
         Station station=town==null ? null : town.station(choice.station());
         if(!SettlementService.owns(player,town) || station==null || station.role()!=StructureRole.GUARD || !SettlementService.active(level,station)) {
-            choices.remove(player.getUUID()); SettlementService.tell(player,"That Guard Station is no longer available."); return true;
+            choices.remove(player.getUUID()); SettlementService.notify(player,"That Guard Station is no longer available."); return true;
         }
-        if(!walkable(level,town,post)) { SettlementService.tell(player,"Choose clear, dry ground with headroom inside your town."); return true; }
+        if(!walkable(level,town,post)) { SettlementService.notify(player,"Choose clear, dry ground with headroom inside your town."); return true; }
         if(choice.day()==null) {
             choices.put(player.getUUID(),new Selection(choice.station(),post.immutable(),level.getGameTime()+12000));
-            SettlementService.tell(player,"Day post selected at "+post.toShortString()+". Now right-click the nighttime post.");
+            SettlementService.notify(player,"Day post selected at "+post.toShortString()+". Now right-click the nighttime post.");
         } else if(!walkable(level,town,choice.day())) {
-            choices.remove(player.getUUID()); SettlementService.tell(player,"The daytime post was obstructed. Select both posts again.");
+            choices.remove(player.getUUID()); SettlementService.notify(player,"The daytime post was obstructed. Select both posts again.");
         } else {
             WorldWorkData data=WorldWorkData.get(level);
             data.guardPosts.put(choice.station(),new GuardPosts(choice.station(),choice.day(),post)); data.setDirty();
-            choices.remove(player.getUUID()); SettlementService.tell(player,"Guard posts saved. The crew will switch posts with the day/night cycle.");
+            choices.remove(player.getUUID()); SettlementService.notify(player,"Guard posts saved. The crew will switch posts with the day/night cycle.");
         }
         return true;
     }
