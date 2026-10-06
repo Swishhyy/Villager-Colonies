@@ -6,7 +6,7 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.3.0-alpha
+## Current build: 0.4.0-alpha
 
 This is the first settlement foundation, not the completed warfare game.
 
