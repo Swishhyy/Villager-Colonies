@@ -256,11 +256,12 @@ public final class Panels {
     }
     public static PanelView craftsman(ServerLevel level,Settlement town,Station station,String feedback) {
         List<Container> stock=SettlementService.townStorage(level,town);
+        Workshop.Recipes recipes=Workshop.Recipes.of(level);
         List<Row> orders=new ArrayList<>();
         for(Workshop.Order order:town.craftOrders) {
             Item item=order.resolve();
             int have=Workshop.stock(stock,order);
-            boolean materials=Workshop.plans(level,order).stream().anyMatch(plan -> Workshop.batches(level,town.craftOrders,order,plan,stock,1)>0);
+            boolean materials=Workshop.plans(recipes,order).stream().anyMatch(plan -> Workshop.batches(recipes,town.craftOrders,order,plan,stock,1)>0);
             String note=item==Items.AIR ? "Unknown item" : order.target()==0 ? "Paused" : have>=order.target() ? "Stocked"
                     : materials ? "Ready to craft" : "Missing materials";
             int color=order.target()==0 ? GRAY : have>=order.target() ? GREEN : materials ? AMBER : RED;
@@ -276,7 +277,7 @@ public final class Panels {
         if(station==null || station.role()!=StructureRole.CRAFTSMAN) return "";
         Settlement town=owned(player,pos);
         int before=town.craftOrders.size();
-        String result=Workshop.learn(level(player),town,example);
+        String result=Workshop.learn(Workshop.Recipes.of(level(player)),town,example);
         if(town.craftOrders.size()!=before) dirty(player);
         return result;
     }

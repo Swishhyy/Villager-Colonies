@@ -430,7 +430,7 @@ public final class CitizenEntity extends Villager {
     private boolean haulingInput(ItemStack stack) {
         if(!(level() instanceof ServerLevel server) || haulStation==null) return false;
         Settlement town=town(server); Station job=town==null ? null : town.station(haulStation);
-        return job!=null && JobStorage.input(server,job.role(),stack);
+        return job!=null && JobStorage.input(JobStorage.Supplies.of(server),job.role(),stack);
     }
     /** Tools, weapons and armor that belong to particular jobs. */
     private static boolean gear(ItemStack stack) {
@@ -1121,7 +1121,7 @@ public final class CitizenEntity extends Villager {
             List<Container> stock=SettlementService.townStorage(level,town);
             List<BlockPos> barrels=SettlementService.jobBarrels(level,town,station);
             List<Container> local=SettlementService.jobStorage(level,town,station);
-            Workshop.Job next=local.isEmpty() ? null : Workshop.choose(level,town.craftOrders,stock,local);
+            Workshop.Job next=local.isEmpty() ? null : Workshop.choose(Workshop.Recipes.of(level),town.craftOrders,stock,local);
             List<Container> sources;
             if(next!=null) {
                 if(!visitStorage(level,town,station.role(),nearest(barrels),local,false)) return;
@@ -1129,15 +1129,15 @@ public final class CitizenEntity extends Villager {
             } else {
                 BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
                 List<Container> stored=warehouse==null ? List.of() : SettlementService.storageAt(level,town,warehouse);
-                if(warehouse==null || Workshop.choose(level,town.craftOrders,stock,stored)==null) {
+                if(warehouse==null || Workshop.choose(Workshop.Recipes.of(level),town.craftOrders,stock,stored)==null) {
                     activity="Nothing to craft: every order is stocked or lacks materials";
                     idleStations.put(station.position(),level.getGameTime()+400); releaseWork(level); searchDelay=20; return;
                 }
                 if(!visitWarehouse(level,town,station.role())) return;
                 sources=SettlementService.storageAt(level,town,warehouse);
-                next=Workshop.choose(level,town.craftOrders,stock,sources);
+                next=Workshop.choose(Workshop.Recipes.of(level),town.craftOrders,stock,sources);
             }
-            if(next==null || Workshop.fetch(level,town.craftOrders,next,stock,sources,cargo)==0) {
+            if(next==null || Workshop.fetch(Workshop.Recipes.of(level),town.craftOrders,next,stock,sources,cargo)==0) {
                 activity="Nothing to craft: every order is stocked or lacks materials";
                 idleStations.put(station.position(),level.getGameTime()+400); releaseWork(level); searchDelay=20; return;
             }
@@ -1181,7 +1181,7 @@ public final class CitizenEntity extends Villager {
                 List<BlockPos> spots=SettlementService.jobBarrels(level,town,candidate);
                 if(spots.isEmpty() || !book.available(spots.getFirst(),getUUID(),level.getGameTime()) || failedTargets.containsKey(nearest(spots))) continue;
                 List<Container> local=SettlementService.jobStorage(level,town,candidate);
-                var pickups=JobStorage.collectable(level,town,candidate.role(),local);
+                var pickups=JobStorage.collectable(JobStorage.Supplies.of(level),town,candidate.role(),local);
                 // Small amounts wait for a worthwhile load, unless the barrel is nearly full or the pantry needs the food.
                 if(JobStorage.goods(pickups)>most && JobStorage.worthCollecting(pickups,JobStorage.freeSlots(local),pantry)) {
                     best=candidate; most=JobStorage.goods(pickups);
@@ -1191,7 +1191,7 @@ public final class CitizenEntity extends Villager {
             if(best==null) for(Station candidate:town.stations) {
                 List<BlockPos> spots=SettlementService.jobBarrels(level,town,candidate);
                 if(spots.isEmpty() || !book.available(spots.getFirst(),getUUID(),level.getGameTime()) || failedTargets.containsKey(nearest(spots))) continue;
-                if(JobStorage.needsSupplies(level,candidate.role(),SettlementService.jobStorage(level,town,candidate),stored)) { best=candidate; supply=true; break; }
+                if(JobStorage.needsSupplies(JobStorage.Supplies.of(level),candidate.role(),SettlementService.jobStorage(level,town,candidate),stored)) { best=candidate; supply=true; break; }
             }
             if(best==null) {
                 activity="No goods waiting in job barrels";
@@ -1208,7 +1208,7 @@ public final class CitizenEntity extends Villager {
         if(haulSupply && InventoryOps.count(List.of(cargo),this::haulingInput)==0) {
             // Pick up the supplies first.
             if(!visitWarehouse(level,town,StructureRole.COURIER)) return;
-            if(JobStorage.load(level,job.role(),local,SettlementService.storageAt(level,town,warehouse),cargo)==0) { haulStation=null; haulSupply=false; }
+            if(JobStorage.load(JobStorage.Supplies.of(level),job.role(),local,SettlementService.storageAt(level,town,warehouse),cargo)==0) { haulStation=null; haulSupply=false; }
             else activity="Carrying supplies to the "+job.role().id()+" station";
             return;
         }
@@ -1225,10 +1225,11 @@ public final class CitizenEntity extends Villager {
         getNavigation().stop(); swing(InteractionHand.MAIN_HAND);
         if(haulSupply) {
             StructureRole role=job.role();
-            cargo.deposit(local,stack -> JobStorage.input(level,role,stack) ? 0 : stack.getCount());
+            JobStorage.Supplies supplies=JobStorage.Supplies.of(level);
+            cargo.deposit(local,stack -> JobStorage.input(supplies,role,stack) ? 0 : stack.getCount());
             activity="Stocked the "+role.id()+" station's barrels";
         } else {
-            int moved=JobStorage.collect(level,town,job.role(),local,cargo);
+            int moved=JobStorage.collect(JobStorage.Supplies.of(level),town,job.role(),local,cargo);
             activity="Collected "+moved+" goods from the "+job.role().id()+" station";
         }
         SettlementService.reservations(level).release(barrels.getFirst(),getUUID());

@@ -5,6 +5,8 @@ import io.github.swishhyy.wwmc.core.StructureRole;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
@@ -19,11 +21,12 @@ public final class OreVeins {
     private static final Map<ServerLevel,Map<BlockPos,Long>> READY=new WeakHashMap<>();
     private OreVeins() {}
     /** The ore in the 3x3x3 cube around a mine station, preferring blocks that share a face with it. */
-    public static BlockPos find(ServerLevel level,Settlement town,Station station) {
+    public static BlockPos find(ServerLevel level,Settlement town,Station station) { return find(level::hasChunkAt,level::getBlockState,town,station); }
+    public static BlockPos find(Predicate<BlockPos> loaded,Function<BlockPos,BlockState> blocks,Settlement town,Station station) {
         if(station.role()!=StructureRole.MINE) return null;
         BlockPos center=station.position(),best=null;
         for(BlockPos pos:BlockPos.betweenClosed(center.offset(-1,-1,-1),center.offset(1,1,1))) {
-            if(pos.equals(center) || !town.contains(pos) || !level.hasChunkAt(pos) || !CaveMining.ore(level.getBlockState(pos))) continue;
+            if(pos.equals(center) || !town.contains(pos) || !loaded.test(pos) || !CaveMining.ore(blocks.apply(pos))) continue;
             if(best==null || pos.distSqr(center)<best.distSqr(center)) best=pos.immutable();
         }
         return best;

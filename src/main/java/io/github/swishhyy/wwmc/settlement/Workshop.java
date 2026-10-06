@@ -16,6 +16,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.item.crafting.display.ShapedCraftingRecipeDisplay;
+import net.minecraft.world.level.Level;
 
 /**
  * Craftsman orders the owner teaches by example: keep a stock of an item by following Minecraft's own crafting-table
@@ -59,6 +60,10 @@ public final class Workshop {
         }
     }
     public record Job(Order order,Plan plan) {}
+    /** The recipes a workshop follows. The level is only passed on to recipe checks and may be absent in tests. */
+    public record Recipes(RecipeMap map,Level level) {
+        public static Recipes of(ServerLevel level) { return new Recipes(level.getServer().getRecipeManager().recipeMap(),level); }
+    }
     /** Pre-learned orders that keep workers equipped and supplied, in priority order: tools, then building goods. */
     private static final List<String[]> DEFAULTS=List.of(
         new String[]{"stone_pickaxe","stone_pickaxe","2"},new String[]{"stone_axe","stone_axe","2"},new String[]{"stone_sword","stone_sword","2"},
@@ -74,27 +79,29 @@ public final class Workshop {
         return orders;
     }
     /** Shaped and shapeless crafting-table recipes by result. Special recipes such as dyeing or map copying are left out. */
-    public static Map<Item,List<Plan>> plans(ServerLevel level) {
-        RecipeMap recipes=level.getServer().getRecipeManager().recipeMap();
-        if(recipes!=indexed) {
+    public static Map<Item,List<Plan>> plans(Recipes recipes) {
+        if(recipes.map()!=indexed) {
             Map<Item,List<Plan>> built=new HashMap<>();
-            for(RecipeHolder<CraftingRecipe> holder:recipes.byType(RecipeType.CRAFTING)) {
-                Plan plan=plan(level,holder);
+            for(RecipeHolder<CraftingRecipe> holder:recipes.map().byType(RecipeType.CRAFTING)) {
+                Plan plan;
+                // One broken recipe from a mod or datapack must not stop the workshop.
+                try { plan=plan(recipes.level(),holder); } catch(RuntimeException e) { plan=null; }
                 if(plan!=null) built.computeIfAbsent(plan.result().getItem(),item -> new ArrayList<>()).add(plan);
             }
-            index=built; indexed=recipes;
+            index=built; indexed=recipes.map();
         }
         return index;
     }
-    private static Plan plan(ServerLevel level,RecipeHolder<CraftingRecipe> holder) {
+    private static Plan plan(Level level,RecipeHolder<CraftingRecipe> holder) {
         CraftingRecipe recipe=holder.value();
         int width=0,height=0;
-        if(recipe instanceof ShapedRecipe) {
+        // Exact classes only: subclasses such as map extending check more than their ingredients.
+        if(recipe.getClass()==ShapedRecipe.class) {
             ShapedCraftingRecipeDisplay shape=null;
             for(var display:recipe.display()) if(display instanceof ShapedCraftingRecipeDisplay shaped) { shape=shaped; break; }
             if(shape==null) return null;
             width=shape.width(); height=shape.height();
-        } else if(!(recipe instanceof ShapelessRecipe)) return null;
+        } else if(recipe.getClass()!=ShapelessRecipe.class) return null;
         PlacementInfo placement=recipe.placementInfo();
         if(placement.isImpossibleToPlace() || placement.ingredients().isEmpty()) return null;
         List<ItemStack> sample=new ArrayList<>();
@@ -111,8 +118,8 @@ public final class Workshop {
         return result.isEmpty() ? null : new Plan(holder,draft.ingredients(),draft.slots(),width,height,result.copy());
     }
     /** Recipes for an order's product; a planks order may use the recipe for any wood. */
-    public static List<Plan> plans(ServerLevel level,Order order) {
-        Map<Item,List<Plan>> all=plans(level);
+    public static List<Plan> plans(Recipes recipes,Order order) {
+        Map<Item,List<Plan>> all=plans(recipes);
         if(!order.anyWood()) return all.getOrDefault(order.resolve(),List.of());
         List<Plan> result=new ArrayList<>();
         for(var entry:all.entrySet()) if(entry.getKey().getDefaultInstance().is(ItemTags.PLANKS)) result.addAll(entry.getValue());
@@ -124,10 +131,10 @@ public final class Workshop {
      * The first order, in the owner's priority order, that is below its target and has a recipe the sources hold
      * materials for. {@code stock} is where finished goods are counted.
      */
-    public static Job choose(ServerLevel level,List<Order> orders,List<Container> stock,List<Container> sources) {
+    public static Job choose(Recipes recipes,List<Order> orders,List<Container> stock,List<Container> sources) {
         for(Order order:orders) {
             if(order.target()<=0 || order.resolve()==Items.AIR || stock(stock,order)>=order.target()) continue;
-            for(Plan plan:plans(level,order)) if(batches(level,orders,order,plan,sources,1)>0) return new Job(order,plan);
+            for(Plan plan:plans(recipes,order)) if(batches(recipes,orders,order,plan,sources,1)>0) return new Job(order,plan);
         }
         return null;
     }
@@ -135,9 +142,9 @@ public final class Workshop {
      * Whole batches the sources hold materials for. When two orders make each other (ingots and blocks), each only
      * draws on the other's stock above its target, so they never convert back and forth.
      */
-    public static int batches(ServerLevel level,List<Order> orders,Order order,Plan plan,List<Container> sources,int limit) {
+    public static int batches(Recipes recipes,List<Order> orders,Order order,Plan plan,List<Container> sources,int limit) {
         List<ItemStack> pool=pool(sources);
-        for(Order other:orders) if(other!=order && cyclic(level,order,plan,other)) reserve(pool,other);
+        for(Order other:orders) if(other!=order && cyclic(recipes,order,plan,other)) reserve(pool,other);
         int made=0;
         while(made<limit && take(pool,plan.ingredients())) made++;
         return made;
@@ -148,9 +155,9 @@ public final class Workshop {
             if(!container.getItem(slot).isEmpty()) pool.add(container.getItem(slot).copy());
         return pool;
     }
-    private static boolean cyclic(ServerLevel level,Order order,Plan plan,Order other) {
+    private static boolean cyclic(Recipes recipes,Order order,Plan plan,Order other) {
         ItemStack theirs=other.resolve().getDefaultInstance(),ours=order.resolve().getDefaultInstance();
-        return !theirs.isEmpty() && plan.uses(theirs) && plans(level,other).stream().anyMatch(p -> p.uses(ours));
+        return !theirs.isEmpty() && plan.uses(theirs) && plans(recipes,other).stream().anyMatch(p -> p.uses(ours));
     }
     private static void reserve(List<ItemStack> pool,Order order) {
         int left=order.target();
@@ -168,10 +175,10 @@ public final class Workshop {
         return true;
     }
     /** Move materials for up to {@link #TRIP_BATCHES} batches, no more than the shortage needs, into the bag. */
-    public static int fetch(ServerLevel level,List<Order> orders,Job job,List<Container> stock,List<Container> sources,Container bag) {
+    public static int fetch(Recipes recipes,List<Order> orders,Job job,List<Container> stock,List<Container> sources,Container bag) {
         int perBatch=Math.max(1,job.plan().result().getCount());
         int needed=(job.order().target()-stock(stock,job.order())+perBatch-1)/perBatch;
-        int batches=Math.min(needed,batches(level,orders,job.order(),job.plan(),sources,TRIP_BATCHES));
+        int batches=Math.min(needed,batches(recipes,orders,job.order(),job.plan(),sources,TRIP_BATCHES));
         for(int batch=0;batch<batches;batch++) for(Ingredient ingredient:job.plan().ingredients()) {
             ItemStack rest=InventoryOps.insert(bag,InventoryOps.takeOne(sources,ingredient));
             // A full bag returns the material rather than losing it.
@@ -184,7 +191,7 @@ public final class Workshop {
      * Craft one batch from the bag. The product and any container items go to {@code output}; if the batch no longer
      * matches its recipe the materials go back instead. Returns whether something was made.
      */
-    public static boolean craft(ServerLevel level,Container bag,Plan plan,Consumer<ItemStack> output) {
+    public static boolean craft(Level level,Container bag,Plan plan,Consumer<ItemStack> output) {
         List<ItemStack> items=new ArrayList<>();
         for(Ingredient ingredient:plan.ingredients()) {
             ItemStack item=InventoryOps.takeOne(List.of(bag),ingredient);
@@ -203,12 +210,12 @@ public final class Workshop {
         return true;
     }
     /** Teach the workshop an item from an example; returns what happened, for the owner. */
-    public static String learn(ServerLevel level,Settlement town,ItemStack example) {
+    public static String learn(Recipes recipes,Settlement town,ItemStack example) {
         if(example.isEmpty()) return "Place an item in the slot to teach its recipe";
         Order order=new Order(BuiltInRegistries.ITEM.getKey(example.getItem()).toString(),example.getMaxStackSize()==1 ? 1 : 16);
         String name=example.getHoverName().getString();
         if(town.craftOrders.stream().anyMatch(o -> o.resolve()==example.getItem() || o.anyWood() && order.anyWood())) return "Craftsmen already make "+name;
-        if(plans(level,order).isEmpty()) return "No crafting-table recipe makes "+name;
+        if(plans(recipes,order).isEmpty()) return "No crafting-table recipe makes "+name;
         if(town.craftOrders.size()>=MAX_ORDERS) return "The workshop knows "+MAX_ORDERS+" recipes; forget one first";
         town.craftOrders.add(order);
         return "Learned "+name+(order.anyWood() ? " (any wood)" : "");

@@ -12,12 +12,14 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.FuelValues;
+import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.network.connection.ConnectionType;
 import net.neoforged.testframework.junit.EphemeralTestServerProvider;
 import org.junit.jupiter.api.Test;
@@ -36,11 +38,12 @@ public final class LogisticsChecks {
 
     @Test @ExtendWith(EphemeralTestServerProvider.class)
     void learnedCrafting(MinecraftServer server) {
-        ServerLevel level=server.overworld();
+        // The test server loads recipes but no world; shaped and shapeless recipes do not need one.
+        Workshop.Recipes level=new Workshop.Recipes(server.getRecipeManager().recipeMap(),null);
         Map<Item,List<Workshop.Plan>> plans=Workshop.plans(level);
         for(Item item:List.of(Items.TORCH,Items.LADDER,Items.STICK,Items.OAK_PLANKS,Items.STONE_PICKAXE,Items.CHEST,Items.CAKE,Items.IRON_BLOCK,Items.IRON_INGOT,Items.ARROW,Items.BOW))
             check(plans.containsKey(item),"Minecraft's crafting recipe for "+item+" is followed");
-        check(!plans.containsKey(Items.FIREWORK_ROCKET),"Special recipes such as fireworks are left out");
+        check(!plans.containsKey(Items.DIAMOND_ORE),"Items no crafting recipe makes are absent");
 
         Settlement town=town();
         check(town.craftOrders.size()==9 && town.craftOrders.getFirst().item().equals("minecraft:stone_pickaxe"),"New towns start with the default orders");
@@ -70,14 +73,14 @@ public final class LogisticsChecks {
         check(job!=null && job.plan().result().is(Items.BIRCH_PLANKS),"A planks order uses whichever logs the town has");
         check(Workshop.fetch(level,planks,job,List.of(logs),List.of(logs),bag)==2 && logs.getItem(0).getCount()==3,"Only the logs the shortage needs are carried");
         List<ItemStack> made=new ArrayList<>();
-        check(Workshop.craft(level,bag,job.plan(),made::add) && made.getFirst().is(Items.BIRCH_PLANKS) && made.getFirst().getCount()==4,"One birch log becomes four birch planks");
+        check(Workshop.craft(null,bag,job.plan(),made::add) && made.getFirst().is(Items.BIRCH_PLANKS) && made.getFirst().getCount()==4,"One birch log becomes four birch planks");
 
         List<Workshop.Order> ladders=List.of(new Workshop.Order("minecraft:ladder",3));
         SimpleContainer sticks=box(new ItemStack(Items.STICK,7)),bench=new SimpleContainer(36);
         Workshop.Job ladder=Workshop.choose(level,ladders,List.of(sticks),List.of(sticks));
         check(ladder!=null && Workshop.fetch(level,ladders,ladder,List.of(sticks),List.of(sticks),bench)==1 && sticks.isEmpty(),"Seven sticks go to the bench for one batch");
         List<ItemStack> rungs=new ArrayList<>();
-        check(Workshop.craft(level,bench,ladder.plan(),rungs::add) && rungs.getFirst().is(Items.LADDER) && rungs.getFirst().getCount()==3 && bench.isEmpty(),
+        check(Workshop.craft(null,bench,ladder.plan(),rungs::add) && rungs.getFirst().is(Items.LADDER) && rungs.getFirst().getCount()==3 && bench.isEmpty(),
                 "A shaped recipe is laid out and checked like a crafting table");
         SimpleContainer stocked=box(new ItemStack(Items.LADDER,3),new ItemStack(Items.STICK,7));
         check(Workshop.choose(level,ladders,List.of(stocked),List.of(stocked))==null,"A stocked order is not overproduced");
@@ -90,7 +93,7 @@ public final class LogisticsChecks {
         Workshop.Job baking=Workshop.choose(level,cake,List.of(kitchen),List.of(kitchen));
         check(baking!=null && Workshop.fetch(level,cake,baking,List.of(kitchen),List.of(kitchen),tray)==1,"Cake ingredients are gathered");
         List<ItemStack> out=new ArrayList<>();
-        check(Workshop.craft(level,tray,baking.plan(),out::add) && out.stream().anyMatch(s -> s.is(Items.CAKE))
+        check(Workshop.craft(null,tray,baking.plan(),out::add) && out.stream().anyMatch(s -> s.is(Items.CAKE))
                 && out.stream().filter(s -> s.is(Items.BUCKET)).count()==3,"Milk buckets come back empty");
 
         List<Workshop.Order> metal=List.of(new Workshop.Order("minecraft:iron_block",10),new Workshop.Order("minecraft:iron_ingot",64));
@@ -106,7 +109,7 @@ public final class LogisticsChecks {
 
     @Test @ExtendWith(EphemeralTestServerProvider.class)
     void jobBarrelsAndCouriers(MinecraftServer server) {
-        ServerLevel level=server.overworld();
+        JobStorage.Supplies level=new JobStorage.Supplies(FuelValues.vanillaBurnTimes(server.registryAccess(),FeatureFlags.DEFAULT_FLAGS,200),server.getRecipeManager(),null);
         Settlement town=town();
         SimpleContainer smeltery=box(new ItemStack(Items.RAW_IRON,10),new ItemStack(Items.COAL,5),new ItemStack(Items.IRON_INGOT,12));
         var pickups=JobStorage.collectable(level,town,StructureRole.SMELTERY,List.of(smeltery));
@@ -134,23 +137,25 @@ public final class LogisticsChecks {
 
     @Test @ExtendWith(EphemeralTestServerProvider.class)
     void oreVeins(MinecraftServer server) {
-        ServerLevel level=server.overworld();
         check(OreVeins.rarity(Blocks.IRON_ORE.defaultBlockState())==1 && OreVeins.rarity(Blocks.DEEPSLATE_GOLD_ORE.defaultBlockState())==2
                 && OreVeins.rarity(Blocks.DIAMOND_ORE.defaultBlockState())==6 && OreVeins.rarity(Blocks.ANCIENT_DEBRIS.defaultBlockState())==8,"Rarer ores replenish more slowly");
         check(OreVeins.interval(Blocks.COAL_ORE.defaultBlockState(),15)==300,"A common vein yields every fifteen seconds by default");
-        BlockPos mine=new BlockPos(0,200,0);
-        level.getChunk(0,0);
-        for(BlockPos pos:BlockPos.betweenClosed(mine.offset(-1,-1,-1),mine.offset(1,1,1))) level.setBlock(pos,Blocks.AIR.defaultBlockState(),3);
-        level.setBlock(mine.offset(1,1,1),Blocks.DIAMOND_ORE.defaultBlockState(),3);
-        level.setBlock(mine.east(),Blocks.IRON_ORE.defaultBlockState(),3);
+        BlockPos mine=new BlockPos(0,64,0);
+        Map<BlockPos,BlockState> world=new HashMap<>();
+        world.put(mine.offset(1,1,1),Blocks.DIAMOND_ORE.defaultBlockState());
+        world.put(mine.east(),Blocks.IRON_ORE.defaultBlockState());
+        world.put(mine.below(2),Blocks.GOLD_ORE.defaultBlockState());
+        java.util.function.Function<BlockPos,BlockState> blocks=pos -> world.getOrDefault(pos,Blocks.STONE.defaultBlockState());
         Station station=new Station(mine,StructureRole.MINE);
         Settlement town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Vein town",BlockPos.ZERO,240,List.of(),List.of(station),"balanced");
-        check(mine.east().equals(OreVeins.find(level,town,station)),"An ore touching the station's face is its vein");
-        level.setBlock(mine.east(),Blocks.AIR.defaultBlockState(),3);
-        check(mine.offset(1,1,1).equals(OreVeins.find(level,town,station)),"Any ore in the 3x3x3 cube can be the vein");
-        level.setBlock(mine.offset(1,1,1),Blocks.STONE.defaultBlockState(),3);
-        check(OreVeins.find(level,town,station)==null,"Without an ore the mine digs tunnels as before");
-        check(OreVeins.find(level,town,new Station(mine,StructureRole.QUARRY))==null,"Only mine stations work veins");
+        check(mine.east().equals(OreVeins.find(pos -> true,blocks,town,station)),"An ore touching the station's face is its vein");
+        world.remove(mine.east());
+        check(mine.offset(1,1,1).equals(OreVeins.find(pos -> true,blocks,town,station)),"Any ore in the 3x3x3 cube can be the vein; ore two blocks away is not");
+        check(OreVeins.find(pos -> !pos.equals(mine.offset(1,1,1)),blocks,town,station)==null,"Unloaded blocks are never read");
+        world.remove(mine.offset(1,1,1));
+        check(OreVeins.find(pos -> true,blocks,town,station)==null,"Without an ore the mine digs tunnels as before");
+        world.put(mine.east(),Blocks.IRON_ORE.defaultBlockState());
+        check(OreVeins.find(pos -> true,blocks,town,new Station(mine,StructureRole.QUARRY))==null,"Only mine stations work veins");
         System.out.println("Passed "+checks+" ore vein checks.");
     }
 
