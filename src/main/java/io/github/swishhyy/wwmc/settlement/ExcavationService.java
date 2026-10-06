@@ -54,22 +54,35 @@ public final class ExcavationService {
         if(target>=top && station.role()==StructureRole.MINE) return null;
         ExcavationJob job=new ExcavationJob(UUID.randomUUID(),station.position(),station.role(),station.facing(),top,target,
                 Config.MINE_BRANCH_LENGTH.get(),Config.MINE_BRANCH_PAIRS.get(),0,List.of(),station.role()==StructureRole.MINE);
-        if(station.role()==StructureRole.QUARRY) measureStairs(level,job);
+        if(station.role()==StructureRole.QUARRY) measureStairs(level,town,job);
         if(station.role()==StructureRole.MINE) {
             for(int i=0;i<job.size();i++) {
                 var cut=job.cut(i);
-                if(!town.contains(pos(cut.foot())) || !town.contains(pos(cut.stand()))) return null;
+                if(!town.contains(pos(cut.foot())) || !town.contains(pos(cut.stand()))
+                        || quarryColumn(town,cut.foot().x(),cut.foot().z()) || quarryColumn(town,cut.stand().x(),cut.stand().z())) return null;
             }
         }
         return job;
     }
     /** The staircase begins level with the ground outside the first step. Older pits already dug below it keep working from the control block. */
-    private static void measureStairs(ServerLevel level,ExcavationJob job) {
+    private static void measureStairs(ServerLevel level,Settlement town,ExcavationJob job) {
         if(job.hasStairs() || job.cursor()>=job.size()) return;
         var rim=job.rim();
-        if(!level.hasChunkAt(new BlockPos(rim.x(),rim.y(),rim.z()))) return;
+        if(!level.hasChunkAt(new BlockPos(rim.x(),job.topY,rim.z()))) return;
         int ground=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,rim.x(),rim.z())-1;
-        if(job.cut(job.cursor()).block().y()>=ground) job.measureStairs(ground);
+        // A fresh plan gets stairs when the crew can stand at the first step's level outside the edge; an older pit only if it is not yet below the rim.
+        boolean fresh=job.cursor()<256;
+        if(fresh ? standable(level,town,new BlockPos(rim.x(),Math.min(job.topY,ground)+1,rim.z())) : job.cut(job.cursor()).block().y()>=ground)
+            job.measureStairs(ground);
+    }
+    /** Columns of the chunk a quarry station targets; mines and cave work stay out of them so the pit stays level. */
+    public static boolean quarryColumn(Settlement town,int x,int z) {
+        for(Station station:town.stations) {
+            if(station.role()!=StructureRole.QUARRY) continue;
+            var footprint=MiningLayout.quarry(station.position().getX(),station.position().getZ(),station.facing().getStepX(),station.facing().getStepZ(),0,0);
+            if(x>=footprint.minX() && x<=footprint.maxX() && z>=footprint.minZ() && z<=footprint.maxZ()) return true;
+        }
+        return false;
     }
     public static ExcavationJob job(ServerLevel level,Settlement town,Station station) {
         WorldWorkData data=WorldWorkData.get(level);
@@ -77,7 +90,7 @@ public final class ExcavationService {
         if(current!=null && current.role==station.role() && current.facing==station.facing()
                 && (station.role()!=StructureRole.MINE || current.automaticDepth)) {
             if(current.role==StructureRole.QUARRY && !current.hasStairs()) {
-                measureStairs(level,current);
+                measureStairs(level,town,current);
                 if(current.hasStairs()) data.setDirty();
             }
             return current;
@@ -123,13 +136,13 @@ public final class ExcavationService {
         Vec3 eye=new Vec3(stand.getX()+0.5,stand.getY()+1.6,stand.getZ()+0.5);
         return new ClipContext(eye,Vec3.atCenterOf(target),ClipContext.Block.COLLIDER,ClipContext.Fluid.NONE,CollisionContext.empty());
     }
-    /** Closest dry, headroom-clear spot within two blocks of the cut with a clear view of it, never on top of it. */
-    private static BlockPos quarryStand(ServerLevel level,Settlement town,BlockPos target,BlockPos from) {
+    /** Closest dry, headroom-clear spot within two blocks of the cut with a clear view of it, never on top of it or in a step's place. */
+    private static BlockPos quarryStand(ServerLevel level,Settlement town,ExcavationJob job,BlockPos target,BlockPos from) {
         BlockPos best=null; double distance=Double.MAX_VALUE;
         for(int dy=0;dy<=1;dy++) for(int dx=-2;dx<=2;dx++) for(int dz=-2;dz<=2;dz++) {
             if(dx==0 && dz==0) continue;
             BlockPos stand=target.offset(dx,dy,dz);
-            if(stand.distSqr(from)>=distance || !standable(level,town,stand)) continue;
+            if(stand.distSqr(from)>=distance || job.stair(stand.getX(),stand.getY(),stand.getZ()) || !standable(level,town,stand)) continue;
             if(!level.clip(quarrySight(stand,target)).getBlockPos().equals(target)) continue;
             best=stand; distance=stand.distSqr(from);
         }
@@ -140,9 +153,42 @@ public final class ExcavationService {
         int index=job.stairTop()-step.getY();
         return pos(index==0 ? job.rim() : job.stairStand(index-1));
     }
-    private static Ticket nextQuarry(ServerLevel level,Settlement town,ExcavationJob job,UUID worker,BlockPos from) {
+    private static boolean vacant(ServerLevel level,BlockPos pos) { return level.getEntitiesOfClass(LivingEntity.class,new AABB(pos)).isEmpty(); }
+    /** A step that has gone missing above the working layer, and where to stand to put it back. */
+    private record StairRepair(BlockPos step,BlockPos stand) {}
+    /**
+     * Walk the staircase from the rim down to the working layer. Crews only enter when every step is solid with two
+     * clear blocks above it. A missing step that can be rebuilt is returned as a repair; anything else closes the stairs.
+     */
+    private static StairRepair checkStairs(ServerLevel level,Settlement town,ExcavationJob job) {
+        job.stairsOpen(false);
+        if(!job.hasStairs() || !standable(level,town,pos(job.rim()))) return null;
+        for(int step=0;step<=job.lastStep();step++) {
+            BlockPos stand=pos(job.stairStand(step)),block=stand.below();
+            // The working layer's own step is handled with the rest of that layer.
+            if(block.getY()<=job.floorY()) break;
+            if(!loaded(level,town,block)) return null;
+            var state=level.getBlockState(block);
+            if(!state.isFaceSturdy(level,block,Direction.UP) || !level.getFluidState(block).isEmpty()) {
+                // Collapsed sand or gravel, or a step someone broke: rebuild it from the step above.
+                BlockPos from=step==0 ? pos(job.rim()) : pos(job.stairStand(step-1));
+                return state.canBeReplaced() && level.getFluidState(block).isEmpty() && standable(level,town,from) ? new StairRepair(block,from) : null;
+            }
+            // Walking between steps the body passes three blocks of each step's column.
+            if(!clear(level,stand) || !clear(level,stand.above()) || step>0 && !clear(level,stand.above(2))) return null;
+        }
+        job.stairsOpen(true); return null;
+    }
+    private static boolean clear(ServerLevel level,BlockPos pos) {
+        return level.getBlockState(pos).getCollisionShape(level,pos).isEmpty() && level.getFluidState(pos).isEmpty();
+    }
+    private static Ticket nextQuarry(ServerLevel level,Settlement town,ExcavationJob job,UUID worker,BlockPos from,java.util.function.Predicate<BlockPos> avoid) {
         var book=SettlementService.reservations(level);
         long now=level.getGameTime();
+        StairRepair repair=checkStairs(level,town,job);
+        if(repair!=null && !avoid.test(repair.step()) && vacant(level,repair.step())
+                && book.claimAll(List.of(repair.step(),repair.stand().below()),worker,now,200))
+            return new Ticket(job.id,-1,repair.step(),repair.stand().below(),repair.stand(),true,true,false);
         List<Integer> open=new ArrayList<>();
         boolean changed=false;
         for(int index=job.cursor(),end=job.windowEnd();index<end;index++) {
@@ -153,28 +199,33 @@ public final class ExcavationService {
             if(job.stair(target.getX(),target.getY(),target.getZ())) {
                 // Steps stay solid. A missing one is rebuilt; a flooded or unreachable one is given up.
                 boolean solid=state.isFaceSturdy(level,target,Direction.UP) && level.getFluidState(target).isEmpty();
-                if(solid || !state.canBeReplaced() || !level.getFluidState(target).isEmpty() || !standable(level,town,stepStand(job,target))) {
+                // With the staircase closed nobody can come down to place this step, so the layer carries on without it;
+                // once the floor is below it, checkStairs offers it as a repair from the step above.
+                if(solid || !state.canBeReplaced() || !level.getFluidState(target).isEmpty() || !standable(level,town,stepStand(job,target))
+                        || !job.stairsOpen() && job.floorY()<job.stairTop()) {
                     job.complete(index); changed=true;
-                } else if(book.available(target,worker,now)) open.add(index);
+                } else if(book.available(target,worker,now) && !avoid.test(target) && vacant(level,target)) open.add(index);
                 continue;
             }
             if(state.isAir() && level.getFluidState(target).isEmpty() || state.is(Blocks.BEDROCK)) { job.complete(index); changed=true; continue; }
             Blockage blockage=blockage(level,town,target,true);
             // Unsafe blocks are left standing so one tree, pond edge or chest can no longer stall the whole layer.
             if(blockage==Blockage.SKIP) { job.complete(index); changed=true; }
-            else if(blockage==Blockage.NONE && book.available(target,worker,now)) open.add(index);
+            else if(blockage==Blockage.NONE && book.available(target,worker,now) && !avoid.test(target)) open.add(index);
         }
         if(changed) WorldWorkData.get(level).setDirty();
         open.sort(Comparator.comparingDouble(index -> pos(job,index).distSqr(from)));
-        for(int n=0;n<open.size() && n<16;n++) {
+        // Crews only go down while the staircase is whole; above the rim they walk in over the ground.
+        boolean enter=job.stairsOpen() || job.floorY()>=job.stairTop() && job.hasStairs();
+        for(int n=0;enter && n<open.size() && n<16;n++) {
             int index=open.get(n);
             BlockPos target=pos(job,index);
             boolean step=job.stair(target.getX(),target.getY(),target.getZ());
-            BlockPos stand=step ? stepStand(job,target) : quarryStand(level,town,target,from);
+            BlockPos stand=step ? stepStand(job,target) : quarryStand(level,town,job,target,from);
             if(stand!=null && book.claimAll(List.of(target,stand.below()),worker,now,200))
                 return new Ticket(job.id,index,target,stand.below(),stand,step,true,false);
         }
-        // Nowhere to stand near the open cells, e.g. an old pit without stairs: work from the control block.
+        // No stairs, broken stairs, or nowhere to stand: work from the control block.
         for(int index:open) {
             BlockPos target=pos(job,index);
             if(!job.stair(target.getX(),target.getY(),target.getZ()) && book.claim(target,worker,now,200))
@@ -182,9 +233,9 @@ public final class ExcavationService {
         }
         return null;
     }
-    public static Ticket next(ServerLevel level,Settlement town,Station station,UUID worker,BlockPos from) {
+    public static Ticket next(ServerLevel level,Settlement town,Station station,UUID worker,BlockPos from,java.util.function.Predicate<BlockPos> avoid) {
         ExcavationJob job=job(level,town,station); if(job==null) return null;
-        if(job.role==StructureRole.QUARRY) return nextQuarry(level,town,job,worker,from);
+        if(job.role==StructureRole.QUARRY) return nextQuarry(level,town,job,worker,from,avoid);
         var book=SettlementService.reservations(level);
         int end=job.windowEnd(),scanned=0;
         for(int index=job.cursor();index<end && scanned++<256;index++) {
@@ -212,11 +263,22 @@ public final class ExcavationService {
     }
     public static boolean valid(ServerLevel level,Settlement town,Station station,Ticket ticket) {
         ExcavationJob job=WorldWorkData.get(level).excavations.get(station.position());
-        if(job==null || !job.id.equals(ticket.job()) || job.done(ticket.index())) return false;
-        if(ticket.quarry() && ticket.support()) return level.getBlockState(ticket.target()).canBeReplaced()
-                && level.getFluidState(ticket.target()).isEmpty() && standable(level,town,ticket.stand());
+        if(job==null || !job.id.equals(ticket.job())) return false;
+        // Steps (including repairs of finished layers, index -1) are only placed into an empty, unoccupied space.
+        if(ticket.quarry() && ticket.support()) return (ticket.index()<0 || !job.done(ticket.index())) && level.getBlockState(ticket.target()).canBeReplaced()
+                && level.getFluidState(ticket.target()).isEmpty() && vacant(level,ticket.target()) && standable(level,town,ticket.stand());
+        if(job.done(ticket.index())) return false;
         if(ticket.quarry()) return blockage(level,town,ticket.target(),true)==Blockage.NONE && (ticket.remote() || standable(level,town,ticket.stand()));
         return safeBlock(level,town,ticket.target()) && standable(level,town,ticket.stand());
+    }
+    /** Inside a quarry pit, where a fall is caught by the crew's safety lines. */
+    public static boolean inPit(ServerLevel level,Settlement town,BlockPos pos) {
+        for(Station station:town.stations) {
+            if(station.role()!=StructureRole.QUARRY) continue;
+            ExcavationJob job=WorldWorkData.get(level).excavations.get(station.position());
+            if(job!=null && job.bounds().contains(pos.getX(),Math.min(pos.getY(),job.topY),pos.getZ())) return true;
+        }
+        return false;
     }
     /**
      * Next staircase stop between two points when either lies deep in a quarry pit. Paths are planned a few steps at a
@@ -226,7 +288,7 @@ public final class ExcavationService {
         for(Station station:town.stations) {
             if(station.role()!=StructureRole.QUARRY) continue;
             ExcavationJob job=WorldWorkData.get(level).excavations.get(station.position());
-            if(job==null || !job.hasStairs()) continue;
+            if(job==null || !job.stairsOpen()) continue;
             int start=job.stepAt(from.getX(),from.getY(),from.getZ()),end=job.stepAt(to.getX(),to.getY(),to.getZ());
             if(start<0 && end<0) continue;
             start=Math.max(0,start); end=Math.max(0,end);
@@ -252,7 +314,7 @@ public final class ExcavationService {
     }
     public static String status(ServerLevel level,Settlement town,Station station) {
         ExcavationJob job=job(level,town,station);
-        if(job==null) return "needs a loaded target inside the claim and a mine entrance above the configured depth band";
+        if(job==null) return "needs a loaded target inside the claim, a mine entrance above the configured depth band, and tunnels that stay out of quarry chunks";
         if(job.cursor()>=job.size()) return "excavation complete at Y "+job.targetY;
         if(job.role==StructureRole.QUARRY) {
             String access=job.hasStairs() ? "crews take the spiral stairs from Y "+(job.stairTop()+1) : "crews work from the control block";

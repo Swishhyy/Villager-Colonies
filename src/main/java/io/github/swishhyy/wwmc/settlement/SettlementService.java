@@ -35,6 +35,7 @@ import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
 import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
@@ -383,6 +384,10 @@ public final class SettlementService {
             placeBorders(level,s);
             if(s.stations.removeIf(station -> level.hasChunkAt(station.position()) && !active(level,station))) data.setDirty();
         }
+    }
+    /** Quarry crews work on safety lines: a fall inside their town's pit does no damage. */
+    @SubscribeEvent public void fall(LivingFallEvent event) {
+        if(event.getEntity() instanceof CitizenEntity citizen && citizen.level() instanceof ServerLevel level && citizen.inQuarry(level)) event.setCanceled(true);
     }
     @SubscribeEvent public void stopped(ServerStoppedEvent event) {
         RESERVATIONS.keySet().removeIf(level -> level.getServer()==event.getServer());

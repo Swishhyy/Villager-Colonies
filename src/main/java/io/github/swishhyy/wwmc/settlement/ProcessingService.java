@@ -59,7 +59,8 @@ public final class ProcessingService {
     }
     public static boolean fuel(FuelValues fuels,ItemStack stack) {
         // Bucket fuels would also require hauling the empty remainder; use ordinary consumed fuels here.
-        return !stack.isEmpty() && stack.getCraftingRemainder()==null
+        // Tools, weapons and bows burn in vanilla but are worth far more as equipment, so they are never fuel.
+        return !stack.isEmpty() && stack.getCraftingRemainder()==null && !stack.isDamageableItem()
                 && stack.getBurnTime(RecipeType.SMELTING,fuels)>0;
     }
     public static boolean supply(ServerLevel level,StructureRole role,ItemStack stack) {

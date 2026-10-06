@@ -74,6 +74,11 @@ public final class GuardProcessingChecks {
         assertTrue(ProcessingService.fuel(fuels,new ItemStack(Items.CHARCOAL)));
         assertFalse(ProcessingService.fuel(fuels,new ItemStack(Items.STONE)));
         assertFalse(ProcessingService.fuel(fuels,new ItemStack(Items.LAVA_BUCKET)),"Container fuels are left for manual loading");
+        for(var gear:List.of(Items.BOW,Items.WOODEN_SWORD,Items.WOODEN_PICKAXE,Items.WOODEN_AXE))
+            assertFalse(ProcessingService.fuel(fuels,new ItemStack(gear)),"Bows and wooden tools stay equipment instead of being burned");
+        assertTrue(ProcessingService.fuel(fuels,new ItemStack(Items.OAK_PLANKS)),"Ordinary wooden blocks remain fuel");
+        assertTrue(GuardEquipment.protective(new ItemStack(Items.IRON_HELMET)) && GuardEquipment.protective(new ItemStack(Items.LEATHER_BOOTS)),"Real armor protects its wearer");
+        assertFalse(GuardEquipment.protective(new ItemStack(Items.ELYTRA)) || GuardEquipment.protective(new ItemStack(Items.CARVED_PUMPKIN)),"Elytra and pumpkins fit armor slots but are not armor");
         assertTrue(ProcessingService.supply(fuels,StructureRole.COOK,new ItemStack(Items.BEEF)));
         assertTrue(ProcessingService.supply(fuels,StructureRole.COOK,new ItemStack(Items.WHEAT)));
         assertFalse(ProcessingService.supply(fuels,StructureRole.COOK,new ItemStack(Items.COOKED_BEEF)),"Finished food is delivered instead of retained as an ingredient");
