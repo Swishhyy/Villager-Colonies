@@ -136,8 +136,8 @@ The generated WWMC server config controls these defaults:
 | `quarryWorkers` | 8 | Crew slots per quarry. |
 | `mineTargetY` | −48 | Target depth when a new mine plan is created. |
 | `quarryTargetY` | −64 | Bottom depth when a new quarry plan is created. |
-| `branchLength` | 24 | Length of each mine side branch. |
-| `branchPairs` | 4 | Paired side-branch junctions along the mine spine. |
+| `mineBranchLength` | 24 | Length of each mine side branch. |
+| `mineBranchPairs` | 4 | Paired side-branch junctions along the mine spine. |
 
 ## Player direction and citizen autonomy
 

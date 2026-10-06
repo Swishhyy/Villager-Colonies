@@ -90,7 +90,7 @@ public final class StationRangePreview {
         @Override public void emit(GizmoPrimitives primitives,float alphaMultiplier) {
             int tint=ARGB.multiplyAlpha(color,alphaMultiplier);
             double x0=bounds.minX(),y0=bounds.minY(),z0=bounds.minZ();
-            // Inclusive block coordinates become outer faces, making every side exactly seven blocks long.
+            // Inclusive block coordinates become the outer faces of the complete area.
             double x1=bounds.maxX()+1.0,y1=bounds.maxY()+1.0,z1=bounds.maxZ()+1.0;
             for(int a=0;a<2;a++) for(int b=0;b<2;b++) {
                 double x=a==0 ? x0 : x1,y=a==0 ? y0 : y1,z=b==0 ? z0 : z1;
