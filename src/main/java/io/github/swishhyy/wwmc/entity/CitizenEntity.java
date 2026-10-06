@@ -3,6 +3,7 @@ package io.github.swishhyy.wwmc.entity;
 import io.github.swishhyy.wwmc.Config;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.core.CitizenNames;
+import io.github.swishhyy.wwmc.core.WorkCadence;
 import io.github.swishhyy.wwmc.settlement.*;
 import java.util.*;
 import java.util.function.Predicate;
@@ -55,6 +56,7 @@ public final class CitizenEntity extends Villager {
     private boolean armoryStocked;
     /** Ticks a craftsman works one batch at the bench. */
     private static final int CRAFT_TICKS=40;
+    private static final int MAX_FAILED_TARGETS=2048;
     private Crafting.Recipe order;
     private BlockPos patrolTarget,activePost;
     private final Map<BlockPos,Long> idleStations=new HashMap<>();
@@ -63,6 +65,9 @@ public final class CitizenEntity extends Villager {
     private final CitizenInventory cargo=new CitizenInventory(this::canOpenInventory);
     private final Map<BlockPos,Long> failedTargets=new HashMap<>();
     private int searchDelay, workProgress, pathTicks, mealTicks=2400;
+    private final WorkCadence.ReachBudget reachBudget=new WorkCadence.ReachBudget();
+    private long nextPathAt;
+    private BlockPos pathDestination;
     private String activity="Waiting for a job station";
     public CitizenEntity(EntityType<? extends Villager> type,Level level) {
         super(type,level); setPersistenceRequired(); setCanPickUpLoot(false);
@@ -94,7 +99,7 @@ public final class CitizenEntity extends Villager {
         if(level() instanceof ServerLevel server) {
             if(mealTicks>0) mealTicks--;
             if(guardAttackTicks>0) guardAttackTicks--;
-            if(tickCount%20==0) {
+            if(WorkCadence.due(server.getGameTime(),getId(),20)) {
                 cargo.flush();
                 Settlement town=town(server);
                 if(town!=null) {
@@ -151,10 +156,12 @@ public final class CitizenEntity extends Villager {
             BlockPos via=ExcavationService.waypoint(server,town(server),blockPosition(),pos);
             if(via!=null) pos=via;
         }
-        if(getNavigation().isDone() || tickCount%40==0) {
+        long now=level().getGameTime();
+        if(getNavigation().isDone() || !pos.equals(pathDestination) || now>=nextPathAt) {
             var path=getNavigation().createPath(pos,1);
             if(path==null) return false;
             getNavigation().moveTo(path,speed);
+            pathDestination=pos.immutable(); nextPathAt=now+40;
         }
         getLookControl().setLookAt(pos.getX()+0.5,pos.getY()+0.5,pos.getZ()+0.5);
         return true;
@@ -199,7 +206,15 @@ public final class CitizenEntity extends Villager {
     private boolean deliverCargo() { return cargo.needsDelivery(); }
     private boolean canReach(BlockPos pos) {
         if(near(pos)) return true;
-        var path=getNavigation().createPath(pos,1); return path!=null && path.canReach();
+        long now=level().getGameTime();
+        if(failedTargets.getOrDefault(pos,0L)>now) return false;
+        return reachBudget.check(() -> {
+            var path=getNavigation().createPath(pos,1);
+            if(path!=null && path.canReach()) return true;
+            // Retain failed probes long enough for a bounded search to advance past an obstructed group.
+            if(failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(pos.immutable(),now+1200);
+            return false;
+        });
     }
     private boolean food(ItemStack stack) {
         var nutrition=stack.get(DataComponents.FOOD);
@@ -309,11 +324,10 @@ public final class CitizenEntity extends Villager {
         return null;
     }
     private BlockPos findTarget(ServerLevel level,Settlement town,Station station) {
-        failedTargets.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
         var book=SettlementService.reservations(level);
         if(station.role()==StructureRole.LUMBER) {
             forestTask=ForestryService.find(level,town,station,p -> !failedTargets.containsKey(p)
-                    && book.available(p,getUUID(),level.getGameTime()) && canReach(p),
+                    && !reachBudget.deferred() && book.available(p,getUUID(),level.getGameTime()) && canReach(p),
                     item -> cargo.count(item)+(getOffhandItem().is(item) ? getOffhandItem().getCount() : 0));
             if(forestTask==null || !book.claim(forestTask.target(),getUUID(),level.getGameTime(),200)) return null;
             action=forestTask.planting()==null ? Action.FELL : Action.PLANT;
@@ -324,8 +338,9 @@ public final class CitizenEntity extends Villager {
             ExcavationJob job=ExcavationService.job(level,town,station);
             if(station.role()==StructureRole.MINE && job!=null && getY()<=job.targetY+6) {
                 BlockPos ore=CaveMining.find(level,town,blockPosition(),p -> !failedTargets.containsKey(p)
-                        && book.available(p,getUUID(),level.getGameTime()) && canReach(p));
+                        && !reachBudget.deferred() && book.available(p,getUUID(),level.getGameTime()) && canReach(p));
                 if(ore!=null && book.claim(ore,getUUID(),level.getGameTime(),200)) { action=Action.CAVE; return ore; }
+                if(reachBudget.deferred()) return null;
             }
             excavation=ExcavationService.next(level,town,station,getUUID(),blockPosition());
             if(excavation==null) return null;
@@ -344,7 +359,7 @@ public final class CitizenEntity extends Villager {
         if(target!=null) {
             SettlementService.reservations(level).release(target,getUUID());
             if(targetLease!=null) SettlementService.reservations(level).release(targetLease,getUUID());
-            if(failed && failedTargets.size()<128) failedTargets.put(target,level.getGameTime()+1200);
+            if(failed && failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(target,level.getGameTime()+1200);
         }
         target=null; targetLease=null; forestTask=null; excavation=null; action=Action.HARVEST; minimumAxeDurability=1;
         workProgress=0; pathTicks=0; searchDelay=10; getNavigation().stop();
@@ -355,7 +370,11 @@ public final class CitizenEntity extends Villager {
     private boolean validTarget(ServerLevel level,Settlement town,Station station) {
         return switch(action) {
             case HARVEST -> SettlementService.ownsBlock(level,town,station,target) && harvestable(level,town,station.role(),target);
-            case FELL -> ForestryService.tree(level,town,target)!=null && SettlementService.ownsBlock(level,town,station,target);
+            // The complete construction/provenance check runs again inside fell before any block changes.
+            // While walking or swinging, checking the root avoids retraversing an entire tree twice a second.
+            case FELL -> forestTask!=null && forestTask.tree()!=null && level.hasChunkAt(target)
+                    && level.getBlockState(target).is(forestTask.tree().species().log)
+                    && SettlementService.ownsBlock(level,town,station,target);
             case PLANT -> forestTask!=null && ForestryService.canPlant(level,town,station,forestTask.planting())
                     && SettlementService.ownsBlock(level,town,station,target);
             case EXCAVATE,SUPPORT -> excavation!=null && ExcavationService.valid(level,town,station,excavation);
@@ -643,6 +662,8 @@ public final class CitizenEntity extends Villager {
         return station==null ? "none" : station.role().id();
     }
     private void work(ServerLevel level) {
+        reachBudget.reset();
+        failedTargets.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
         Settlement town=town(level);
         if(town==null) { activity="Settlement unavailable"; return; }
         if(!isGuard() && guardVacancy(level,town)) releaseWork(level);
@@ -681,6 +702,7 @@ public final class CitizenEntity extends Villager {
             }
             target=findTarget(level,town,station);
             if(target==null) {
+                if(reachBudget.deferred()) { activity="Checking accessible work nearby"; return; }
                 if(cargo.hasDeliverable(this::retainSupply,this::food)) { visitWarehouse(level,town,station.role()); return; }
                 activity=station.role().excavates() ? ExcavationService.status(level,town,station)
                         : station.role()==StructureRole.LUMBER ? "No accessible natural tree; needs saplings and clear soil in range" : "No mature accessible crops";
@@ -733,7 +755,7 @@ public final class CitizenEntity extends Villager {
         }
         @Override public boolean canContinueToUse() { return canUse(); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
-        @Override public void tick() { if(tickCount%10==0 && level() instanceof ServerLevel l) work(l); }
+        @Override public void tick() { if(level() instanceof ServerLevel l && WorkCadence.due(l.getGameTime(),getId(),10)) work(l); }
         @Override public void stop() { if(level() instanceof ServerLevel l) releaseWork(l); }
     }
     /** "Duck and cover": during a daytime alarm civilians wait at the nearest housing until the all-clear. Night alarms find them in bed. */
@@ -749,7 +771,7 @@ public final class CitizenEntity extends Villager {
         @Override public boolean requiresUpdateEveryTick() { return true; }
         @Override public void start() { refuge=null; }
         @Override public void tick() {
-            if(tickCount%20!=0 || !(level() instanceof ServerLevel level)) return;
+            if(!(level() instanceof ServerLevel level) || !WorkCadence.due(level.getGameTime(),getId(),20)) return;
             Settlement town=town(level); if(town==null) return;
             if(refuge==null) refuge=DefenseService.refuge(level,town,blockPosition());
             if(distanceToSqr(Vec3.atCenterOf(refuge))<=9.0 || !walk(refuge,0.9)) {
@@ -765,7 +787,7 @@ public final class CitizenEntity extends Villager {
         @Override public boolean canContinueToUse() { return canUse(); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
         @Override public void tick() {
-            if(tickCount%20!=0 || !(level() instanceof ServerLevel level)) return;
+            if(!(level() instanceof ServerLevel level) || !WorkCadence.due(level.getGameTime(),getId(),20)) return;
             Settlement town=town(level); if(town==null) return;
             var beds=SettlementService.housingBeds(level,town);
             var book=SettlementService.reservations(level);

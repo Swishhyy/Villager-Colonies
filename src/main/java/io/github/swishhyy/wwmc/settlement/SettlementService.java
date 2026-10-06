@@ -14,6 +14,7 @@ import io.github.swishhyy.wwmc.core.ShiftClock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.util.*;
+import java.util.function.Supplier;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
@@ -41,6 +42,15 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 public final class SettlementService {
     private static final Map<ServerLevel,ReservationBook<BlockPos>> RESERVATIONS=new WeakHashMap<>();
     private static final Map<ServerLevel,WorkforceBook<BlockPos>> WORKFORCE=new WeakHashMap<>();
+    /** Cache locations briefly, never inventory contents or loaded chunk references. */
+    private static final Map<ServerLevel,StationResourceCache> RESOURCE_SCANS=new WeakHashMap<>();
+    private static List<BlockPos> resourcePositions(ServerLevel level,Settlement town,Station station,Supplier<List<BlockPos>> scan) {
+        return RESOURCE_SCANS.computeIfAbsent(level,l -> new StationResourceCache()).positions(town,station,level.getGameTime(),scan);
+    }
+    private static void refreshResources(ServerLevel level,Settlement town) {
+        StationResourceCache scans=RESOURCE_SCANS.get(level);
+        if(scans!=null) scans.refresh(town.id);
+    }
     public static WorkforceBook<BlockPos> workers(ServerLevel level) { return WORKFORCE.computeIfAbsent(level,l -> new WorkforceBook<>()); }
     public static int workerLimit(Station station) {
         return switch(station.role()) {
@@ -111,6 +121,20 @@ public final class SettlementService {
         return station.equals(owner);
     }
     public static List<BlockPos> beds(ServerLevel level,Settlement town,Station station) {
+        if(!station.role().detectsBeds() || !active(level,station)) return List.of();
+        List<BlockPos> result=new ArrayList<>();
+        for(BlockPos pos:resourcePositions(level,town,station,() -> scanBeds(level,town,station))) {
+            // A cached location cannot keep a broken, obstructed, reassigned or unloaded bed usable.
+            if(!availableCell(level,town,pos)) continue;
+            var head=level.getBlockState(pos);
+            if(!(head.getBlock() instanceof BedBlock) || head.getValue(BedBlock.PART)!=BedPart.HEAD) continue;
+            BlockPos foot=pos.relative(head.getValue(BedBlock.FACING).getOpposite());
+            if(availableCell(level,town,foot) && station.contains(foot) && StationDetection.completeBed(head,level.getBlockState(foot))
+                    && station.equals(town.nearestStation(pos,s -> s.role().detectsBeds() && s.contains(foot) && knownStation(level,s)))) result.add(pos);
+        }
+        return result;
+    }
+    private static List<BlockPos> scanBeds(ServerLevel level,Settlement town,Station station) {
         List<BlockPos> result=new ArrayList<>();
         if(!station.role().detectsBeds() || !active(level,station)) return result;
         for(BlockPos pos:cells(station)) {
@@ -141,6 +165,7 @@ public final class SettlementService {
         Settlement town=SettlementData.get(level).at(pos);
         if(town==null || town.station(pos)==null) return;
         Station station=town.station(pos);
+        refreshResources(level,town);
         String found=switch(station.role()) {
             case HOUSING,BARRACKS -> beds(level,town,station).size()+" housing beds";
             case HOSPITAL -> beds(level,town,station).size()+" patient beds (medical treatment is planned)";
@@ -163,7 +188,7 @@ public final class SettlementService {
         for(Station station:settlement.stations) {
             if(station.role()!=StructureRole.WAREHOUSE || !active(level,station)) continue;
             if(selectedWarehouse!=null && !station.position().equals(selectedWarehouse)) continue;
-            for(BlockPos pos:cells(station)) {
+            for(BlockPos pos:resourcePositions(level,settlement,station,() -> scanStorage(level,settlement,station))) {
                 if(availableCell(level,settlement,pos) && StationDetection.storageBlock(level.getBlockState(pos))
                         && ownsBlock(level,settlement,station,pos)) positions.add(pos.immutable());
             }
@@ -172,6 +197,12 @@ public final class SettlementService {
         // Each chest half contributes its actual block inventory once, including double chests.
         for(BlockPos pos:positions) if(level.getBlockEntity(pos) instanceof Container container) containers.add(container);
         return containers;
+    }
+    private static List<BlockPos> scanStorage(ServerLevel level,Settlement town,Station station) {
+        List<BlockPos> positions=new ArrayList<>();
+        for(BlockPos pos:cells(station)) if(availableCell(level,town,pos) && StationDetection.storageBlock(level.getBlockState(pos))
+                && ownsBlock(level,town,station,pos)) positions.add(pos.immutable());
+        return positions;
     }
     public static BlockPos warehouse(ServerLevel level,Settlement settlement,BlockPos from) {
         return settlement.stations.stream().filter(s -> s.role()==StructureRole.WAREHOUSE && active(level,s))
@@ -219,6 +250,7 @@ public final class SettlementService {
         Settlement settlement=owned(source);
         if(settlement==null) { source.sendFailure(Component.literal("Right-click a settlement banner to found a town first.")); return 0; }
         ServerLevel level=source.getLevel();
+        refreshResources(level,settlement);
         List<BlockPos> beds=housingBeds(level,settlement);
         int limit=Math.min(beds.size(),Config.MAX_CITIZENS.get());
         int added=0;
@@ -324,6 +356,8 @@ public final class SettlementService {
         workers(level).prune(level.getGameTime());
         SettlementData data=SettlementData.get(level);
         if(data.settlements.removeIf(s -> s.citizens.isEmpty() && level.hasChunkAt(s.center) && !level.getBlockState(s.center).is(WWMC.BANNER.get()))) data.setDirty();
+        StationResourceCache scans=RESOURCE_SCANS.get(level);
+        if(scans!=null) scans.prune(level.getGameTime());
         for(Settlement s:data.settlements) {
             if(s.widenTo(Settlement.MIN_RADIUS,data.settlements)) {
                 // Old corner banners are no longer the border; they stay in the world as ordinary blocks.
@@ -338,5 +372,6 @@ public final class SettlementService {
     @SubscribeEvent public void stopped(ServerStoppedEvent event) {
         RESERVATIONS.keySet().removeIf(level -> level.getServer()==event.getServer());
         WORKFORCE.keySet().removeIf(level -> level.getServer()==event.getServer());
+        RESOURCE_SCANS.keySet().removeIf(level -> level.getServer()==event.getServer());
     }
 }

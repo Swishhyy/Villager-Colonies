@@ -119,7 +119,7 @@ public final class ForestryService {
         roots.sort(Comparator.comparingDouble(p -> p.distSqr(station.position())));
         Set<BlockPos> checked=new HashSet<>();
         for(BlockPos root:roots) {
-            if(checked.contains(root) || !SettlementService.ownsBlock(level,town,station,root) || !accessible.test(root)) continue;
+            if(checked.contains(root) || !SettlementService.ownsBlock(level,town,station,root)) continue;
             Tree tree=tree(level,town,root);
             if(tree!=null) {
                 checked.addAll(tree.logs());
@@ -137,7 +137,7 @@ public final class ForestryService {
                 if(container.getItem(slot).is(species.seed)) available+=container.getItem(slot).getCount();
             if(available<species.width*species.width) continue;
             for(BlockPos pos:SettlementService.cells(station)) {
-                if(!loaded(level,town,pos) || !accessible.test(pos)) continue;
+                if(!loaded(level,town,pos)) continue;
                 PlantingSite site=new PlantingSite(station.position(),pos,species,species.width);
                 if(!canPlant(level,town,station,site)) continue;
                 boolean crowded=false;
@@ -146,7 +146,8 @@ public final class ForestryService {
                     var state=level.getBlockState(nearby);
                     if(state.getBlock() instanceof SaplingBlock || state.is(BlockTags.LOGS)) { crowded=true; break; }
                 }
-                if(!crowded && SettlementService.ownsBlock(level,town,station,pos)) {
+                // Reject solid blocks, unsuitable soil and cramped sites before asking for an expensive path.
+                if(!crowded && SettlementService.ownsBlock(level,town,station,pos) && accessible.test(pos)) {
                     data.queue(site); return new Task(pos.immutable(),null,site);
                 }
             }
