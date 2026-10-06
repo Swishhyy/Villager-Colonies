@@ -53,6 +53,9 @@ public final class CitizenEntity extends Villager {
     private static final int ARROW_STOCK=32;
     private int minimumAxeDurability=1,guardAttackTicks,patrolTicks,gearTicks,patrolVisits,scavengeTicks,armoryTicks;
     private boolean armoryStocked;
+    /** Ticks a craftsman works one batch at the bench. */
+    private static final int CRAFT_TICKS=40;
+    private Crafting.Recipe order;
     private BlockPos patrolTarget,activePost;
     private final Map<BlockPos,Long> idleStations=new HashMap<>();
     private UUID settlementId;
@@ -143,6 +146,11 @@ public final class CitizenEntity extends Villager {
     }
     private boolean walk(BlockPos pos) { return walk(pos,0.65); }
     private boolean walk(BlockPos pos,double speed) {
+        // Trips into or out of a deep quarry follow its spiral stairs a few steps at a time.
+        if(level() instanceof ServerLevel server && town(server)!=null) {
+            BlockPos via=ExcavationService.waypoint(server,town(server),blockPosition(),pos);
+            if(via!=null) pos=via;
+        }
         if(getNavigation().isDone() || tickCount%40==0) {
             var path=getNavigation().createPath(pos,1);
             if(path==null) return false;
@@ -156,7 +164,7 @@ public final class CitizenEntity extends Villager {
         if(workplace!=null) SettlementService.workers(level).release(workplace,getUUID());
         if(target!=null) book.release(target,getUUID());
         if(targetLease!=null) book.release(targetLease,getUUID());
-        targetLease=null; forestTask=null; excavation=null; action=Action.HARVEST; minimumAxeDurability=1;
+        targetLease=null; forestTask=null; excavation=null; action=Action.HARVEST; minimumAxeDurability=1; order=null;
         workplace=null; target=null; patrolTarget=null; activePost=null; setTarget(null); workProgress=0; pathTicks=0; getNavigation().stop();
     }
     private Station chooseJob(ServerLevel level,Settlement town) {
@@ -200,7 +208,7 @@ public final class CitizenEntity extends Villager {
     }
     private boolean retainSupply(ItemStack stack) {
         return stack.is(ItemTags.AXES) || stack.is(ItemTags.PICKAXES) || GuardWeapons.weapon(stack)
-                || isGuard() && GuardWeapons.arrow(stack)
+                || isGuard() && GuardWeapons.arrow(stack) || order!=null && order.uses(stack)
                 || action==Action.PLANT && forestTask!=null && stack.is(forestTask.planting().species().seed)
                 || action==Action.SUPPORT && ExcavationService.supportMaterial(stack)
                 || isGuard() && java.util.Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> GuardEquipment.armor(stack,slot));
@@ -319,7 +327,7 @@ public final class CitizenEntity extends Villager {
                         && book.available(p,getUUID(),level.getGameTime()) && canReach(p));
                 if(ore!=null && book.claim(ore,getUUID(),level.getGameTime(),200)) { action=Action.CAVE; return ore; }
             }
-            excavation=ExcavationService.next(level,town,station,getUUID());
+            excavation=ExcavationService.next(level,town,station,getUUID(),blockPosition());
             if(excavation==null) return null;
             action=excavation.support() ? Action.SUPPORT : Action.EXCAVATE;
             targetLease=excavation.lease(); return excavation.target();
@@ -601,6 +609,39 @@ public final class CitizenEntity extends Villager {
         activity="Walking the "+shift+" patrol"; pathTicks+=10;
         if(!walk(patrolTarget,alarm ? 0.8 : 0.65) || pathTicks>600) { patrolTarget=null; patrolTicks=60; pathTicks=0; }
     }
+    /** Craftsmen fill warehouse shortages from real materials, one trip of batches at a time. */
+    private void craft(ServerLevel level,Settlement town,Station station) {
+        if(order!=null && (town.disabledRecipes.contains(order.id()) || !Crafting.ready(cargo,order))) order=null;
+        if(order==null) {
+            // Deliver finished goods, then collect materials for the most pressing shortage.
+            if(!visitWarehouse(level,town,StructureRole.CRAFTSMAN)) return;
+            BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
+            List<Container> storage=warehouse==null ? List.of() : SettlementService.storageAt(level,town,warehouse);
+            Crafting.Recipe next=Crafting.choose(storage,town.disabledRecipes);
+            if(next==null || Crafting.fetch(storage,cargo,next)==0) {
+                activity="Nothing to craft: the warehouse is stocked or lacks materials";
+                idleStations.put(station.position(),level.getGameTime()+400); releaseWork(level); searchDelay=20; return;
+            }
+            order=next; workProgress=0; pathTicks=0;
+        }
+        if(!near(station.position())) {
+            activity="Carrying materials for "+order.label()+" to the workbench"; pathTicks+=10;
+            if(!walk(station.position()) || pathTicks>1200) { idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); }
+            return;
+        }
+        getNavigation().stop(); pathTicks=0;
+        getLookControl().setLookAt(station.position().getX()+0.5,station.position().getY()+0.5,station.position().getZ()+0.5);
+        activity="Crafting "+order.label();
+        workProgress+=10;
+        if(workProgress>=CRAFT_TICKS) { workProgress=0; swing(InteractionHand.MAIN_HAND); cargo.offer(Crafting.craft(cargo,order)); }
+    }
+    public String activity() { return activity; }
+    /** Station role this citizen works, or "none". */
+    public String job() {
+        if(!(level() instanceof ServerLevel server) || workplace==null || town(server)==null) return "none";
+        Station station=town(server).station(workplace);
+        return station==null ? "none" : station.role().id();
+    }
     private void work(ServerLevel level) {
         Settlement town=town(level);
         if(town==null) { activity="Settlement unavailable"; return; }
@@ -624,6 +665,7 @@ public final class CitizenEntity extends Villager {
         if(deliverCargo() || mealTicks<=0 && station.role()!=StructureRole.FARM) {
             if(!visitWarehouse(level,town,station.role())) return;
         }
+        if(station.role()==StructureRole.CRAFTSMAN) { craft(level,town,station); return; }
         if(target==null) {
             if(searchDelay>0) { searchDelay-=10; return; }
             if(!station.role().excavates() && !near(station.position())) {
@@ -648,11 +690,18 @@ public final class CitizenEntity extends Villager {
         useLocalSupplies(station.role());
         if(!properTool(station.role()) || needsSupply()) { if(!visitWarehouse(level,town,station.role())) return; }
         BlockPos approach=excavation==null ? target : excavation.stand();
-        BlockPos visibleAt=action==Action.PLANT ? target.below() : action==Action.SUPPORT ? excavation.stand().below()
-                : excavation!=null && excavation.quarry() ? station.position() : target;
+        BlockPos visibleAt=action==Action.PLANT ? target.below() : excavation!=null && excavation.remote() ? station.position()
+                : excavation!=null && excavation.quarry() ? target : action==Action.SUPPORT ? excavation.stand().below() : target;
         if(!near(approach) || !visible(level,visibleAt)) {
             activity=action==Action.PLANT ? "Walking to plant saplings" : "Walking to "+station.role().id()+" work"; pathTicks+=10;
-            if(!walk(approach) || pathTicks>1200) cancelTarget(level,true);
+            // Standing beside the work without a clear view will not fix itself; give up sooner than a long walk.
+            if(!walk(approach) || pathTicks>(near(approach) ? 100 : 1200)) {
+                if(action==Action.EXCAVATE && excavation.quarry() && !excavation.remote()) {
+                    // No way into the pit from here: keep the quarry moving from its control block instead.
+                    SettlementService.reservations(level).release(excavation.lease(),getUUID());
+                    excavation=excavation.fromControlBlock(station.position()); targetLease=excavation.lease(); pathTicks=0;
+                } else cancelTarget(level,true);
+            }
             return;
         }
         getNavigation().stop();
@@ -660,13 +709,16 @@ public final class CitizenEntity extends Villager {
         activity=switch(action) {
             case FELL -> "Felling a whole natural tree";
             case PLANT -> "Planting saplings";
-            case SUPPORT -> "Supporting the tunnel floor";
-            case EXCAVATE -> excavation.quarry() ? "Operating the quarry" : "Excavating a tunnel";
+            case SUPPORT -> excavation.quarry() ? "Rebuilding a quarry step" : "Supporting the tunnel floor";
+            case EXCAVATE -> excavation.remote() ? "Operating the quarry from its control block" : excavation.quarry() ? "Quarrying" : "Excavating a tunnel";
             case HARVEST -> "Harvesting crops";
             case CAVE -> "Mining accessible cave ore";
         };
         workProgress+=10;
-        if(workProgress>=Config.WORK_TICKS.get()) harvest(level,town,station);
+        // Stone yields to a pickaxe in about a second; harder blocks and weaker tools take longer.
+        int required=action==Action.EXCAVATE || action==Action.CAVE ? ExcavationService.breakTicks(level,target,getMainHandItem())
+                : action==Action.SUPPORT ? 20 : Config.WORK_TICKS.get();
+        if(workProgress>=required) harvest(level,town,station);
     }
     private final class WorkGoal extends Goal {
         WorkGoal() { setFlags(EnumSet.of(Flag.MOVE,Flag.LOOK)); }

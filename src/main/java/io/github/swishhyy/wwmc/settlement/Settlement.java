@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 
 public final class Settlement {
@@ -25,7 +27,8 @@ public final class Settlement {
         BlockPos.CODEC.listOf().optionalFieldOf("border_banners",List.of()).forGetter(s -> s.borderBanners),
         Codec.unboundedMap(UUID_CODEC,Codec.STRING).optionalFieldOf("citizen_names",Map.of()).forGetter(s -> s.citizenNames),
         Codec.LONG.optionalFieldOf("next_wave",0L).forGetter(s -> s.nextWave),
-        Codec.INT.optionalFieldOf("waves",0).forGetter(s -> s.waves)
+        Codec.INT.optionalFieldOf("waves",0).forGetter(s -> s.waves),
+        Codec.STRING.listOf().optionalFieldOf("disabled_recipes",List.of()).forGetter(s -> new ArrayList<>(s.disabledRecipes))
     ).apply(i, Settlement::new));
     public final UUID id, owner;
     public String name, priority;
@@ -34,6 +37,8 @@ public final class Settlement {
     /** Game time of the next enemy wave; zero until the town is populous enough. */
     public long nextWave;
     public int waves;
+    /** Craftsman recipes the owner has switched off. */
+    public final Set<String> disabledRecipes;
     public final List<UUID> citizens;
     public final List<Station> stations;
     public final List<BlockPos> borderBanners;
@@ -45,15 +50,16 @@ public final class Settlement {
         this(id,owner,name,center,radius,citizens,stations,priority,borderBanners,Map.of());
     }
     public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority,List<BlockPos> borderBanners,Map<UUID,String> citizenNames) {
-        this(id,owner,name,center,radius,citizens,stations,priority,borderBanners,citizenNames,0L,0);
+        this(id,owner,name,center,radius,citizens,stations,priority,borderBanners,citizenNames,0L,0,List.of());
     }
-    public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority,List<BlockPos> borderBanners,Map<UUID,String> citizenNames,long nextWave,int waves) {
+    public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority,List<BlockPos> borderBanners,Map<UUID,String> citizenNames,long nextWave,int waves,List<String> disabledRecipes) {
         this.id=id; this.owner=owner; this.name=name; this.center=center.immutable(); this.radius=radius;
         this.citizens=new ArrayList<>(citizens); this.stations=new ArrayList<>(stations); this.priority=priority;
         this.borderBanners=new ArrayList<>();
         borderBanners.forEach(p -> this.borderBanners.add(p.immutable()));
         this.citizenNames=new HashMap<>(citizenNames);
         this.nextWave=nextWave; this.waves=waves;
+        this.disabledRecipes=new LinkedHashSet<>(disabledRecipes);
     }
     public boolean contains(BlockPos pos) {
         return Math.abs((long)pos.getX()-center.getX()) <= radius && Math.abs((long)pos.getZ()-center.getZ()) <= radius;

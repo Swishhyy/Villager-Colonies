@@ -42,7 +42,14 @@ public final class SettlementService {
     private static final Map<ServerLevel,ReservationBook<BlockPos>> RESERVATIONS=new WeakHashMap<>();
     private static final Map<ServerLevel,WorkforceBook<BlockPos>> WORKFORCE=new WeakHashMap<>();
     public static WorkforceBook<BlockPos> workers(ServerLevel level) { return WORKFORCE.computeIfAbsent(level,l -> new WorkforceBook<>()); }
-    public static int workerLimit(Station station) { return station.role()==StructureRole.QUARRY ? Config.QUARRY_WORKERS.get() : station.role()==StructureRole.GUARD ? Config.GUARD_WORKERS.get() : Config.STATION_WORKERS.get(); }
+    public static int workerLimit(Station station) {
+        return switch(station.role()) {
+            case QUARRY -> Config.QUARRY_WORKERS.get();
+            case GUARD -> Config.GUARD_WORKERS.get();
+            case CRAFTSMAN -> Config.CRAFTSMAN_WORKERS.get();
+            default -> Config.STATION_WORKERS.get();
+        };
+    }
     public static ReservationBook<BlockPos> reservations(ServerLevel level) {
         return RESERVATIONS.computeIfAbsent(level, l -> new ReservationBook<>());
     }
@@ -142,6 +149,7 @@ public final class SettlementService {
             case LUMBER -> "natural trees + sapling planting sites";
             case MINE,QUARRY -> ExcavationService.status(level,town,station);
             case GUARD -> GuardService.status(level,station);
+            case CRAFTSMAN -> "workbench for warehouse orders (stock/target: "+Crafting.status(storage(level,town),town.disabledRecipes)+")";
         };
         tell(player,station.role().id()+" station: "+found+(station.role().excavates() ? ". Facing "+station.facing().name().toLowerCase(Locale.ROOT)+"." : " in its 7x7x7 range.")+
                 (station.role().providesWork() ? " Crew: "+workers(level).count(pos,level.getGameTime())+"/"+workerLimit(station)+"." : "")+
@@ -234,6 +242,14 @@ public final class SettlementService {
         source.sendSuccess(() -> Component.literal("Recruited "+result+" citizens. "+status(level,settlement)+" Supply food and tools in the warehouse."),false);
         return added;
     }
+    private static int craftOrder(CommandSourceStack source,String id,boolean enabled) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        Settlement s=owned(source);
+        if(s==null) { source.sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
+        if(Crafting.byId(id)==null) { source.sendFailure(Component.literal("Unknown order. Choose one of: "+String.join(", ",Crafting.RECIPES.stream().map(Crafting.Recipe::id).toList())+".")); return 0; }
+        if(enabled ? s.disabledRecipes.remove(id) : s.disabledRecipes.add(id)) SettlementData.get(source.getLevel()).setDirty();
+        source.sendSuccess(() -> Component.literal("Craftsmen will "+(enabled ? "" : "no longer ")+"make "+Crafting.byId(id).label()+"."),false);
+        return 1;
+    }
     @SubscribeEvent public void commands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("wwmc")
             .then(Commands.literal("status").executes(c -> {
@@ -258,6 +274,23 @@ public final class SettlementService {
                     s.priority=p; SettlementData.get(c.getSource().getLevel()).setDirty();
                     c.getSource().sendSuccess(() -> Component.literal("Town priority set to "+p+". Idle workers will prefer those stations."),false); return 1;
                 })))
+            .then(Commands.literal("citizens").executes(c -> {
+                Settlement s=owned(c.getSource());
+                if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
+                var loaded=DefenseService.loadedCitizens(c.getSource().getLevel(),s);
+                StringBuilder text=new StringBuilder(s.name+": "+loaded.size()+" of "+s.citizens.size()+" citizens loaded.");
+                for(CitizenEntity citizen:loaded) text.append("\n").append(citizen.getName().getString()).append(" (").append(citizen.job()).append("): ").append(citizen.activity());
+                c.getSource().sendSuccess(() -> Component.literal(text.toString()),false); return loaded.size();
+            }))
+            .then(Commands.literal("craft").executes(c -> {
+                Settlement s=owned(c.getSource());
+                if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
+                String stock=Crafting.status(storage(c.getSource().getLevel(),s),s.disabledRecipes);
+                c.getSource().sendSuccess(() -> Component.literal("Craftsman orders, warehouse stock/target: "+stock+". Use /wwmc craft <order> on|off."),false); return 1;
+            }).then(Commands.argument("order",StringArgumentType.word())
+                .suggests((c,b) -> { for(Crafting.Recipe r:Crafting.RECIPES) b.suggest(r.id()); return b.buildFuture(); })
+                .then(Commands.literal("on").executes(c -> craftOrder(c.getSource(),StringArgumentType.getString(c,"order"),true)))
+                .then(Commands.literal("off").executes(c -> craftOrder(c.getSource(),StringArgumentType.getString(c,"order"),false)))))
             .then(Commands.literal("alarm").executes(c -> {
                 Settlement s=owned(c.getSource());
                 if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
