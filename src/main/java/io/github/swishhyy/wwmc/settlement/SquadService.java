@@ -23,7 +23,7 @@ public final class SquadService {
         if(town.campaign.squads.size()>=8) return "This town already has eight squads deployed. Release one before forming another.";
         var available=DefenseService.loadedCitizens(level,town).stream().filter(c -> c.isAlive() && c.isGuard()
                 && town.campaign.squad(c.getUUID())==null && c.distanceToSqr(leader)<64*64 && c.getHealth()>c.getMaxHealth()*0.5F
-                && GuardWeapons.weapon(c.getMainHandItem())).sorted(Comparator.comparingDouble(c -> c.distanceToSqr(leader))).limit(requested).toList();
+                && GuardWeapons.weapon(c.getMainHandItem()) && GuardEquipment.usable(c.getMainHandItem())).sorted(Comparator.comparingDouble(c -> c.distanceToSqr(leader))).limit(requested).toList();
         if(available.size()<requested) return "Only "+available.size()+" equipped, healthy guards are available nearby. Supply the Guard Stations first.";
         for(CitizenEntity guard:available) guard.wakeForAlarm();
         town.campaign.squads.add(new CampaignState.Squad(leader.getUUID(),available.stream().map(CitizenEntity::getUUID).toList(),"follow",leader.blockPosition(),Optional.empty()));
@@ -52,7 +52,9 @@ public final class SquadService {
         if(guard.bag().isOpen()) { guard.getNavigation().stop(); guard.workActivity("Waiting while my inventory is open"); return true; }
         ServerPlayer leader=level.getServer().getPlayerList().getPlayer(squad.leader());
         boolean returning=squad.order().equals("return") || squad.order().equals("retreat") || leader==null || leader.level()!=level || !leader.isAlive()
-                || !TownAccess.manages(town,squad.leader()) || guard.getHealth()<guard.getMaxHealth()*0.3F;
+                || !TownAccess.manages(town,squad.leader()) || guard.getHealth()<guard.getMaxHealth()*0.3F
+                || !GuardWeapons.weapon(guard.getMainHandItem()) || GuardEquipment.worn(guard.getMainHandItem())
+                || Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> GuardEquipment.worn(guard.getItemBySlot(slot)));
         BlockPos target=returning ? town.center : squad.rally();
         CitizenEntity escort=null;
         if(!returning && squad.order().equals("escort")) {

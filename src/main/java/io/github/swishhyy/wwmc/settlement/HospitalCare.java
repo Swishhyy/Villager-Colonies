@@ -48,7 +48,7 @@ public final class HospitalCare {
         if(InventoryOps.count(stock,FoodHealing::food)==0 || InventoryOps.count(stock,s -> s.is(Items.PAPER))==0) {
             medic.workActivity("Needs meals and paper dressings in the hospital barrel; couriers deliver them"); return;
         }
-        InventoryOps.takeOne(stock,FoodHealing::food); InventoryOps.takeOne(stock,s -> s.is(Items.PAPER));
+        FoodHealing.take(stock,medic.bag()::offer); InventoryOps.takeOne(stock,s -> s.is(Items.PAPER));
         patient.heal(4); medic.workActivity("Treated "+patient.getName().getString()+" with a meal and a dressing");
         if(patient.getHealth()>=patient.getMaxHealth()*0.95F) {
             patient.recovering(false); CampaignService.record(level,town,patient.getName().getString()+" recovered at the hospital and returned to duty.");

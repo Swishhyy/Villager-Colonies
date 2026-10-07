@@ -75,7 +75,8 @@ public final class FoodWorldTests {
                     cook=new Station(start.east(40),StructureRole.COOK),courier=new Station(start.east(14),StructureRole.COURIER),
                     warehouse=new Station(start.east(60),StructureRole.WAREHOUSE);
             var fixture=fixture(level,start,hunter,butcher,cook,courier,warehouse);
-            Container pantry=barrel(level,warehouse.position().north(2),new ItemStack(Items.IRON_SWORD,1),new ItemStack(Items.IRON_AXE,1),new ItemStack(Items.COAL,8));
+            // Starter rations keep this production-chain test independent of the separate hunger-sharing test.
+            Container pantry=barrel(level,warehouse.position().north(2),new ItemStack(Items.IRON_SWORD,1),new ItemStack(Items.IRON_AXE,1),new ItemStack(Items.COAL,8),new ItemStack(Items.BREAD,16));
             Container huntBarrel=barrel(level,hunter.position().south(2)),butcherBarrel=barrel(level,butcher.position().south(2)),cookBarrel=barrel(level,cook.position().south(2));
             level.setBlockAndUpdate(cook.position().east(),Blocks.SMOKER.defaultBlockState());
             var hunt=fixture.worker(hunter,hunter.position().west());

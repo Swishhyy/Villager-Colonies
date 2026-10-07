@@ -50,7 +50,7 @@ public final class CampaignWorldTests {
             BlockPos station=start.east(14),bed=station.north(2); var beds=Blocks.BED.red().defaultBlockState().setValue(BedBlock.FACING,Direction.NORTH);
             level.setBlockAndUpdate(bed,beds.setValue(BedBlock.PART,BedPart.FOOT)); level.setBlockAndUpdate(bed.north(),beds.setValue(BedBlock.PART,BedPart.HEAD));
             level.setBlockAndUpdate(station.east(2),Blocks.BARREL.defaultBlockState()); Container supplies=(Container)level.getBlockEntity(station.east(2));
-            supplies.setItem(0,new ItemStack(Items.BREAD,16)); supplies.setItem(1,new ItemStack(Items.PAPER,16));
+            supplies.setItem(0,new ItemStack(Items.MUSHROOM_STEW)); supplies.setItem(1,new ItemStack(Items.PAPER,16)); supplies.setItem(2,new ItemStack(Items.BREAD,15));
             Settlement town=town(level,start.west(4),new Station(station,StructureRole.HOSPITAL)); town.campaign.projects.add("hospital");
             CitizenEntity medic=citizen(level,town,station.west(2)),patient=citizen(level,town,start.east(2)); patient.setHealth(4);
             town.jobs.assign(medic.getUUID(),station);
@@ -59,6 +59,7 @@ public final class CampaignWorldTests {
                 helper.assertTrue(patient.blockPosition().distSqr(bed)<36,"Patient never reached a hospital bed");
                 int dressings=InventoryOps.count(List.of(supplies),s -> s.is(Items.PAPER)); int meals=InventoryOps.count(List.of(supplies),FoodHealing::food);
                 helper.assertTrue(dressings<16 && dressings==meals,"Treatment did not spend equal real dressings and meals: "+dressings+" / "+meals);
+                helper.assertTrue(medic.bag().count(Items.BOWL)==1,"Hospital treatment lost the stew bowl");
                 helper.assertTrue(!patient.recovering(),"Recovered patient remains in treatment");
                 leave(level,town,medic,patient); CitizenNavigationTests.release(level,start,chunks);
             });
@@ -95,9 +96,16 @@ public final class CampaignWorldTests {
             var site=ExpeditionService.discover(level,start,"mine","test:"+UUID.randomUUID()); helper.assertTrue(site!=null,"Natural site was rejected: "+siteIssue(level,start));
             int spawned=ExpeditionService.spawn(level,site,site.pos,3); helper.assertTrue(spawned==3,"Defenders did not spawn on clear ground"); site.spawned=true;
             helper.assertTrue(!site.cleared,"Site cleared before defenders died");
-            for(UUID id:new ArrayList<>(site.guards)) level.getEntity(id).kill(level);
-            helper.assertTrue(site.cleared && site.guards.isEmpty(),"Death events failed to clear the saved site");
-            var data=ExpeditionData.get(level); data.sites.remove(site); data.setDirty(); CitizenNavigationTests.release(level,start,chunks); helper.succeed();
+            // Entities added while a GameTest is ticking enter the level lookup on the next server tick.
+            helper.runAfterDelay(5,() -> {
+                for(UUID id:new ArrayList<>(site.guards)) {
+                    var defender=level.getEntity(id);
+                    helper.assertTrue(defender!=null && defender.isAlive(),"Saved defender was not added to the loaded world");
+                    defender.kill(level);
+                }
+                helper.assertTrue(site.cleared && site.guards.isEmpty(),"Death events failed to clear the saved site");
+                var data=ExpeditionData.get(level); data.sites.remove(site); data.setDirty(); CitizenNavigationTests.release(level,start,chunks); helper.succeed();
+            });
         });
     }
     @GameTest(timeoutTicks=6500)
