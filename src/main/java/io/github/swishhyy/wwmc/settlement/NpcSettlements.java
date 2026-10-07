@@ -51,7 +51,7 @@ public final class NpcSettlements {
         }
     }
     public static boolean loaded(ServerLevel level,BlockPos center) {
-        for(long chunk:TradeChunks.window(center)) { var p=new net.minecraft.world.level.ChunkPos(chunk); if(!level.hasChunk(p.x,p.z)) return false; }
+        for(long chunk:TradeChunks.window(center)) { var p=new net.minecraft.world.level.ChunkPos((int)chunk,(int)(chunk >> 32)); if(!level.hasChunk(p.x(),p.z())) return false; }
         return true;
     }
     private boolean discover(ServerLevel level,NpcTownPlan.Candidate candidate) {
@@ -148,7 +148,7 @@ public final class NpcSettlements {
         b.put(-4,0,-8,door.setValue(DoorBlock.HALF,DoubleBlockHalf.LOWER),true);
         b.put(-4,1,-8,door.setValue(DoorBlock.HALF,DoubleBlockHalf.UPPER),true);
         for(int x:new int[]{-11,-9,-7}) for(int z:new int[]{-11,-9,-7,-5}) {
-            var bed=Blocks.YELLOW_BED.defaultBlockState().setValue(BedBlock.FACING,Direction.EAST);
+            var bed=net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(net.minecraft.resources.Identifier.withDefaultNamespace("yellow_bed")).defaultBlockState().setValue(BedBlock.FACING,Direction.EAST);
             b.put(x,0,z,bed.setValue(BedBlock.PART,BedPart.FOOT),true);
             b.put(x+1,0,z,bed.setValue(BedBlock.PART,BedPart.HEAD),true);
         }
@@ -165,7 +165,7 @@ public final class NpcSettlements {
         // Adjacent renewable iron uses the existing ore-vein mechanics, rather than excavating the houses.
         b.put(-10,0,1,Blocks.IRON_ORE.defaultBlockState(),false);
         for(int x=7;x<=11;x++) for(int z=6;z<=10;z++) if(x!=9 || z!=8) {
-            b.floor(x,z,Blocks.DIRT); b.put(x,-1,z,Blocks.FARMLAND.defaultBlockState().setValue(FarmBlock.MOISTURE,7),true);
+            b.floor(x,z,Blocks.DIRT); b.put(x,-1,z,Blocks.FARMLAND.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.MOISTURE,7),true);
             b.put(x,0,z,((CropBlock)Blocks.CARROTS).getStateForAge(7),false);
         }
         b.put(9,-1,8,Blocks.WATER.defaultBlockState(),false);

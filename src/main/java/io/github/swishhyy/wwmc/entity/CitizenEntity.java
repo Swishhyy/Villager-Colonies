@@ -1033,7 +1033,7 @@ public final class CitizenEntity extends Villager {
         playSound(SoundEvents.ARROW_SHOOT,1.0F,1.0F/(getRandom().nextFloat()*0.4F+0.8F));
         bow.hurtAndBreak(1,this,EquipmentSlot.MAINHAND);
     }
-    private void fight(ServerLevel level,Monster enemy) {
+    private void fight(ServerLevel level,LivingEntity enemy) {
         setTarget(enemy); activity="Defending the settlement";
         getLookControl().setLookAt(enemy,30.0F,30.0F);
         double distance=distanceTo(enemy);
@@ -1705,10 +1705,11 @@ public final class CitizenEntity extends Villager {
     private void trader(ServerLevel level,Settlement home,Station checkpoint) {
         if(!TradeChunks.keep(level,home,blockPosition())) { tradeNote(home,"Waiting for a server trader slot"); return; }
         boolean changed=!getUUID().equals(home.trading.runner) || home.trading.runnerPos==null
-                || !new net.minecraft.world.level.ChunkPos(home.trading.runnerPos).equals(new net.minecraft.world.level.ChunkPos(blockPosition()));
+                || (Math.floorDiv(home.trading.runnerPos.getX(),16)!=Math.floorDiv(blockPosition().getX(),16) || Math.floorDiv(home.trading.runnerPos.getZ(),16)!=Math.floorDiv(blockPosition().getZ(),16));
         home.trading.runner=getUUID(); home.trading.runnerPos=blockPosition().immutable();
         if(changed) SettlementData.get(level).setDirty();
         if(checkpoint!=null) SettlementService.workers(level).claim(checkpoint.position(),getUUID(),level.getGameTime(),200,1);
+        if(cargo.isOpen()) { getNavigation().stop(); tradeNote(home,"Waiting while my inventory is open"); return; }
         eatFrom(List.of(cargo));
         if(level.getGameTime()<nextTradeAt) return;
         Settlement destination=tradeShipment.destination==null ? null : SettlementData.get(level).byId(tradeShipment.destination);
@@ -1773,7 +1774,8 @@ public final class CitizenEntity extends Villager {
                     TradeGoods.unload(tradeShipment,SettlementService.storageAt(level,home,warehouse));
                     if(!tradeShipment.isEmpty()) { tradeNote(home,"Home storage is full; returned goods are safe in the trade load"); nextTradeAt=level.getGameTime()+100; return; }
                 }
-                tradeShipment.finish(); home.trading.runner=null; home.trading.runnerPos=null;
+                tradeShipment.finish();
+                if(!TradeRoutes.canDepart(level,home)) { home.trading.runner=null; home.trading.runnerPos=null; }
                 tradeWaypoint=null; nextTradeAt=level.getGameTime()+200; SettlementData.get(level).setDirty();
                 tradeNote(home,"Returned; preparing the next trip");
             }

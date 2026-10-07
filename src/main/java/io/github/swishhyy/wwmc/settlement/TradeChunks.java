@@ -43,15 +43,15 @@ public final class TradeChunks {
         var held=HELD.computeIfAbsent(level,l -> new HashMap<>());
         if(!held.containsKey(town.id) && held.size()>=Config.MAX_TRADERS.get()) return false;
         Set<Long> next=window(pos),old=held.getOrDefault(town.id,Set.of());
-        for(long chunk:next) if(!old.contains(chunk)) { ChunkPos p=new ChunkPos(chunk); CONTROLLER.forceChunk(level,town.id,p.x,p.z,true,false); }
-        for(long chunk:old) if(!next.contains(chunk)) { ChunkPos p=new ChunkPos(chunk); CONTROLLER.forceChunk(level,town.id,p.x,p.z,false,false); }
+        for(long chunk:next) if(!old.contains(chunk)) { ChunkPos p=new ChunkPos((int)chunk,(int)(chunk >> 32)); CONTROLLER.forceChunk(level,town.id,p.x(),p.z(),true,false); }
+        for(long chunk:old) if(!next.contains(chunk)) { ChunkPos p=new ChunkPos((int)chunk,(int)(chunk >> 32)); CONTROLLER.forceChunk(level,town.id,p.x(),p.z(),false,false); }
         held.put(town.id,next);
         return true;
     }
     public static void release(ServerLevel level,UUID town) {
         var held=HELD.get(level);
         Set<Long> old=held==null ? null : held.remove(town);
-        if(old!=null) for(long chunk:old) { ChunkPos p=new ChunkPos(chunk); CONTROLLER.forceChunk(level,town,p.x,p.z,false,false); }
+        if(old!=null) for(long chunk:old) { ChunkPos p=new ChunkPos((int)chunk,(int)(chunk >> 32)); CONTROLLER.forceChunk(level,town,p.x(),p.z(),false,false); }
     }
     @SubscribeEvent public void tick(LevelTickEvent.Post event) {
         if(!(event.getLevel() instanceof ServerLevel level) || level.getGameTime()%40!=0) return;
