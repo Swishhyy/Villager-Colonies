@@ -77,7 +77,11 @@ public final class GuideBook {
     /** Conservative widths fit the native 114-pixel page; chapters can continue onto another page. */
     public static List<String> pages() {
         List<String> pages=new ArrayList<>();
+        List<String> current=new ArrayList<>();
         for(String chapter:PAGES) {
+            // Keep room for a chapter heading and its opening, while sharing short chapter tails.
+            if(current.size()>8) { pages.add(String.join("\n",current)); current.clear(); }
+            if(!current.isEmpty()) current.add("");
             List<String> lines=new ArrayList<>();
             for(String paragraph:chapter.split("\n",-1)) {
                 String rest=paragraph;
@@ -87,8 +91,12 @@ public final class GuideBook {
                 }
                 lines.add(rest);
             }
-            for(int start=0;start<lines.size();start+=13) pages.add(String.join("\n",lines.subList(start,Math.min(lines.size(),start+13))));
+            for(String line:lines) {
+                current.add(line);
+                if(current.size()==13) { pages.add(String.join("\n",current)); current.clear(); }
+            }
         }
+        if(!current.isEmpty()) pages.add(String.join("\n",current));
         return List.copyOf(pages);
     }
 }

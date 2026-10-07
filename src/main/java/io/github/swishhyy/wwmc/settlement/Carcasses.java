@@ -4,7 +4,8 @@ import io.github.swishhyy.wwmc.WWMC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.util.List;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -15,19 +16,18 @@ import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 /** One actual animal or fishing catch produces one whole carcass; only a butcher turns it into raw portions. */
 public final class Carcasses {
     public enum Kind {
-        COW("cow",EntityType.COW,Items.BEEF,4), PIG("pig",EntityType.PIG,Items.PORKCHOP,4),
-        SHEEP("sheep",EntityType.SHEEP,Items.MUTTON,3), CHICKEN("chicken",EntityType.CHICKEN,Items.CHICKEN,2),
-        RABBIT("rabbit",EntityType.RABBIT,Items.RABBIT,2), COD("cod",EntityType.COD,Items.COD,2),
-        SALMON("salmon",EntityType.SALMON,Items.SALMON,2);
+        COW("cow",Items.BEEF,4), PIG("pig",Items.PORKCHOP,4),
+        SHEEP("sheep",Items.MUTTON,3), CHICKEN("chicken",Items.CHICKEN,2),
+        RABBIT("rabbit",Items.RABBIT,2), COD("cod",Items.COD,2),
+        SALMON("salmon",Items.SALMON,2);
         public final String id;
-        public final EntityType<?> entity;
         public final Item meat;
         public final int portions;
-        Kind(String id,EntityType<?> entity,Item meat,int portions) { this.id=id; this.entity=entity; this.meat=meat; this.portions=portions; }
+        Kind(String id,Item meat,int portions) { this.id=id; this.meat=meat; this.portions=portions; }
         public ItemStack stack() { return new ItemStack(WWMC.CARCASSES.get(this).get()); }
     }
     public static Kind kind(LivingEntity entity) {
-        for(Kind kind:Kind.values()) if(entity.getType()==kind.entity) return kind;
+        for(Kind kind:Kind.values()) if(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).equals(Identifier.withDefaultNamespace(kind.id))) return kind;
         return null;
     }
     public static Kind kind(ItemStack stack) {

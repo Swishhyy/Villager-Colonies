@@ -1308,7 +1308,7 @@ public final class CitizenEntity extends Villager {
             List<Container> storage=local;
             Crafting.Recipe next=Crafting.choose(stock,storage,town.disabledRecipes,station.role());
             if(next==null || Crafting.fetch(stock,storage,cargo,next)==0) {
-                activity="Nothing to craft: the warehouse is stocked or lacks materials";
+                activity="Waiting for orders or courier-delivered ingredients in the kitchen barrel";
                 idleStations.put(station.position(),level.getGameTime()+400); releaseWork(level); searchDelay=20; return;
             }
             order=next; workProgress=0; pathTicks=0;
@@ -1342,7 +1342,7 @@ public final class CitizenEntity extends Villager {
             if(!visitStorage(level,town,station.role(),barrel,local,false)) return;
             List<Container> sources=local;
             if(next==null || Workshop.fetch(Workshop.Recipes.of(level),town.craftOrders,next,stock,sources,cargo)==0) {
-                activity="Nothing to craft: every order is stocked or lacks materials";
+                activity="Orders are stocked, or waiting for courier-delivered materials";
                 idleStations.put(station.position(),level.getGameTime()+400); releaseWork(level); searchDelay=20; return;
             }
             craftJob=next; workProgress=0; pathTicks=0;
@@ -1498,7 +1498,7 @@ public final class CitizenEntity extends Villager {
         activity=station.role()==StructureRole.COOK ? "Supplying the kitchen and collecting cooked food" : "Supplying furnaces and collecting smelted ores";
         if(collected==0 && !ProcessingService.busy(level,processor) && !ProcessingService.hasInputs(level,station.role(),processor,List.of(cargo))) {
             if(++processingIdle>=devices.size()) {
-                activity="No ingredients to process; checking other jobs";
+                activity="Waiting for courier-delivered processing inputs";
                 idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); return;
             }
         } else processingIdle=0;

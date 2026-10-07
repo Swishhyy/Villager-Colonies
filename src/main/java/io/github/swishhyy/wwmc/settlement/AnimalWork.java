@@ -104,11 +104,11 @@ public final class AnimalWork {
             animal=herd.stream().filter(a -> !culling || cullable((int)herd.stream().filter(b -> !b.isBaby() && b.getType()==a.getType()).count(),
                             Config.ANIMAL_BREEDERS.get(),a.isBaby(),a.hasCustomName(),a.isInLove()))
                     .sorted(Comparator.comparingDouble(worker::distanceToSqr))
-                    .filter(a -> claims.claim(a.getUUID(),worker.getUUID(),level.getGameTime(),200)).findFirst().orElse(null);
+                    .filter(a -> claims.claim(a.getUUID(),worker.getUUID(),level.getGameTime(),200,1)).findFirst().orElse(null);
             if(animal==null) { worker.workActivity(culling ? "Keeping the breeding animals; no surplus adults" : "No unprotected adult game in the hunting area"); return; }
             target=animal.getUUID();
         }
-        ANIMALS.computeIfAbsent(level,l -> new WorkforceBook<>()).claim(target,worker.getUUID(),level.getGameTime(),200);
+        ANIMALS.computeIfAbsent(level,l -> new WorkforceBook<>()).claim(target,worker.getUUID(),level.getGameTime(),200,1);
         if(culling) {
             var species=animal.getType();
             long adults=animals(level,town,station,false).stream().filter(a -> !a.isBaby() && a.getType()==species).count();
@@ -133,7 +133,7 @@ public final class AnimalWork {
             if(!weapon(worker.getMainHandItem()) || GuardEquipment.worn(worker.getMainHandItem())) {
                 ItemStack knife=InventoryOps.takeOne(List.of(worker.bag()),AnimalWork::weapon);
                 if(!knife.isEmpty()) { worker.bag().offer(worker.getMainHandItem()); worker.setItemSlot(EquipmentSlot.MAINHAND,knife); }
-                else { worker.workDepot(level,town,station); worker.workActivity("Needs a sword or axe in the keeper's barrel to harvest surplus adults"); return; }
+                else { fetch(level,town,station,worker,s -> weapon(s) && !GuardEquipment.worn(s),1); worker.workActivity("Needs a sword or axe in the keeper's barrel to harvest surplus adults"); return; }
             }
             hunt(level,town,station,worker,true); return;
         }
@@ -155,8 +155,8 @@ public final class AnimalWork {
                 worker.workWalk(second.blockPosition()); return;
             }
             var claims=ANIMALS.computeIfAbsent(level,l -> new WorkforceBook<>());
-            if(!claims.claim(first.getUUID(),worker.getUUID(),level.getGameTime(),200)
-                    || !claims.claim(second.getUUID(),worker.getUUID(),level.getGameTime(),200)) continue;
+            if(!claims.claim(first.getUUID(),worker.getUUID(),level.getGameTime(),200,1)
+                    || !claims.claim(second.getUUID(),worker.getUUID(),level.getGameTime(),200,1)) continue;
             worker.getNavigation().stop();
             InventoryOps.takeOne(List.of(worker.bag()),first::isFood); InventoryOps.takeOne(List.of(worker.bag()),second::isFood);
             first.setInLove(null); second.setInLove(null); worker.swing(InteractionHand.MAIN_HAND);

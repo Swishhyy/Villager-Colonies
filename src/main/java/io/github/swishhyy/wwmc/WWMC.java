@@ -59,7 +59,7 @@ public final class WWMC {
         }
     }
     public static final Map<Carcasses.Kind,DeferredItem<Item>> CARCASSES=new EnumMap<>(Carcasses.Kind.class);
-    static { for(var kind:Carcasses.Kind.values()) CARCASSES.put(kind,ITEMS.registerSimpleItem(kind.id+"_carcass",new Item.Properties().stacksTo(16))); }
+    static { for(var kind:Carcasses.Kind.values()) CARCASSES.put(kind,ITEMS.registerItem(kind.id+"_carcass",Item::new,p -> p.stacksTo(16))); }
     public static final DeferredItem<SurveyorItem> SURVEYOR=ITEMS.registerItem("surveyor",SurveyorItem::new,p -> p.stacksTo(1));
     public static final DeferredItem<WrittenBookItem> GUIDE=ITEMS.registerItem("settlement_guide",WrittenBookItem::new,
             p -> p.stacksTo(1).component(DataComponents.WRITTEN_BOOK_CONTENT,GuideBook.content()));
