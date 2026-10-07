@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PPP",
+    "PIP",
+    "PPP"
+  ],
+  "key": {
+    "P": "#minecraft:planks",
+    "I": "minecraft:fishing_rod"
+  },
+  "result": {
+    "id": "wwmc:fisherman_station",
+    "count": 1
+  }
+}

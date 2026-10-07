@@ -69,6 +69,7 @@ public final class SettlementService {
             case QUARRY -> Config.QUARRY_WORKERS.get();
             case GUARD -> Config.GUARD_WORKERS.get();
             case SMELTERY,COOK -> Config.PROCESSING_WORKERS.get();
+            case HUNTER,FISHERMAN,ANIMAL_KEEPER,BUTCHER -> Config.ANIMAL_WORKERS.get();
             case BLACKSMITH -> Config.BLACKSMITH_WORKERS.get();
             default -> Config.STATION_WORKERS.get();
         };

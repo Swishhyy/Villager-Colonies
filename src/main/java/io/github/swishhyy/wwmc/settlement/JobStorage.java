@@ -1,81 +1,73 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.core.StructureRole;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.function.Predicate;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.crafting.RecipeManager;
-import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.item.crafting.SingleRecipeInput;
+import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.FuelValues;
 
-/**
- * What stays in a job's barrels and what couriers carry. A job keeps its tools and supplies (with a small reserve of
- * floor blocks and saplings); everything it produced is collected for the warehouse. Smelters and cooks also get
- * their barrels filled with a load of ingredients and fuel, and enchanters with lapis.
- */
+/** Job barrels are the only production interface. Couriers move real supplies and goods through the warehouse. */
 public final class JobStorage {
     public static final int SUPPORT_RESERVE=16,SAPLING_RESERVE=32,FUEL_RESERVE=8,WHEAT_RESERVE=9,LAPIS_RESERVE=9;
-    /** A courier sets out once this many goods wait, or sooner when a barrel is nearly full or the pantry is low. */
     public static final int COLLECT_LOAD=32,PANTRY_LOW=16;
     public record Pickup(Container container,int slot,int amount) {}
-    /** Fuel burn times and cooking recipes that decide a job's inputs. The level is only passed on to recipe checks. */
     public record Supplies(FuelValues fuels,RecipeManager recipes,Level level) {
         public static Supplies of(ServerLevel level) { return new Supplies(level.fuelValues(),level.getServer().getRecipeManager(),level); }
         public boolean fuel(ItemStack stack) { return ProcessingService.fuel(fuels,stack); }
-        /** Something the job's appliance can smelt or cook. */
         public boolean ingredient(StructureRole role,ItemStack stack) {
             if(!ProcessingService.ingredient(role,stack)) return false;
-            SingleRecipeInput input=new SingleRecipeInput(stack);
+            var input=new SingleRecipeInput(stack);
             return role==StructureRole.SMELTERY ? recipes.getRecipeFor(RecipeType.SMELTING,input,level).isPresent()
                     : recipes.getRecipeFor(RecipeType.SMOKING,input,level).isPresent();
         }
+        public Workshop.Recipes crafting() { return new Workshop.Recipes(recipes.recipeMap(),level); }
     }
+    private record Demand(Predicate<ItemStack> accepts,int target) {}
     private JobStorage() {}
-    private static boolean tool(StructureRole role,ItemStack stack) {
-        return role==StructureRole.LUMBER && stack.is(ItemTags.AXES) || role.excavates() && stack.is(ItemTags.PICKAXES);
+    public static boolean tool(StructureRole role,ItemStack stack) {
+        return role==StructureRole.LUMBER && stack.is(ItemTags.AXES) || role.excavates() && stack.is(ItemTags.PICKAXES)
+                || (role==StructureRole.HUNTER || role==StructureRole.ANIMAL_KEEPER) && AnimalWork.weapon(stack)
+                || role==StructureRole.FISHERMAN && stack.is(Items.FISHING_ROD)
+                || role==StructureRole.BUTCHER && stack.is(ItemTags.AXES);
     }
-    /**
-     * Inputs the job takes from its own barrels; a craftsman's barrels hold materials, so only finished orders leave,
-     * and an enchanter's hold lapis and the items waiting their turn, so only enchanted goods leave.
-     */
     private static boolean supply(Supplies supplies,Settlement town,StructureRole role,ItemStack stack) {
         if(role.processes()) return ProcessingService.supply(supplies.fuels(),role,stack);
+        if(role.animalJob()) return AnimalWork.supply(role,stack);
         if(role==StructureRole.ENCHANTER) return Enchanting.lapis(stack) || Enchanting.candidate(stack);
+        if(role==StructureRole.BLACKSMITH) return BlacksmithRepair.damaged(stack) || repairMaterial(stack);
+        if(role==StructureRole.GUARD) return !GuardEquipment.worn(stack) && (GuardWeapons.weapon(stack) || GuardWeapons.arrow(stack)
+                || Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> GuardEquipment.armor(stack,slot)));
         return role==StructureRole.CRAFTSMAN && !Workshop.product(town,stack);
     }
-    /** Goods a courier may take from these barrels, leaving the job's tools, supplies and reserves. */
     public static List<Pickup> collectable(Supplies supplies,Settlement town,StructureRole role,List<Container> barrels) {
-        int support=SUPPORT_RESERVE,saplings=SAPLING_RESERVE;
+        int support=SUPPORT_RESERVE,saplings=SAPLING_RESERVE,meals=role.foodJob() ? 0 : FoodSharing.PERSONAL_LIMIT;
         List<Pickup> result=new ArrayList<>();
         for(Container barrel:barrels) for(int slot=0;slot<barrel.getContainerSize();slot++) {
             ItemStack stack=barrel.getItem(slot);
-            // Worn tools still leave, so blacksmiths in the warehouse can repair them.
             if(stack.isEmpty() || tool(role,stack) && !GuardEquipment.worn(stack) || supply(supplies,town,role,stack)) continue;
             int keep=0;
             if(role.excavates() && ExcavationService.supportMaterial(stack)) { keep=Math.min(support,stack.getCount()); support-=keep; }
             else if(role==StructureRole.LUMBER && stack.is(ItemTags.SAPLINGS)) { keep=Math.min(saplings,stack.getCount()); saplings-=keep; }
+            else if(FoodHealing.food(stack)) { keep=Math.min(meals,stack.getCount()); meals-=keep; }
             if(stack.getCount()>keep) result.add(new Pickup(barrel,slot,stack.getCount()-keep));
         }
         return result;
     }
     public static int goods(List<Pickup> pickups) { return pickups.stream().mapToInt(Pickup::amount).sum(); }
-    /** Meals waiting among the goods; couriers fetch these early when the warehouse pantry runs low. */
     public static boolean food(List<Pickup> pickups) {
-        return pickups.stream().anyMatch(pickup -> FoodHealing.food(pickup.container().getItem(pickup.slot())));
+        return pickups.stream().anyMatch(p -> FoodHealing.food(p.container().getItem(p.slot()))
+                || Carcasses.carcass(p.container().getItem(p.slot())) || ProcessingService.rawFood(p.container().getItem(p.slot())));
     }
-    /** A courier sets out for a worthwhile load, a nearly full barrel, or any food while the pantry is low. */
     public static boolean worthCollecting(List<Pickup> pickups,int freeSlots,int pantry) {
         int goods=goods(pickups);
         return goods>=COLLECT_LOAD || goods>0 && (freeSlots<=2 || pantry<PANTRY_LOW && food(pickups));
     }
-    /** Move collectable goods into the courier's bag until it would need to deliver; returns the items moved. */
     public static int collect(Supplies supplies,Settlement town,StructureRole role,List<Container> barrels,CitizenInventory bag) {
         int moved=0;
         for(Pickup pickup:collectable(supplies,town,role,barrels)) {
@@ -90,40 +82,79 @@ public final class JobStorage {
         for(Container container:containers) for(int slot=0;slot<container.getContainerSize();slot++) if(container.getItem(slot).isEmpty()) free++;
         return free;
     }
-    /** Something a job's barrel is stocked with: smeltable or cookable ingredients, fuel and wheat for bread, or an enchanter's lapis. */
-    public static boolean input(Supplies supplies,StructureRole role,ItemStack stack) {
-        if(role==StructureRole.ENCHANTER) return Enchanting.lapis(stack);
-        if(!role.processes() || stack.isEmpty()) return false;
-        return supplies.fuel(stack) || role==StructureRole.COOK && stack.is(Items.WHEAT) || supplies.ingredient(role,stack);
+    private static boolean repairMaterial(ItemStack stack) {
+        return stack.is(Items.IRON_INGOT) || stack.is(Items.COPPER_INGOT) || stack.is(Items.GOLD_INGOT) || stack.is(Items.DIAMOND)
+                || stack.is(Items.NETHERITE_INGOT) || stack.is(Items.LEATHER) || stack.is(ItemTags.PLANKS) || stack.is(Items.COBBLESTONE);
     }
-    private static Predicate<ItemStack> ingredient(Supplies supplies,StructureRole role) {
-        return s -> !supplies.fuel(s) && !s.is(Items.WHEAT) && supplies.ingredient(role,s);
+    public static boolean input(Supplies supplies,StructureRole role,ItemStack stack) { return input(supplies,null,role,stack); }
+    public static boolean input(Supplies supplies,Settlement town,StructureRole role,ItemStack stack) {
+        if(stack.isEmpty()) return false;
+        if(tool(role,stack)) return !GuardEquipment.worn(stack);
+        if(role.animalJob()) return AnimalWork.supply(role,stack);
+        if(role==StructureRole.ENCHANTER) return Enchanting.lapis(stack) || Enchanting.candidate(stack);
+        if(role==StructureRole.BLACKSMITH) return BlacksmithRepair.damaged(stack) || repairMaterial(stack);
+        if(role==StructureRole.GUARD) return supply(supplies,town,role,stack);
+        if(role==StructureRole.CRAFTSMAN && town!=null) return town.craftOrders.stream().filter(o -> o.target()>0)
+                .flatMap(o -> Workshop.plans(supplies.crafting(),o).stream()).anyMatch(p -> p.uses(stack));
+        if(role.excavates() && ExcavationService.supportMaterial(stack) || role==StructureRole.LUMBER && stack.is(ItemTags.SAPLINGS)) return true;
+        return role.processes() && (supplies.fuel(stack) || role==StructureRole.COOK && stack.is(Items.WHEAT) || supplies.ingredient(role,stack));
     }
-    /** Inputs a processing or enchanting job's barrels are short of, have room for, and the warehouse can supply. */
-    public static boolean needsSupplies(Supplies supplies,StructureRole role,List<Container> barrels,List<Container> warehouse) {
-        // A full barrel would send the load straight back to the warehouse, errand after errand.
-        if(!role.processes() && role!=StructureRole.ENCHANTER || freeSlots(barrels)<2) return false;
-        if(role==StructureRole.ENCHANTER) return InventoryOps.count(barrels,Enchanting::lapis)<LAPIS_RESERVE && InventoryOps.count(warehouse,Enchanting::lapis)>0;
-        Predicate<ItemStack> ingredients=ingredient(supplies,role),fuel=supplies::fuel,wheat=s -> s.is(Items.WHEAT);
-        return InventoryOps.count(barrels,ingredients)<ProcessingService.INPUT_LOAD && InventoryOps.count(warehouse,ingredients)>0
-                || InventoryOps.count(barrels,fuel)<FUEL_RESERVE && InventoryOps.count(warehouse,fuel)>0
-                || role==StructureRole.COOK && InventoryOps.count(barrels,wheat)<WHEAT_RESERVE && InventoryOps.count(warehouse,wheat)>=3;
+    private static List<Demand> demands(Supplies supplies,Settlement town,StructureRole role,List<Container> barrels,List<Container> warehouse) {
+        List<Demand> result=new ArrayList<>();
+        Predicate<ItemStack> tools=s -> tool(role,s) && !GuardEquipment.worn(s);
+        if(role.excavates() || role==StructureRole.LUMBER || role.animalJob()) result.add(new Demand(tools,role==StructureRole.MINE ? 1 : 2));
+        if(role.processes()) {
+            result.add(new Demand(s -> !supplies.fuel(s) && !s.is(Items.WHEAT) && supplies.ingredient(role,s),ProcessingService.INPUT_LOAD*2));
+            result.add(new Demand(supplies::fuel,FUEL_RESERVE*2));
+            if(role==StructureRole.COOK) result.add(new Demand(s -> s.is(Items.WHEAT),WHEAT_RESERVE*2));
+        }
+        if(role.excavates()) result.add(new Demand(ExcavationService::supportMaterial,SUPPORT_RESERVE));
+        if(role==StructureRole.LUMBER) result.add(new Demand(s -> s.is(ItemTags.SAPLINGS),SAPLING_RESERVE));
+        if(role==StructureRole.BUTCHER) result.add(new Demand(Carcasses::carcass,16));
+        if(role==StructureRole.ANIMAL_KEEPER) {
+            boolean scarce=town!=null && FoodSharing.scarce(InventoryOps.count(warehouse,FoodHealing::food),town.citizens.size());
+            result.add(new Demand(s -> AnimalWork.feed(s) && (!scarce || !FoodHealing.food(s)),AnimalWork.FEED_LOAD*2));
+        }
+        if(role==StructureRole.ENCHANTER) {
+            result.add(new Demand(Enchanting::lapis,LAPIS_RESERVE*2)); result.add(new Demand(Enchanting::candidate,2));
+        }
+        if(role==StructureRole.GUARD) {
+            result.add(new Demand(s -> GuardWeapons.melee(s) && !GuardEquipment.worn(s),2));
+            result.add(new Demand(s -> GuardWeapons.bow(s) && !GuardEquipment.worn(s),1));
+            result.add(new Demand(GuardWeapons::arrow,32));
+            for(var slot:GuardEquipment.ARMOR) result.add(new Demand(s -> GuardEquipment.armor(s,slot) && !GuardEquipment.worn(s),1));
+        }
+        if(role==StructureRole.BLACKSMITH) {
+            result.add(new Demand(BlacksmithRepair::damaged,2));
+            List<Container> stock=new ArrayList<>(barrels); stock.addAll(warehouse);
+            result.add(new Demand(material -> stock.stream().anyMatch(box -> {
+                for(int slot=0;slot<box.getContainerSize();slot++) if(BlacksmithRepair.damaged(box.getItem(slot)) && BlacksmithRepair.material(box.getItem(slot),material)) return true;
+                return false;
+            }),8));
+        }
+        if(role==StructureRole.CRAFTSMAN && town!=null) {
+            List<Container> stock=new ArrayList<>(barrels); stock.addAll(warehouse);
+            Workshop.Job job=Workshop.choose(supplies.crafting(),town.craftOrders,stock,stock);
+            if(job!=null) for(Ingredient ingredient:job.plan().ingredients()) result.add(new Demand(ingredient,Workshop.TRIP_BATCHES));
+        }
+        return result;
     }
-    /** Load the courier's bag with what the barrels are short of; returns the items taken from the warehouse. */
-    public static int load(Supplies supplies,StructureRole role,List<Container> barrels,List<Container> warehouse,CitizenInventory bag) {
-        if(role==StructureRole.ENCHANTER) return carry(warehouse,bag,Enchanting::lapis,LAPIS_RESERVE*2-InventoryOps.count(barrels,Enchanting::lapis));
-        Predicate<ItemStack> ingredients=ingredient(supplies,role),fuel=supplies::fuel,wheat=s -> s.is(Items.WHEAT);
-        int moved=carry(warehouse,bag,ingredients,ProcessingService.INPUT_LOAD*2-InventoryOps.count(barrels,ingredients));
-        moved+=carry(warehouse,bag,fuel,FUEL_RESERVE*2-InventoryOps.count(barrels,fuel));
-        if(role==StructureRole.COOK) moved+=carry(warehouse,bag,wheat,WHEAT_RESERVE*2-InventoryOps.count(barrels,wheat));
-        return moved;
+    public static boolean needsSupplies(Supplies supplies,StructureRole role,List<Container> barrels,List<Container> warehouse) { return needsSupplies(supplies,null,role,barrels,warehouse); }
+    public static boolean needsSupplies(Supplies supplies,Settlement town,StructureRole role,List<Container> barrels,List<Container> warehouse) {
+        if(freeSlots(barrels)<2) return false;
+        return demands(supplies,town,role,barrels,warehouse).stream()
+                .anyMatch(d -> InventoryOps.count(barrels,d.accepts())<d.target()/2+1 && InventoryOps.count(warehouse,d.accepts())>0);
     }
-    private static int carry(List<Container> sources,CitizenInventory bag,Predicate<ItemStack> eligible,int maximum) {
+    public static int load(Supplies supplies,StructureRole role,List<Container> barrels,List<Container> warehouse,CitizenInventory bag) { return load(supplies,null,role,barrels,warehouse,bag); }
+    public static int load(Supplies supplies,Settlement town,StructureRole role,List<Container> barrels,List<Container> warehouse,CitizenInventory bag) {
         int moved=0;
-        while(moved<maximum && !bag.needsDelivery()) {
-            ItemStack next=InventoryOps.takeOne(sources,eligible);
-            if(next.isEmpty()) break;
-            bag.offer(next); moved++;
+        for(Demand demand:demands(supplies,town,role,barrels,warehouse)) {
+            int remaining=demand.target()-InventoryOps.count(barrels,demand.accepts())-InventoryOps.count(List.of(bag),demand.accepts());
+            while(remaining-->0 && !bag.needsDelivery()) {
+                ItemStack next=InventoryOps.takeOne(warehouse,demand.accepts());
+                if(next.isEmpty()) break;
+                bag.offer(next); moved++;
+            }
         }
         return moved;
     }
