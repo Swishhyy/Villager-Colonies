@@ -29,8 +29,119 @@ public final class CitizenNavigationTests {
             }
         return chunks;
     }
-    private static void release(ServerLevel level,BlockPos start,List<ChunkPos> chunks) {
+    static void release(ServerLevel level,BlockPos start,List<ChunkPos> chunks) {
         for(var pos:chunks) TICKETS.forceChunk(level,start,pos.x(),pos.z(),false,false);
+    }
+    static List<ChunkPos> pinArea(ServerLevel level,BlockPos start,int minX,int maxX,int minZ,int maxZ) {
+        List<ChunkPos> chunks=new ArrayList<>();
+        for(int x=Math.floorDiv(start.getX()+minX-8,16);x<=Math.floorDiv(start.getX()+maxX+8,16);x++)
+            for(int z=Math.floorDiv(start.getZ()+minZ-8,16);z<=Math.floorDiv(start.getZ()+maxZ+8,16);z++) {
+                chunks.add(new ChunkPos(x,z)); TICKETS.forceChunk(level,start,x,z,true,false);
+            }
+        return chunks;
+    }
+    /** Grass on stone with open air above, like an ordinary meadow. */
+    static void meadow(ServerLevel level,BlockPos start,int minX,int maxX,int minZ,int maxZ) {
+        for(int x=minX;x<=maxX;x++) for(int z=minZ;z<=maxZ;z++) {
+            level.setBlockAndUpdate(start.offset(x,-2,z),Blocks.STONE.defaultBlockState());
+            level.setBlockAndUpdate(start.offset(x,-1,z),Blocks.GRASS_BLOCK.defaultBlockState());
+            for(int y=0;y<=3;y++) level.setBlockAndUpdate(start.offset(x,y,z),Blocks.AIR.defaultBlockState());
+        }
+    }
+    /** A citizen with no town and default navigation settings, standing at the start. */
+    private static CitizenEntity walker(ServerLevel level,BlockPos start) {
+        var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
+        citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
+        return citizen;
+    }
+    /** As jobs walk: keep the current plan, and plan the next leg toward the goal once it ends. */
+    private static void travel(CitizenEntity citizen,BlockPos end) {
+        var navigation=citizen.getNavigation();
+        if(navigation.isDone()) navigation.moveTo(navigation.createPath(end,1),0.65);
+    }
+    /** Plans one route and reports how it went, so a failure says what the pathfinder found. */
+    private static net.minecraft.world.level.pathfinder.Path plan(CitizenEntity citizen,BlockPos end,String name) {
+        long started=System.nanoTime();
+        var path=citizen.getNavigation().createPath(end,1);
+        System.out.printf("[wwmc navigation] %s: planned in %.2f ms, %s%n",name,(System.nanoTime()-started)/1.0E6,describe(citizen,path));
+        return path;
+    }
+    private static String describe(CitizenEntity citizen,net.minecraft.world.level.pathfinder.Path path) {
+        String found=path==null ? "no path" : (path.canReach() ? "complete, " : "partial, ")+path.getNodeCount()+" nodes, "
+                +String.format("%.1f",path.getDistToTarget())+" blocks short";
+        return found+" (follow range "+citizen.getAttributeValue(Attributes.FOLLOW_RANGE)+")";
+    }
+
+    @GameTest(timeoutTicks=1000)
+    @EmptyTemplate
+    @TestHolder(description="A citizen plans a complete 43-block route across an open meadow, without a road, and walks it.")
+    static void crossesOpenMeadow(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel();
+            BlockPos start=helper.absolutePos(new BlockPos(0,2,-384));
+            var chunks=pinArea(level,start,-4,48,-6,24);
+            meadow(level,start,-4,48,-6,24);
+            var citizen=walker(level,start);
+            BlockPos end=start.offset(40,0,16);
+            helper.runAtTickTime(5,() -> {
+                var path=plan(citizen,end,"open meadow");
+                helper.assertTrue(path!=null && path.canReach(),"No complete route across an open meadow: "+describe(citizen,path));
+                citizen.getNavigation().moveTo(path,0.65);
+                helper.succeedWhen(() -> {
+                    travel(citizen,end);
+                    helper.assertTrue(citizen.blockPosition().distSqr(end)<4,"Citizen has not crossed the meadow");
+                    citizen.discard(); release(level,start,chunks);
+                });
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=1200)
+    @EmptyTemplate
+    @TestHolder(description="A citizen finds the one gap in a long wall and walks through it to a goal on the far side.")
+    static void findsGapInWall(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel();
+            BlockPos start=helper.absolutePos(new BlockPos(0,2,-448));
+            var chunks=pinArea(level,start,-4,36,-20,20);
+            meadow(level,start,-4,36,-20,20);
+            // A long wall with a single opening fourteen blocks to the side of the straight line.
+            for(int z=-20;z<=20;z++) if(z!=14) for(int y=0;y<=2;y++) level.setBlockAndUpdate(start.offset(16,y,z),Blocks.STONE.defaultBlockState());
+            var citizen=walker(level,start);
+            BlockPos end=start.east(32);
+            helper.runAtTickTime(5,() -> {
+                var path=plan(citizen,end,"gap in a wall");
+                helper.assertTrue(path!=null && path.canReach(),"No complete route through the gap in the wall: "+describe(citizen,path));
+                citizen.getNavigation().moveTo(path,0.65);
+                helper.succeedWhen(() -> {
+                    travel(citizen,end);
+                    helper.assertTrue(citizen.blockPosition().distSqr(end)<4,"Citizen has not come through the wall");
+                    citizen.discard(); release(level,start,chunks);
+                });
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=1800)
+    @EmptyTemplate
+    @TestHolder(description="A citizen reaches a goal 72 blocks away, beyond a single route's length, leg by leg.")
+    static void walksBeyondOneRoute(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel();
+            BlockPos start=helper.absolutePos(new BlockPos(0,2,-512));
+            var chunks=pinArea(level,start,-4,80,-4,4);
+            meadow(level,start,-4,80,-4,4);
+            var citizen=walker(level,start);
+            BlockPos end=start.east(72);
+            helper.runAtTickTime(5,() -> {
+                plan(citizen,end,"beyond one route");
+                helper.succeedWhen(() -> {
+                    travel(citizen,end);
+                    helper.assertTrue(citizen.blockPosition().distSqr(end)<4,"Citizen has not walked the whole way");
+                    citizen.discard(); release(level,start,chunks);
+                });
+            });
+        });
     }
     @GameTest(timeoutTicks=800)
     @EmptyTemplate

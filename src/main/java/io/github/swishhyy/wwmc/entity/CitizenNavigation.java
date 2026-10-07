@@ -1,5 +1,7 @@
 package io.github.swishhyy.wwmc.entity;
 
+import java.util.Set;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.level.Level;
@@ -8,13 +10,22 @@ import net.minecraft.world.level.pathfinder.*;
 
 /** Shared by every citizen job: prefer roads, cross water on solid decks, and retain water escape. */
 public final class CitizenNavigation extends GroundPathNavigation {
+    /**
+     * Extra cost of each step off paved ground. Minecraft's planner weighs the remaining distance at 1.5 per block, so
+     * at 0.5 or less it heads straight for the goal and never looks at a road beside it. Much more and it searches so
+     * widely that ordinary 30 to 40 block routes through a town run out of search before reaching the goal.
+     */
+    public static final float OFF_ROAD=0.6F;
+    /** Citizens plan routes up to this many blocks; longer trips are walked leg by leg. */
+    public static final float ROUTE_LENGTH=64.0F;
     public CitizenNavigation(Mob mob,Level level) { super(mob,level); }
     @Override protected PathFinder createPathFinder(int maximumNodes) {
-        nodeEvaluator=new RoadEvaluator();
-        return new PathFinder(nodeEvaluator,maximumNodes);
+        RoadEvaluator roads=new RoadEvaluator();
+        nodeEvaluator=roads;
+        return new RoadPathFinder(roads,maximumNodes);
     }
-    // Follow the chosen nodes instead of cutting across road bends or one-block bridge corners.
-    @Override public boolean canCutCorner(PathType type) { return false; }
+    // Walk smoothly toward the next node, except beside water, where a cut corner could step off a narrow bridge or bank.
+    @Override public boolean canCutCorner(PathType type) { return type!=PathType.WATER_BORDER && super.canCutCorner(type); }
     @Override public void tick() {
         if(path!=null && !path.isDone() && !escapingWater(mob)
                 && RoadSurface.openWater(level,path.getNextNodePos())) stop();
@@ -24,7 +35,35 @@ public final class CitizenNavigation extends GroundPathNavigation {
         return mob.isInWater() || RoadSurface.openWater(mob.level(),mob.blockPosition());
     }
 
+    /**
+     * Minecraft's planner overwrites a node's walked distance whenever a neighbour looks at it, even from a longer way
+     * round, so beyond an obstacle routes look far longer than they are and are cut off at the route length. The limit
+     * is raised by this factor; the planning region around the citizen and the search budget still bound the search.
+     */
+    private static final float WALK_SLACK=4.0F;
+    /**
+     * Plans the road-preferring route first. Its wider search can run out around long obstacles, so when it does not
+     * reach the goal, the plain shortest route is planned instead; a route that arrives matters more than the road.
+     */
+    private static final class RoadPathFinder extends PathFinder {
+        private final RoadEvaluator roads;
+        RoadPathFinder(RoadEvaluator roads,int maximumNodes) { super(roads,maximumNodes); this.roads=roads; }
+        @Override public Path findPath(PathNavigationRegion region,Mob mob,Set<BlockPos> targets,float maxRange,int accuracy,float searchDepthMultiplier) {
+            float walk=maxRange*WALK_SLACK;
+            Path preferred=super.findPath(region,mob,targets,walk,accuracy,searchDepthMultiplier);
+            if(preferred!=null && preferred.canReach()) return preferred;
+            roads.plain=true;
+            try {
+                Path plain=super.findPath(region,mob,targets,walk,accuracy,searchDepthMultiplier);
+                if(plain==null) return preferred;
+                return preferred==null || plain.canReach() || plain.getDistToTarget()<preferred.getDistToTarget() ? plain : preferred;
+            } finally { roads.plain=false; }
+        }
+    }
+
     private static final class RoadEvaluator extends WalkNodeEvaluator {
+        /** Set while planning the fallback route, which ignores road preference. */
+        private boolean plain;
         private boolean escape;
         private float previousWaterCost;
         @Override public void prepare(PathNavigationRegion region,Mob mob) {
@@ -57,7 +96,7 @@ public final class CitizenNavigation extends GroundPathNavigation {
                 boolean paved=RoadSurface.preferred(currentContext.level(),node.asBlockPos());
                 // WATER_BORDER is dry ground beside water; a sound narrow deck is safe to use.
                 if(paved && node.type==PathType.WATER_BORDER) node.costMalus=0;
-                else if(!paved) node.costMalus=Math.max(node.costMalus,2);
+                else if(!paved && !plain) node.costMalus=Math.max(node.costMalus,OFF_ROAD);
             }
             return count;
         }

@@ -2,7 +2,9 @@ package io.github.swishhyy.wwmc.client.screen;
 
 import io.github.swishhyy.wwmc.menu.PanelMenu;
 import io.github.swishhyy.wwmc.menu.PanelView;
+import io.github.swishhyy.wwmc.menu.Panels;
 import io.github.swishhyy.wwmc.menu.WwmcNetwork;
+import io.github.swishhyy.wwmc.settlement.JobBoard;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -12,7 +14,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
-/** The town overview and station panels: tabs of rows that refresh every second, and the owner's buttons, two to a row. */
+/**
+ * The town overview and station panels: tabs of rows that refresh every second, and the owner's buttons, two to a row.
+ * Rows of the Jobs tab carry buttons to lower or raise that job's priority.
+ */
 public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
     private static final int WIDTH=256,HEIGHT=214,ROW=22,LIST_TOP=48;
     private int tab,scroll;
@@ -48,12 +53,36 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
             if(!action.tooltip().getString().isEmpty()) button.setTooltip(Tooltip.create(action.tooltip()));
             addRenderableWidget(button);
         }
+        List<PanelView.Row> listed=rows();
+        int visible=visibleRows(),top=topPos+LIST_TOP,right=leftPos+imageWidth-13;
+        scroll=Math.clamp(scroll,0,Math.max(0,listed.size()-visible));
+        for(int i=0;i<visible && scroll+i<listed.size();i++) {
+            PanelView.Row row=listed.get(scroll+i);
+            if(!control(row)) continue;
+            int index=scroll+i,rowY=top+2+i*ROW+3;
+            // A row button works once per refresh, so a double click cannot also hit the row that moves into its place.
+            Button lower=Button.builder(Component.literal("-"),b -> { b.active=false; send(index,row.value()-1,row.key()); }).bounds(right-31,rowY,14,15).build();
+            lower.active=row.value()>JobBoard.OFF;
+            lower.setTooltip(Tooltip.create(Component.literal("Lower priority")));
+            Button raise=Button.builder(Component.literal("+"),b -> { b.active=false; send(index,row.value()+1,row.key()); }).bounds(right-15,rowY,14,15).build();
+            raise.active=row.value()<JobBoard.HIGH;
+            raise.setTooltip(Tooltip.create(Component.literal("Raise priority")));
+            addRenderableWidget(lower); addRenderableWidget(raise);
+        }
         shown=view; layout=layout(view);
     }
-    /** Buttons are rebuilt only when their labels change, not for every refresh. */
+    /** A row whose priority the owner sets from the list. */
+    private static boolean control(PanelView.Row row) { return !row.key().isEmpty() && row.value()>=0; }
+    private void send(int index,int value,String key) {
+        ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,Panels.JOB,index,value,key));
+    }
+    /** Buttons are rebuilt only when their labels or the rows' priorities change, not for every refresh. */
     private static String layout(PanelView view) {
         StringBuilder key=new StringBuilder();
-        for(PanelView.Tab tab:view.tabs()) key.append(tab.name().getString()).append('|');
+        for(PanelView.Tab tab:view.tabs()) {
+            key.append(tab.name().getString()).append('|');
+            for(PanelView.Row row:tab.rows()) if(control(row)) key.append(row.key()).append('=').append(row.value()).append('|');
+        }
         for(PanelView.Action action:view.actions()) key.append(action.label().getString()).append(action.enabled()).append(action.tooltip().getString()).append('|');
         return key.toString();
     }
@@ -80,7 +109,7 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
             boolean hover=mouseX>=left && mouseX<left+width && mouseY>=rowY && mouseY<rowY+ROW-1;
             g.fill(left,rowY,left+width,rowY+ROW-1,hover ? Ui.ROW_HOVER : Ui.ROW);
             if(!row.icon().isEmpty()) g.item(row.icon(),left+2,rowY+2);
-            int textX=left+22,textWidth=width-26;
+            int textX=left+22,textWidth=width-26-(control(row) ? 34 : 0);
             g.text(font,Ui.fit(font,row.text().getString(),textWidth),textX,rowY+2,row.color()!=0 ? row.color() : Ui.TEXT,false);
             g.text(font,Ui.fit(font,row.detail().getString(),textWidth),textX,rowY+11,Ui.MUTED,false);
             if(row.bar()>=0) Ui.bar(g,textX,rowY+ROW-4,textWidth,row.bar(),row.color());
@@ -111,7 +140,12 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
         }
     }
     @Override public boolean mouseScrolled(double mouseX,double mouseY,double scrollX,double scrollY) {
-        if(scrollY!=0) { scroll-=(int)Math.signum(scrollY); return true; }
+        if(scrollY!=0) {
+            scroll-=(int)Math.signum(scrollY);
+            // Row buttons follow their rows.
+            if(rows().stream().anyMatch(PanelScreen::control)) rebuildWidgets();
+            return true;
+        }
         return super.mouseScrolled(mouseX,mouseY,scrollX,scrollY);
     }
 }

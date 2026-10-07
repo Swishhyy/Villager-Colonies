@@ -27,6 +27,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -75,6 +76,8 @@ public final class CitizenEntity extends Villager {
     /** Ticks a craftsman works one batch at the bench. */
     private static final int CRAFT_TICKS=40;
     private static final int MAX_FAILED_TARGETS=2048;
+    /** Ticks between a citizen's looks for an open place in a job of higher priority than its own. */
+    private static final int PROMOTION_CHECK=600;
     /** A cook's bread batch. */
     private Crafting.Recipe order;
     /** A craftsman's learned order and the recipe chosen for it. */
@@ -123,10 +126,19 @@ public final class CitizenEntity extends Villager {
     private BlockPos workplace, target, sleepingBed,workStand,clearingLeaf;
     private final CitizenInventory cargo=new CitizenInventory(this::canOpenInventory);
     private final Map<BlockPos,Long> failedTargets=new HashMap<>();
-    private int searchDelay, workProgress, pathTicks, mealTicks=2400;
+    private int searchDelay, workProgress, pathTicks, blindTicks, mealTicks=2400;
     private final WorkCadence.ReachBudget reachBudget=new WorkCadence.ReachBudget();
     private long nextPathAt;
     private BlockPos pathDestination;
+    /** Game time of the next look for a job of higher priority with an open place. */
+    private long nextPromotionAt;
+    /** The town's priority revision at that look; a change brings the next look forward. */
+    private int seenJobRevision=-1;
+    /** A job the owner just released this citizen from, which it does not take again for a minute. */
+    private BlockPos leftJob;
+    private long leftJobUntil;
+    /** Why the citizen has no work at the moment, shown as its activity. */
+    private String jobNote="Looking for a job";
     private String activity="Waiting for a job station";
     private TradeShipment tradeShipment=new TradeShipment();
     private final TradeNavigation tradeNavigation=new TradeNavigation();
@@ -135,6 +147,17 @@ public final class CitizenEntity extends Villager {
     public CitizenEntity(EntityType<? extends Villager> type,Level level) {
         super(type,level); setPersistenceRequired(); setCanPickUpLoot(false);
         for(EquipmentSlot slot:EquipmentSlot.values()) setDropChance(slot,0);
+        planLongRoutes();
+    }
+    /**
+     * Villagers plan 48-block routes at most; towns are larger, so citizens plan farther with a matching search budget.
+     * Citizens never pick fights by follow range, so it only sets how far a route may reach. Saved citizens load their
+     * old range, so this runs again after loading.
+     */
+    private void planLongRoutes() {
+        var range=getAttribute(Attributes.FOLLOW_RANGE);
+        if(range!=null && range.getBaseValue()<CitizenNavigation.ROUTE_LENGTH) range.setBaseValue(CitizenNavigation.ROUTE_LENGTH);
+        getNavigation().setRequiredPathLength(CitizenNavigation.ROUTE_LENGTH);
     }
     public void join(UUID id) { settlementId=id; mealTicks=Config.RATION_TICKS.get(); }
     public Settlement town(ServerLevel level) { return settlementId==null ? null : SettlementData.get(level).byId(settlementId); }
@@ -211,7 +234,7 @@ public final class CitizenEntity extends Villager {
         // Abandon the trip that went wrong so the citizen does not walk straight back into the same trap.
         if(action==Action.EXCAVATE && excavation!=null && excavation.quarry() && !excavation.remote() && workplace!=null) {
             SettlementService.reservations(level).release(excavation.lease(),getUUID());
-            excavation=excavation.fromControlBlock(workplace); targetLease=excavation.lease(); pathTicks=0;
+            excavation=excavation.fromControlBlock(workplace); targetLease=excavation.lease(); pathTicks=0; blindTicks=0;
         } else if(target!=null) cancelTarget(level,true);
         else if(returningGear) returningGear=false; // the gear stays in the bag and goes back with the next delivery
         else if(isGuard()) patrolTarget=null;
@@ -241,8 +264,10 @@ public final class CitizenEntity extends Villager {
         if(level() instanceof ServerLevel server && hand==InteractionHand.MAIN_HAND) {
             Settlement town=town(server);
             if(town!=null && town.owner.equals(player.getUUID()) && player.isShiftKeyDown()) {
-                releaseWork(server); searchDelay=0;
-                SettlementService.notify(player,getName().getString()+" released their job and will choose an available station.");
+                BlockPos left=town.jobs.home(getUUID());
+                if(left!=null) { town.jobs.release(getUUID()); leftJob=left; leftJobUntil=server.getGameTime()+1200; SettlementData.get(server).setDirty(); }
+                releaseWork(server); searchDelay=0; nextPromotionAt=0;
+                SettlementService.notify(player,getName().getString()+" released their job and will take another open place.");
             } else if(canOpenInventory(player) && player.getItemInHand(hand).isEmpty()) {
                 if(player instanceof ServerPlayer viewer) Panels.openCitizen(viewer,this,cargo);
             } else if(canOpenInventory(player) && FoodHealing.food(player.getItemInHand(hand))) {
@@ -277,9 +302,20 @@ public final class CitizenEntity extends Villager {
         Settlement town=town(server); Station station=town==null ? null : town.station(workplace);
         return station!=null && station.role()==StructureRole.GUARD && SettlementService.active(server,station);
     }
+    /** A guard post has an open place and guarding matters more than this citizen's own job, so it volunteers. */
     private boolean guardVacancy(ServerLevel level,Settlement town) {
+        int guard=town.jobs.level(StructureRole.GUARD);
+        // A citizen finishing an enchantment, a repair or a trade run cannot change job yet, so the post waits for another.
+        if(guard==JobBoard.OFF || midTask()) return false;
+        Station home=homeStation(town);
+        if(home!=null && (home.role()==StructureRole.GUARD || town.jobs.level(home.role())>=guard)) return false;
         return town.stations.stream().anyMatch(s -> s.role()==StructureRole.GUARD && SettlementService.active(level,s)
-                && SettlementService.workers(level).count(s.position(),level.getGameTime())<SettlementService.workerLimit(town,s));
+                && town.jobs.assigned(s.position())<SettlementService.workerLimit(town,s));
+    }
+    /** The station this citizen works at by assignment, even while it sleeps or runs an errand. */
+    private Station homeStation(Settlement town) {
+        BlockPos home=town.jobs.home(getUUID());
+        return home==null ? null : town.station(home);
     }
     private boolean night(ServerLevel level) { return SettlementService.night(level); }
     private boolean alarmed() {
@@ -293,16 +329,18 @@ public final class CitizenEntity extends Villager {
     private boolean canUse(ServerLevel level,BlockPos pos) { return CitizenReach.canUse(level,getEyePosition(),pos); }
     private boolean handNear(BlockPos pos) { return CitizenReach.within(getEyePosition(),pos); }
     private boolean walk(BlockPos pos) { return walk(pos,0.65); }
-    private boolean walk(BlockPos pos,double speed) {
+    private boolean walk(BlockPos pos,double speed) { return walk(pos,speed,1); }
+    /** Accuracy 0 ends on the block itself, for standing spots chosen for their view of the work. */
+    private boolean walk(BlockPos pos,double speed,int accuracy) {
         lastWalkTick=tickCount;
         // Trips into or out of a deep quarry follow its spiral stairs a few steps at a time.
         if(level() instanceof ServerLevel server && town(server)!=null) {
             BlockPos via=ExcavationService.waypoint(server,town(server),blockPosition(),pos);
-            if(via!=null) pos=via;
+            if(via!=null) { pos=via; accuracy=1; }
         }
         long now=level().getGameTime();
         if(getNavigation().isDone() || !pos.equals(pathDestination) || now>=nextPathAt) {
-            var path=getNavigation().createPath(pos,1);
+            var path=getNavigation().createPath(pos,accuracy);
             if(path==null) return false;
             getNavigation().moveTo(path,speed);
             pathDestination=pos.immutable(); nextPathAt=now+40;
@@ -325,28 +363,64 @@ public final class CitizenEntity extends Villager {
         haulStation=null; haulSupply=false; haulTicks=0;
         workStand=null; clearingLeaf=null;
         processor=null; processingDelivery=false; processingSupplied=false; processingIdle=0; nextProcessingAt=0;
-        workplace=null; target=null; patrolTarget=null; activePost=null; setTarget(null); workProgress=0; pathTicks=0; getNavigation().stop();
+        workplace=null; target=null; patrolTarget=null; activePost=null; setTarget(null); workProgress=0; pathTicks=0; blindTicks=0; getNavigation().stop();
     }
+    /**
+     * The citizen's own station, when it can work there now. A citizen without one takes the open place of highest
+     * priority; every half minute it also looks for an open place in a job of higher priority than its own. Otherwise
+     * it stays: no work, night or a full crew mean waiting, not taking another station.
+     */
     private Station chooseJob(ServerLevel level,Settlement town) {
         var book=SettlementService.workers(level);
-        idleStations.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
-        List<Station> jobs=new ArrayList<>(town.stations.stream()
-                .filter(s -> s.role().providesWork() && SettlementService.active(level,s) && !idleStations.containsKey(s.position())
-                        && (s.role()!=StructureRole.TRADER || TradeRoutes.canDepart(level,town)
-                            && (town.trading.runner==null || town.trading.runner.equals(getUUID())))
-                        && (!night(level) || s.role()==StructureRole.GUARD)).toList());
-        jobs.sort(Comparator.comparingInt((Station s) -> s.role()==StructureRole.GUARD ? 0 : s.role()==StructureRole.TRADER ? 1 : 2)
-                .thenComparingInt(s -> switch(town.priority) {
-            case "food" -> s.role()==StructureRole.GUARD ? 0 : s.role()==StructureRole.FARM || s.role()==StructureRole.COOK ? 1 : 2;
-            case "materials" -> s.role()==StructureRole.GUARD ? 0 : s.role()==StructureRole.FARM || s.role()==StructureRole.COOK ? 2 : 1;
-            default -> 0;
-        }).thenComparingInt(s -> book.count(s.position(),level.getGameTime()))
-                .thenComparingDouble(s -> distanceToSqr(Vec3.atCenterOf(s.position()))));
-        // An enchanter part-way through an item goes back to a table rather than starting other work.
-        if(!enchantItem.isEmpty()) for(Station station:jobs) if(station.role()==StructureRole.ENCHANTER
-                && book.claim(station.position(),getUUID(),level.getGameTime(),200,SettlementService.workerLimit(town,station))) return station;
-        for(Station station:jobs) if(book.claim(station.position(),getUUID(),level.getGameTime(),200,SettlementService.workerLimit(town,station))) return station;
-        return null;
+        long now=level.getGameTime();
+        idleStations.entrySet().removeIf(e -> e.getValue()<=now);
+        JobBoard jobs=town.jobs;
+        Station home=homeStation(town);
+        if(home!=null && !keepsJob(level,town,home)) { jobs.release(getUUID()); home=null; SettlementData.get(level).setDirty(); }
+        if(home==null || promotionDue(level,town)) {
+            Station better=promotion(level,town,home);
+            if(better!=null) { jobs.assign(getUUID(),better.position()); home=better; SettlementData.get(level).setDirty(); }
+        }
+        if(home==null) { jobNote="No open job: every crew is full or its job is switched off"; return null; }
+        String name=home.role().title()+" Station";
+        if(!SettlementService.active(level,home)) { jobNote="Waiting for my "+name+" to load"; return null; }
+        if(night(level) && home.role()!=StructureRole.GUARD) { jobNote="Off duty until morning"; return null; }
+        if(!traderOpen(level,town,home)) { jobNote="Waiting for a connected, unpaused trade route"; return null; }
+        if(idleStations.containsKey(home.position())) { jobNote="No work at my "+name+" right now; waiting nearby"; return null; }
+        if(book.claim(home.position(),getUUID(),now,200,SettlementService.workerLimit(town,home))) return home;
+        jobNote="My "+name+" crew is full for now"; return null;
+    }
+    /** Part-way through an enchantment, a repair or a trade run, a citizen finishes before changing job. */
+    private boolean midTask() { return !enchantItem.isEmpty() || !repairItem.isEmpty() || tradeShipment.travelling(); }
+    /** Every half minute, or at once after the owner changes priorities, a citizen looks for a more important job. */
+    private boolean promotionDue(ServerLevel level,Settlement town) {
+        if(midTask() || level.getGameTime()<nextPromotionAt && town.jobs.revision()==seenJobRevision) return false;
+        nextPromotionAt=level.getGameTime()+PROMOTION_CHECK; seenJobRevision=town.jobs.revision();
+        return true;
+    }
+    /** The open place of highest priority above the citizen's own job (any open place for a citizen without one). */
+    private Station promotion(ServerLevel level,Settlement town,Station home) {
+        JobBoard jobs=town.jobs;
+        int current=home==null ? JobBoard.OFF : jobs.level(home.role());
+        boolean leaving=leftJob!=null && level.getGameTime()<leftJobUntil;
+        return town.stations.stream().filter(s -> s.role().providesWork() && jobs.level(s.role())>current && !(leaving && s.position().equals(leftJob))
+                && SettlementService.active(level,s) && jobs.assigned(s.position())<SettlementService.workerLimit(town,s) && traderOpen(level,town,s))
+                .min(jobs.openOrder().thenComparingDouble(s -> distanceToSqr(Vec3.atCenterOf(s.position())))).orElse(null);
+    }
+    /** A job holds while its station stands (or lies beyond loaded chunks), its priority is on and the crew keeps this place. */
+    private boolean keepsJob(ServerLevel level,Settlement town,Station station) {
+        if(!station.role().providesWork() || town.jobs.level(station.role())==JobBoard.OFF) return false;
+        if(level.hasChunkAt(station.position()) && !SettlementService.active(level,station)) return false;
+        return town.jobs.holdsPlace(getUUID(),station,SettlementService.workerLimit(town,station));
+    }
+    private boolean keepsPlaceToTake(ServerLevel level,Settlement town,Station station) {
+        return station.role().providesWork() && town.jobs.level(station.role())>JobBoard.OFF && SettlementService.active(level,station)
+                && town.jobs.assigned(station.position())<SettlementService.workerLimit(town,station);
+    }
+    /** A trader's place is open only while a trip can leave and no other citizen is already the runner. */
+    private boolean traderOpen(ServerLevel level,Settlement town,Station station) {
+        return station.role()!=StructureRole.TRADER || TradeRoutes.canDepart(level,town)
+                && (town.trading.runner==null || town.trading.runner.equals(getUUID()));
     }
     private boolean toolFits(StructureRole role,ItemStack stack) {
         if(target==null || action==Action.PLANT || action==Action.SUPPORT || role==StructureRole.FARM) return true;
@@ -363,8 +437,16 @@ public final class CitizenEntity extends Villager {
         return action==Action.SUPPORT && (supply.isEmpty() || !ExcavationService.supportMaterial(supply));
     }
     private boolean deliverCargo() { return cargo.needsDelivery(); }
+    /**
+     * Farther than one planned route reaches, a probe cannot confirm a destination. The walk goes leg by leg instead,
+     * and trips that get nowhere give up through their own time limits and the stuck rescue.
+     */
+    private boolean beyondOneRoute(BlockPos pos) {
+        double reach=CitizenNavigation.ROUTE_LENGTH*0.75;
+        return distanceToSqr(Vec3.atCenterOf(pos))>reach*reach;
+    }
     private boolean canReach(BlockPos pos) {
-        if(near(pos)) return true;
+        if(near(pos) || beyondOneRoute(pos)) return true;
         long now=level().getGameTime();
         if(failedTargets.getOrDefault(pos,0L)>now) return false;
         return reachBudget.check(() -> {
@@ -384,7 +466,7 @@ public final class CitizenEntity extends Villager {
         };
     }
     private boolean reachableStand(BlockPos pos) {
-        if(pos.equals(blockPosition())) return true;
+        if(pos.equals(blockPosition()) || beyondOneRoute(pos)) return true;
         if(failedTargets.containsKey(pos)) return false;
         return reachBudget.check(() -> {
             var path=getNavigation().createPath(pos,0);
@@ -697,7 +779,7 @@ public final class CitizenEntity extends Villager {
             return forestTask.target();
         }
         if(station.role()==StructureRole.MINE) {
-            // A mine beside an ore works only that vein, one miner at a time.
+            // A mine near an exposed ore works only that vein, one miner at a time.
             BlockPos vein=OreVeins.find(level,town,station);
             if(vein!=null) {
                 if(!book.available(vein,getUUID(),level.getGameTime()) || failedTargets.containsKey(vein)
@@ -744,7 +826,7 @@ public final class CitizenEntity extends Villager {
         }
         target=null; targetLease=null; forestTask=null; excavation=null; action=Action.HARVEST; minimumAxeDurability=1;
         workStand=null; clearingLeaf=null;
-        workProgress=0; pathTicks=0; searchDelay=10; getNavigation().stop();
+        workProgress=0; pathTicks=0; blindTicks=0; searchDelay=10; getNavigation().stop();
     }
     private void storeDrops(ServerLevel level,List<ItemStack> drops) {
         for(ItemStack stack:drops) cargo.offer(stack);
@@ -1665,10 +1747,10 @@ public final class CitizenEntity extends Villager {
         if(enchantItem.isEmpty()) return 0F;
         return enchantDone ? 1F : enchantTicks/(float)Math.max(1,Enchanting.ticks(enchantItem,Config.ENCHANT_MINUTES.get()));
     }
-    /** Station role this citizen works, or "none". */
+    /** The citizen's own job, kept while it sleeps or runs errands, or "none". */
     public String job() {
-        if(!(level() instanceof ServerLevel server) || workplace==null || town(server)==null) return "none";
-        Station station=town(server).station(workplace);
+        if(!(level() instanceof ServerLevel server) || town(server)==null) return "none";
+        Station station=homeStation(town(server));
         return station==null ? "none" : station.role().id();
     }
     public int tradeCargoCount() { return tradeShipment.items().stream().mapToInt(ItemStack::getCount).sum(); }
@@ -1773,26 +1855,41 @@ public final class CitizenEntity extends Villager {
         if(town==null) { activity="Settlement unavailable"; return; }
         // The checkpoint may be unloaded behind the carrier. Its saved itinerary owns the job until it returns.
         if(tradeShipment.travelling()) { leaveBed(); trader(level,town,TradeRoutes.checkpoint(town)); return; }
-        if(!isGuard() && guardVacancy(level,town)) releaseWork(level);
+        // An open guard post draws the first citizen whose own job matters less, at once rather than at the next half-minute look.
+        if(!isGuard() && guardVacancy(level,town)) { nextPromotionAt=0; releaseWork(level); }
         if(isGuard()) {
             Station empty=GuardService.uncovered(level,town);
-            if(empty!=null && !empty.position().equals(workplace)
-                    && SettlementService.workers(level).count(workplace,level.getGameTime())>1
+            if(empty!=null && !empty.position().equals(workplace) && town.jobs.assigned(workplace)>1
                     && SettlementService.workers(level).claim(empty.position(),getUUID(),level.getGameTime(),200,SettlementService.workerLimit(town,empty))) {
                 releaseWork(level); workplace=empty.position();
+                town.jobs.assign(getUUID(),workplace); SettlementData.get(level).setDirty();
             }
         }
         var book=SettlementService.reservations(level);
         Station station=workplace==null ? null : town.station(workplace);
+        BlockPos home=town.jobs.home(getUUID());
+        // A citizen from before job assignments keeps the station it was working at.
+        if(home==null && station!=null && keepsPlaceToTake(level,town,station)) {
+            town.jobs.assign(getUUID(),workplace); home=workplace; SettlementData.get(level).setDirty();
+        }
+        // A promotion, a job switched off or a removed station ends work here at once.
+        if(station!=null && !workplace.equals(home)) station=null;
+        // Between tasks, or between a vein's yields, take an open place in a more important job.
+        if(station!=null && (target==null || action==Action.VEIN) && promotionDue(level,town)) {
+            Station better=promotion(level,town,station);
+            if(better!=null) { town.jobs.assign(getUUID(),better.position()); SettlementData.get(level).setDirty(); station=null; }
+        }
         if(station==null || !SettlementService.active(level,station)
                 || !SettlementService.workers(level).claim(workplace,getUUID(),level.getGameTime(),200,SettlementService.workerLimit(town,station))) {
-            releaseWork(level);
+            if(workplace!=null || target!=null) releaseWork(level);
             if(searchDelay>0) { searchDelay-=10; return; }
             station=chooseJob(level,town);
             if(station==null) {
-                // Stations that just reported no work are retried after a short pause rather than counted as full.
-                activity=idleStations.isEmpty() ? "Waiting for a free crew slot" : "Open stations have no work I can reach right now; checking again soon";
-                searchDelay=40; return;
+                activity=jobNote; searchDelay=40;
+                // Wait at the station rather than wherever the last errand ended, heading there even while it is beyond loaded ground.
+                Station own=homeStation(town);
+                if(own!=null && !night(level) && distanceToSqr(Vec3.atCenterOf(own.position()))>100) walk(own.position());
+                return;
             }
             workplace=station.position();
         }
@@ -1829,7 +1926,9 @@ public final class CitizenEntity extends Villager {
         if(station.role().processes()) { process(level,town,station); return; }
         if(target==null) {
             if(searchDelay>0) { searchDelay-=10; return; }
-            if(!station.role().excavates() && !handNear(station.position())) {
+            // Stationary jobs, a vein mine among them, first walk to their station, then look for work beside it.
+            boolean stationary=!station.role().excavates() || station.role()==StructureRole.MINE && OreVeins.find(level,town,station)!=null;
+            if(stationary && !handNear(station.position())) {
                 activity="Returning to the "+station.role().id()+" worksite"; pathTicks+=10;
                 if(!walk(station.position()) || pathTicks>1200) {
                     idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level);
@@ -1843,7 +1942,7 @@ public final class CitizenEntity extends Villager {
                 activity=idleReason(level,town,station);
                 idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); searchDelay=20; return;
             }
-            pathTicks=0;
+            pathTicks=0; blindTicks=0;
         }
         if(!validTarget(level,town,station) || !book.claimAll(targetLease==null ? List.of(target) : List.of(target,targetLease),getUUID(),level.getGameTime(),200)) {
             cancelTarget(level,false); return;
@@ -1873,11 +1972,14 @@ public final class CitizenEntity extends Villager {
         if(!handNear(touch) || !canUse(level,visibleAt)) {
             activity=action==Action.PLANT ? "Walking to plant saplings" : "Walking to "+station.role().id()+" work"; pathTicks+=10;
             // Standing beside the work without a clear view will not fix itself; give up sooner than a long walk.
-            if(!walk(approach) || pathTicks>(handNear(touch) ? 100 : 1200)) {
+            if(handNear(touch)) blindTicks+=10;
+            // A chosen standing spot sees the work from that block, not from the one beside it.
+            boolean onStand=excavation==null && workStand!=null;
+            if(!walk(approach,0.65,onStand ? 0 : 1) || pathTicks>1200 || blindTicks>100) {
                 if(action==Action.EXCAVATE && excavation.quarry() && !excavation.remote()) {
                     // No way into the pit from here: keep the quarry moving from its control block instead.
                     SettlementService.reservations(level).release(excavation.lease(),getUUID());
-                    excavation=excavation.fromControlBlock(station.position()); targetLease=excavation.lease(); pathTicks=0;
+                    excavation=excavation.fromControlBlock(station.position()); targetLease=excavation.lease(); pathTicks=0; blindTicks=0;
                 } else cancelTarget(level,true);
             }
             return;
@@ -1992,6 +2094,7 @@ public final class CitizenEntity extends Villager {
     }
     @Override protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
+        planLongRoutes();
         String id=input.getStringOr("wwmc_settlement","");
         try { settlementId=id.isEmpty() ? null : UUID.fromString(id); } catch(IllegalArgumentException e) { settlementId=null; }
         workplace=input.read("wwmc_workplace",BlockPos.CODEC).orElse(null);
@@ -2019,7 +2122,7 @@ public final class CitizenEntity extends Villager {
             Containers.dropItemStack(level,getX(),getY(),getZ(),repairItem); repairItem=ItemStack.EMPTY;
             Containers.dropItemStack(level,getX(),getY(),getZ(),enchantItem); enchantItem=ItemStack.EMPTY;
             Settlement town=town(level);
-            if(town!=null) { town.citizens.remove(getUUID()); town.citizenNames.remove(getUUID()); SettlementData.get(level).setDirty(); }
+            if(town!=null) { town.citizens.remove(getUUID()); town.citizenNames.remove(getUUID()); town.jobs.release(getUUID()); SettlementData.get(level).setDirty(); }
             releaseWork(level);
             Containers.dropItemStack(level,getX(),getY(),getZ(),getOffhandItem()); setItemSlot(EquipmentSlot.OFFHAND,ItemStack.EMPTY);
             for(int i=0;i<cargo.getContainerSize();i++) {

@@ -1,5 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
+import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,7 +22,8 @@ public final class Settlement {
     /** The population level of a town saved before population upgrades, until the server works out what it already holds. */
     public static final int UNSET=-1;
     public static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
-    public static final Codec<Settlement> CODEC = RecordCodecBuilder.create(i -> i.group(
+    /** A record codec takes at most sixteen fields; later fields are paired alongside in the same map. */
+    private static final MapCodec<Settlement> CORE = RecordCodecBuilder.mapCodec(i -> i.group(
         UUID_CODEC.fieldOf("id").forGetter(s -> s.id), UUID_CODEC.fieldOf("owner").forGetter(s -> s.owner),
         Codec.STRING.fieldOf("name").forGetter(s -> s.name), BlockPos.CODEC.fieldOf("center").forGetter(s -> s.center),
         Codec.intRange(16,512).fieldOf("radius").forGetter(s -> s.radius),
@@ -36,6 +39,9 @@ public final class Settlement {
         Codec.INT.optionalFieldOf("population_level",UNSET).forGetter(s -> s.populationLevel),
         TradeSettings.CODEC.optionalFieldOf("trading").forGetter(s -> Optional.of(s.trading))
     ).apply(i, Settlement::new));
+    public static final Codec<Settlement> CODEC = Codec.mapPair(CORE,JobBoard.CODEC.optionalFieldOf("jobs")).xmap(
+        pair -> { pair.getFirst().jobs.load(pair.getSecond()); return pair.getFirst(); },
+        s -> Pair.of(s,Optional.of(s.jobs))).codec();
     public final UUID id, owner;
     public String name, priority;
     public final BlockPos center;
@@ -51,6 +57,8 @@ public final class Settlement {
     public int populationLevel;
     /** Routes and NPC origin are optional so settlements from earlier builds retain their identity. */
     public final TradeSettings trading;
+    /** Each job's priority and each citizen's own station; towns from before keep their preset's priorities. */
+    public final JobBoard jobs;
     public final List<UUID> citizens;
     public final List<Station> stations;
     public final List<BlockPos> borderBanners;
@@ -85,6 +93,7 @@ public final class Settlement {
         this.craftOrders=new ArrayList<>(craftOrders.orElseGet(() -> Workshop.defaults(disabledRecipes)));
         this.populationLevel=Math.max(UNSET,populationLevel);
         this.trading=trading.orElseGet(TradeSettings::new);
+        this.jobs=JobBoard.preset(priority);
     }
     public boolean contains(BlockPos pos) {
         return Math.abs((long)pos.getX()-center.getX()) <= radius && Math.abs((long)pos.getZ()-center.getZ()) <= radius;
