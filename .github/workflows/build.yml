@@ -32,7 +32,7 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build --console=plain
 
-      - name: Test trader travel in a headless world
+      - name: Test citizen roads, bridges, and trader travel
         run: ./gradlew runGameTestServer --console=plain
 
       - name: Upload mod JAR

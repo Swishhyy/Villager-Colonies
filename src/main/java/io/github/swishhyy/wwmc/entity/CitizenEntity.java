@@ -28,6 +28,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.goal.*;
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.npc.villager.Villager;
@@ -137,6 +138,7 @@ public final class CitizenEntity extends Villager {
     }
     public void join(UUID id) { settlementId=id; mealTicks=Config.RATION_TICKS.get(); }
     public Settlement town(ServerLevel level) { return settlementId==null ? null : SettlementData.get(level).byId(settlementId); }
+    @Override protected PathNavigation createNavigation(Level level) { return new CitizenNavigation(this,level); }
     @Override protected void registerGoals() {
         goalSelector.addGoal(0,new FloatGoal(this));
         // The villager brain that normally opens doors is disabled for citizens, so doors are handled here.
