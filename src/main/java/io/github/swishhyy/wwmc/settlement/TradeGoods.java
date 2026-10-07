@@ -27,7 +27,7 @@ public final class TradeGoods {
         }
         return moved;
     }
-    public static int unload(TradeShipment shipment,List<Container> warehouse) {
+    public static int unload(Container shipment,List<Container> warehouse) {
         int moved=0;
         for(int slot=0;slot<shipment.getContainerSize();slot++) {
             ItemStack original=shipment.getItem(slot),rest=original.copy();

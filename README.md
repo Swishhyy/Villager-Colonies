@@ -6,7 +6,11 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.11.2-alpha
+## Current build: 0.12.0-alpha
+
+0.12.0 adds a **multiplayer campaign loop**: accepted town membership, reciprocal alliances, industry specialization, demand-driven shipments, guard squads, bandit camps and occupied mines, supplied outposts, material-funded projects, working hospital medics, NPC supply contracts and a persistent town journal. Open **Campaign** at a town banner; use `/wwmc squad` for field orders away from home. Existing town identities, ownership, job assignments and inventories are preserved. See [Multiplayer campaign](docs/multiplayer-campaign.md) for project costs and a two-player walkthrough.
+
+0.11.3 **brings stranded citizens back**. A citizen could freeze at the edge of the area players keep loaded, or be left behind in a chunk that unloaded during an errand. Its station then sat idle, with the citizen listed as out of range. Each town now remembers where its citizens were last seen. When a citizen's station is loaded but the citizen is not, the town loads a 3×3 chunk window around its last place for a few seconds. The citizen is then moved beside its station and keeps its job. A citizen without a job is brought to the banner instead. A citizen that is not found after two searches leaves the roster, so its job and population place open up, and it rejoins if it turns up later. Citizens who went missing before this update have no recorded place: they leave the roster after five minutes with their station loaded, and also rejoin if found. A station's Crew tab and `/wwmc citizens` show where each missing citizen was last seen. See [Personal inventories](#personal-inventories).
 
 0.11.2 makes **traders plan their whole trip**. Before, a trader only looked about 16 blocks ahead and walked toward the destination in a straight line, so it headed into forests and stopped at rivers even when a cleared highway or a bridge was nearby. Traders now keep a map of the land between the two towns, read from chunks already loaded around players, towns and traders. They plan a route that prefers roads, takes open ground over forest, and crosses water only on bridges. A route is reported blocked only after 15 seconds without progress, with the spot where the trader is stuck. See [Trading and other settlements](#trading-and-other-settlements).
 
@@ -72,7 +76,7 @@ Implemented:
 - Shared station crews, exclusive resource reservations, civilian nighttime rest, and guard duty through the night.
 - Save/reload support for settlement data, player block protection, replanting sites, excavation progress, cargo, tools, and meal timers.
 
-Planned: automatic housing construction, medical treatment, military squads, raids by rival settlements, independent AI settlements, distant simulation, technology progression, convoys, and countries. A barracks station identifies troop housing in this build; it does not train soldiers yet. A hospital station identifies patient beds; it does not provide medical treatment yet. Citizens can heal by eating food.
+Further plans include automatic housing construction, wars between rival settlements, distant simulation, larger technology trees, and countries. Barracks identify troop housing and support military projects. Fund a Field Hospital for a medic who treats wounded citizens with meals and paper dressings. Citizens also heal by eating food.
 
 ## Try the first build
 
@@ -161,7 +165,7 @@ Only loaded blocks inside the settlement claim count. Scanning never loads chunk
 | --- | --- | --- |
 | Housing | Residential beds, recruiting capacity, and rest. | Families, migration, approved housing expansion. |
 | Barracks | Camp/troop beds, currently usable as housing. | Recruiting, training, and organizing military units. |
-| Hospital | Patient beds excluded from housing capacity. | Treatment, medical supplies, casualty evacuation. |
+| Hospital | Patient beds excluded from housing capacity; a funded medic uses meals and paper dressings to treat wounded citizens. | Casualty evacuation. |
 | Warehouse | Chests, trapped chests, and barrels within its 7×7×7 range. | Reserves, convoy loading. |
 | Farm | Mature supported crops within its 7×7×7 range. | Planting expansions, varied crops, food processing. |
 | Lumber | Whole trees rooted in range, real sapling planting, and replanting. | Larger forestry areas and better species/terrain handling. |
@@ -171,7 +175,7 @@ Only loaded blocks inside the settlement claim count. Scanning never loads chunk
 | Smeltery | Warehouse ores/raw metals smelted in nearby furnaces or blast furnaces. | Specialized metallurgy and technology. |
 | Cook | Raw food cooked in smokers or lit campfires; three wheat become bread. | More meals and food orders. |
 | Blacksmith | Repairs courier-delivered equipment at nearby anvils, leaving it in the job barrel. | Repair orders and specialized smithing. |
-| Guard | Day/night posts, patrols, armor and weapons from stands or storage, melee and archery, bell alarms. | Squad orders, training. |
+| Guard | Day/night posts, shared gear, bell alarms, player-led squads and convoy escorts. | Larger armies and siege tactics. |
 | Courier | The only town hauler: moves job outputs, tools and inputs through the warehouse. | Convoys between towns. |
 | Enchanter | Enchants unenchanted gear and books with lapis at an enchanting table within 5 blocks, up to level 25. | Enchanting orders and libraries. |
 
@@ -290,7 +294,11 @@ Workers use carried supplies before collecting replacements from their own job b
 
 **Changing jobs.** Old gear is put away and returned to the new job's barrel for a courier to collect. Unloaded, full or missing storage keeps the items in the bag. Guards still share armor through their station's stands and defend before returning gear during alarms. Equipment below 25% durability is carried for repair. Smelters and cooks never burn bows or tools.
 
-**Getting unstuck.** Citizens open doors on their way. A citizen who keeps trying to walk somewhere but stays within a block and a half of the same spot for 30 seconds is moved on top of the settlement banner, or onto clear, firm ground right beside it, and drops the trip that trapped them: a quarry worker carries on from the control block, other workers try a different station for a while. Sleeping citizens are never moved, and nobody is moved into an unloaded part of town. A full warehouse leaves the remainder in the citizen's bag. An unusually large tree harvest has a saved backlog that moves into the bag when space opens; citizens wait for space instead of dropping overflow on the ground. On death, actual carried items and equipped gear drop normally.
+**Getting unstuck.** Citizens open doors on their way. A citizen who keeps trying to walk somewhere but stays within a block and a half of the same spot for 30 seconds is moved on top of the settlement banner, or onto clear, firm ground right beside it, and drops the trip that trapped them: a quarry worker carries on from the control block, other workers try a different station for a while. Sleeping citizens are never moved, and nobody is moved into an unloaded part of town.
+
+**Out of range.** Each town remembers where every citizen last stood while ticking. If a citizen is frozen or unloaded for ten seconds while its station is loaded (the banner, for a citizen without a job), it is brought back. A frozen citizen is simply moved. For an unloaded one, the town loads a 3×3 chunk window around its last place for a few seconds, never longer, and moves it once it appears. It lands beside its station, keeps its job and drops the errand that led it away. A citizen that is not found after two searches, or that has been missing for five minutes with no recorded place, leaves the roster: its job and population place open up, and the owner is told if online. If it turns up later, it rejoins. Traders on a trip are never fetched.
+
+A full warehouse leaves the remainder in the citizen's bag. An unusually large tree harvest has a saved backlog that moves into the bag when space opens; citizens wait for space instead of dropping overflow on the ground. On death, actual carried items and equipped gear drop normally.
 
 ### Food and healing
 
@@ -365,7 +373,7 @@ Right-click with an empty hand to open:
 - **Craftsman Station:** the order screen described above.
 - **Citizen:** their job, activity, health, next meal and equipment above their bag.
 
-Screens refresh every second and close when you move more than eight blocks away. Only the town's owner can open them; other players see a one-line notice. Short notices, including alarms and waves, appear above the hotbar instead of in chat.
+Screens refresh every second and close when you move more than eight blocks away. Owners and accepted stewards can open them. Use Campaign -> People to invite members; builders can place and remove stations. The field-order screen (`/wwmc squad`) remains usable away from the banner. Short notices, including alarms and waves, appear above the hotbar instead of in chat.
 
 ### Jobs and priorities
 
@@ -441,7 +449,7 @@ There is no generative AI or external service dependency. Initial decisions use 
 
 ## Offline and distant settlement design
 
-**Implemented behavior:** loaded citizens continue working when the owner logs off, as long as the server is running and their chunks remain loaded. Unloaded citizens pause and retain their state. This alpha does not force-load towns, simulate unloaded production, spawn rival towns, or calculate progress while the server is shut down.
+**Implemented behavior:** loaded citizens continue working when the owner logs off, as long as the server is running and their chunks remain loaded. Unloaded citizens pause and retain their state. A citizen stranded outside the loaded area while its station is loaded is fetched back; see **Out of range** under [Personal inventories](#personal-inventories). This alpha does not force-load towns, simulate unloaded production, spawn rival towns, or calculate progress while the server is shut down.
 
 **Next simulation phase:** distant towns should use state-based event checks instead of running every citizen physically. See [the roadmap](docs/ROADMAP.md) for the proposed generator and asynchronous simulation contract.
 
@@ -478,7 +486,7 @@ Use a **Java 25 JDK**, not just a Java runtime. The Gradle wrapper and ModDevGra
 
 On Windows, use `gradlew.bat build` and `gradlew.bat runClient`. Development servers use `./gradlew runServer`.
 
-`runGameTestServer` checks paved detours, narrow bridge bends, unbridged river rejection, and escape from water, a 43-block walk across open grass, a detour through the only gap in a long wall, and a 72-block walk in several legs. Miners must walk across town and work ore veins touching their station and two blocks away, and a farmer with no crops must keep its job beside an open mine until mining is raised to High. Food tests run real hunting, every courier transfer, butchery and vanilla cooking; fishing from a dry bank with an obstructing station; keeper culling with four breeders preserved and a real newborn; production waiting without a courier; and ten hungry citizens sharing ten loaves without stockpiling. It also runs a 640-block trader delivery and return on dirt paths, beneath a roof, around a wall, and over a wide river on a waterlogged slab bridge, with no nearby players, then checks the live warehouse inventories after chunk reload. A second trader must cross a river by its only bridge, sixty blocks to the side of the straight line, without swimming or crossing anywhere else. The test mod in `src/gameTest` is excluded from the release JAR. GitHub Actions runs these world tests after `build`.
+`runGameTestServer` checks paved detours, narrow bridge bends, unbridged river rejection, and escape from water, a 43-block walk across open grass, a detour through the only gap in a long wall, and a 72-block walk in several legs. Miners must walk across town and work ore veins touching their station and two blocks away, and a farmer with no crops must keep its job beside an open mine until mining is raised to High. Food tests run real hunting, every courier transfer, butchery and vanilla cooking; fishing from a dry bank with an obstructing station; keeper culling with four breeders preserved and a real newborn; production waiting without a courier; and ten hungry citizens sharing ten loaves without stockpiling. It also runs a 640-block trader delivery and return on dirt paths, beneath a roof, around a wall, and over a wide river on a waterlogged slab bridge, with no nearby players, then checks the live warehouse inventories after chunk reload. A second trader must cross a river by its only bridge, sixty blocks to the side of the straight line, without swimming or crossing anywhere else. A cook whose chunk unloads while its kitchen stays loaded must be fetched back with its job kept. A listed citizen who cannot be found where last seen must leave the roster, with no chunks left loaded. The test mod in `src/gameTest` is excluded from the release JAR. GitHub Actions runs these world tests after `build`.
 
 `build` runs regression checks for ranges, beds/storage, overlap ownership, shared crews, atomic target claims, tunnel/quarry geometry, random depth/shift boundaries, name uniqueness, construction-aware tree recognition, sapling conservation, local inventory conservation/backlog, armor transfers, weapon classification/ranking, quarry staircase geometry and persistence, quarry collision tracing, four-block surface/vertical reach, blocked work rays, clear tree approach candidates, persisted natural-tree proof after access clearing, role-specific crafting orders, appliance recipe eligibility, furnace slot/component conservation, independent station guard shifts and alarm rosters, alarm thresholds and all-clear timing, wave sizes/composition/timing, claim widening, save round-trips, legacy migration, recipe/drop decoding with Minecraft's codecs, shared shift armor, full-bag overflow armor returns and occupied-slot conservation, armor upgrades, the exact durability cutoff, material-funded repairs with preserved names/enchantments, healing meal/bowl conservation and cooldowns, guide-page bounds and anvil eligibility, learned crafting against the server's real recipes (shaped layout, any-wood planks, container remainders, paused and stocked orders, ingot/block cycle protection, legacy order migration), job barrel collection rules and courier supply loads, ore vein detection and rarity pacing, screen data network round trips, upgrade prices, emerald payments with change, upgraded ranges and fixed crews, wave threat from population upgrades, enchanting rarity timing, lapis costs, the level cap and item priority against the server's real enchantments, job priority presets, job assignments, crew trimming and their save round-trip, trader route planning (straight routes over open and unseen land, a distant bridge, a cleared way beside a forest, roads, a cliff ramp, avoided cells and a river with no crossing), staggered 30-citizen updates, bounded reachability probes, and shared resource scan expiry/invalidation. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
 

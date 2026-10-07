@@ -38,7 +38,7 @@ public final class StationBlock extends Block {
     @Override public BlockState getStateForPlacement(BlockPlaceContext context) {
         if(role==StructureRole.TRADER && context.getLevel() instanceof ServerLevel server && context.getPlayer()!=null) {
             var town=io.github.swishhyy.wwmc.settlement.SettlementData.get(server).at(context.getClickedPos());
-            if(!SettlementService.owns(context.getPlayer(),town)) { SettlementService.notify(context.getPlayer(),"Place the Trader Block inside your own town."); return null; }
+            if(!io.github.swishhyy.wwmc.settlement.TownAccess.builds(town,context.getPlayer().getUUID())) { SettlementService.notify(context.getPlayer(),"Place the Trader Block inside your own town."); return null; }
             if(!io.github.swishhyy.wwmc.settlement.TradeRoutes.uniqueCheckpoint(server,town,context.getClickedPos())) {
                 SettlementService.notify(context.getPlayer(),"Each town can have only one Trader Block."); return null;
             }

@@ -15,7 +15,8 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 public final class GuardService {
     public static boolean onDuty(ServerLevel level,Settlement town,BlockPos station,UUID guard) {
-        return GuardDuty.active(SettlementService.workers(level).members(station,level.getGameTime()),guard,
+        return GuardDuty.active(SettlementService.workers(level).members(station,level.getGameTime()).stream()
+                        .filter(id -> !SquadService.assigned(town,id)).toList(),guard,
                 SettlementService.night(level),DefenseService.alarmed(town));
     }
     /** A guard post nobody is assigned to, which a guard from a post with several may take over. */

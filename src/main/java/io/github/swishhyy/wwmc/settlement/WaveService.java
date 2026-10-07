@@ -66,9 +66,9 @@ public final class WaveService {
         return "next wave of about "+size(town)+" hostiles in "+(minutes==0 ? "under a minute" : "about "+minutes+" min")+" (arrives at night)";
     }
     private static ServerPlayer ownerHome(ServerLevel level,Settlement town) {
-        ServerPlayer owner=level.getServer().getPlayerList().getPlayer(town.owner);
-        // Waves never strike towns whose owner is offline or away.
-        return owner!=null && owner.level()==level && town.overlaps(owner.blockPosition(),64) ? owner : null;
+        // A present co-manager can defend the shared town; absent players' towns remain protected.
+        return level.players().stream().filter(p -> TownAccess.manages(town,p.getUUID()) && p.isAlive() && !p.isSpectator()
+                && town.overlaps(p.blockPosition(),64)).findFirst().orElse(null);
     }
     private static BlockPos ground(ServerLevel level,Settlement town,int x,int z) {
         BlockPos column=new BlockPos(x,town.center.getY(),z);
@@ -94,7 +94,7 @@ public final class WaveService {
     /** Spawn the next wave now. Returns the number of attackers placed. */
     public static int launch(ServerLevel level,Settlement town) {
         if(level.getDifficulty()==Difficulty.PEACEFUL) return 0;
-        ServerPlayer owner=level.getServer().getPlayerList().getPlayer(town.owner);
+        ServerPlayer owner=ownerHome(level,town);
         BlockPos site=site(level,town,owner);
         if(site==null) return 0;
         var random=level.getRandom();

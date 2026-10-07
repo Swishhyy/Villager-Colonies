@@ -194,8 +194,7 @@ public final class DefenseService {
     }
     private static ServerPlayer owner(ServerLevel level,Settlement town) { return level.getServer().getPlayerList().getPlayer(town.owner); }
     private static void announce(ServerLevel level,Settlement town,String text) {
-        ServerPlayer owner=owner(level,town);
-        if(owner!=null) SettlementService.notify(owner,text);
+        CampaignService.record(level,town,text);
     }
     public static List<CitizenEntity> loadedCitizens(ServerLevel level,Settlement town) {
         List<CitizenEntity> result=new ArrayList<>();

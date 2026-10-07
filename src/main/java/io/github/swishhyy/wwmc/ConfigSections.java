@@ -24,7 +24,7 @@ public final class ConfigSections {
         new Section("food",List.of("workTicks","rationTicks","mealIntervalMultiplier","fishingSeconds","animalBreeders")),
         new Section("enchanting",List.of("enchantMinutes","enchanterMaxLevel")),
         new Section("defense",List.of("alarmThreshold","enemyWaves","waveMinPopulation","waveIntervalDays","waveBaseMobs","waveMobsPerCitizen","waveMaxMobs","waveMobsPerUpgrade")),
-        new Section("world",List.of("maxActiveTraders","tradeRouteDistance","randomSettlements","npcTownSpacing","maxNpcTowns"))
+        new Section("world",List.of("maxActiveTraders","tradeRouteDistance","randomSettlements","npcTownSpacing","maxNpcTowns","expeditionSites","maxExpeditionSites","maxExpeditionBandits","convoyRaids"))
     );
     private ConfigSections() {}
     /** Future settings remain reachable until they receive a dedicated group. */

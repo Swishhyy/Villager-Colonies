@@ -75,7 +75,10 @@ public final class SettlementService {
         };
     }
     /** NPC crews spread their small population across all essential jobs. */
-    public static int workerLimit(Settlement town,Station station) { return town.trading.npc ? 1 : workerLimit(station); }
+    public static int workerLimit(Settlement town,Station station) {
+        if(station.role()==StructureRole.HOSPITAL && !town.campaign.projects.contains("hospital")) return 0;
+        return town.trading.npc ? 1 : workerLimit(station);
+    }
     /** Sets every job's priority from a preset. Citizens keep their jobs unless a job of higher priority has an open place. */
     public static void applyPreset(ServerLevel level,Settlement town,String preset) {
         town.priority=preset; town.jobs.apply(preset);
@@ -98,7 +101,7 @@ public final class SettlementService {
     public static void notify(Player player,String text) {
         if(player instanceof ServerPlayer serverPlayer) serverPlayer.sendOverlayMessage(Component.literal(text));
     }
-    public static boolean owns(Player player,Settlement settlement) { return settlement!=null && settlement.owner.equals(player.getUUID()); }
+    public static boolean owns(Player player,Settlement settlement) { return TownAccess.manages(settlement,player.getUUID()); }
     public static boolean night(ServerLevel level) {
         return ShiftClock.night(level.clockManager().getTotalTicks(level.registryAccess().getOrThrow(WorldClocks.OVERWORLD)));
     }
@@ -125,7 +128,7 @@ public final class SettlementService {
     public static void registerStation(ServerLevel level,Player player,BlockPos pos,StructureRole role) {
         SettlementData data=SettlementData.get(level);
         Settlement settlement=data.at(pos);
-        if(!owns(player,settlement)) { notify(player,"Place stations inside your own settlement claim."); return; }
+        if(!TownAccess.builds(settlement,player.getUUID())) { notify(player,"Place stations inside a town where you have building permission."); return; }
         if(role==StructureRole.TRADER && !TradeRoutes.uniqueCheckpoint(level,settlement,pos)) { notify(player,"Each town can have only one Trader Block."); return; }
         if(settlement.station(pos)==null) {
             var state=level.getBlockState(pos);
@@ -302,7 +305,7 @@ public final class SettlementService {
     }
     public static boolean protectedFurniture(Settlement settlement,BlockPos pos) {
         return settlement.center.equals(pos) || settlement.borderBanners.contains(pos) || settlement.stations.stream().anyMatch(s -> s.position().equals(pos) ||
-                (!s.role().providesWork() && s.contains(pos)));
+                ((!s.role().providesWork() || s.role()==StructureRole.HOSPITAL) && s.contains(pos)));
     }
     private static void placeBorders(ServerLevel level,Settlement town) {
         var banner=BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath("minecraft","red_banner")).defaultBlockState();
@@ -417,7 +420,7 @@ public final class SettlementService {
         SettlementData data=SettlementData.get(source.getLevel());
         Settlement local=data.at(player.blockPosition());
         if(owns(player,local)) return local;
-        List<Settlement> owned=data.settlements.stream().filter(s -> s.owner.equals(player.getUUID())).toList();
+        List<Settlement> owned=data.settlements.stream().filter(s -> owns(player,s)).toList();
         if(owned.size()>1) { source.sendFailure(Component.literal("Stand inside the town you want to manage, or use its banner screen.")); return null; }
         return owned.isEmpty() ? null : owned.getFirst();
     }
@@ -451,6 +454,7 @@ public final class SettlementService {
             if(level.addFreshEntity(citizen)) { settlement.citizens.add(citizen.getUUID()); added++; }
         }
         SettlementData.get(level).setDirty();
+        if(added>0) CampaignService.record(level,settlement,added+" new "+(added==1 ? "citizen joined" : "citizens joined")+" the town.");
         return added;
     }
     private static int bread(CommandSourceStack source,boolean enabled) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
@@ -509,6 +513,8 @@ public final class SettlementService {
                 var loaded=DefenseService.loadedCitizens(c.getSource().getLevel(),s);
                 StringBuilder text=new StringBuilder(s.name+": "+loaded.size()+" of "+s.citizens.size()+" citizens loaded.");
                 for(CitizenEntity citizen:loaded) text.append("\n").append(citizen.getName().getString()).append(" (").append(citizen.job()).append("): ").append(citizen.activity());
+                for(UUID id:s.citizens) if(!(c.getSource().getLevel().getEntity(id) instanceof CitizenEntity))
+                    text.append("\n").append(s.citizenNames.getOrDefault(id,"A citizen")).append(": ").append(CitizenRecall.whereabouts(c.getSource().getLevel(),s,id));
                 c.getSource().sendSuccess(() -> Component.literal(text.toString()),false); return loaded.size();
             }))
             .then(Commands.literal("craft").executes(c -> {
@@ -543,7 +549,9 @@ public final class SettlementService {
         boolean banner=settlement.center.equals(event.getPos()) && event.getState().is(WWMC.BANNER.get());
         boolean station=event.getState().getBlock() instanceof StationBlock;
         if(!banner && !station) return;
-        if(!owns(event.getPlayer(),settlement)) { event.setCanceled(true); event.setNotifyClient(true); notify(event.getPlayer(),"Only this town's owner can remove its stations."); return; }
+        if(!(banner ? TownAccess.owner(settlement,event.getPlayer().getUUID()) : TownAccess.builds(settlement,event.getPlayer().getUUID()))) {
+            event.setCanceled(true); event.setNotifyClient(true); notify(event.getPlayer(),"You need building permission to remove stations; only the owner may remove the banner."); return;
+        }
         if(banner && !settlement.citizens.isEmpty()) {
             event.setCanceled(true); event.setNotifyClient(true); notify(event.getPlayer(),"This banner belongs to an occupied settlement. Keep it as your town's rally point."); return;
         }

@@ -22,7 +22,7 @@ public final class TradeSettings {
             Codec.STRING.fieldOf("item").forGetter(Export::item),
             Codec.INT.fieldOf("reserve").forGetter(Export::reserve),
             Codec.INT.fieldOf("load").forGetter(Export::load)).apply(i,Export::new));
-        public Export { reserve=Math.clamp(reserve,0,4096); load=Math.clamp(load,0,64); }
+        public Export { reserve=Math.clamp(reserve,0,4096); load=Math.clamp(load,0,128); }
         public Item resolve() {
             Identifier key=Identifier.tryParse(item);
             Item item=key==null ? null : BuiltInRegistries.ITEM.getValue(key);

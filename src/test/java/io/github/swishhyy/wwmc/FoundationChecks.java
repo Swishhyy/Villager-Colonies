@@ -18,7 +18,7 @@ public final class FoundationChecks {
         check(!new RoomBounds(Integer.MIN_VALUE,0,0,Integer.MAX_VALUE,1,1).withinLimit(4096),"Coordinate overflow cannot bypass the scan limit");
         check(!StructureRole.HOSPITAL.providesHousing(),"Patient beds must never increase recruitment capacity");
         check(StructureRole.BARRACKS.providesHousing() && StructureRole.HOUSING.providesHousing(),"Camp and home beds are residential");
-        check(StructureRole.FARM.providesWork() && !StructureRole.HOSPITAL.providesWork(),"Only implemented economic jobs enter the worker scheduler");
+        check(StructureRole.FARM.providesWork() && StructureRole.HOSPITAL.providesWork(),"Farmers and hospital medics enter the worker scheduler");
         RoomBounds range=StationRange.around(-12,64,25);
         check(StationRange.SIZE==7 && range.withinLimit(343) && !range.withinLimit(342),"Station scans contain exactly 343 block cells");
         check(range.contains(-15,61,22) && range.contains(-9,67,28),"All inclusive three-block corners are scanned");

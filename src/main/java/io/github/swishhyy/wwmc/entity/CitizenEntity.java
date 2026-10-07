@@ -143,6 +143,8 @@ public final class CitizenEntity extends Villager {
     private String activity="Waiting for a job station";
     private TradeShipment tradeShipment=new TradeShipment();
     private final TradeNavigation tradeNavigation=new TradeNavigation();
+    private final TradeNavigation expeditionNavigation=new TradeNavigation();
+    private boolean recovering;
     private long nextTradeAt;
     private int lastNpcHurt=-1;
     public CitizenEntity(EntityType<? extends Villager> type,Level level) {
@@ -215,6 +217,7 @@ public final class CitizenEntity extends Villager {
                         setCustomName(Component.literal(SettlementService.citizenName(server,town,getUUID())));
                     String name=getCustomName().getString();
                     if(!name.equals(town.citizenNames.put(getUUID(),name))) SettlementData.get(server).setDirty();
+                    if(isAlive()) CitizenRecall.seen(server,town,this);
                     checkStuck(server,town);
                 }
             }
@@ -223,7 +226,7 @@ public final class CitizenEntity extends Villager {
     /** Trying to walk (a recent walk() call) while staying within a block and a half counts as stuck. */
     private void checkStuck(ServerLevel level,Settlement town) {
         // Trade trips have their own short waypoints; do not teleport a convoy across the countryside.
-        if(tradeShipment.travelling()) return;
+        if(tradeShipment.travelling() || SquadService.assigned(town,getUUID())) return;
         boolean trying=tickCount-lastWalkTick<=40 && !isSleeping() && !isPassenger();
         if(!trying || stuckAnchor==null || position().distanceToSqr(stuckAnchor)>2.25) { stuckAnchor=position(); stuckTicks=0; return; }
         stuckTicks+=20;
@@ -232,23 +235,45 @@ public final class CitizenEntity extends Villager {
         BlockPos spot=rescueSpot(level,town);
         if(spot==null) { activity="Stuck, and the settlement banner has no free standing room"; return; }
         getNavigation().stop();
-        // Abandon the trip that went wrong so the citizen does not walk straight back into the same trap.
+        if(!abandonTrip(level) && workplace!=null) { idleStations.put(workplace,level.getGameTime()+200); releaseWork(level); }
+        setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5); resetFallDistance();
+        activity="Got stuck and returned to the settlement banner";
+    }
+    /** Abandons the trip under way, so the citizen does not walk straight back into the same trap; false when there was none. */
+    private boolean abandonTrip(ServerLevel level) {
         if(action==Action.EXCAVATE && excavation!=null && excavation.quarry() && !excavation.remote() && workplace!=null) {
             SettlementService.reservations(level).release(excavation.lease(),getUUID());
             excavation=excavation.fromControlBlock(workplace); targetLease=excavation.lease(); pathTicks=0; blindTicks=0;
         } else if(target!=null) cancelTarget(level,true);
         else if(returningGear) returningGear=false; // the gear stays in the bag and goes back with the next delivery
         else if(isGuard()) patrolTarget=null;
-        else if(workplace!=null) { idleStations.put(workplace,level.getGameTime()+200); releaseWork(level); }
-        setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5); resetFallDistance();
-        activity="Got stuck and returned to the settlement banner";
+        else return false;
+        return true;
     }
-    /** On top of the banner, or failing that a clear spot with firm footing right beside it; never in an unloaded or frozen chunk. */
-    private static BlockPos rescueSpot(ServerLevel level,Settlement town) {
-        BlockPos banner=town.center;
-        if(!level.hasChunkAt(banner) || !level.isPositionEntityTicking(banner)) return null;
-        List<BlockPos> spots=new ArrayList<>(List.of(banner.above()));
-        for(int dy=1;dy>=-1;dy--) for(int dx=-2;dx<=2;dx++) for(int dz=-2;dz<=2;dz++) if(dx!=0 || dz!=0) spots.add(banner.offset(dx,dy,dz));
+    /**
+     * Brings this citizen back from a frozen or unloaded chunk to its station or banner ({@code home}), keeping its
+     * job. The errand that led it out is dropped. False when it is on a trade trip or there is no room to stand.
+     */
+    public boolean recall(ServerLevel level,Settlement town,BlockPos home) {
+        if(tradeShipment.travelling() || SquadService.assigned(town,getUUID())) return false;
+        BlockPos spot=standingRoom(level,home);
+        if(spot==null) spot=rescueSpot(level,town);
+        if(spot==null) return false;
+        leaveBed();
+        if(isPassenger()) stopRiding();
+        getNavigation().stop();
+        abandonTrip(level);
+        setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5); resetFallDistance();
+        stuckAnchor=null; stuckTicks=0;
+        activity="Was out of loaded range and came back";
+        return true;
+    }
+    private static BlockPos rescueSpot(ServerLevel level,Settlement town) { return standingRoom(level,town.center); }
+    /** On top of a block such as the banner, or failing that a clear spot with firm footing right beside it; never in an unloaded or frozen chunk. */
+    private static BlockPos standingRoom(ServerLevel level,BlockPos anchor) {
+        if(!level.hasChunkAt(anchor) || !level.isPositionEntityTicking(anchor)) return null;
+        List<BlockPos> spots=new ArrayList<>(List.of(anchor.above()));
+        for(int dy=1;dy>=-1;dy--) for(int dx=-2;dx<=2;dx++) for(int dz=-2;dz<=2;dz++) if(dx!=0 || dz!=0) spots.add(anchor.offset(dx,dy,dz));
         for(BlockPos spot:spots) {
             if(!level.hasChunkAt(spot) || !level.hasChunkAt(spot.above()) || !level.isPositionEntityTicking(spot)) continue;
             if(clear(level,spot) && clear(level,spot.above()) && level.getBlockState(spot.below()).isFaceSturdy(level,spot.below(),net.minecraft.core.Direction.UP)) return spot;
@@ -290,7 +315,7 @@ public final class CitizenEntity extends Villager {
     }
     private boolean canOpenInventory(Player player) {
         if(!(level() instanceof ServerLevel server) || !isAlive() || distanceToSqr(player)>64) return false;
-        Settlement town=town(server); return town!=null && town.owner.equals(player.getUUID());
+        Settlement town=town(server); return TownAccess.manages(town,player.getUUID());
     }
     /** Role of the station this citizen works at, or null. */
     private StructureRole role() {
@@ -1542,6 +1567,10 @@ public final class CitizenEntity extends Villager {
     public boolean workAt(ServerLevel level,BlockPos pos) { return canUse(level,pos); }
     public boolean workDepot(ServerLevel level,Settlement town,Station station) { return visitDepot(level,town,station); }
     public void workActivity(String text) { activity=text; }
+    public boolean recovering() { return recovering; }
+    public void recovering(boolean value) { recovering=value; }
+    public void expeditionFight(ServerLevel level,Monster enemy) { fight(level,enemy); }
+    public void expeditionWalk(ServerLevel level,BlockPos point) { lastWalkTick=tickCount; expeditionNavigation.walk(level,this,point,0.8); }
     /** Station this citizen works at, or null. */
     public BlockPos workplace() { return workplace; }
     /** Ticks until the next scheduled meal. */
@@ -1780,7 +1809,7 @@ public final class CitizenEntity extends Villager {
         Station station=homeStation(town(server));
         return station==null ? "none" : station.role().id();
     }
-    public int tradeCargoCount() { return tradeShipment.items().stream().mapToInt(ItemStack::getCount).sum(); }
+    public int tradeCargoCount() { return tradeShipment.items().stream().mapToInt(ItemStack::getCount).sum()+tradeShipment.rewardItems().stream().mapToInt(ItemStack::getCount).sum(); }
     /** Town positions remain known across chunk boundaries; the carrier physically visits each storage station. */
     private BlockPos tradeWarehouse(Settlement town) {
         return town.stations.stream().filter(s -> s.role()==StructureRole.WAREHOUSE)
@@ -1789,6 +1818,7 @@ public final class CitizenEntity extends Villager {
     private void tradeNote(Settlement home,String message) { activity=message; home.trading.status=message; }
     private boolean tradeArrive(ServerLevel level,Settlement home,BlockPos destination) {
         if(canUse(level,destination)) { getNavigation().stop(); tradeNavigation.reset(); return true; }
+        if(!SquadService.convoyReady(level,home,this)) { getNavigation().stop(); tradeNote(home,"Waiting for the convoy escort to regroup"); return false; }
         lastWalkTick=tickCount;
         // A leg that is only being planned again is not a blockage; report one after fifteen seconds without progress.
         if(!tradeNavigation.walk(level,this,destination,0.75) && tradeNavigation.stuck(level.getGameTime()))
@@ -1812,12 +1842,13 @@ public final class CitizenEntity extends Villager {
                 || !TradeRoutes.agreed(home,destination) || arrival==null
                 || level.hasChunkAt(arrival.position()) && !SettlementService.active(level,arrival);
         if(tradeShipment.travelling() && !List.of("return","home").contains(tradeShipment.stage) && broken) {
+            if(destination!=null) destination.campaign.incoming.remove(getUUID());
             tradeShipment.stage="return"; tradeNavigation.reset();
         }
         switch(tradeShipment.stage) {
             case "idle" -> {
                 destination=TradeRoutes.partner(level,home);
-                if(destination==null || !TradeRoutes.canDepart(level,home)) { tradeNote(home,"Waiting for a connected, unpaused route"); releaseWork(level); nextTradeAt=level.getGameTime()+100; return; }
+                if(destination==null || !TradeRoutes.canDepart(level,home,destination)) { home.campaign.routeCursor++; tradeNote(home,"Waiting for a connected, unpaused route"); releaseWork(level); nextTradeAt=level.getGameTime()+100; return; }
                 BlockPos warehouse=tradeWarehouse(home);
                 if(warehouse==null) { tradeNote(home,"Needs a warehouse with storage"); nextTradeAt=level.getGameTime()+100; return; }
                 tradeNote(home,"Collecting exports from the warehouse");
@@ -1830,9 +1861,14 @@ public final class CitizenEntity extends Villager {
                     if(ration.isEmpty()) break;
                     cargo.offer(ration);
                 }
-                int moved=TradeGoods.load(SettlementService.storageAt(level,home,warehouse),home.trading.exports,tradeShipment);
-                if(moved==0) { tradeNote(home,"Waiting for warehouse goods above the export reserves"); nextTradeAt=level.getGameTime()+200; return; }
+                BlockPos targetWarehouse=tradeWarehouse(destination);
+                if(targetWarehouse!=null) SupplyRequests.snapshotLoaded(level,destination);
+                boolean depot=home.campaign.projects.contains("depot"); tradeShipment.capacity=TradeSettings.MAX_EXPORTS*(depot ? 2 : 1);
+                int moved=TradeGoods.load(SettlementService.storageAt(level,home,warehouse),SupplyRequests.policy(home,destination,depot),tradeShipment);
+                if(moved==0) { home.campaign.routeCursor++; SettlementData.get(level).setDirty(); tradeNote(home,"Waiting for requested goods above the home reserves; checking another route next"); nextTradeAt=level.getGameTime()+200; return; }
                 tradeShipment.destination=destination.id; tradeShipment.stage="checkpoint"; tradeNavigation.reset();
+                destination.campaign.incoming.put(getUUID(),CampaignContracts.counts(tradeShipment));
+                CampaignService.record(level,home,"Shipment departed for "+destination.name+" with "+moved+" items.");
             }
             case "checkpoint" -> {
                 tradeNote(home,"Taking "+tradeCargoCount()+" items to the home checkpoint");
@@ -1847,7 +1883,16 @@ public final class CitizenEntity extends Villager {
                 if(warehouse==null) { tradeNote(home,"Destination needs warehouse storage; cargo retained"); nextTradeAt=level.getGameTime()+100; return; }
                 tradeNote(home,"Delivering to "+destination.name+"'s warehouse");
                 if(!tradeArrive(level,home,warehouse)) return;
+                var before=CampaignContracts.counts(tradeShipment);
                 int moved=TradeGoods.unload(tradeShipment,SettlementService.storageAt(level,destination,warehouse));
+                var remaining=CampaignContracts.counts(tradeShipment);
+                if(remaining.isEmpty()) destination.campaign.incoming.remove(getUUID()); else destination.campaign.incoming.put(getUUID(),remaining);
+                before.replaceAll((key,count) -> count-remaining.getOrDefault(key,0)); before.values().removeIf(count -> count<=0);
+                if(moved>0) {
+                    CampaignContracts.delivered(level,home,destination,before,tradeShipment.rewards);
+                    CampaignService.record(level,destination,"Received "+moved+" items from "+home.name+".");
+                    SupplyRequests.snapshotLoaded(level,destination);
+                }
                 home.trading.delivered+=moved;
                 if(moved>0 && destination.trading.npc) destination.trading.relations.merge(home.owner,moved,(a,b) -> Math.min(1000,a+b));
                 if(moved>0) SettlementData.get(level).setDirty();
@@ -1861,14 +1906,16 @@ public final class CitizenEntity extends Villager {
                 tradeShipment.stage="home"; tradeNavigation.reset();
             }
             case "home" -> {
-                if(!tradeShipment.isEmpty()) {
+                if(!tradeShipment.isEmpty() || !tradeShipment.rewards.isEmpty()) {
                     BlockPos warehouse=tradeWarehouse(home);
                     if(warehouse==null) { tradeNote(home,"Home needs storage for the returned goods"); return; }
                     if(!tradeArrive(level,home,warehouse)) return;
                     TradeGoods.unload(tradeShipment,SettlementService.storageAt(level,home,warehouse));
-                    if(!tradeShipment.isEmpty()) { tradeNote(home,"Home storage is full; returned goods are safe in the trade load"); nextTradeAt=level.getGameTime()+100; return; }
+                    TradeGoods.unload(tradeShipment.rewards,SettlementService.storageAt(level,home,warehouse));
+                    if(!tradeShipment.isEmpty() || !tradeShipment.rewards.isEmpty()) { tradeNote(home,"Home storage is full; returned goods and contract rewards are safe in the trade load"); nextTradeAt=level.getGameTime()+100; return; }
                 }
                 tradeShipment.finish();
+                home.campaign.routeCursor++;
                 if(!TradeRoutes.canDepart(level,home)) { home.trading.runner=null; home.trading.runnerPos=null; }
                 tradeNavigation.reset(); nextTradeAt=level.getGameTime()+200; SettlementData.get(level).setDirty();
                 tradeNote(home,"Returned; preparing the next trip");
@@ -1881,6 +1928,8 @@ public final class CitizenEntity extends Villager {
         failedTargets.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
         Settlement town=town(level);
         if(town==null) { activity="Settlement unavailable"; return; }
+        if(SquadService.act(level,town,this)) return;
+        if(HospitalCare.patient(level,town,this)) return;
         // The checkpoint may be unloaded behind the carrier. Its saved itinerary owns the job until it returns.
         if(tradeShipment.travelling()) { leaveBed(); trader(level,town,TradeRoutes.checkpoint(town)); return; }
         // An open guard post draws the first citizen whose own job matters less, at once rather than at the next half-minute look.
@@ -1935,10 +1984,14 @@ public final class CitizenEntity extends Villager {
         // A guard drafted during an alarm defends first and returns old gear afterwards.
         if(returningGear && !(role==StructureRole.GUARD && DefenseService.alarmed(town)) && !returnGear(level,town)) return;
         if(station.role()==StructureRole.GUARD) { guard(level,town,station); return; }
+        if(station.role()==StructureRole.HOSPITAL) { HospitalCare.medic(level,town,station,this); return; }
         if(station.role()==StructureRole.BLACKSMITH) { blacksmith(level,town,station); return; }
         if(station.role()==StructureRole.COURIER) { courier(level,town,station); return; }
         if(station.role()==StructureRole.TRADER) { trader(level,town,station); return; }
         if(station.role()==StructureRole.ENCHANTER) { enchanter(level,town,station); return; }
+        if(town.campaign.parent!=null && InventoryOps.count(SettlementService.townStorage(level,town),FoodHealing::food)==0 && InventoryOps.count(List.of(cargo),FoodHealing::food)==0) {
+            getNavigation().stop(); activity="Outpost awaiting a food shipment from home"; return;
+        }
         useLocalSupplies(station.role());
         if(wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0
                 && level.getGameTime()>=nextFoodTripAt) {
@@ -2039,14 +2092,15 @@ public final class CitizenEntity extends Villager {
         // Stone yields to a pickaxe in about a second; harder blocks and weaker tools take longer.
         int required=action==Action.EXCAVATE || action==Action.CAVE || action==Action.VEIN ? ExcavationService.breakTicks(level,target,getMainHandItem())
                 : action==Action.SUPPORT ? 20 : Config.WORK_TICKS.get();
-        if(workProgress>=required) harvest(level,town,station);
+        if(workProgress>=Specialization.ticks(town,station.role(),required)) harvest(level,town,station);
     }
     private final class WorkGoal extends Goal {
         WorkGoal() { setFlags(EnumSet.of(Flag.MOVE,Flag.LOOK)); }
         @Override public boolean canUse() {
             if(!(level() instanceof ServerLevel l) || town(l)==null) return false;
             // Civilians stop work during an alarm; a vacant guard post still draws a volunteer.
-            return tradeShipment.travelling() || isGuard() || guardVacancy(l,town(l)) || !night(l) && !DefenseService.alarmed(town(l));
+            return tradeShipment.travelling() || SquadService.assigned(town(l),getUUID()) || HospitalCare.needsCare(town(l),CitizenEntity.this)
+                    || isGuard() || guardVacancy(l,town(l)) || !night(l) && !DefenseService.alarmed(town(l));
         }
         @Override public boolean canContinueToUse() { return canUse(); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
@@ -2078,7 +2132,8 @@ public final class CitizenEntity extends Villager {
     }
     private final class RestGoal extends Goal {
         RestGoal() { setFlags(EnumSet.of(Flag.MOVE,Flag.LOOK)); }
-        @Override public boolean canUse() { return !tradeShipment.travelling() && level() instanceof ServerLevel l && town(l)!=null && night(l) && !isGuard() && !guardVacancy(l,town(l)); }
+        @Override public boolean canUse() { return !tradeShipment.travelling() && level() instanceof ServerLevel l && town(l)!=null && night(l)
+                && !SquadService.assigned(town(l),getUUID()) && !HospitalCare.needsCare(town(l),CitizenEntity.this) && !isGuard() && !guardVacancy(l,town(l)); }
         @Override public boolean canContinueToUse() { return canUse(); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
         @Override public void tick() {
@@ -2115,6 +2170,7 @@ public final class CitizenEntity extends Villager {
         output.putInt("wwmc_meal_ticks",mealTicks);
         output.putLong("wwmc_last_meal",lastMealAt);
         output.putInt("wwmc_healing_ticks",healingTicks);
+        output.putBoolean("wwmc_recovering",recovering);
         output.store("wwmc_repair_item",ItemStack.OPTIONAL_CODEC,repairItem);
         output.putBoolean("wwmc_repair_delivery",repairDelivery);
         output.store("wwmc_enchant_item",ItemStack.OPTIONAL_CODEC,enchantItem);
@@ -2136,6 +2192,7 @@ public final class CitizenEntity extends Villager {
         mealTicks=input.getIntOr("wwmc_meal_ticks",7200);
         lastMealAt=input.getLongOr("wwmc_last_meal",0L);
         healingTicks=Math.clamp(input.getIntOr("wwmc_healing_ticks",0),0,FoodHealing.COOLDOWN);
+        recovering=input.getBooleanOr("wwmc_recovering",false);
         repairItem=input.read("wwmc_repair_item",ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY);
         repairDelivery=input.getBooleanOr("wwmc_repair_delivery",false);
         enchantItem=input.read("wwmc_enchant_item",ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY);
@@ -2153,12 +2210,21 @@ public final class CitizenEntity extends Villager {
             Settlement home=town(level);
             if(home!=null && source.getEntity() instanceof Player attacker) TradeRoutes.attacked(home,attacker.getUUID(),SettlementData.get(level).settlements);
             if(home!=null && getUUID().equals(home.trading.runner)) { home.trading.runner=null; home.trading.runnerPos=null; SettlementData.get(level).setDirty(); }
+            if(tradeShipment.destination!=null) {
+                Settlement destination=SettlementData.get(level).byId(tradeShipment.destination);
+                if(destination!=null) { destination.campaign.incoming.remove(getUUID()); SettlementData.get(level).setDirty(); }
+            }
             for(ItemStack stack:tradeShipment.items()) if(!stack.isEmpty()) Containers.dropItemStack(level,getX(),getY(),getZ(),stack);
+            for(ItemStack stack:tradeShipment.rewardItems()) if(!stack.isEmpty()) Containers.dropItemStack(level,getX(),getY(),getZ(),stack);
             tradeShipment.clearContent();
+            tradeShipment.rewards.clearContent();
             Containers.dropItemStack(level,getX(),getY(),getZ(),repairItem); repairItem=ItemStack.EMPTY;
             Containers.dropItemStack(level,getX(),getY(),getZ(),enchantItem); enchantItem=ItemStack.EMPTY;
             Settlement town=town(level);
-            if(town!=null) { town.citizens.remove(getUUID()); town.citizenNames.remove(getUUID()); town.jobs.release(getUUID()); SettlementData.get(level).setDirty(); }
+            if(town!=null) {
+                town.citizens.remove(getUUID()); town.citizenNames.remove(getUUID()); town.citizenPlaces.remove(getUUID()); town.jobs.release(getUUID());
+                SettlementData.get(level).setDirty();
+            }
             releaseWork(level);
             Containers.dropItemStack(level,getX(),getY(),getZ(),getOffhandItem()); setItemSlot(EquipmentSlot.OFFHAND,ItemStack.EMPTY);
             for(int i=0;i<cargo.getContainerSize();i++) {

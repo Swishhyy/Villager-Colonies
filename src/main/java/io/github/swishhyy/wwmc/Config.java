@@ -44,6 +44,10 @@ public final class Config {
     public static final ModConfigSpec.BooleanValue RANDOM_TOWNS = B.comment("Discover small neutral NPC settlements in suitable loaded Overworld terrain.").define("randomSettlements", true);
     public static final ModConfigSpec.IntValue NPC_SPACING = B.comment("Size of deterministic NPC town regions; actual distance varies with terrain and the town's position.").defineInRange("npcTownSpacing", 1408, 1008, 4096);
     public static final ModConfigSpec.IntValue MAX_NPC_TOWNS = B.comment("Maximum automatically generated NPC towns in the Overworld.").defineInRange("maxNpcTowns", 48, 0, 256);
+    public static final ModConfigSpec.BooleanValue EXPEDITIONS = B.comment("Discover finite bandit camps, occupied mines and ruined forts in loaded, unclaimed natural terrain.").define("expeditionSites",true);
+    public static final ModConfigSpec.IntValue MAX_EXPEDITIONS = B.comment("Maximum expedition sites per dimension; cleared sites are retained for journals and outposts.").defineInRange("maxExpeditionSites",64,0,256);
+    public static final ModConfigSpec.IntValue MAX_BANDITS = B.comment("Maximum living expedition defenders and convoy raiders, including unloaded defenders.").defineInRange("maxExpeditionBandits",48,0,256);
+    public static final ModConfigSpec.BooleanValue CONVOY_RAIDS = B.comment("Occupied sites can warn of and launch small convoy raids only while a player is nearby.").define("convoyRaids",true);
     public static final ModConfigSpec SPEC = B.build();
     private Config() {}
 }

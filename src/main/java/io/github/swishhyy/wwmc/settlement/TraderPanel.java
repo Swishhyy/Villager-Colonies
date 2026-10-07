@@ -56,7 +56,7 @@ public final class TraderPanel {
         status.add(new PanelView.Row(new ItemStack(Items.COMPASS),"Partner",partner==null ? "None: choose one on Routes" : partner.name+(TradeRoutes.agreed(town,partner) ? " · connected" : " · awaiting acceptance")));
         status.add(new PanelView.Row(new ItemStack(Items.BUNDLE),"Trader",town.trading.paused ? "New departures paused" : town.trading.status));
         status.add(new PanelView.Row(new ItemStack(Items.CHEST),"Delivered",town.trading.delivered+" items sent; cargo stays with its carrier until unloaded"));
-        status.add(new PanelView.Row(new ItemStack(Items.PAPER),"How it works","One partner, one trader; Keep protects stock, Send is the per-trip load"));
+        status.add(new PanelView.Row(new ItemStack(Items.PAPER),"How it works","One trader; stock requests and extra allied routes are on the Campaign board"));
         return new PanelView(Component.literal("Trader Block · "+town.name),Component.literal(feedback.isEmpty() ? "Supply routes: each town chooses its own exports" : feedback),
                 List.of(new PanelView.Tab("Routes",routes),new PanelView.Tab("Exports",exports),new PanelView.Tab("Status",status)),
                 List.of(new PanelView.Action(PAUSE,town.trading.paused ? "Resume" : "Pause",true),new PanelView.Action(DISCONNECT,"Disconnect",town.trading.partner!=null)));

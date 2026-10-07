@@ -5,7 +5,9 @@ import io.github.swishhyy.wwmc.menu.PanelView;
 import io.github.swishhyy.wwmc.menu.Panels;
 import io.github.swishhyy.wwmc.menu.WwmcNetwork;
 import io.github.swishhyy.wwmc.settlement.JobBoard;
+import io.github.swishhyy.wwmc.settlement.CampaignViews;
 import java.util.List;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -24,7 +26,8 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
     private PanelView shown;
     private String layout="";
     public PanelScreen(PanelMenu menu,Inventory inventory,Component title) {
-        super(menu,inventory,title,WIDTH,HEIGHT);
+        super(menu,inventory,title,menu.kind==PanelMenu.Kind.CAMPAIGN || menu.kind==PanelMenu.Kind.ARMY ? Math.min(360,Minecraft.getInstance().getWindow().getGuiScaledWidth()-8) : WIDTH,
+                menu.kind==PanelMenu.Kind.CAMPAIGN || menu.kind==PanelMenu.Kind.ARMY ? Math.min(270,Minecraft.getInstance().getWindow().getGuiScaledHeight()-8) : HEIGHT);
     }
     private PanelView view() { return menu.view(); }
     @Override protected void init() {
@@ -60,13 +63,20 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
             PanelView.Row row=listed.get(scroll+i);
             if(!control(row)) continue;
             int index=scroll+i,rowY=top+2+i*ROW+3;
+            if(row.key().startsWith("act:")) {
+                Button use=Button.builder(Component.literal(row.key().startsWith("act:project:") ? "Build" : "Use"),b -> { b.active=false; send(index,1,row.key()); })
+                        .bounds(right-33,rowY,32,15).build();
+                use.active=row.value()==0; use.setTooltip(Tooltip.create(row.detail())); addRenderableWidget(use); continue;
+            }
+            boolean request=row.key().startsWith("request:"),member=row.key().startsWith("member:");
+            int step=request ? row.icon().getMaxStackSize()==1 ? 1 : 16 : 1;
             // A row button works once per refresh, so a double click cannot also hit the row that moves into its place.
-            Button lower=Button.builder(Component.literal("-"),b -> { b.active=false; send(index,row.value()-1,row.key()); }).bounds(right-31,rowY,14,15).build();
-            lower.active=row.value()>JobBoard.OFF;
-            lower.setTooltip(Tooltip.create(Component.literal("Lower priority")));
-            Button raise=Button.builder(Component.literal("+"),b -> { b.active=false; send(index,row.value()+1,row.key()); }).bounds(right-15,rowY,14,15).build();
-            raise.active=row.value()<JobBoard.HIGH;
-            raise.setTooltip(Tooltip.create(Component.literal("Raise priority")));
+            Button lower=Button.builder(Component.literal("-"),b -> { b.active=false; send(index,member ? row.value()-1 : Math.max(0,row.value()-step),row.key()); }).bounds(right-31,rowY,14,15).build();
+            lower.active=member || row.value()>JobBoard.OFF;
+            lower.setTooltip(Tooltip.create(Component.literal(request ? "Lower warehouse target by "+step : member ? "Steward to builder; builder to removed" : "Lower priority")));
+            Button raise=Button.builder(Component.literal("+"),b -> { b.active=false; send(index,Math.min(request ? 4096 : member ? 1 : JobBoard.HIGH,row.value()+step),row.key()); }).bounds(right-15,rowY,14,15).build();
+            raise.active=row.value()<(request ? 4096 : member ? 1 : JobBoard.HIGH);
+            raise.setTooltip(Tooltip.create(Component.literal(request ? "Raise warehouse target by "+step : member ? "Promote builder to steward" : "Raise priority")));
             addRenderableWidget(lower); addRenderableWidget(raise);
         }
         shown=view; layout=layout(view);
@@ -74,7 +84,8 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
     /** A row whose priority the owner sets from the list. */
     private static boolean control(PanelView.Row row) { return !row.key().isEmpty() && row.value()>=0; }
     private void send(int index,int value,String key) {
-        ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,Panels.JOB,index,value,key));
+        ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,
+                menu.kind==PanelMenu.Kind.CAMPAIGN || menu.kind==PanelMenu.Kind.ARMY ? CampaignViews.ROW_ACTION : Panels.JOB,index,value,key));
     }
     /** Buttons are rebuilt only when their labels or the rows' priorities change, not for every refresh. */
     private static String layout(PanelView view) {

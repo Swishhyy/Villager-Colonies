@@ -37,6 +37,7 @@ public final class JobStorage {
                 || role==StructureRole.BUTCHER && stack.is(ItemTags.AXES);
     }
     private static boolean supply(Supplies supplies,Settlement town,StructureRole role,ItemStack stack) {
+        if(role==StructureRole.HOSPITAL) return stack.is(Items.PAPER) || FoodHealing.food(stack);
         if(role.processes()) return ProcessingService.supply(supplies.fuels(),role,stack);
         if(role.animalJob()) return AnimalWork.supply(role,stack);
         if(role==StructureRole.ENCHANTER) return Enchanting.lapis(stack) || Enchanting.candidate(stack);
@@ -89,6 +90,7 @@ public final class JobStorage {
     public static boolean input(Supplies supplies,StructureRole role,ItemStack stack) { return input(supplies,null,role,stack); }
     public static boolean input(Supplies supplies,Settlement town,StructureRole role,ItemStack stack) {
         if(stack.isEmpty()) return false;
+        if(role==StructureRole.HOSPITAL) return stack.is(Items.PAPER) || FoodHealing.food(stack);
         if(tool(role,stack)) return !GuardEquipment.worn(stack);
         if(role.animalJob()) return AnimalWork.supply(role,stack);
         if(role==StructureRole.ENCHANTER) return Enchanting.lapis(stack) || Enchanting.candidate(stack);
@@ -117,6 +119,10 @@ public final class JobStorage {
         }
         if(role==StructureRole.ENCHANTER) {
             result.add(new Demand(Enchanting::lapis,LAPIS_RESERVE*2)); result.add(new Demand(Enchanting::candidate,2));
+        }
+        if(role==StructureRole.HOSPITAL) {
+            boolean scarce=town!=null && FoodSharing.scarce(InventoryOps.count(warehouse,FoodHealing::food),town.citizens.size());
+            result.add(new Demand(FoodHealing::food,scarce ? 2 : 16)); result.add(new Demand(s -> s.is(Items.PAPER),16));
         }
         if(role==StructureRole.GUARD) {
             result.add(new Demand(s -> GuardWeapons.melee(s) && !GuardEquipment.worn(s),2));
