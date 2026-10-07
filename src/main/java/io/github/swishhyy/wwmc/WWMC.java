@@ -84,6 +84,7 @@ public final class WWMC {
         NeoForge.EVENT_BUS.register(new DefenseService());
         NeoForge.EVENT_BUS.register(new WaveService());
         NeoForge.EVENT_BUS.register(new TradeChunks());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.TradeAtlas.Survey());
         NeoForge.EVENT_BUS.register(new NpcSettlements());
         container.registerConfig(ModConfig.Type.SERVER,Config.SPEC);
     }
