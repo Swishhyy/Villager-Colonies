@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.neoforged.testframework.DynamicTest;
 import net.neoforged.testframework.annotation.TestHolder;
 import net.neoforged.testframework.gametest.EmptyTemplate;
@@ -91,7 +92,7 @@ public final class CampaignWorldTests {
             BlockPos protectedBlock=start.east(4); WorldWorkData.get(level).protect(protectedBlock);
             helper.assertTrue(!ExpeditionService.clearSite(level,start),"Encounter overwrote protected construction");
             WorldWorkData.get(level).protectedBlocks.remove(protectedBlock);
-            var site=ExpeditionService.discover(level,start,"mine","test:"+UUID.randomUUID()); helper.assertTrue(site!=null,"Natural site was rejected");
+            var site=ExpeditionService.discover(level,start,"mine","test:"+UUID.randomUUID()); helper.assertTrue(site!=null,"Natural site was rejected: "+siteIssue(level,start));
             int spawned=ExpeditionService.spawn(level,site,site.pos,3); helper.assertTrue(spawned==3,"Defenders did not spawn on clear ground"); site.spawned=true;
             helper.assertTrue(!site.cleared,"Site cleared before defenders died");
             for(UUID id:new ArrayList<>(site.guards)) level.getEntity(id).kill(level);
@@ -136,7 +137,7 @@ public final class CampaignWorldTests {
             Settlement parent=new Settlement(UUID.randomUUID(),player.getUUID(),"Parent town",start.west(640),32,List.of(),List.of(),"balanced");
             parent.campaign.members.put(UUID.randomUUID(),"steward"); UUID primary=UUID.randomUUID(); parent.trading.partner=primary;
             SettlementData.get(level).settlements.add(parent);
-            var site=ExpeditionService.discover(level,start,"mine","outpost-test:"+UUID.randomUUID()); helper.assertTrue(site!=null,"Outpost site was rejected"); site.cleared=true; site.spawned=true;
+            var site=ExpeditionService.discover(level,start,"mine","outpost-test:"+UUID.randomUUID()); helper.assertTrue(site!=null,"Outpost site was rejected: "+siteIssue(level,start)); site.cleared=true; site.spawned=true;
             ExpeditionService.claim(level,parent,player,site.id); helper.assertTrue(site.claimed==null,"Unfunded charter allowed a claim");
             parent.campaign.projects.add("frontier"); player.setPos(start.getX()+40,start.getY(),start.getZ());
             ExpeditionService.claim(level,parent,player,site.id); helper.assertTrue(site.claimed==null,"Remote player claimed the site");
@@ -179,5 +180,9 @@ public final class CampaignWorldTests {
             helper.assertTrue(rewards.getItem(0).getCount()==4,"Duplicate delivery event paid the contract twice");
             leave(level,npc); CitizenNavigationTests.release(level,start,chunks); helper.succeed();
         });
+    }
+    private static String siteIssue(ServerLevel level,BlockPos probe) {
+        BlockPos ground=new BlockPos(probe.getX(),level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,probe.getX(),probe.getZ()),probe.getZ());
+        return ExpeditionService.siteIssue(level,ground)+"; probe "+probe.toShortString()+", ground "+ground.toShortString()+", saved sites "+ExpeditionData.get(level).sites.size();
     }
 }

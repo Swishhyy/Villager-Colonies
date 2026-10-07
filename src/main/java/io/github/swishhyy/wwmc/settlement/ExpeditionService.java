@@ -40,20 +40,24 @@ public final class ExpeditionService {
         return level.players().stream().anyMatch(p -> p.isAlive() && !p.isSpectator() && p.distanceToSqr(Vec3.atCenterOf(pos))<(double)range*range);
     }
     public static boolean clearSite(ServerLevel level,BlockPos pos) {
+        return siteIssue(level,pos).isEmpty();
+    }
+    public static String siteIssue(ServerLevel level,BlockPos pos) {
         var data=SettlementData.get(level); var protection=WorldWorkData.get(level);
-        if(data.settlements.stream().anyMatch(t -> t.overlaps(pos,Settlement.MIN_RADIUS+8))) return false;
+        if(data.settlements.stream().anyMatch(t -> t.overlaps(pos,Settlement.MIN_RADIUS+8))) return "too close to an existing claim";
         for(int x=-5;x<=5;x++) for(int z=-5;z<=5;z++) {
-            BlockPos feet=pos.offset(x,0,z); if(!level.hasChunkAt(feet)) return false;
+            BlockPos feet=pos.offset(x,0,z); if(!level.hasChunkAt(feet)) return "unloaded ground at "+feet.toShortString();
             int ground=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,feet.getX(),feet.getZ());
-            if(Math.abs(ground-pos.getY())>2 || !level.getFluidState(new BlockPos(feet.getX(),ground-1,feet.getZ())).isEmpty()) return false;
+            if(Math.abs(ground-pos.getY())>2) return "uneven ground at "+feet.toShortString()+"; height "+ground;
+            if(!level.getFluidState(new BlockPos(feet.getX(),ground-1,feet.getZ())).isEmpty()) return "wet ground at "+feet.toShortString();
             for(int y=-3;y<=4;y++) {
                 BlockPos block=feet.offset(0,y,0); var state=level.getBlockState(block);
-                if(protection.protectedBlocks.contains(block) || level.getBlockEntity(block)!=null) return false;
+                if(protection.protectedBlocks.contains(block) || level.getBlockEntity(block)!=null) return "protected construction at "+block.toShortString();
                 if(!state.isAir() && !state.is(BlockTags.DIRT) && !state.is(BlockTags.BASE_STONE_OVERWORLD) && !state.is(BlockTags.LEAVES)
-                        && !state.is(BlockTags.LOGS) && !state.canBeReplaced()) return false;
+                        && !state.is(BlockTags.LOGS) && !state.canBeReplaced()) return "non-natural block "+BuiltInRegistries.BLOCK.getKey(state.getBlock())+" at "+block.toShortString();
             }
         }
-        return true;
+        return "";
     }
     public static ExpeditionData.Site discover(ServerLevel level,BlockPos probe,String kind,String region) {
         var data=ExpeditionData.get(level);
