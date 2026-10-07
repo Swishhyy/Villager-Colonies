@@ -56,7 +56,6 @@ public final class TradeWorldTests {
                 level.setBlockAndUpdate(town.center.south(3),Blocks.BARREL.defaultBlockState());
             }
             Container from=(Container)level.getBlockEntity(a.center.south(3));
-            Container to=(Container)level.getBlockEntity(b.center.south(3));
             from.setItem(0,new ItemStack(Items.IRON_INGOT,16));
             from.setItem(1,new ItemStack(Items.BREAD,64));
             a.trading.exports.add(new TradeSettings.Export("minecraft:iron_ingot",0,16));
@@ -70,8 +69,11 @@ public final class TradeWorldTests {
                 helper.assertTrue(a.trading.delivered==16,"Not delivered: "+a.trading.status+" at "+trader.blockPosition());
                 helper.assertTrue(trader.tradeCargoCount()==0,"Trader still carries exports");
                 helper.assertTrue(trader.blockPosition().distSqr(a.center)<64,"Not returned: "+a.trading.status+" at "+trader.blockPosition());
-                helper.assertTrue(InventoryOps.count(List.of(to),s -> s.is(Items.IRON_INGOT))==16,"Destination cargo differs");
-                helper.assertTrue(InventoryOps.count(List.of(from),s -> s.is(Items.IRON_INGOT))==0,"Exports duplicated at home");
+                // Chunk unload/reload replaces block entities: inspect the current warehouse, not a stale object.
+                var received=SettlementService.storageAt(level,b,b.center.south(2));
+                var remaining=SettlementService.storageAt(level,a,a.center.south(2));
+                helper.assertTrue(InventoryOps.count(received,s -> s.is(Items.IRON_INGOT))==16,"Destination cargo differs after chunk reload");
+                helper.assertTrue(InventoryOps.count(remaining,s -> s.is(Items.IRON_INGOT))==0,"Exports duplicated at home");
                 TradeChunks.release(level,a.id); TradeChunks.release(level,b.id);
                 trader.discard(); data.settlements.remove(a); data.settlements.remove(b); data.setDirty();
             });
