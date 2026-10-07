@@ -6,7 +6,9 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.9.1-alpha
+## Current build: 0.9.2-alpha
+
+0.9.2 makes every citizen job favor paved paths and solid bridges over grass shortcuts. Citizens on land do not plan swims through open water, and follow bridge bends without cutting corners. Citizens already in water can still get out. Traders also look for narrow bridge decks between their usual waypoints, so wide rivers do not require swimming. Roads work automatically with dirt paths, gravel, common stone paving, planks, slabs, and stairs.
 
 0.9.1 fixes traders stopping on walkable routes beneath roofs and tree overhangs. They choose reachable ground near their feet, try shorter and sideways legs, and retry stalled paths without teleporting or losing cargo. A headless world regression checks real delivery and return over 640 blocks, beneath an overhang and around a wall, with no nearby player.
 
@@ -205,7 +207,9 @@ Craft a **Trader Block** with a compass surrounded by eight planks. Place one in
 4. Set **Keep** to the amount that must remain in this town's warehouse and **Send** to the maximum carried per trip. For example, Keep 64 / Send 32 sends up to 32 carrots above a 64-carrot reserve. Send 0 pauses that item. Configure the other town's exports separately.
 5. The citizen loads goods at home, visits the home checkpoint, walks to the other checkpoint, deposits goods in its warehouse, and returns. These are supply routes, with no automatic price or payment.
 
-Goods in transit remain separate from meals and ordinary work supplies. Full destination storage keeps the remaining load on the citizen. **Pause** stops new departures; **Disconnect** returns undelivered goods. Traders follow reachable ground waypoints, including beneath roofs, and retry stalled legs with shorter and sideways alternatives. A genuinely blocked route waits for a clear path; roads, bridges, and open doors help. Traders do not teleport, use portals, sail boats, or build roads. A dead trader drops its actual goods and the town can assign another citizen.
+Goods in transit remain separate from meals and ordinary work supplies. Full destination storage keeps the remaining load on the citizen. **Pause** stops new departures; **Disconnect** returns undelivered goods. Traders follow reachable ground waypoints, including beneath roofs, and retry stalled legs with shorter and sideways alternatives. Citizens favor paving and solid bridge decks, and traders search nearby for narrow bridge approaches. A genuinely blocked route waits for a clear path; roads, bridges, and open doors help. Citizens on land do not plan to swim across a river; citizens pushed into water can still swim out. Traders do not teleport, use portals, sail boats, or build roads. A dead trader drops its actual goods and the town can assign another citizen.
+
+**Road materials:** dirt paths, gravel, cobblestone, common stone/brick paving, planks, slabs, and stairs are preferred automatically by all citizen jobs. Solid bridge decks over water also receive a preference. Grass and dirt remain usable when a road is unavailable. Keep bridges connected to both banks, with room for a citizen to stand and walk. Datapacks can extend the `wwmc:paved_paths` block tag for other paving materials.
 
 Each active trader maintains a moving **3×3 chunk window**. The route does not keep every intervening chunk loaded. The default server limit is **8 active town traders**, and the maximum route length is **8,192 blocks**. Travel continues on a running server when an owner logs off. Ordinary workers still require ticking chunks; distant abstract town simulation is future work. Install matching mod versions on server and clients because the screen protocol changes in 0.9.0.
 

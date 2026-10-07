@@ -1,8 +1,8 @@
 package io.github.swishhyy.wwmc.settlement;
 
+import io.github.swishhyy.wwmc.entity.RoadSurface;
 import java.util.*;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.Mob;
@@ -70,8 +70,9 @@ public final class TradeNavigation {
                 return level.getBlockState(p).getCollisionShape(level,p).isEmpty() && level.getFluidState(p).isEmpty();
             }
             public boolean footing(BlockPos p) {
-                return !level.getBlockState(p).is(BlockTags.LEAVES) && level.getFluidState(p).isEmpty()
-                        && level.getBlockState(p).isFaceSturdy(level,p,Direction.UP);
+                // Dirt paths, slabs and stairs support a walker without a full-height sturdy top face.
+                return !level.getBlockState(p).is(BlockTags.LEAVES)
+                        && !level.getBlockState(p).getCollisionShape(level,p).isEmpty();
             }
         };
         double angle=Math.atan2(target.getZ()-mob.getZ(),target.getX()-mob.getX());
@@ -85,14 +86,32 @@ public final class TradeNavigation {
                 if(!avoided(pos) && CitizenReach.standing(world,pos)) candidates.add(pos);
             }
         }
+        // Angular samples can miss a one-block bridge. Sample three bounded rings to find its deck.
+        List<BlockPos> roads=new ArrayList<>();
+        for(int radius:new int[]{6,10,16}) for(int side=-radius;side<=radius;side++) {
+            for(int[] offset:new int[][]{{radius,side},{-radius,side},{side,radius},{side,-radius}}) {
+                for(int dy:new int[]{0,1,-1,2,-2,3,-3,4,-4}) {
+                    BlockPos pos=mob.blockPosition().offset(offset[0],dy,offset[1]);
+                    if(!world.available(pos) || avoided(pos) || !RoadSurface.preferred(level,pos)
+                            || !CitizenReach.standing(world,pos)) continue;
+                    roads.add(pos); break;
+                }
+            }
+        }
+        roads.stream().distinct().sorted(Comparator.comparingDouble(p -> score(level,mob,p,target)))
+                .limit(12).forEach(candidates::add);
         // Check shorter legs in front before distant side steps, without exhausting path probes on one heading.
         List<BlockPos> ordered=new ArrayList<>(candidates);
-        ordered.sort(Comparator.comparingDouble(p -> Math.sqrt(p.distSqr(target))+Math.abs(p.getY()-mob.getY())*2));
+        ordered.sort(Comparator.comparingDouble(p -> score(level,mob,p,target)));
         for(BlockPos candidate:ordered) {
             if(tried++>=MAX_PATHS) break;
             Path path=mob.getNavigation().createPath(candidate,1);
             if(path!=null && path.canReach()) return path;
         }
         return null;
+    }
+    private static double score(ServerLevel level,Mob mob,BlockPos pos,BlockPos target) {
+        return Math.sqrt(pos.distSqr(target))+Math.abs(pos.getY()-mob.getY())*2
+                -(RoadSurface.preferred(level,pos) ? 8 : 0);
     }
 }

@@ -52,6 +52,7 @@ public final class CitizenNavigationTests {
             citizen.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(48);
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
             BlockPos end=start.east(20);
+            helper.runAtTickTime(5,() -> {
             var path=citizen.getNavigation().createPath(end,0);
             helper.assertTrue(path!=null && path.canReach(),"Paved route is unreachable");
             boolean paved=false;
@@ -64,6 +65,7 @@ public final class CitizenNavigationTests {
                 helper.assertTrue(citizen.blockPosition().distSqr(end)<4,"Citizen has not reached the paved route's end");
                 helper.assertTrue(followedRoad.get(),"Citizen cut across the grass after planning the paved route");
                 citizen.discard(); release(level,start,chunks);
+            });
             });
         });
     }
@@ -81,11 +83,15 @@ public final class CitizenNavigationTests {
                 level.setBlockAndUpdate(start.offset(x,-1,z),(x>=6 && x<=14 ? Blocks.WATER : Blocks.GRASS_BLOCK).defaultBlockState());
                 for(int y=0;y<=3;y++) level.setBlockAndUpdate(start.offset(x,y,z),Blocks.AIR.defaultBlockState());
             }
-            for(int x=4;x<=16;x++) level.setBlockAndUpdate(start.offset(x,-1,6),Blocks.OAK_PLANKS.defaultBlockState());
+            // The deck bends twice over open water; corner cutting would leave this one-block-wide bridge.
+            for(int x=4;x<=10;x++) level.setBlockAndUpdate(start.offset(x,-1,6),Blocks.OAK_PLANKS.defaultBlockState());
+            for(int z=6;z<=9;z++) level.setBlockAndUpdate(start.offset(10,-1,z),Blocks.OAK_PLANKS.defaultBlockState());
+            for(int x=10;x<=16;x++) level.setBlockAndUpdate(start.offset(x,-1,9),Blocks.OAK_PLANKS.defaultBlockState());
             var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
             citizen.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(48);
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
             BlockPos end=start.east(20);
+            helper.runAtTickTime(5,() -> {
             var path=citizen.getNavigation().createPath(end,0);
             helper.assertTrue(path!=null && path.canReach(),"Bridge is unreachable");
             citizen.getNavigation().moveTo(path,0.75);
@@ -95,6 +101,7 @@ public final class CitizenNavigationTests {
                 helper.assertTrue(citizen.blockPosition().distSqr(end)<4,"Citizen has not crossed the river");
                 helper.assertTrue(!wet.get(),"Citizen entered water instead of staying on the bridge");
                 citizen.discard(); release(level,start,chunks);
+            });
             });
         });
     }
@@ -115,9 +122,44 @@ public final class CitizenNavigationTests {
             var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
             citizen.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(32);
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
+            helper.runAtTickTime(5,() -> {
             var path=citizen.getNavigation().createPath(start.east(20),0);
             helper.assertTrue(path==null || !path.canReach(),"Citizen planned a swim through an unbridged river");
             citizen.discard(); release(level,start,chunks); helper.succeed();
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=800)
+    @EmptyTemplate
+    @TestHolder(description="A citizen already in water can still swim out onto the nearby bank.")
+    static void escapesWater(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel();
+            BlockPos start=helper.absolutePos(new BlockPos(0,2,-288));
+            var chunks=pin(level,start,20);
+            for(int x=-4;x<=24;x++) for(int z=-20;z<=20;z++) {
+                level.setBlockAndUpdate(start.offset(x,-3,z),Blocks.STONE.defaultBlockState());
+                for(int y=-2;y<=-1;y++) level.setBlockAndUpdate(start.offset(x,y,z),
+                        (x>=5 && x<=13 ? Blocks.WATER : Blocks.GRASS_BLOCK).defaultBlockState());
+                for(int y=0;y<=3;y++) level.setBlockAndUpdate(start.offset(x,y,z),Blocks.AIR.defaultBlockState());
+            }
+            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
+            citizen.setPos(start.getX()+10.5,start.getY()-1,start.getZ()+0.5); level.addFreshEntity(citizen);
+            BlockPos bank=start.east(2);
+            var swimming=new AtomicBoolean();
+            helper.succeedWhen(() -> {
+                if(!swimming.get()) {
+                    helper.assertTrue(citizen.isInWater(),"Waiting for the spawned citizen to enter the water");
+                    var path=citizen.getNavigation().createPath(bank,0);
+                    helper.assertTrue(path!=null && path.canReach(),"Water escape path to the bank is unreachable");
+                    citizen.getNavigation().moveTo(path,0.75); swimming.set(true);
+                }
+                helper.assertTrue(citizen.isAlive(),"Citizen died while trying to escape water");
+                helper.assertTrue(!citizen.isInWater() && citizen.onGround() && citizen.blockPosition().distSqr(bank)<4,
+                        "Citizen has not escaped onto the bank");
+                citizen.discard(); release(level,start,chunks);
+            });
         });
     }
 }
