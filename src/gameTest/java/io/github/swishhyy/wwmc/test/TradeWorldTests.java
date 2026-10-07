@@ -25,6 +25,7 @@ import net.neoforged.testframework.gametest.GameTest;
 @Mod("wwmc_tests")
 public final class TradeWorldTests {
     public TradeWorldTests(IEventBus bus,ModContainer container) {
+        bus.addListener(CitizenNavigationTests::registerTickets);
         FrameworkConfiguration.builder(Identifier.fromNamespaceAndPath("wwmc_tests","travel"))
                 .enable(Feature.GAMETEST).build().create().init(bus,container);
     }

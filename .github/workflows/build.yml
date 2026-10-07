@@ -32,6 +32,9 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build --console=plain
 
+      - name: Inspect pinned navigation API
+        run: ./gradlew navigationApi --console=plain
+
       - name: Test trader travel in a headless world
         run: ./gradlew runGameTestServer --console=plain
 
