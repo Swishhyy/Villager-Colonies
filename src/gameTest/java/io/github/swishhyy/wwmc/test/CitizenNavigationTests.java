@@ -19,6 +19,9 @@ import net.neoforged.neoforge.common.world.chunk.RegisterTicketControllersEvent;
 import net.neoforged.neoforge.common.world.chunk.TicketController;
 
 public final class CitizenNavigationTests {
+    private static String describe(net.minecraft.world.level.pathfinder.Path path) {
+        return path==null ? "null" : path.canReach()+"/"+path.getNodeCount()+"/"+path.getNode(path.getNodeCount()-1).asBlockPos();
+    }
     private static final TicketController TICKETS=new TicketController(Identifier.fromNamespaceAndPath("wwmc_tests","navigation"),(level,helper) -> {});
     static void registerTickets(RegisterTicketControllersEvent event) { event.register(TICKETS); }
     private static List<ChunkPos> pin(ServerLevel level,BlockPos start,int width) {
@@ -53,19 +56,19 @@ public final class CitizenNavigationTests {
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
             BlockPos end=start.east(20);
             helper.runAtTickTime(5,() -> {
-            var path=citizen.getNavigation().createPath(end,0);
-            helper.assertTrue(path!=null && path.canReach(),"Paved route is unreachable");
-            boolean paved=false;
-            for(int n=0;n<path.getNodeCount();n++) if(path.getNode(n).z==start.getZ()+3) paved=true;
-            helper.assertTrue(paved,"Pathfinder chose the grass shortcut instead of paving");
-            citizen.getNavigation().moveTo(path,0.75);
-            var followedRoad=new AtomicBoolean();
-            helper.succeedWhen(() -> {
-                if(citizen.getZ()>start.getZ()+2.5) followedRoad.set(true);
-                helper.assertTrue(citizen.blockPosition().distSqr(end)<4,"Citizen has not reached the paved route's end");
-                helper.assertTrue(followedRoad.get(),"Citizen cut across the grass after planning the paved route");
-                citizen.discard(); release(level,start,chunks);
-            });
+                var path=citizen.getNavigation().createPath(end,0);
+                helper.assertTrue(path!=null && path.canReach(),"Paved route is unreachable");
+                boolean paved=false;
+                for(int n=0;n<path.getNodeCount();n++) if(path.getNode(n).z==start.getZ()+3) paved=true;
+                helper.assertTrue(paved,"Pathfinder chose the grass shortcut instead of paving");
+                citizen.getNavigation().moveTo(path,0.75);
+                var followedRoad=new AtomicBoolean();
+                helper.succeedWhen(() -> {
+                    if(citizen.getZ()>start.getZ()+2.5) followedRoad.set(true);
+                    helper.assertTrue(citizen.blockPosition().distSqr(end)<4,"Citizen has not reached the paved route's end");
+                    helper.assertTrue(followedRoad.get(),"Citizen cut across the grass after planning the paved route");
+                    citizen.discard(); release(level,start,chunks);
+                });
             });
         });
     }
@@ -92,16 +95,21 @@ public final class CitizenNavigationTests {
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
             BlockPos end=start.east(20);
             helper.runAtTickTime(5,() -> {
-            var path=citizen.getNavigation().createPath(end,0);
-            helper.assertTrue(path!=null && path.canReach(),"Bridge is unreachable");
-            citizen.getNavigation().moveTo(path,0.75);
-            var wet=new AtomicBoolean();
-            helper.succeedWhen(() -> {
-                if(citizen.isInWater()) wet.set(true);
-                helper.assertTrue(citizen.blockPosition().distSqr(end)<4,"Citizen has not crossed the river");
-                helper.assertTrue(!wet.get(),"Citizen entered water instead of staying on the bridge");
-                citizen.discard(); release(level,start,chunks);
-            });
+                var path=citizen.getNavigation().createPath(end,0);
+                if(path==null || !path.canReach()) {
+                    String detail="Bridge is unreachable; pos="+citizen.blockPosition()+", ground="+citizen.onGround()+", water="+citizen.isInWater()+", end="+describe(path);
+                    for(BlockPos point:new BlockPos[]{start.offset(4,0,6),start.offset(8,0,6),start.offset(10,0,8),start.offset(14,0,9)})
+                        detail+="; via "+point+"="+describe(citizen.getNavigation().createPath(point,0));
+                    helper.assertTrue(false,detail);
+                }
+                citizen.getNavigation().moveTo(path,0.75);
+                var wet=new AtomicBoolean();
+                helper.succeedWhen(() -> {
+                    if(citizen.isInWater()) wet.set(true);
+                    helper.assertTrue(citizen.blockPosition().distSqr(end)<4,"Citizen has not crossed the river");
+                    helper.assertTrue(!wet.get(),"Citizen entered water instead of staying on the bridge");
+                    citizen.discard(); release(level,start,chunks);
+                });
             });
         });
     }
@@ -123,9 +131,9 @@ public final class CitizenNavigationTests {
             citizen.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(32);
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
             helper.runAtTickTime(5,() -> {
-            var path=citizen.getNavigation().createPath(start.east(20),0);
-            helper.assertTrue(path==null || !path.canReach(),"Citizen planned a swim through an unbridged river");
-            citizen.discard(); release(level,start,chunks); helper.succeed();
+                var path=citizen.getNavigation().createPath(start.east(20),0);
+                helper.assertTrue(path==null || !path.canReach(),"Citizen planned a swim through an unbridged river");
+                citizen.discard(); release(level,start,chunks); helper.succeed();
             });
         });
     }
