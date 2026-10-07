@@ -219,18 +219,14 @@ tasks.named('test', Test) {
 // Temporary API inspection against the pinned Minecraft/NeoForge runtime.
 tasks.register('navigationApi', Exec) {
     dependsOn tasks.named('createMinecraftArtifacts')
-    doFirst {
-        def launcher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }.get()
-        commandLine launcher.metadata.installationPath.file('bin/javap').asFile,
-                '-p', '-classpath', sourceSets.main.compileClasspath.asPath,
-                'net.minecraft.world.entity.ai.navigation.GroundPathNavigation',
-                'net.minecraft.world.entity.ai.navigation.PathNavigation',
-                'net.minecraft.world.level.pathfinder.NodeEvaluator',
-                'net.minecraft.world.level.pathfinder.WalkNodeEvaluator',
-                'net.minecraft.world.level.pathfinder.PathfindingContext',
-                'net.minecraft.world.level.pathfinder.Node',
-                'net.minecraft.world.level.pathfinder.PathType'
-    }
+    commandLine 'javap', '-p', '-c', '-classpath', sourceSets.main.compileClasspath.asPath,
+            'net.minecraft.world.entity.ai.navigation.GroundPathNavigation',
+            'net.minecraft.world.entity.ai.navigation.PathNavigation',
+            'net.minecraft.world.level.pathfinder.NodeEvaluator',
+            'net.minecraft.world.level.pathfinder.WalkNodeEvaluator',
+            'net.minecraft.world.level.pathfinder.PathfindingContext',
+            'net.minecraft.world.level.pathfinder.Node',
+            'net.minecraft.world.level.pathfinder.PathType'
 }
 
 // IDEA no longer automatically downloads sources/javadoc jars for dependencies, so we need to explicitly enable the behavior.
