@@ -327,7 +327,7 @@ New towns, and towns from earlier builds, start with these orders: stone pickaxe
 
 Right-click with an empty hand to open:
 
-- **Settlement banner:** the town overview (population, limit and beds, population upgrades, food, warehouse fill, job barrels, claim, job priorities, alarm and waves), every job with its priority and who holds its places, every loaded citizen with their job, activity and health, and every station with its crew and status. Buttons apply a priority preset, sound the alarm or the all-clear, recruit a citizen when housing beds are free, and grow the population limit; the Jobs tab's − and + buttons change one job's priority.
+- **Settlement banner:** the town overview (population, limit and beds, population upgrades, food, warehouse fill, job barrels, claim, job priorities, alarm and waves), every job with its priority and who holds its places, every loaded citizen with their job, activity and health, and every station with its crew and status. Buttons apply a priority preset, sound the alarm or the all-clear, recruit a citizen when housing beds are free, and grow the population limit; the Jobs tab's - and + buttons change one job's priority.
 - **Any station:** its detected resources and job status, the citizens assigned to it and what each is doing, the contents of its barrels (or the warehouse's containers), and its upgrades. Work stations have a button for their job's priority, the Cook Station a bread switch, the Guard Station a button to choose its posts, and stations that can be upgraded buttons for range and crew upgrades. Hover a button to see exactly what it does and costs.
 - **Craftsman Station:** the order screen described above.
 - **Citizen:** their job, activity, health, next meal and equipment above their bag.
@@ -338,7 +338,7 @@ Screens refresh every second and close when you move more than eight blocks away
 
 Every citizen has its **own station**. It goes back there each morning, after deliveries, meals and alarms, and waits beside it when there is no work, rather than taking another station. Crews stay the same from day to day; a station's Crew tab lists the citizens assigned to it, including those asleep or out of range.
 
-Each job has a **priority**: Off, Low, Normal or High. Set it with the − and + buttons in the banner's **Jobs** tab, the priority button on a station's screen, or `/wwmc job`.
+Each job has a **priority**: Off, Low, Normal or High. Set it with the - and + buttons in the banner's **Jobs** tab, the priority button on a station's screen, or `/wwmc job`.
 
 - A citizen without a job, such as a new recruit, takes the open place of highest priority. Among equal priorities, guard posts fill first, then the trader, then the station with the fewest workers, then the nearest.
 - About every half minute, and at once after you change a priority, a citizen moves to an open place in a job of **higher** priority than its own. Equal priorities never trade workers, so a new Normal station waits for a recruit, a free citizen or a raised priority.
