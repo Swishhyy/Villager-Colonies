@@ -28,39 +28,46 @@ public final class GuideBook {
         "Town relations\n\nSupplying an NPC town builds goodwill. Attacking its citizens makes it hostile to you, stops your route, and its guards defend it. Countries, conquest and deeper diplomacy are future systems.",
         "Station ranges\n\nPlace stations inside your own claim. Each scans 7x7x7 blocks: 3 blocks each way. Range upgrades widen that. Holding or placing a station shows its range. Right-click it empty-handed to open its screen: status, crew, storage and upgrades.",
         "Station upgrades\n\nA station's screen sells upgrades for emeralds from your inventory: a wider range or more crew slots, 3 levels each. Each level costs twice the last, 8, 16 then 32 emeralds by default. Emerald blocks count as nine. A broken station's item keeps its upgrades.",
-        "Crew sizes\n\nFarms, craftsmen and enchanters always have exactly one worker. Lumber and mine stations start with 4, quarries 8, couriers, guards, smelters, cooks and blacksmiths 2. Each crew upgrade adds a slot. Range upgrades skip quarries, mines, couriers and craftsmen.",
+        "Crew sizes\n\nMines, farms, craftsmen, enchanters and traders each take one worker. Lumber starts with 4, quarries 8, couriers, guards, smelters, cooks, blacksmiths and animal jobs 2. Shared jobs can buy crew slots. Mine crew upgrades do not add miners.",
         "Beds and people\n\nPut complete beds near Housing or Barracks Stations. Both halves must fit. Run /wwmc recruit or /wwmc recruit 3. Each citizen needs a housing bed. A new town holds up to 10 citizens.",
         "Population\n\nThe town screen's Grow button buys room for 5 more citizens with emeralds. Each upgrade costs 8 more than the last. Word of a bigger town spreads: every wave grows by 2 attackers, brings pillagers, and from the third upgrade vindicators too.",
         "Building purpose\n\nThe station defines the room. Beds near a Hospital Station are patient beds and cannot recruit people. Medical treatment is planned. In overlapping ranges, the nearest matching station owns the resource.",
-        "Supply the warehouse\n\nPut chests or barrels within 3 blocks of a Warehouse Station. Stock cooked food, axes, pickaxes, saplings and building blocks. Workers walk here to collect supplies and deliver goods in batches.",
+        "Supply the warehouse\n\nPut chests or barrels within 3 blocks of a Warehouse Station. Stock cooked food, tools, saplings and building blocks. Couriers bring supplies to job barrels and return goods. Citizens can visit the pantry to eat.",
         "Citizen screen\n\nRight-click your citizen empty-handed to see their job, activity, health, next meal and equipment above their 36-slot bag. Add food or gear directly. Sneak-right-click releases their job; they take another open place.",
-        "Food and healing\n\nCitizens eat carried food for meals and when injured. Food heals by its nutrition, at most once per 5 seconds. Right-click an injured citizen with food to feed them. Raw meat and fish are left for cooks.",
+        "Food and healing\n\nRegular meals default to every 6 loaded minutes, three times less often. Injured citizens heal from a meal at most every 30 seconds. Scarce meals stay shared; hungry citizens least recently fed get priority. Citizens carry at most one spare when food is plentiful.",
         "Farms\n\nPrepare farmland and plant wheat, carrots, potatoes or beetroot inside the Farm Station range. One farmer tends each farm. Farmers harvest ripe crops and replant. Wheat needs a cook to become bread. Carrots work as meals.",
         "Lumberjacks\n\nSupply axes and saplings. Workers fell complete natural trees, clear obstructing natural leaves, and replant on clear soil. They can plant when no tree is reachable. Placed logs and buildings are protected.",
         "Ore veins\n\nPlace a Mine Station within 2 blocks of an ore with an open side. Its miner walks over and works that ore forever, collecting its normal drops while the block stays. Rarer ores refill slower. Supply a fitting pickaxe.",
         "Tunnel mines\n\nA Mine Station with no exposed ore beside it digs instead. Its arrow sets the direction. Workers build a staircase, then branch tunnels at a saved random Y from -30 to 10. Supply pickaxes and floor blocks.",
         "Quarries\n\nThe arrow points to the chunk excavated by a Quarry Station. It digs toward the configured bottom, keeps spiral stairs, and skips bedrock and protected blocks. The whole chunk must fit your town. Keep the stairs clear.",
-        "Smelters\n\nPlace a furnace or blast furnace within the Smeltery Station range. Put raw iron, copper, gold or ore and real fuel in the warehouse. Smelters load the appliance and collect its actual output.",
-        "Cooks\n\nPut a smoker or lit campfire within the Cook Station range. Supply raw food; smokers also need fuel. Cooks collect cooked results and make bread from 3 wheat, up to 32 bread. The Cook Station screen switches bread on or off.",
+        "Smelters\n\nPut a furnace or blast furnace in range. Couriers bring raw metals, ores and fuel from the warehouse to the job barrel. Smelters supply appliances and leave finished goods in that barrel for couriers.",
+        "Cooks\n\nPut a smoker or lit campfire in range, with a job barrel. Couriers deliver raw food, wheat and smoker fuel. Cooks leave meals for couriers to collect. Bread uses 3 wheat. Whole carcasses need a butcher first.",
         "Craftsmen\n\nOpen the Craftsman Station. Click its Teach slot holding any item, or shift-click an item, and craftsmen learn its crafting table recipe. You keep the item. Each order's slider sets how many to keep in town; zero pauses it.",
-        "Craft orders\n\nOrders run top first; the arrow raises one, the cross forgets it. Craftsmen use real materials from their barrels or the warehouse. Planks orders take any wood. Tools, torches, ladders and sticks are learned already.",
-        "Job barrels\n\nPut a barrel within 3 blocks of a work station, outside any warehouse range. Workers take tools and supplies from it first. With a courier station in town, or no warehouse, they also leave their goods there.",
-        "Couriers\n\nA Courier Station employs couriers. They carry goods from job barrels to the warehouse and keep smeltery, cook and enchanter barrels stocked with ore, raw food, wheat, fuel and lapis. Workers then rarely walk to the warehouse.",
+        "Craft orders\n\nOrders run top first; the arrow raises one, the cross forgets it. Craftsmen use real materials in their own barrels, delivered by couriers. Planks orders take any wood. Tools, torches, ladders and sticks are learned already.",
+        "Job barrels\n\nEvery production station needs a barrel in its range, outside warehouse ranges. Workers take supplies from their own barrels and leave goods there. They do not haul between stations. An empty or full barrel pauses work until supplied or cleared.",
+        "Couriers\n\nOnly couriers haul within a town. They take job goods to the warehouse and bring tools, raw materials, animal feed, carcasses, repair inputs and lapis to job barrels. Add enough couriers to keep the production chain moving. Traders still carry exports between towns.",
         "Enchanters\n\nPut an enchanting table within 5 blocks of an Enchanter Station, with bookshelves around it as for a player. Stock lapis lazuli and unenchanted gear or books in the warehouse or the station's barrel. Gear in its barrel goes first.",
         "Enchanting time\n\nOne enchanter works one item at a time: about 5 minutes for a book or common item, longer for iron, diamond and netherite. Bookshelves set the level as for players, up to 25; level 30 is yours alone. Each item uses 1 to 3 lapis.",
         "Guard crews\n\nEach Guard Station has 2 slots by default, with 1 guard active per station. Day and night crews rotate. A station with only 1 guard keeps them active. During an alarm every assigned guard wakes.",
         "Shared armor\n\nPut equipped armor stands within 3 blocks of a Guard Station. Outgoing guards return armor before sleeping; incoming guards check for upgrades. A day/night pair can share one set. Keep stands and beds accessible.",
-        "Guard weapons\n\nSupply swords or spears, bows and arrows in the warehouse or stand hands. Guards choose stronger melee weapons and keep up to 32 arrows. They also scavenge usable dropped gear. Attacks and work reach 4 blocks with sight.",
+        "Guard weapons\n\nSupply swords or spears, bows and arrows in the guard barrel or stand hands. Couriers bring warehouse gear. Guards choose stronger melee weapons and keep up to 32 arrows. They also scavenge usable dropped gear. Reach is 4 blocks with sight.",
         "Posts and alarms\n\nSneak-use the Inspector on a Guard Station. Right-click clear ground for the day post, then the night post. Ring a town bell or use /wwmc alarm to alert all guards. /wwmc wave calls a test attack.",
         "Calling the guards\n\nCitizens who spot a hostile near their work call the guards. Up to two guards on duty go and deal with it. Wave attackers glow, and any still alive a minute after a wave arrives are reported, so the guards hunt them down.",
-        "Worn equipment\n\nBelow 25% durability, armor goes to an empty matching stand slot, and weapons/tools go to the warehouse. Worn gear is not taken back into use. If racks are full, armor falls back to warehouse storage.",
-        "Blacksmith workshop\n\nPut an anvil within 3 blocks of a Blacksmith Station. Stock repair materials in the warehouse. Blacksmiths repair damaged warehouse gear and worn armor from Guard Station stands, returning real items afterward.",
+        "Worn equipment\n\nBelow 25% durability, armor goes to an empty matching stand slot, and weapons/tools go to the job barrel. Couriers collect worn rack gear for repair. Worn gear stays out of use. If racks are full, armor returns to the guard barrel.",
+        "Blacksmith workshop\n\nPut an anvil and a barrel in range. Couriers deliver damaged tools, weapons, armor and matching repair materials. The smith works locally and leaves repaired gear in the barrel for couriers. Nearby worn stand armor can be repaired too.",
         "Repair materials\n\nIron gear: iron ingots\nGold gear: gold ingots\nDiamond: diamonds\nNetherite: netherite ingots\nLeather: leather\nOther gear uses its normal repair material. Each unit repairs up to 25% of maximum durability.",
         "Town screen\n\nRight-click your banner for the town screen: overview, jobs, citizens and stations. Its buttons apply a priority preset, sound the alarm or all-clear, recruit a citizen when beds are free, and grow the population limit.",
         "Jobs\n\nEach citizen keeps its own station. It returns there every morning and after errands, and waits beside it when there is no work, instead of hopping to another station.",
         "Job priorities\n\nThe Jobs tab sets each job to Off, Low, Normal or High with its - and + buttons. Jobless citizens take the open place of highest priority. Citizens also move up to open places in higher-priority jobs. Off frees a job's crew.",
         "Town commands\n\n/wwmc status\nInspect your town.\n/wwmc citizens\nSee jobs and activities.\n/wwmc priority food\nFarms and cooks first. Also materials or balanced.\n/wwmc job farm high\nSet one job's priority.\n/wwmc name <name>\nRename your town.",
         "Help when work stops\n\nInspect the station. Check range, a clear route, storage space and supplies. Ordinary jobs need ticking chunks. Traders keep a moving 3x3 chunk window, limited by the server. Blocked convoys wait for a road instead of teleporting.",
+        "Animal recipes\n\nHunter Station:\nLeather + 8 planks\n\nFisherman Station:\nFishing rod + 8 planks\n\nAnimal Keeper Station:\nHay bale + 8 planks\n\nButcher Station:\nIron axe + 8 planks",
+        "Hunters\n\nSupply a sword or axe in the hunter barrel. Hunters seek adult cows, pigs, sheep, chickens and rabbits within 24 blocks by default. Range upgrades enlarge the hunt area. Named, leashed and keeper-protected animals are left alone.",
+        "Fishermen\n\nPut the station beside open, two-block-deep water with a dry reachable bank. Supply a fishing rod. Each 30 seconds of actual fishing gives a whole cod or salmon carcass. Fishing pauses while walking or if the water is blocked.",
+        "Animal keepers\n\nFence a pen within the station range and bring pairs of animals. Supply their normal breeding food in the barrel. Keepers feed real pairs, wait for growth, keep 4 adult breeders per species, and harvest surplus adults with a sword or axe. Babies are safe.",
+        "Butchers\n\nSupply an axe and carcasses in the butcher barrel. The station is the cutting table. Cow or pig: 4 raw portions; sheep: 3; chicken, rabbit or fish: 2. Carcasses cannot be eaten or cooked directly.",
+        "The meat chain\n\nHunter, fisherman or keeper barrel -> courier -> warehouse -> courier -> butcher barrel -> raw meat -> courier -> warehouse -> courier -> cook barrel -> cooked meals. Supply tools and fuel, and balance courier crews against production.",
+        "Animal job commands\n\n/wwmc job hunter high\n/wwmc job fisherman high\n/wwmc job animal_keeper high\n/wwmc job butcher high\n\nThe food priority preset includes all four animal jobs.",
         "This playable alpha\n\nTowns work while their chunks tick on a running server. Traders travel even when an owner logs off, within the server's active trader limit. Distant event simulation and countries are future work. /wwmc guide gives another copy."
     );
     public static WrittenBookContent content() {
@@ -70,7 +77,11 @@ public final class GuideBook {
     /** Conservative widths fit the native 114-pixel page; chapters can continue onto another page. */
     public static List<String> pages() {
         List<String> pages=new ArrayList<>();
+        List<String> current=new ArrayList<>();
         for(String chapter:PAGES) {
+            // Keep room for a chapter heading and its opening, while sharing short chapter tails.
+            if(current.size()>8) { pages.add(String.join("\n",current)); current.clear(); }
+            if(!current.isEmpty()) current.add("");
             List<String> lines=new ArrayList<>();
             for(String paragraph:chapter.split("\n",-1)) {
                 String rest=paragraph;
@@ -80,8 +91,12 @@ public final class GuideBook {
                 }
                 lines.add(rest);
             }
-            for(int start=0;start<lines.size();start+=13) pages.add(String.join("\n",lines.subList(start,Math.min(lines.size(),start+13))));
+            for(String line:lines) {
+                current.add(line);
+                if(current.size()==13) { pages.add(String.join("\n",current)); current.clear(); }
+            }
         }
+        if(!current.isEmpty()) pages.add(String.join("\n",current));
         return List.copyOf(pages);
     }
 }

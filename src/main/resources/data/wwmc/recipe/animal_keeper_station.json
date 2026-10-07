@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PPP",
+    "PIP",
+    "PPP"
+  ],
+  "key": {
+    "P": "#minecraft:planks",
+    "I": "minecraft:hay_block"
+  },
+  "result": {
+    "id": "wwmc:animal_keeper_station",
+    "count": 1
+  }
+}

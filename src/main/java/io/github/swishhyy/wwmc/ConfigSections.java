@@ -19,9 +19,9 @@ public final class ConfigSections {
     }
     public static final List<Section> SECTIONS=List.of(
         new Section("settlements",List.of("settlementRadius","maxCitizens","basePopulation","populationPerUpgrade","populationUpgradeCost","stationUpgradeCost")),
-        new Section("workers",List.of("stationWorkers","courierWorkers","quarryWorkers","guardWorkers","processingWorkers","blacksmithWorkers")),
+        new Section("workers",List.of("stationWorkers","courierWorkers","quarryWorkers","guardWorkers","processingWorkers","animalWorkers","blacksmithWorkers")),
         new Section("mining",List.of("oreVeinSeconds","mineMinY","mineMaxY","quarryTargetY","mineBranchLength","mineBranchPairs")),
-        new Section("food",List.of("workTicks","rationTicks")),
+        new Section("food",List.of("workTicks","rationTicks","mealIntervalMultiplier","fishingSeconds","animalBreeders")),
         new Section("enchanting",List.of("enchantMinutes","enchanterMaxLevel")),
         new Section("defense",List.of("alarmThreshold","enemyWaves","waveMinPopulation","waveIntervalDays","waveBaseMobs","waveMobsPerCitizen","waveMaxMobs","waveMobsPerUpgrade")),
         new Section("world",List.of("maxActiveTraders","tradeRouteDistance","randomSettlements","npcTownSpacing","maxNpcTowns"))

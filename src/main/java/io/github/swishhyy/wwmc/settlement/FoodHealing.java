@@ -10,7 +10,7 @@ import net.neoforged.neoforge.common.Tags;
 
 /** An actual meal supplies nutrition-sized healing, and keeps its bowl or bottle. */
 public final class FoodHealing {
-    public static final int COOLDOWN=100;
+    public static final int COOLDOWN=600;
     private FoodHealing() {}
     public static boolean food(ItemStack stack) {
         var nutrition=stack.get(DataComponents.FOOD);

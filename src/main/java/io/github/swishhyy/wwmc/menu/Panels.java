@@ -316,6 +316,10 @@ public final class Panels {
             case HOSPITAL -> rows.add(new Row(stationIcon(StructureRole.HOSPITAL),"Patient beds",SettlementService.beds(level,town,station).size()+" beds; treatment is planned"));
             case WAREHOUSE -> rows.add(storage(icon(Items.CHEST),"Storage",SettlementService.storageAt(level,town,station.position()),"Put chests or barrels within "+station.radius()+" blocks"));
             case FARM -> rows.add(new Row(icon(Items.WHEAT),"Crops",SettlementService.workBlocks(level,town,station)+" ripe crops in range"));
+            case HUNTER -> rows.add(new Row(icon(Items.IRON_SWORD),"Hunting","Hunts unprotected adults within "+AnimalWork.huntingRadius(station)+" blocks; needs a sword or axe in its barrel"));
+            case FISHERMAN -> rows.add(new Row(icon(Items.FISHING_ROD),"Fishing","Needs a rod and a dry bank beside open, two-block-deep water in range; "+Config.FISHING_SECONDS.get()+"s per catch"));
+            case ANIMAL_KEEPER -> rows.add(new Row(icon(Items.WHEAT),"Animals","Breeds with real feed; keeps "+Config.ANIMAL_BREEDERS.get()+" adults per species; needs a sword or axe for surplus adults"));
+            case BUTCHER -> rows.add(new Row(icon(Items.BEEF),"Butchery","Prepares carcasses from its barrel into raw portions; needs an axe; couriers take meat to cooks"));
             case LUMBER -> rows.add(new Row(icon(Items.OAK_SAPLING),"Forest","Fells whole natural trees and replants saplings in range"));
             case MINE -> {
                 BlockPos vein=OreVeins.find(level,town,station);
@@ -334,7 +338,7 @@ public final class Panels {
             case COOK -> rows.add(new Row(icon(Items.SMOKER),"Kitchen",SettlementService.processingDevices(level,town,station).size()+" smokers or lit campfires; bread "+(town.disabledRecipes.contains("bread") ? "off" : "on")));
             case BLACKSMITH -> rows.add(new Row(icon(Items.ANVIL),"Anvils",SettlementService.anvils(level,town,station).size()+" anvils; repairs warehouse gear and worn stand armor"));
             case CRAFTSMAN -> rows.add(new Row(icon(Items.CRAFTING_TABLE),"Orders",town.craftOrders.size()+" learned recipes"));
-            case COURIER -> rows.add(new Row(icon(Items.BUNDLE),"Deliveries","Carries goods from job barrels to the warehouse and stocks smelter, kitchen and enchanter barrels"));
+            case COURIER -> rows.add(new Row(icon(Items.BUNDLE),"Deliveries","The only town haulers: collect job goods and deliver tools, materials, carcasses and feed through the warehouse"));
             case TRADER -> rows.add(new Row(icon(Items.COMPASS),"Trade route",town.trading.status));
             case ENCHANTER -> rows.addAll(enchanter(level,town,station));
         }
@@ -449,7 +453,7 @@ public final class Panels {
         float health=citizen.getHealth()/Math.max(1,citizen.getMaxHealth());
         status.add(new Row(icon(Items.GOLDEN_APPLE),"Health",Math.round(citizen.getHealth())+" / "+Math.round(citizen.getMaxHealth())).bar(health,health<0.5F ? RED : GREEN));
         int meal=Math.max(0,citizen.mealTicks());
-        status.add(new Row(icon(Items.BREAD),"Next meal",meal==0 ? "Hungry now" : "In about "+Math.max(1,meal/1200)+" min").bar(meal/(float)Math.max(1,Config.RATION_TICKS.get()),meal==0 ? RED : AMBER));
+        status.add(new Row(icon(Items.BREAD),"Next meal",meal==0 ? "Hungry now" : "In about "+Math.max(1,meal/1200)+" min").bar(meal/(float)Math.max(1,Config.mealIntervalTicks()),meal==0 ? RED : AMBER));
         if(citizen.overflowing()) status.add(new Row(icon(Items.CHEST),"Overflow","Carrying a harvest larger than the bag; it waits for delivery"));
         List<Row> gear=new ArrayList<>();
         for(EquipmentSlot slot:new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET,EquipmentSlot.MAINHAND,EquipmentSlot.OFFHAND}) {

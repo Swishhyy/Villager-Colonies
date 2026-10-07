@@ -6,6 +6,8 @@ import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.item.SurveyorItem;
 import io.github.swishhyy.wwmc.item.GuideBook;
+import io.github.swishhyy.wwmc.settlement.Carcasses;
+import net.minecraft.world.item.Item;
 import io.github.swishhyy.wwmc.menu.WwmcMenus;
 import io.github.swishhyy.wwmc.menu.WwmcNetwork;
 import io.github.swishhyy.wwmc.settlement.SettlementService;
@@ -56,6 +58,8 @@ public final class WWMC {
             STATIONS.put(role,block); STATION_ITEMS.put(role,ITEMS.registerSimpleBlockItem(block));
         }
     }
+    public static final Map<Carcasses.Kind,DeferredItem<Item>> CARCASSES=new EnumMap<>(Carcasses.Kind.class);
+    static { for(var kind:Carcasses.Kind.values()) CARCASSES.put(kind,ITEMS.registerItem(kind.id+"_carcass",Item::new,p -> p.stacksTo(16))); }
     public static final DeferredItem<SurveyorItem> SURVEYOR=ITEMS.registerItem("surveyor",SurveyorItem::new,p -> p.stacksTo(1));
     public static final DeferredItem<WrittenBookItem> GUIDE=ITEMS.registerItem("settlement_guide",WrittenBookItem::new,
             p -> p.stacksTo(1).component(DataComponents.WRITTEN_BOOK_CONTENT,GuideBook.content()));
@@ -65,6 +69,7 @@ public final class WWMC {
         .icon(() -> BANNER_ITEM.get().getDefaultInstance()).displayItems((p,out) -> {
             out.accept(BANNER_ITEM.get()); out.accept(SURVEYOR.get()); out.accept(GUIDE.get());
             for(StructureRole role:StructureRole.values()) out.accept(STATION_ITEMS.get(role).get());
+            for(var kind:Carcasses.Kind.values()) out.accept(CARCASSES.get(kind).get());
         }).build());
     public WWMC(IEventBus bus, ModContainer container) {
         BLOCKS.register(bus); ITEMS.register(bus); ENTITIES.register(bus); TABS.register(bus);
@@ -73,6 +78,7 @@ public final class WWMC {
         bus.addListener(WwmcNetwork::register);
         bus.addListener(TradeChunks::register);
         NeoForge.EVENT_BUS.register(new SettlementService());
+        NeoForge.EVENT_BUS.register(new Carcasses());
         NeoForge.EVENT_BUS.register(new WorkProtection());
         NeoForge.EVENT_BUS.register(new GuardService());
         NeoForge.EVENT_BUS.register(new DefenseService());
