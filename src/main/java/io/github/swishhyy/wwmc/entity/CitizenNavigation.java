@@ -1,5 +1,7 @@
 package io.github.swishhyy.wwmc.entity;
 
+import java.util.Set;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.level.Level;
@@ -18,8 +20,9 @@ public final class CitizenNavigation extends GroundPathNavigation {
     public static final float ROUTE_LENGTH=64.0F;
     public CitizenNavigation(Mob mob,Level level) { super(mob,level); }
     @Override protected PathFinder createPathFinder(int maximumNodes) {
-        nodeEvaluator=new RoadEvaluator();
-        return new PathFinder(nodeEvaluator,maximumNodes);
+        RoadEvaluator roads=new RoadEvaluator();
+        nodeEvaluator=roads;
+        return new RoadPathFinder(roads,maximumNodes);
     }
     // Walk smoothly toward the next node, except beside water, where a cut corner could step off a narrow bridge or bank.
     @Override public boolean canCutCorner(PathType type) { return type!=PathType.WATER_BORDER && super.canCutCorner(type); }
@@ -32,7 +35,28 @@ public final class CitizenNavigation extends GroundPathNavigation {
         return mob.isInWater() || RoadSurface.openWater(mob.level(),mob.blockPosition());
     }
 
+    /**
+     * Plans the road-preferring route first. Its wider search can run out around long obstacles, so when it does not
+     * reach the goal, the plain shortest route is planned instead; a route that arrives matters more than the road.
+     */
+    private static final class RoadPathFinder extends PathFinder {
+        private final RoadEvaluator roads;
+        RoadPathFinder(RoadEvaluator roads,int maximumNodes) { super(roads,maximumNodes); this.roads=roads; }
+        @Override public Path findPath(PathNavigationRegion region,Mob mob,Set<BlockPos> targets,float maxRange,int accuracy,float searchDepthMultiplier) {
+            Path preferred=super.findPath(region,mob,targets,maxRange,accuracy,searchDepthMultiplier);
+            if(preferred!=null && preferred.canReach()) return preferred;
+            roads.plain=true;
+            try {
+                Path plain=super.findPath(region,mob,targets,maxRange,accuracy,searchDepthMultiplier);
+                if(plain==null) return preferred;
+                return preferred==null || plain.canReach() || plain.getDistToTarget()<preferred.getDistToTarget() ? plain : preferred;
+            } finally { roads.plain=false; }
+        }
+    }
+
     private static final class RoadEvaluator extends WalkNodeEvaluator {
+        /** Set while planning the fallback route, which ignores road preference. */
+        private boolean plain;
         private boolean escape;
         private float previousWaterCost;
         @Override public void prepare(PathNavigationRegion region,Mob mob) {
@@ -65,7 +89,7 @@ public final class CitizenNavigation extends GroundPathNavigation {
                 boolean paved=RoadSurface.preferred(currentContext.level(),node.asBlockPos());
                 // WATER_BORDER is dry ground beside water; a sound narrow deck is safe to use.
                 if(paved && node.type==PathType.WATER_BORDER) node.costMalus=0;
-                else if(!paved) node.costMalus=Math.max(node.costMalus,OFF_ROAD);
+                else if(!paved && !plain) node.costMalus=Math.max(node.costMalus,OFF_ROAD);
             }
             return count;
         }
