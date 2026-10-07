@@ -6,7 +6,9 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.9.0-alpha
+## Current build: 0.9.1-alpha
+
+0.9.1 fixes traders stopping on walkable routes beneath roofs and tree overhangs. They choose reachable ground near their feet, try shorter and sideways legs, and retry stalled paths without teleporting or losing cargo. A headless world regression checks real delivery and return over 640 blocks, beneath an overhang and around a wall, with no nearby player.
 
 0.9.0 adds **multiple owned towns, Trader Blocks, physical supply routes, and small neutral NPC towns**. Each town has one trader checkpoint and one partner. Set exports with Keep and Send controls; traders carry real goods between warehouses, preserving cargo through full storage and restarts. Towns owned by different players require both owners to choose the route. Neutral NPC towns have farming, timber, or mining specialties and use the existing citizen jobs, food, beds, and storage. See [Trading and other settlements](#trading-and-other-settlements).
 
@@ -203,7 +205,7 @@ Craft a **Trader Block** with a compass surrounded by eight planks. Place one in
 4. Set **Keep** to the amount that must remain in this town's warehouse and **Send** to the maximum carried per trip. For example, Keep 64 / Send 32 sends up to 32 carrots above a 64-carrot reserve. Send 0 pauses that item. Configure the other town's exports separately.
 5. The citizen loads goods at home, visits the home checkpoint, walks to the other checkpoint, deposits goods in its warehouse, and returns. These are supply routes, with no automatic price or payment.
 
-Goods in transit remain separate from meals and ordinary work supplies. Full destination storage keeps the remaining load on the citizen. **Pause** stops new departures; **Disconnect** returns undelivered goods. A blocked route waits for a clear path; roads, bridges, and open doors help. Traders do not teleport, use portals, sail boats, or build roads. A dead trader drops its actual goods and the town can assign another citizen.
+Goods in transit remain separate from meals and ordinary work supplies. Full destination storage keeps the remaining load on the citizen. **Pause** stops new departures; **Disconnect** returns undelivered goods. Traders follow reachable ground waypoints, including beneath roofs, and retry stalled legs with shorter and sideways alternatives. A genuinely blocked route waits for a clear path; roads, bridges, and open doors help. Traders do not teleport, use portals, sail boats, or build roads. A dead trader drops its actual goods and the town can assign another citizen.
 
 Each active trader maintains a moving **3×3 chunk window**. The route does not keep every intervening chunk loaded. The default server limit is **8 active town traders**, and the maximum route length is **8,192 blocks**. Travel continues on a running server when an owner logs off. Ordinary workers still require ticking chunks; distant abstract town simulation is future work. Install matching mod versions on server and clients because the screen protocol changes in 0.9.0.
 

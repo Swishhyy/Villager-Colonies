@@ -31,8 +31,8 @@ public final class TradeWorldTests {
 
     @GameTest(timeoutTicks=18000)
     @EmptyTemplate
-    @TestHolder(description="A trader delivers real cargo over 640 blocks and returns without a nearby player, through a low roof.")
-    static void longTripUnderCanopy(DynamicTest test) {
+    @TestHolder(description="A trader delivers real cargo over 640 blocks and returns without a nearby player, beneath a roof and around a wall.")
+    static void longTripUnderRoof(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel();
             BlockPos start=helper.absolutePos(new BlockPos(0,2,16));
@@ -44,6 +44,8 @@ public final class TradeWorldTests {
             // Heightmap waypoints land on this roof. There is two-block headroom all the way beneath it.
             for(int x=296;x<=352;x++) for(int z=-20;z<=20;z++)
                 level.setBlockAndUpdate(start.offset(x,3,z),Blocks.OAK_LOG.defaultBlockState());
+            for(int z=-6;z<=6;z++) for(int y=0;y<=3;y++)
+                level.setBlockAndUpdate(start.offset(400,y,z),Blocks.STONE.defaultBlockState());
             UUID owner=UUID.randomUUID();
             Settlement a=town(owner,"Start",start),b=town(owner,"End",start.east(640));
             var data=SettlementData.get(level); data.settlements.add(a); data.settlements.add(b);
@@ -63,6 +65,7 @@ public final class TradeWorldTests {
             trader.join(a.id); trader.setPos(start.getX()+2.5,start.getY(),start.getZ()+0.5);
             a.citizens.add(trader.getUUID()); level.addFreshEntity(trader); data.setDirty();
             helper.succeedWhen(() -> {
+                helper.assertTrue(level.players().isEmpty(),"Travel test must run without player-loaded chunks");
                 helper.assertTrue(trader.isAlive(),"Trader died: "+a.trading.status);
                 helper.assertTrue(a.trading.delivered==16,"Not delivered: "+a.trading.status+" at "+trader.blockPosition());
                 helper.assertTrue(trader.tradeCargoCount()==0,"Trader still carries exports");
