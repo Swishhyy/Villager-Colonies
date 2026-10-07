@@ -15,10 +15,11 @@ import net.minecraft.world.item.ItemStack;
 public record PanelView(Component title,Component subtitle,List<Tab> tabs,List<Action> actions) {
     public static final int NO_BAR=-1,NO_VALUE=-1,MAX_ROWS=256,MAX_TABS=16;
     /** One line: an item icon, a heading, a detail line, an optional 0..1 bar and an optional number (a craft target). */
-    public record Row(ItemStack icon,Component text,Component detail,int color,float bar,int value) {
-        public Row(ItemStack icon,String text,String detail) { this(icon,Component.literal(text),Component.literal(detail),0,NO_BAR,NO_VALUE); }
-        public Row bar(float fraction,int color) { return new Row(icon,text,detail,color,Math.clamp(fraction,0F,1F),value); }
-        public Row value(int amount) { return new Row(icon,text,detail,color,bar,amount); }
+    public record Row(ItemStack icon,Component text,Component detail,int color,float bar,int value,String key) {
+        public Row(ItemStack icon,Component text,Component detail,int color,float bar,int value) { this(icon,text,detail,color,bar,value,""); }
+        public Row(ItemStack icon,String text,String detail) { this(icon,Component.literal(text),Component.literal(detail),0,NO_BAR,NO_VALUE,""); }
+        public Row bar(float fraction,int color) { return new Row(icon,text,detail,color,Math.clamp(fraction,0F,1F),value,key); }
+        public Row value(int amount) { return new Row(icon,text,detail,color,bar,amount,key); }
     }
     public record Tab(Component name,List<Row> rows) {
         public Tab(String name,List<Row> rows) { this(Component.literal(name),rows); }
@@ -42,7 +43,7 @@ public record PanelView(Component title,Component subtitle,List<Tab> tabs,List<A
                 ItemStack.OPTIONAL_STREAM_CODEC.encode(buf,row.icon());
                 ComponentSerialization.STREAM_CODEC.encode(buf,row.text());
                 ComponentSerialization.STREAM_CODEC.encode(buf,row.detail());
-                buf.writeInt(row.color()); buf.writeFloat(row.bar()); buf.writeVarInt(row.value());
+                buf.writeInt(row.color()); buf.writeFloat(row.bar()); buf.writeVarInt(row.value()); buf.writeUtf(row.key(),256);
             }
         }
         List<Action> actions=view.actions().subList(0,Math.min(MAX_TABS,view.actions().size()));
@@ -63,7 +64,7 @@ public record PanelView(Component title,Component subtitle,List<Tab> tabs,List<A
             for(int r=0;r<rowCount;r++) {
                 ItemStack icon=ItemStack.OPTIONAL_STREAM_CODEC.decode(buf);
                 Component text=ComponentSerialization.STREAM_CODEC.decode(buf),detail=ComponentSerialization.STREAM_CODEC.decode(buf);
-                rows.add(new Row(icon,text,detail,buf.readInt(),buf.readFloat(),buf.readVarInt()));
+                rows.add(new Row(icon,text,detail,buf.readInt(),buf.readFloat(),buf.readVarInt(),buf.readUtf(256)));
             }
             tabs.add(new Tab(name,rows));
         }

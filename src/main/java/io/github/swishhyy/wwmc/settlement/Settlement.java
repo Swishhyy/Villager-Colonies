@@ -33,7 +33,8 @@ public final class Settlement {
         Codec.INT.optionalFieldOf("waves",0).forGetter(s -> s.waves),
         Codec.STRING.listOf().optionalFieldOf("disabled_recipes",List.of()).forGetter(s -> new ArrayList<>(s.disabledRecipes)),
         Workshop.Order.CODEC.listOf().optionalFieldOf("craft_orders").forGetter(s -> Optional.of(s.craftOrders)),
-        Codec.INT.optionalFieldOf("population_level",UNSET).forGetter(s -> s.populationLevel)
+        Codec.INT.optionalFieldOf("population_level",UNSET).forGetter(s -> s.populationLevel),
+        TradeSettings.CODEC.optionalFieldOf("trading").forGetter(s -> Optional.of(s.trading))
     ).apply(i, Settlement::new));
     public final UUID id, owner;
     public String name, priority;
@@ -48,6 +49,8 @@ public final class Settlement {
     public final List<Workshop.Order> craftOrders;
     /** Population upgrades bought with emeralds at the banner; each raises the citizen limit and the waves' strength. */
     public int populationLevel;
+    /** Routes and NPC origin are optional so settlements from earlier builds retain their identity. */
+    public final TradeSettings trading;
     public final List<UUID> citizens;
     public final List<Station> stations;
     public final List<BlockPos> borderBanners;
@@ -69,6 +72,9 @@ public final class Settlement {
     }
     /** Towns saved before orders were learnable start with the default orders, minus any the owner had switched off. */
     public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority,List<BlockPos> borderBanners,Map<UUID,String> citizenNames,long nextWave,int waves,List<String> disabledRecipes,Optional<List<Workshop.Order>> craftOrders,int populationLevel) {
+        this(id,owner,name,center,radius,citizens,stations,priority,borderBanners,citizenNames,nextWave,waves,disabledRecipes,craftOrders,populationLevel,Optional.empty());
+    }
+    public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority,List<BlockPos> borderBanners,Map<UUID,String> citizenNames,long nextWave,int waves,List<String> disabledRecipes,Optional<List<Workshop.Order>> craftOrders,int populationLevel,Optional<TradeSettings> trading) {
         this.id=id; this.owner=owner; this.name=name; this.center=center.immutable(); this.radius=radius;
         this.citizens=new ArrayList<>(citizens); this.stations=new ArrayList<>(stations); this.priority=priority;
         this.borderBanners=new ArrayList<>();
@@ -78,6 +84,7 @@ public final class Settlement {
         this.disabledRecipes=new LinkedHashSet<>(disabledRecipes);
         this.craftOrders=new ArrayList<>(craftOrders.orElseGet(() -> Workshop.defaults(disabledRecipes)));
         this.populationLevel=Math.max(UNSET,populationLevel);
+        this.trading=trading.orElseGet(TradeSettings::new);
     }
     public boolean contains(BlockPos pos) {
         return Math.abs((long)pos.getX()-center.getX()) <= radius && Math.abs((long)pos.getZ()-center.getZ()) <= radius;

@@ -16,10 +16,10 @@ public final class Upgrades {
     public static int radius(StructureRole role,int level) { return baseRadius(role)+Math.clamp(level,0,MAX_STATION_LEVEL); }
     /** Quarries dig a whole chunk, mines follow their vein or tunnels, couriers cross the town and craftsmen work at their bench: a range upgrade means nothing to them. */
     public static boolean widens(StructureRole role) {
-        return role!=StructureRole.QUARRY && role!=StructureRole.MINE && role!=StructureRole.COURIER && role!=StructureRole.CRAFTSMAN;
+        return role!=StructureRole.QUARRY && role!=StructureRole.MINE && role!=StructureRole.COURIER && role!=StructureRole.CRAFTSMAN && role!=StructureRole.TRADER;
     }
     /** Farms, craftsmen and enchanters always take exactly one worker. */
-    public static boolean soloCrew(StructureRole role) { return role==StructureRole.FARM || role==StructureRole.CRAFTSMAN || role==StructureRole.ENCHANTER; }
+    public static boolean soloCrew(StructureRole role) { return role==StructureRole.FARM || role==StructureRole.CRAFTSMAN || role==StructureRole.ENCHANTER || role==StructureRole.TRADER; }
     /** Stations whose crew can grow. */
     public static boolean hires(StructureRole role) { return role.providesWork() && !soloCrew(role); }
     /** The next station level costs the base for the first, then twice the previous price. */

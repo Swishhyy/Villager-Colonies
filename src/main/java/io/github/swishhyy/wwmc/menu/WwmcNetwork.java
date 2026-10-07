@@ -33,7 +33,7 @@ public final class WwmcNetwork {
         @Override public Type<ActionPayload> type() { return TYPE; }
     }
     public static void register(RegisterPayloadHandlersEvent event) {
-        var registrar=event.registrar("1");
+        var registrar=event.registrar("2");
         registrar.playToClient(ViewPayload.TYPE,ViewPayload.STREAM_CODEC);
         registrar.playToServer(ActionPayload.TYPE,ActionPayload.STREAM_CODEC,WwmcNetwork::action);
     }

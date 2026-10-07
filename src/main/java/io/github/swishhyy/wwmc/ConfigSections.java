@@ -23,7 +23,8 @@ public final class ConfigSections {
         new Section("mining",List.of("oreVeinSeconds","mineMinY","mineMaxY","quarryTargetY","mineBranchLength","mineBranchPairs")),
         new Section("food",List.of("workTicks","rationTicks")),
         new Section("enchanting",List.of("enchantMinutes","enchanterMaxLevel")),
-        new Section("defense",List.of("alarmThreshold","enemyWaves","waveMinPopulation","waveIntervalDays","waveBaseMobs","waveMobsPerCitizen","waveMaxMobs","waveMobsPerUpgrade"))
+        new Section("defense",List.of("alarmThreshold","enemyWaves","waveMinPopulation","waveIntervalDays","waveBaseMobs","waveMobsPerCitizen","waveMaxMobs","waveMobsPerUpgrade")),
+        new Section("world",List.of("maxActiveTraders","tradeRouteDistance","randomSettlements","npcTownSpacing","maxNpcTowns"))
     );
     private ConfigSections() {}
     /** Future settings remain reachable until they receive a dedicated group. */

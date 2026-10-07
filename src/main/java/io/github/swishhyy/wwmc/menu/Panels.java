@@ -60,6 +60,7 @@ public final class Panels {
     }
     public static void openStation(ServerPlayer player,Settlement town,Station station) {
         BlockPos pos=station.position();
+        if(station.role()==StructureRole.TRADER) { io.github.swishhyy.wwmc.settlement.TraderPanel.open(player,town,station); return; }
         if(station.role()==StructureRole.CRAFTSMAN) {
             PanelView view=craftsman(level(player),town,station,"");
             player.openMenu(new SimpleMenuProvider((id,inventory,p) -> new CraftsmanMenu(id,inventory,pos,player,view),view.title()),
@@ -284,6 +285,7 @@ public final class Panels {
             case BLACKSMITH -> rows.add(new Row(icon(Items.ANVIL),"Anvils",SettlementService.anvils(level,town,station).size()+" anvils; repairs warehouse gear and worn stand armor"));
             case CRAFTSMAN -> rows.add(new Row(icon(Items.CRAFTING_TABLE),"Orders",town.craftOrders.size()+" learned recipes"));
             case COURIER -> rows.add(new Row(icon(Items.BUNDLE),"Deliveries","Carries goods from job barrels to the warehouse and stocks smelter, kitchen and enchanter barrels"));
+            case TRADER -> rows.add(new Row(icon(Items.COMPASS),"Trade route",town.trading.status));
             case ENCHANTER -> rows.addAll(enchanter(level,town,station));
         }
         if(station.role().keepsJobStorage()) {
@@ -391,6 +393,7 @@ public final class Panels {
         Station job=town==null || citizen.workplace()==null ? null : town.station(citizen.workplace());
         List<Row> status=new ArrayList<>();
         status.add(new Row(job==null ? icon(Items.PAPER) : stationIcon(job.role()),job==null ? "No job" : job.role().title()+" at "+job.position().toShortString(),citizen.activity()));
+        if(citizen.tradeCargoCount()>0) status.add(new Row(icon(Items.BUNDLE),"Trade load",citizen.tradeCargoCount()+" items reserved for the destination; separate from meals and job supplies"));
         float health=citizen.getHealth()/Math.max(1,citizen.getMaxHealth());
         status.add(new Row(icon(Items.GOLDEN_APPLE),"Health",Math.round(citizen.getHealth())+" / "+Math.round(citizen.getMaxHealth())).bar(health,health<0.5F ? RED : GREEN));
         int meal=Math.max(0,citizen.mealTicks());

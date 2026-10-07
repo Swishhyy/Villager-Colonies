@@ -13,6 +13,8 @@ import io.github.swishhyy.wwmc.settlement.WorkProtection;
 import io.github.swishhyy.wwmc.settlement.GuardService;
 import io.github.swishhyy.wwmc.settlement.DefenseService;
 import io.github.swishhyy.wwmc.settlement.WaveService;
+import io.github.swishhyy.wwmc.settlement.TradeChunks;
+import io.github.swishhyy.wwmc.settlement.NpcSettlements;
 import java.util.EnumMap;
 import java.util.Map;
 import net.minecraft.core.registries.Registries;
@@ -69,11 +71,14 @@ public final class WWMC {
         WwmcMenus.MENUS.register(bus);
         bus.addListener(this::attributes);
         bus.addListener(WwmcNetwork::register);
+        bus.addListener(TradeChunks::register);
         NeoForge.EVENT_BUS.register(new SettlementService());
         NeoForge.EVENT_BUS.register(new WorkProtection());
         NeoForge.EVENT_BUS.register(new GuardService());
         NeoForge.EVENT_BUS.register(new DefenseService());
         NeoForge.EVENT_BUS.register(new WaveService());
+        NeoForge.EVENT_BUS.register(new TradeChunks());
+        NeoForge.EVENT_BUS.register(new NpcSettlements());
         container.registerConfig(ModConfig.Type.SERVER,Config.SPEC);
     }
     private void attributes(EntityAttributeCreationEvent event) {

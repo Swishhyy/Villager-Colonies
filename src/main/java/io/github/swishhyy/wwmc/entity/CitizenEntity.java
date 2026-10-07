@@ -127,6 +127,10 @@ public final class CitizenEntity extends Villager {
     private long nextPathAt;
     private BlockPos pathDestination;
     private String activity="Waiting for a job station";
+    private TradeShipment tradeShipment=new TradeShipment();
+    private BlockPos tradeWaypoint;
+    private long nextTradeAt,nextTradePathAt;
+    private int lastNpcHurt=-1;
     public CitizenEntity(EntityType<? extends Villager> type,Level level) {
         super(type,level); setPersistenceRequired(); setCanPickUpLoot(false);
         for(EquipmentSlot slot:EquipmentSlot.values()) setDropChance(slot,0);
@@ -158,7 +162,7 @@ public final class CitizenEntity extends Villager {
         if(level() instanceof ServerLevel server && isGuard() && WorkCadence.due(server.getGameTime(),getId(),10)) {
             Settlement town=town(server); Station station=town.station(workplace);
             // Sleeping reserves do not run their work goal, but still belong to this station's roster.
-            SettlementService.workers(server).claim(workplace,getUUID(),server.getGameTime(),200,SettlementService.workerLimit(station));
+            SettlementService.workers(server).claim(workplace,getUUID(),server.getGameTime(),200,SettlementService.workerLimit(town,station));
             if(GuardService.onDuty(server,town,workplace,getUUID()) || DefenseService.bellRun(town,getUUID())!=null
                     || isSleeping() && Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> !getItemBySlot(slot).isEmpty())) wakeForAlarm();
             else if(sleepingBed!=null) {
@@ -176,6 +180,10 @@ public final class CitizenEntity extends Villager {
                 cargo.flush();
                 Settlement town=town(server);
                 if(town!=null) {
+                    if(town.trading.npc && getLastHurtByMob() instanceof Player attacker && getLastHurtByMobTimestamp()>lastNpcHurt) {
+                        lastNpcHurt=getLastHurtByMobTimestamp();
+                        TradeRoutes.attacked(town,attacker.getUUID(),SettlementData.get(server).settlements); SettlementData.get(server).setDirty();
+                    }
                     if(!cargo.isOpen()) eatFrom(List.of(cargo));
                     if(getCustomName()==null || CitizenNames.numbered(getCustomName().getString()))
                         setCustomName(Component.literal(SettlementService.citizenName(server,town,getUUID())));
@@ -188,6 +196,8 @@ public final class CitizenEntity extends Villager {
     }
     /** Trying to walk (a recent walk() call) while staying within a block and a half counts as stuck. */
     private void checkStuck(ServerLevel level,Settlement town) {
+        // Trade trips have their own short waypoints; do not teleport a convoy across the countryside.
+        if(tradeShipment.travelling()) return;
         boolean trying=tickCount-lastWalkTick<=40 && !isSleeping() && !isPassenger();
         if(!trying || stuckAnchor==null || position().distanceToSqr(stuckAnchor)>2.25) { stuckAnchor=position(); stuckTicks=0; return; }
         stuckTicks+=20;
@@ -267,7 +277,7 @@ public final class CitizenEntity extends Villager {
     }
     private boolean guardVacancy(ServerLevel level,Settlement town) {
         return town.stations.stream().anyMatch(s -> s.role()==StructureRole.GUARD && SettlementService.active(level,s)
-                && SettlementService.workers(level).count(s.position(),level.getGameTime())<SettlementService.workerLimit(s));
+                && SettlementService.workers(level).count(s.position(),level.getGameTime())<SettlementService.workerLimit(town,s));
     }
     private boolean night(ServerLevel level) { return SettlementService.night(level); }
     private boolean alarmed() {
@@ -299,6 +309,10 @@ public final class CitizenEntity extends Villager {
         return true;
     }
     private void releaseWork(ServerLevel level) {
+        Settlement home=town(level);
+        if(home!=null && getUUID().equals(home.trading.runner) && !tradeShipment.travelling()) {
+            home.trading.runner=null; home.trading.runnerPos=null; SettlementData.get(level).setDirty();
+        }
         leaveBed();
         var book=SettlementService.reservations(level);
         if(workplace!=null) SettlementService.workers(level).release(workplace,getUUID());
@@ -316,8 +330,10 @@ public final class CitizenEntity extends Villager {
         idleStations.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
         List<Station> jobs=new ArrayList<>(town.stations.stream()
                 .filter(s -> s.role().providesWork() && SettlementService.active(level,s) && !idleStations.containsKey(s.position())
+                        && (s.role()!=StructureRole.TRADER || TradeRoutes.canDepart(level,town)
+                            && (town.trading.runner==null || town.trading.runner.equals(getUUID())))
                         && (!night(level) || s.role()==StructureRole.GUARD)).toList());
-        jobs.sort(Comparator.comparingInt((Station s) -> s.role()==StructureRole.GUARD ? 0 : 1)
+        jobs.sort(Comparator.comparingInt((Station s) -> s.role()==StructureRole.GUARD ? 0 : s.role()==StructureRole.TRADER ? 1 : 2)
                 .thenComparingInt(s -> switch(town.priority) {
             case "food" -> s.role()==StructureRole.GUARD ? 0 : s.role()==StructureRole.FARM || s.role()==StructureRole.COOK ? 1 : 2;
             case "materials" -> s.role()==StructureRole.GUARD ? 0 : s.role()==StructureRole.FARM || s.role()==StructureRole.COOK ? 2 : 1;
@@ -326,8 +342,8 @@ public final class CitizenEntity extends Villager {
                 .thenComparingDouble(s -> distanceToSqr(Vec3.atCenterOf(s.position()))));
         // An enchanter part-way through an item goes back to a table rather than starting other work.
         if(!enchantItem.isEmpty()) for(Station station:jobs) if(station.role()==StructureRole.ENCHANTER
-                && book.claim(station.position(),getUUID(),level.getGameTime(),200,SettlementService.workerLimit(station))) return station;
-        for(Station station:jobs) if(book.claim(station.position(),getUUID(),level.getGameTime(),200,SettlementService.workerLimit(station))) return station;
+                && book.claim(station.position(),getUUID(),level.getGameTime(),200,SettlementService.workerLimit(town,station))) return station;
+        for(Station station:jobs) if(book.claim(station.position(),getUUID(),level.getGameTime(),200,SettlementService.workerLimit(town,station))) return station;
         return null;
     }
     private boolean toolFits(StructureRole role,ItemStack stack) {
@@ -1017,7 +1033,7 @@ public final class CitizenEntity extends Villager {
         playSound(SoundEvents.ARROW_SHOOT,1.0F,1.0F/(getRandom().nextFloat()*0.4F+0.8F));
         bow.hurtAndBreak(1,this,EquipmentSlot.MAINHAND);
     }
-    private void fight(ServerLevel level,Monster enemy) {
+    private void fight(ServerLevel level,LivingEntity enemy) {
         setTarget(enemy); activity="Defending the settlement";
         getLookControl().setLookAt(enemy,30.0F,30.0F);
         double distance=distanceTo(enemy);
@@ -1114,6 +1130,12 @@ public final class CitizenEntity extends Villager {
             gearStand=null; gearPathTicks=0; shiftGearUntil=level.getGameTime()+400;
         }
         wearLocalArmor(); readyMelee();
+        if(town.trading.npc) {
+            Player attacker=level.getEntitiesOfClass(Player.class,getBoundingBox().inflate(24),p -> p.isAlive() && !p.isSpectator()
+                    && !p.getAbilities().instabuild && town.contains(p.blockPosition()) && town.trading.relations.getOrDefault(p.getUUID(),0)<0 && hasLineOfSight(p))
+                    .stream().min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
+            if(attacker!=null) { fight(level,attacker); activity="Defending the town against an attacker"; return; }
+        }
         Monster enemy=level.getEntitiesOfClass(Monster.class,getBoundingBox().inflate(alarm ? 32 : 16),
                 m -> m.isAlive() && town.contains(m.blockPosition()) && hasLineOfSight(m)).stream()
                 .min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
@@ -1647,24 +1669,139 @@ public final class CitizenEntity extends Villager {
         Station station=town(server).station(workplace);
         return station==null ? "none" : station.role().id();
     }
+    public int tradeCargoCount() { return tradeShipment.items().stream().mapToInt(ItemStack::getCount).sum(); }
+    /** Town positions remain known across chunk boundaries; the carrier physically visits each storage station. */
+    private BlockPos tradeWarehouse(Settlement town) {
+        return town.stations.stream().filter(s -> s.role()==StructureRole.WAREHOUSE)
+                .min(Comparator.comparingDouble(s -> s.position().distSqr(blockPosition()))).map(Station::position).orElse(null);
+    }
+    private void tradeNote(Settlement home,String message) { activity=message; home.trading.status=message; }
+    private boolean tradeArrive(ServerLevel level,Settlement home,BlockPos destination) {
+        if(canUse(level,destination)) { getNavigation().stop(); tradeWaypoint=null; return true; }
+        if(tradeWaypoint==null || near(tradeWaypoint) || level.getGameTime()>=nextTradePathAt) {
+            tradeWaypoint=null; nextTradePathAt=level.getGameTime()+200;
+            double dx=destination.getX()-getX(),dz=destination.getZ()-getZ(),distance=Math.sqrt(dx*dx+dz*dz);
+            if(distance<=18) { tradeWaypoint=destination; }
+            else {
+                double angle=Math.atan2(dz,dx);
+                for(double offset:new double[]{0,0.55,-0.55,1.1,-1.1}) {
+                    int x=(int)Math.floor(getX()+Math.cos(angle+offset)*16),z=(int)Math.floor(getZ()+Math.sin(angle+offset)*16);
+                    BlockPos probe=new BlockPos(x,blockPosition().getY(),z);
+                    if(!level.hasChunkAt(probe) || !level.getWorldBorder().isWithinBounds(probe)) continue;
+                    int y=level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,x,z);
+                    BlockPos candidate=new BlockPos(x,y,z);
+                    var path=getNavigation().createPath(candidate,1);
+                    if(path!=null && path.canReach()) { tradeWaypoint=candidate; break; }
+                }
+            }
+        }
+        if(tradeWaypoint==null || !walk(tradeWaypoint,0.75)) {
+            getNavigation().stop(); tradeNote(home,"Trade route blocked: clear a walkable path or build a road");
+            nextTradePathAt=Math.min(nextTradePathAt,level.getGameTime()+100);
+        }
+        return false;
+    }
+    /** A saved itinerary, with isolated goods that neither meals nor another job can consume. */
+    private void trader(ServerLevel level,Settlement home,Station checkpoint) {
+        if(!TradeChunks.keep(level,home,blockPosition())) { tradeNote(home,"Waiting for a server trader slot"); return; }
+        boolean changed=!getUUID().equals(home.trading.runner) || home.trading.runnerPos==null
+                || (Math.floorDiv(home.trading.runnerPos.getX(),16)!=Math.floorDiv(blockPosition().getX(),16) || Math.floorDiv(home.trading.runnerPos.getZ(),16)!=Math.floorDiv(blockPosition().getZ(),16));
+        home.trading.runner=getUUID(); home.trading.runnerPos=blockPosition().immutable();
+        if(changed) SettlementData.get(level).setDirty();
+        if(checkpoint!=null) SettlementService.workers(level).claim(checkpoint.position(),getUUID(),level.getGameTime(),200,1);
+        if(cargo.isOpen()) { getNavigation().stop(); tradeNote(home,"Waiting while my inventory is open"); return; }
+        eatFrom(List.of(cargo));
+        if(level.getGameTime()<nextTradeAt) return;
+        Settlement destination=tradeShipment.destination==null ? null : SettlementData.get(level).byId(tradeShipment.destination);
+        Station arrival=TradeRoutes.checkpoint(destination);
+        boolean broken=checkpoint==null || level.hasChunkAt(checkpoint.position()) && !SettlementService.active(level,checkpoint)
+                || !TradeRoutes.agreed(home,destination) || arrival==null
+                || level.hasChunkAt(arrival.position()) && !SettlementService.active(level,arrival);
+        if(tradeShipment.travelling() && !List.of("return","home").contains(tradeShipment.stage) && broken) {
+            tradeShipment.stage="return"; tradeWaypoint=null;
+        }
+        switch(tradeShipment.stage) {
+            case "idle" -> {
+                destination=TradeRoutes.partner(level,home);
+                if(destination==null || !TradeRoutes.canDepart(level,home)) { tradeNote(home,"Waiting for a connected, unpaused route"); releaseWork(level); nextTradeAt=level.getGameTime()+100; return; }
+                BlockPos warehouse=tradeWarehouse(home);
+                if(warehouse==null) { tradeNote(home,"Needs a warehouse with storage"); nextTradeAt=level.getGameTime()+100; return; }
+                tradeNote(home,"Collecting exports from the warehouse");
+                if(!tradeArrive(level,home,warehouse)) return;
+                eatFrom(SettlementService.storageAt(level,home,warehouse));
+                var stock=SettlementService.storageAt(level,home,warehouse);
+                int rations=InventoryOps.count(List.of(cargo),this::food);
+                for(int n=rations;n<8;n++) {
+                    ItemStack ration=InventoryOps.takeOne(stock,this::food);
+                    if(ration.isEmpty()) break;
+                    cargo.offer(ration);
+                }
+                int moved=TradeGoods.load(SettlementService.storageAt(level,home,warehouse),home.trading.exports,tradeShipment);
+                if(moved==0) { tradeNote(home,"Waiting for warehouse goods above the export reserves"); nextTradeAt=level.getGameTime()+200; return; }
+                tradeShipment.destination=destination.id; tradeShipment.stage="checkpoint"; tradeWaypoint=null;
+            }
+            case "checkpoint" -> {
+                tradeNote(home,"Taking "+tradeCargoCount()+" items to the home checkpoint");
+                if(tradeArrive(level,home,checkpoint.position())) { tradeShipment.stage="outbound"; tradeWaypoint=null; }
+            }
+            case "outbound" -> {
+                tradeNote(home,"Travelling to "+destination.name+" with "+tradeCargoCount()+" items");
+                if(tradeArrive(level,home,arrival.position())) { tradeShipment.stage="deliver"; tradeWaypoint=null; }
+            }
+            case "deliver" -> {
+                BlockPos warehouse=tradeWarehouse(destination);
+                if(warehouse==null) { tradeNote(home,"Destination needs warehouse storage; cargo retained"); nextTradeAt=level.getGameTime()+100; return; }
+                tradeNote(home,"Delivering to "+destination.name+"'s warehouse");
+                if(!tradeArrive(level,home,warehouse)) return;
+                int moved=TradeGoods.unload(tradeShipment,SettlementService.storageAt(level,destination,warehouse));
+                home.trading.delivered+=moved;
+                if(moved>0 && destination.trading.npc) destination.trading.relations.merge(home.owner,moved,(a,b) -> Math.min(1000,a+b));
+                if(moved>0) SettlementData.get(level).setDirty();
+                if(tradeShipment.isEmpty()) { tradeShipment.stage="return"; tradeWaypoint=null; }
+                else { tradeNote(home,"Destination storage is full; keeping "+tradeCargoCount()+" items"); nextTradeAt=level.getGameTime()+100; }
+            }
+            case "return" -> {
+                tradeNote(home,"Returning to "+home.name+(tradeShipment.isEmpty() ? "" : " with undelivered goods"));
+                BlockPos rally=checkpoint==null ? home.center : checkpoint.position();
+                if(!handNear(rally) && !tradeArrive(level,home,rally)) return;
+                tradeShipment.stage="home"; tradeWaypoint=null;
+            }
+            case "home" -> {
+                if(!tradeShipment.isEmpty()) {
+                    BlockPos warehouse=tradeWarehouse(home);
+                    if(warehouse==null) { tradeNote(home,"Home needs storage for the returned goods"); return; }
+                    if(!tradeArrive(level,home,warehouse)) return;
+                    TradeGoods.unload(tradeShipment,SettlementService.storageAt(level,home,warehouse));
+                    if(!tradeShipment.isEmpty()) { tradeNote(home,"Home storage is full; returned goods are safe in the trade load"); nextTradeAt=level.getGameTime()+100; return; }
+                }
+                tradeShipment.finish();
+                if(!TradeRoutes.canDepart(level,home)) { home.trading.runner=null; home.trading.runnerPos=null; }
+                tradeWaypoint=null; nextTradeAt=level.getGameTime()+200; SettlementData.get(level).setDirty();
+                tradeNote(home,"Returned; preparing the next trip");
+            }
+            default -> tradeShipment.stage="return";
+        }
+    }
     private void work(ServerLevel level) {
         reachBudget.reset();
         failedTargets.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
         Settlement town=town(level);
         if(town==null) { activity="Settlement unavailable"; return; }
+        // The checkpoint may be unloaded behind the carrier. Its saved itinerary owns the job until it returns.
+        if(tradeShipment.travelling()) { leaveBed(); trader(level,town,TradeRoutes.checkpoint(town)); return; }
         if(!isGuard() && guardVacancy(level,town)) releaseWork(level);
         if(isGuard()) {
             Station empty=GuardService.uncovered(level,town);
             if(empty!=null && !empty.position().equals(workplace)
                     && SettlementService.workers(level).count(workplace,level.getGameTime())>1
-                    && SettlementService.workers(level).claim(empty.position(),getUUID(),level.getGameTime(),200,SettlementService.workerLimit(empty))) {
+                    && SettlementService.workers(level).claim(empty.position(),getUUID(),level.getGameTime(),200,SettlementService.workerLimit(town,empty))) {
                 releaseWork(level); workplace=empty.position();
             }
         }
         var book=SettlementService.reservations(level);
         Station station=workplace==null ? null : town.station(workplace);
         if(station==null || !SettlementService.active(level,station)
-                || !SettlementService.workers(level).claim(workplace,getUUID(),level.getGameTime(),200,SettlementService.workerLimit(station))) {
+                || !SettlementService.workers(level).claim(workplace,getUUID(),level.getGameTime(),200,SettlementService.workerLimit(town,station))) {
             releaseWork(level);
             if(searchDelay>0) { searchDelay-=10; return; }
             station=chooseJob(level,town);
@@ -1691,6 +1828,7 @@ public final class CitizenEntity extends Villager {
         if(station.role()==StructureRole.GUARD) { guard(level,town,station); return; }
         if(station.role()==StructureRole.BLACKSMITH) { blacksmith(level,town,station); return; }
         if(station.role()==StructureRole.COURIER) { courier(level,town,station); return; }
+        if(station.role()==StructureRole.TRADER) { trader(level,town,station); return; }
         if(station.role()==StructureRole.ENCHANTER) { enchanter(level,town,station); return; }
         useLocalSupplies(station.role());
         if(getHealth()<getMaxHealth() && wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0
@@ -1788,7 +1926,7 @@ public final class CitizenEntity extends Villager {
         @Override public boolean canUse() {
             if(!(level() instanceof ServerLevel l) || town(l)==null) return false;
             // Civilians stop work during an alarm; a vacant guard post still draws a volunteer.
-            return isGuard() || guardVacancy(l,town(l)) || !night(l) && !DefenseService.alarmed(town(l));
+            return tradeShipment.travelling() || isGuard() || guardVacancy(l,town(l)) || !night(l) && !DefenseService.alarmed(town(l));
         }
         @Override public boolean canContinueToUse() { return canUse(); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
@@ -1802,7 +1940,7 @@ public final class CitizenEntity extends Villager {
         @Override public boolean canUse() {
             if(!(level() instanceof ServerLevel l)) return false;
             Settlement town=town(l);
-            return town!=null && !isGuard() && DefenseService.alarmed(town) && !night(l) && !guardVacancy(l,town);
+            return town!=null && !tradeShipment.travelling() && !isGuard() && DefenseService.alarmed(town) && !night(l) && !guardVacancy(l,town);
         }
         @Override public boolean canContinueToUse() { return canUse(); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
@@ -1820,7 +1958,7 @@ public final class CitizenEntity extends Villager {
     }
     private final class RestGoal extends Goal {
         RestGoal() { setFlags(EnumSet.of(Flag.MOVE,Flag.LOOK)); }
-        @Override public boolean canUse() { return level() instanceof ServerLevel l && town(l)!=null && night(l) && !isGuard() && !guardVacancy(l,town(l)); }
+        @Override public boolean canUse() { return !tradeShipment.travelling() && level() instanceof ServerLevel l && town(l)!=null && night(l) && !isGuard() && !guardVacancy(l,town(l)); }
         @Override public boolean canContinueToUse() { return canUse(); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
         @Override public void tick() {
@@ -1866,6 +2004,7 @@ public final class CitizenEntity extends Villager {
         if(repairSlot!=null) output.putString("wwmc_repair_slot",repairSlot.name());
         output.store("wwmc_cargo",ItemStack.OPTIONAL_CODEC.listOf(),cargo.contents());
         output.store("wwmc_pending_cargo",ItemStack.OPTIONAL_CODEC.listOf(),cargo.pendingItems());
+        output.store("wwmc_trade_shipment",TradeShipment.CODEC,tradeShipment);
     }
     @Override protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
@@ -1884,9 +2023,15 @@ public final class CitizenEntity extends Villager {
         try { repairSlot=EquipmentSlot.valueOf(input.getStringOr("wwmc_repair_slot","")); } catch(IllegalArgumentException e) { repairSlot=null; }
         var stacks=input.read("wwmc_cargo",ItemStack.OPTIONAL_CODEC.listOf()).orElse(List.of());
         cargo.restore(stacks,input.read("wwmc_pending_cargo",ItemStack.OPTIONAL_CODEC.listOf()).orElse(List.of()));
+        tradeShipment=input.read("wwmc_trade_shipment",TradeShipment.CODEC).orElseGet(TradeShipment::new);
     }
     @Override public void die(DamageSource source) {
         if(level() instanceof ServerLevel level) {
+            Settlement home=town(level);
+            if(home!=null && source.getEntity() instanceof Player attacker) TradeRoutes.attacked(home,attacker.getUUID(),SettlementData.get(level).settlements);
+            if(home!=null && getUUID().equals(home.trading.runner)) { home.trading.runner=null; home.trading.runnerPos=null; SettlementData.get(level).setDirty(); }
+            for(ItemStack stack:tradeShipment.items()) if(!stack.isEmpty()) Containers.dropItemStack(level,getX(),getY(),getZ(),stack);
+            tradeShipment.clearContent();
             Containers.dropItemStack(level,getX(),getY(),getZ(),repairItem); repairItem=ItemStack.EMPTY;
             Containers.dropItemStack(level,getX(),getY(),getZ(),enchantItem); enchantItem=ItemStack.EMPTY;
             Settlement town=town(level);

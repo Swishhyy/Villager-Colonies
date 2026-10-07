@@ -73,6 +73,8 @@ public final class SettlementService {
             default -> Config.STATION_WORKERS.get();
         };
     }
+    /** NPC crews spread their small population across all essential jobs. */
+    public static int workerLimit(Settlement town,Station station) { return town.trading.npc ? 1 : workerLimit(station); }
     public static ReservationBook<BlockPos> reservations(ServerLevel level) {
         return RESERVATIONS.computeIfAbsent(level, l -> new ReservationBook<>());
     }
@@ -99,8 +101,8 @@ public final class SettlementService {
         }
         int radius=Config.SETTLEMENT_RADIUS.get();
         if(data.settlements.stream().anyMatch(s -> s.overlaps(pos,radius))) { notify(player,"Move your banner farther away: settlement claims cannot overlap."); return; }
-        if(data.settlements.stream().anyMatch(s -> s.owner.equals(player.getUUID()))) { notify(player,"You already own a settlement. Multiple towns are planned for a later build."); return; }
-        Settlement settlement=new Settlement(UUID.randomUUID(),player.getUUID(),player.getName().getString()+"'s settlement",pos,radius,List.of(),List.of(),"balanced");
+        long previous=data.settlements.stream().filter(s -> s.owner.equals(player.getUUID())).count();
+        Settlement settlement=new Settlement(UUID.randomUUID(),player.getUUID(),player.getName().getString()+"'s settlement"+(previous>0 ? " "+(previous+1) : ""),pos,radius,List.of(),List.of(),"balanced");
         settlement.populationLevel=0;
         data.settlements.add(settlement); data.setDirty();
         placeBorders(level,settlement);
@@ -111,6 +113,7 @@ public final class SettlementService {
         SettlementData data=SettlementData.get(level);
         Settlement settlement=data.at(pos);
         if(!owns(player,settlement)) { notify(player,"Place stations inside your own settlement claim."); return; }
+        if(role==StructureRole.TRADER && !TradeRoutes.uniqueCheckpoint(level,settlement,pos)) { notify(player,"Each town can have only one Trader Block."); return; }
         if(settlement.station(pos)==null) {
             var state=level.getBlockState(pos);
             // A station broken and placed again keeps the upgrades its item carries.
@@ -398,7 +401,12 @@ public final class SettlementService {
     }
     private static Settlement owned(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer player=source.getPlayerOrException();
-        return SettlementData.get(source.getLevel()).settlements.stream().filter(s -> s.owner.equals(player.getUUID())).findFirst().orElse(null);
+        SettlementData data=SettlementData.get(source.getLevel());
+        Settlement local=data.at(player.blockPosition());
+        if(owns(player,local)) return local;
+        List<Settlement> owned=data.settlements.stream().filter(s -> s.owner.equals(player.getUUID())).toList();
+        if(owned.size()>1) { source.sendFailure(Component.literal("Stand inside the town you want to manage, or use its banner screen.")); return null; }
+        return owned.isEmpty() ? null : owned.getFirst();
     }
     private static int recruit(CommandSourceStack source,int count) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         Settlement settlement=owned(source);
@@ -520,7 +528,7 @@ public final class SettlementService {
         reservations(level).prune(level.getGameTime());
         workers(level).prune(level.getGameTime());
         SettlementData data=SettlementData.get(level);
-        if(data.settlements.removeIf(s -> s.citizens.isEmpty() && level.hasChunkAt(s.center) && !level.getBlockState(s.center).is(WWMC.BANNER.get()))) data.setDirty();
+        if(data.settlements.removeIf(s -> s.trading.buildIndex<0 && s.citizens.isEmpty() && level.hasChunkAt(s.center) && !level.getBlockState(s.center).is(WWMC.BANNER.get()))) data.setDirty();
         StationResourceCache scans=RESOURCE_SCANS.get(level);
         if(scans!=null) scans.prune(level.getGameTime());
         for(Settlement s:data.settlements) {
