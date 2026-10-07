@@ -19,9 +19,6 @@ import net.neoforged.neoforge.common.world.chunk.RegisterTicketControllersEvent;
 import net.neoforged.neoforge.common.world.chunk.TicketController;
 
 public final class CitizenNavigationTests {
-    private static String describe(net.minecraft.world.level.pathfinder.Path path) {
-        return path==null ? "null" : path.canReach()+"/"+path.getNodeCount()+"/"+path.getNode(path.getNodeCount()-1).asBlockPos();
-    }
     private static final TicketController TICKETS=new TicketController(Identifier.fromNamespaceAndPath("wwmc_tests","navigation"),(level,helper) -> {});
     static void registerTickets(RegisterTicketControllersEvent event) { event.register(TICKETS); }
     private static List<ChunkPos> pin(ServerLevel level,BlockPos start,int width) {
@@ -97,13 +94,9 @@ public final class CitizenNavigationTests {
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
             BlockPos end=start.east(20);
             helper.runAtTickTime(5,() -> {
-                var path=citizen.getNavigation().createPath(end,0);
-                if(path==null || !path.canReach()) {
-                    String detail="Bridge is unreachable; pos="+citizen.blockPosition()+", ground="+citizen.onGround()+", water="+citizen.isInWater()+", end="+describe(path);
-                    for(BlockPos point:new BlockPos[]{start.offset(4,0,6),start.offset(8,0,6),start.offset(10,0,8),start.offset(14,0,9)})
-                        detail+="; via "+point+"="+describe(citizen.getNavigation().createPath(point,0));
-                    helper.assertTrue(false,detail);
-                }
+                // Jobs and traders use a one-block arrival tolerance; verify the actual crossing below.
+                var path=citizen.getNavigation().createPath(end,1);
+                helper.assertTrue(path!=null && path.canReach(),"Bridge route is unreachable");
                 citizen.getNavigation().moveTo(path,0.75);
                 var wet=new AtomicBoolean();
                 helper.succeedWhen(() -> {
