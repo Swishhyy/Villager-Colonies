@@ -276,7 +276,7 @@ public final class Panels {
                             +(wait>0 ? ", replenishes in "+(wait+19)/20+"s" : ", ready")),0,PanelView.NO_BAR,PanelView.NO_VALUE));
                     rows.add(new Row(icon(Items.IRON_PICKAXE),"Yield","One harvest every "+OreVeins.interval(ore,Config.ORE_VEIN_SECONDS.get())/20+"s with a pickaxe that can mine it"));
                 } else rows.add(new Row(icon(Items.STONE_PICKAXE),"Tunnels",ExcavationService.status(level,town,station)));
-                if(vein==null) rows.add(new Row(icon(Items.RAW_IRON),"Ore vein","Place the station touching an ore to mine it forever instead"));
+                if(vein==null) rows.add(new Row(icon(Items.RAW_IRON),"Ore vein","Place the station within "+OreVeins.REACH+" blocks of an exposed ore to mine it forever instead"));
             }
             case QUARRY -> rows.add(new Row(icon(Items.IRON_PICKAXE),"Excavation",ExcavationService.status(level,town,station)));
             case GUARD -> rows.add(new Row(icon(Items.IRON_SWORD),"Posts",GuardService.status(level,station)));

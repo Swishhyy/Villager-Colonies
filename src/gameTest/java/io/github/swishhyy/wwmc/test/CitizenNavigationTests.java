@@ -29,10 +29,10 @@ public final class CitizenNavigationTests {
             }
         return chunks;
     }
-    private static void release(ServerLevel level,BlockPos start,List<ChunkPos> chunks) {
+    static void release(ServerLevel level,BlockPos start,List<ChunkPos> chunks) {
         for(var pos:chunks) TICKETS.forceChunk(level,start,pos.x(),pos.z(),false,false);
     }
-    private static List<ChunkPos> pinArea(ServerLevel level,BlockPos start,int minX,int maxX,int minZ,int maxZ) {
+    static List<ChunkPos> pinArea(ServerLevel level,BlockPos start,int minX,int maxX,int minZ,int maxZ) {
         List<ChunkPos> chunks=new ArrayList<>();
         for(int x=Math.floorDiv(start.getX()+minX-8,16);x<=Math.floorDiv(start.getX()+maxX+8,16);x++)
             for(int z=Math.floorDiv(start.getZ()+minZ-8,16);z<=Math.floorDiv(start.getZ()+maxZ+8,16);z++) {
@@ -41,7 +41,7 @@ public final class CitizenNavigationTests {
         return chunks;
     }
     /** Grass on stone with open air above, like an ordinary meadow. */
-    private static void meadow(ServerLevel level,BlockPos start,int minX,int maxX,int minZ,int maxZ) {
+    static void meadow(ServerLevel level,BlockPos start,int minX,int maxX,int minZ,int maxZ) {
         for(int x=minX;x<=maxX;x++) for(int z=minZ;z<=maxZ;z++) {
             level.setBlockAndUpdate(start.offset(x,-2,z),Blocks.STONE.defaultBlockState());
             level.setBlockAndUpdate(start.offset(x,-1,z),Blocks.GRASS_BLOCK.defaultBlockState());
@@ -63,9 +63,13 @@ public final class CitizenNavigationTests {
     private static net.minecraft.world.level.pathfinder.Path plan(CitizenEntity citizen,BlockPos end,String name) {
         long started=System.nanoTime();
         var path=citizen.getNavigation().createPath(end,1);
-        System.out.printf("[wwmc navigation] %s: planned in %.2f ms, %s, %d nodes, %.1f blocks short%n",name,(System.nanoTime()-started)/1.0E6,
-                path==null ? "no path" : path.canReach() ? "complete" : "partial",path==null ? 0 : path.getNodeCount(),path==null ? -1.0 : path.getDistToTarget());
+        System.out.printf("[wwmc navigation] %s: planned in %.2f ms, %s%n",name,(System.nanoTime()-started)/1.0E6,describe(citizen,path));
         return path;
+    }
+    private static String describe(CitizenEntity citizen,net.minecraft.world.level.pathfinder.Path path) {
+        String found=path==null ? "no path" : (path.canReach() ? "complete, " : "partial, ")+path.getNodeCount()+" nodes, "
+                +String.format("%.1f",path.getDistToTarget())+" blocks short";
+        return found+" (follow range "+citizen.getAttributeValue(Attributes.FOLLOW_RANGE)+")";
     }
 
     @GameTest(timeoutTicks=1000)
@@ -81,7 +85,7 @@ public final class CitizenNavigationTests {
             BlockPos end=start.offset(40,0,16);
             helper.runAtTickTime(5,() -> {
                 var path=plan(citizen,end,"open meadow");
-                helper.assertTrue(path!=null && path.canReach(),"No complete route across an open meadow: the planner gave up part way");
+                helper.assertTrue(path!=null && path.canReach(),"No complete route across an open meadow: "+describe(citizen,path));
                 citizen.getNavigation().moveTo(path,0.65);
                 helper.succeedWhen(() -> {
                     travel(citizen,end);
@@ -107,7 +111,7 @@ public final class CitizenNavigationTests {
             BlockPos end=start.east(32);
             helper.runAtTickTime(5,() -> {
                 var path=plan(citizen,end,"gap in a wall");
-                helper.assertTrue(path!=null && path.canReach(),"No complete route through the gap in the wall");
+                helper.assertTrue(path!=null && path.canReach(),"No complete route through the gap in the wall: "+describe(citizen,path));
                 citizen.getNavigation().moveTo(path,0.65);
                 helper.succeedWhen(() -> {
                     travel(citizen,end);

@@ -8,13 +8,21 @@ import net.minecraft.world.level.pathfinder.*;
 
 /** Shared by every citizen job: prefer roads, cross water on solid decks, and retain water escape. */
 public final class CitizenNavigation extends GroundPathNavigation {
+    /**
+     * Extra cost of each step off paved ground. Minecraft's planner weighs the remaining distance at 1.5 per block, so
+     * at 0.5 or less it heads straight for the goal and never looks at a road beside it. Much more and it searches so
+     * widely that ordinary 30 to 40 block routes through a town run out of search before reaching the goal.
+     */
+    public static final float OFF_ROAD=0.6F;
+    /** Citizens plan routes up to this many blocks; longer trips are walked leg by leg. */
+    public static final float ROUTE_LENGTH=64.0F;
     public CitizenNavigation(Mob mob,Level level) { super(mob,level); }
     @Override protected PathFinder createPathFinder(int maximumNodes) {
         nodeEvaluator=new RoadEvaluator();
         return new PathFinder(nodeEvaluator,maximumNodes);
     }
-    // Follow the chosen nodes instead of cutting across road bends or one-block bridge corners.
-    @Override public boolean canCutCorner(PathType type) { return false; }
+    // Walk smoothly toward the next node, except beside water, where a cut corner could step off a narrow bridge or bank.
+    @Override public boolean canCutCorner(PathType type) { return type!=PathType.WATER_BORDER && super.canCutCorner(type); }
     @Override public void tick() {
         if(path!=null && !path.isDone() && !escapingWater(mob)
                 && RoadSurface.openWater(level,path.getNextNodePos())) stop();
@@ -57,7 +65,7 @@ public final class CitizenNavigation extends GroundPathNavigation {
                 boolean paved=RoadSurface.preferred(currentContext.level(),node.asBlockPos());
                 // WATER_BORDER is dry ground beside water; a sound narrow deck is safe to use.
                 if(paved && node.type==PathType.WATER_BORDER) node.costMalus=0;
-                else if(!paved) node.costMalus=Math.max(node.costMalus,2);
+                else if(!paved) node.costMalus=Math.max(node.costMalus,OFF_ROAD);
             }
             return count;
         }

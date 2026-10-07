@@ -27,6 +27,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -123,7 +124,7 @@ public final class CitizenEntity extends Villager {
     private BlockPos workplace, target, sleepingBed,workStand,clearingLeaf;
     private final CitizenInventory cargo=new CitizenInventory(this::canOpenInventory);
     private final Map<BlockPos,Long> failedTargets=new HashMap<>();
-    private int searchDelay, workProgress, pathTicks, mealTicks=2400;
+    private int searchDelay, workProgress, pathTicks, blindTicks, mealTicks=2400;
     private final WorkCadence.ReachBudget reachBudget=new WorkCadence.ReachBudget();
     private long nextPathAt;
     private BlockPos pathDestination;
@@ -135,6 +136,17 @@ public final class CitizenEntity extends Villager {
     public CitizenEntity(EntityType<? extends Villager> type,Level level) {
         super(type,level); setPersistenceRequired(); setCanPickUpLoot(false);
         for(EquipmentSlot slot:EquipmentSlot.values()) setDropChance(slot,0);
+        planLongRoutes();
+    }
+    /**
+     * Villagers plan 48-block routes at most; towns are larger, so citizens plan farther with a matching search budget.
+     * Citizens never pick fights by follow range, so it only sets how far a route may reach. Saved citizens load their
+     * old range, so this runs again after loading.
+     */
+    private void planLongRoutes() {
+        var range=getAttribute(Attributes.FOLLOW_RANGE);
+        if(range!=null && range.getBaseValue()<CitizenNavigation.ROUTE_LENGTH) range.setBaseValue(CitizenNavigation.ROUTE_LENGTH);
+        getNavigation().setRequiredPathLength(CitizenNavigation.ROUTE_LENGTH);
     }
     public void join(UUID id) { settlementId=id; mealTicks=Config.RATION_TICKS.get(); }
     public Settlement town(ServerLevel level) { return settlementId==null ? null : SettlementData.get(level).byId(settlementId); }
@@ -211,7 +223,7 @@ public final class CitizenEntity extends Villager {
         // Abandon the trip that went wrong so the citizen does not walk straight back into the same trap.
         if(action==Action.EXCAVATE && excavation!=null && excavation.quarry() && !excavation.remote() && workplace!=null) {
             SettlementService.reservations(level).release(excavation.lease(),getUUID());
-            excavation=excavation.fromControlBlock(workplace); targetLease=excavation.lease(); pathTicks=0;
+            excavation=excavation.fromControlBlock(workplace); targetLease=excavation.lease(); pathTicks=0; blindTicks=0;
         } else if(target!=null) cancelTarget(level,true);
         else if(returningGear) returningGear=false; // the gear stays in the bag and goes back with the next delivery
         else if(isGuard()) patrolTarget=null;
@@ -293,16 +305,18 @@ public final class CitizenEntity extends Villager {
     private boolean canUse(ServerLevel level,BlockPos pos) { return CitizenReach.canUse(level,getEyePosition(),pos); }
     private boolean handNear(BlockPos pos) { return CitizenReach.within(getEyePosition(),pos); }
     private boolean walk(BlockPos pos) { return walk(pos,0.65); }
-    private boolean walk(BlockPos pos,double speed) {
+    private boolean walk(BlockPos pos,double speed) { return walk(pos,speed,1); }
+    /** Accuracy 0 ends on the block itself, for standing spots chosen for their view of the work. */
+    private boolean walk(BlockPos pos,double speed,int accuracy) {
         lastWalkTick=tickCount;
         // Trips into or out of a deep quarry follow its spiral stairs a few steps at a time.
         if(level() instanceof ServerLevel server && town(server)!=null) {
             BlockPos via=ExcavationService.waypoint(server,town(server),blockPosition(),pos);
-            if(via!=null) pos=via;
+            if(via!=null) { pos=via; accuracy=1; }
         }
         long now=level().getGameTime();
         if(getNavigation().isDone() || !pos.equals(pathDestination) || now>=nextPathAt) {
-            var path=getNavigation().createPath(pos,1);
+            var path=getNavigation().createPath(pos,accuracy);
             if(path==null) return false;
             getNavigation().moveTo(path,speed);
             pathDestination=pos.immutable(); nextPathAt=now+40;
@@ -325,7 +339,7 @@ public final class CitizenEntity extends Villager {
         haulStation=null; haulSupply=false; haulTicks=0;
         workStand=null; clearingLeaf=null;
         processor=null; processingDelivery=false; processingSupplied=false; processingIdle=0; nextProcessingAt=0;
-        workplace=null; target=null; patrolTarget=null; activePost=null; setTarget(null); workProgress=0; pathTicks=0; getNavigation().stop();
+        workplace=null; target=null; patrolTarget=null; activePost=null; setTarget(null); workProgress=0; pathTicks=0; blindTicks=0; getNavigation().stop();
     }
     private Station chooseJob(ServerLevel level,Settlement town) {
         var book=SettlementService.workers(level);
@@ -363,8 +377,16 @@ public final class CitizenEntity extends Villager {
         return action==Action.SUPPORT && (supply.isEmpty() || !ExcavationService.supportMaterial(supply));
     }
     private boolean deliverCargo() { return cargo.needsDelivery(); }
+    /**
+     * Farther than one planned route reaches, a probe cannot confirm a destination. The walk goes leg by leg instead,
+     * and trips that get nowhere give up through their own time limits and the stuck rescue.
+     */
+    private boolean beyondOneRoute(BlockPos pos) {
+        double reach=CitizenNavigation.ROUTE_LENGTH*0.75;
+        return distanceToSqr(Vec3.atCenterOf(pos))>reach*reach;
+    }
     private boolean canReach(BlockPos pos) {
-        if(near(pos)) return true;
+        if(near(pos) || beyondOneRoute(pos)) return true;
         long now=level().getGameTime();
         if(failedTargets.getOrDefault(pos,0L)>now) return false;
         return reachBudget.check(() -> {
@@ -384,7 +406,7 @@ public final class CitizenEntity extends Villager {
         };
     }
     private boolean reachableStand(BlockPos pos) {
-        if(pos.equals(blockPosition())) return true;
+        if(pos.equals(blockPosition()) || beyondOneRoute(pos)) return true;
         if(failedTargets.containsKey(pos)) return false;
         return reachBudget.check(() -> {
             var path=getNavigation().createPath(pos,0);
@@ -697,7 +719,7 @@ public final class CitizenEntity extends Villager {
             return forestTask.target();
         }
         if(station.role()==StructureRole.MINE) {
-            // A mine beside an ore works only that vein, one miner at a time.
+            // A mine near an exposed ore works only that vein, one miner at a time.
             BlockPos vein=OreVeins.find(level,town,station);
             if(vein!=null) {
                 if(!book.available(vein,getUUID(),level.getGameTime()) || failedTargets.containsKey(vein)
@@ -744,7 +766,7 @@ public final class CitizenEntity extends Villager {
         }
         target=null; targetLease=null; forestTask=null; excavation=null; action=Action.HARVEST; minimumAxeDurability=1;
         workStand=null; clearingLeaf=null;
-        workProgress=0; pathTicks=0; searchDelay=10; getNavigation().stop();
+        workProgress=0; pathTicks=0; blindTicks=0; searchDelay=10; getNavigation().stop();
     }
     private void storeDrops(ServerLevel level,List<ItemStack> drops) {
         for(ItemStack stack:drops) cargo.offer(stack);
@@ -1829,7 +1851,9 @@ public final class CitizenEntity extends Villager {
         if(station.role().processes()) { process(level,town,station); return; }
         if(target==null) {
             if(searchDelay>0) { searchDelay-=10; return; }
-            if(!station.role().excavates() && !handNear(station.position())) {
+            // Stationary jobs, a vein mine among them, first walk to their station, then look for work beside it.
+            boolean stationary=!station.role().excavates() || station.role()==StructureRole.MINE && OreVeins.find(level,town,station)!=null;
+            if(stationary && !handNear(station.position())) {
                 activity="Returning to the "+station.role().id()+" worksite"; pathTicks+=10;
                 if(!walk(station.position()) || pathTicks>1200) {
                     idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level);
@@ -1843,7 +1867,7 @@ public final class CitizenEntity extends Villager {
                 activity=idleReason(level,town,station);
                 idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); searchDelay=20; return;
             }
-            pathTicks=0;
+            pathTicks=0; blindTicks=0;
         }
         if(!validTarget(level,town,station) || !book.claimAll(targetLease==null ? List.of(target) : List.of(target,targetLease),getUUID(),level.getGameTime(),200)) {
             cancelTarget(level,false); return;
@@ -1873,11 +1897,14 @@ public final class CitizenEntity extends Villager {
         if(!handNear(touch) || !canUse(level,visibleAt)) {
             activity=action==Action.PLANT ? "Walking to plant saplings" : "Walking to "+station.role().id()+" work"; pathTicks+=10;
             // Standing beside the work without a clear view will not fix itself; give up sooner than a long walk.
-            if(!walk(approach) || pathTicks>(handNear(touch) ? 100 : 1200)) {
+            if(handNear(touch)) blindTicks+=10;
+            // A chosen standing spot sees the work from that block, not from the one beside it.
+            boolean onStand=excavation==null && workStand!=null;
+            if(!walk(approach,0.65,onStand ? 0 : 1) || pathTicks>1200 || blindTicks>100) {
                 if(action==Action.EXCAVATE && excavation.quarry() && !excavation.remote()) {
                     // No way into the pit from here: keep the quarry moving from its control block instead.
                     SettlementService.reservations(level).release(excavation.lease(),getUUID());
-                    excavation=excavation.fromControlBlock(station.position()); targetLease=excavation.lease(); pathTicks=0;
+                    excavation=excavation.fromControlBlock(station.position()); targetLease=excavation.lease(); pathTicks=0; blindTicks=0;
                 } else cancelTarget(level,true);
             }
             return;
@@ -1992,6 +2019,7 @@ public final class CitizenEntity extends Villager {
     }
     @Override protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
+        planLongRoutes();
         String id=input.getStringOr("wwmc_settlement","");
         try { settlementId=id.isEmpty() ? null : UUID.fromString(id); } catch(IllegalArgumentException e) { settlementId=null; }
         workplace=input.read("wwmc_workplace",BlockPos.CODEC).orElse(null);

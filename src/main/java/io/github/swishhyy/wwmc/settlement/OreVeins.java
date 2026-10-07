@@ -15,22 +15,24 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.common.Tags;
 
 /**
- * A mine station placed beside an ore turns that ore into an endless vein: its miner collects the ore's normal drops
+ * A mine station placed near an exposed ore turns that ore into an endless vein: its miner collects the ore's normal drops
  * over and over without removing the block. Players mining it break it as usual. Rarer ores replenish more slowly.
  */
 public final class OreVeins {
     /** Game time each vein can yield again; a restart simply lets every vein yield once more. */
     private static final Map<ServerLevel,Map<BlockPos,Long>> READY=new WeakHashMap<>();
+    /** How many blocks from its station, along each axis, a vein may be. */
+    public static final int REACH=2;
     private OreVeins() {}
     /**
-     * The exposed ore in the 3x3x3 cube around a mine station, preferring blocks that share a face with it. Ore buried
-     * on every side does not count, so an older mine next to hidden ore keeps digging its tunnels.
+     * The exposed ore within {@link #REACH} blocks of a mine station along each axis, nearest first. Ore buried on every
+     * side does not count, so an older mine next to hidden ore keeps digging its tunnels.
      */
     public static BlockPos find(ServerLevel level,Settlement town,Station station) { return find(level::hasChunkAt,level::getBlockState,town,station); }
     public static BlockPos find(Predicate<BlockPos> loaded,Function<BlockPos,BlockState> blocks,Settlement town,Station station) {
         if(station.role()!=StructureRole.MINE) return null;
         BlockPos center=station.position(),best=null;
-        for(BlockPos pos:BlockPos.betweenClosed(center.offset(-1,-1,-1),center.offset(1,1,1))) {
+        for(BlockPos pos:BlockPos.betweenClosed(center.offset(-REACH,-REACH,-REACH),center.offset(REACH,REACH,REACH))) {
             if(pos.equals(center) || !town.contains(pos) || !loaded.test(pos) || !CaveMining.ore(blocks.apply(pos)) || !exposed(loaded,blocks,pos)) continue;
             if(best==null || pos.distSqr(center)<best.distSqr(center)) best=pos.immutable();
         }

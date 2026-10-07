@@ -321,6 +321,6 @@ public final class ExcavationService {
             return "chunk "+Math.floorDiv(job.bounds().minX(),16)+", "+Math.floorDiv(job.bounds().minZ(),16)+", digging layer Y "+job.cut(job.cursor()).block().y()
                     +" toward Y "+job.targetY+" ("+job.cursor()+"/"+job.size()+" cells); "+access+". Blocks beside water or lava, containers and player builds are left standing";
         }
-        return "descending access + branch tunnels, target Y "+job.targetY+", "+job.cursor()+"/"+job.size()+" excavation steps; blocked faces need clear access, dry terrain, and suitable tools";
+        return "descending access + branch tunnels, target Y "+job.targetY+", "+job.cursor()+"/"+job.size()+" excavation steps; spots that are flooded, out of reach or too hard for the miner's pickaxe are skipped";
     }
 }
