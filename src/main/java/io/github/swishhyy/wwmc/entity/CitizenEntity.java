@@ -134,6 +134,9 @@ public final class CitizenEntity extends Villager {
     private long nextPromotionAt;
     /** The town's priority revision at that look; a change brings the next look forward. */
     private int seenJobRevision=-1;
+    /** A job the owner just released this citizen from, which it does not take again for a minute. */
+    private BlockPos leftJob;
+    private long leftJobUntil;
     /** Why the citizen has no work at the moment, shown as its activity. */
     private String jobNote="Looking for a job";
     private String activity="Waiting for a job station";
@@ -261,8 +264,10 @@ public final class CitizenEntity extends Villager {
         if(level() instanceof ServerLevel server && hand==InteractionHand.MAIN_HAND) {
             Settlement town=town(server);
             if(town!=null && town.owner.equals(player.getUUID()) && player.isShiftKeyDown()) {
-                releaseWork(server); searchDelay=0;
-                SettlementService.notify(player,getName().getString()+" released their job and will choose an available station.");
+                BlockPos left=town.jobs.home(getUUID());
+                if(left!=null) { town.jobs.release(getUUID()); leftJob=left; leftJobUntil=server.getGameTime()+1200; SettlementData.get(server).setDirty(); }
+                releaseWork(server); searchDelay=0; nextPromotionAt=0;
+                SettlementService.notify(player,getName().getString()+" released their job and will take another open place.");
             } else if(canOpenInventory(player) && player.getItemInHand(hand).isEmpty()) {
                 if(player instanceof ServerPlayer viewer) Panels.openCitizen(viewer,this,cargo);
             } else if(canOpenInventory(player) && FoodHealing.food(player.getItemInHand(hand))) {
@@ -396,7 +401,8 @@ public final class CitizenEntity extends Villager {
     private Station promotion(ServerLevel level,Settlement town,Station home) {
         JobBoard jobs=town.jobs;
         int current=home==null ? JobBoard.OFF : jobs.level(home.role());
-        return town.stations.stream().filter(s -> s.role().providesWork() && jobs.level(s.role())>current
+        boolean leaving=leftJob!=null && level.getGameTime()<leftJobUntil;
+        return town.stations.stream().filter(s -> s.role().providesWork() && jobs.level(s.role())>current && !(leaving && s.position().equals(leftJob))
                 && SettlementService.active(level,s) && jobs.assigned(s.position())<SettlementService.workerLimit(town,s) && traderOpen(level,town,s))
                 .min(jobs.openOrder().thenComparingDouble(s -> distanceToSqr(Vec3.atCenterOf(s.position())))).orElse(null);
     }
