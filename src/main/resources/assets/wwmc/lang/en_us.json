@@ -96,5 +96,18 @@
   "wwmc.configuration.waveMaxMobs": "Base wave size cap",
   "wwmc.configuration.waveMaxMobs.tooltip": "Cap on wave size before the extra enemies from population upgrades are added. Upgraded towns can face more than this number. Default: 40.",
   "wwmc.configuration.waveMobsPerUpgrade": "Enemies per upgrade",
-  "wwmc.configuration.waveMobsPerUpgrade.tooltip": "Extra enemies in every wave for each population upgrade, added above the base wave cap. Upgraded towns also face pillagers, then vindicators from the third upgrade. Default: 2."
+  "wwmc.configuration.waveMobsPerUpgrade.tooltip": "Extra enemies in every wave for each population upgrade, added above the base wave cap. Upgraded towns also face pillagers, then vindicators from the third upgrade. Default: 2.",
+  "block.wwmc.trader_station": "Trader Block",
+  "wwmc.configuration.maxActiveTraders": "Active trader limit",
+  "wwmc.configuration.maxActiveTraders.tooltip": "Maximum towns with an active trader chunk window in this dimension. Each uses a moving 3x3 area (9 chunks), rather than loading the entire route. Default: 8. Extra traders wait.",
+  "wwmc.configuration.tradeRouteDistance": "Route limit (blocks)",
+  "wwmc.configuration.tradeRouteDistance.tooltip": "Maximum distance between town banners for a trader route. Routes need walkable terrain or roads and remain in the Overworld. Default: 8192 blocks.",
+  "wwmc.configuration.randomSettlements": "Generate neutral towns",
+  "wwmc.configuration.randomSettlements.tooltip": "Discover small working NPC towns in suitable loaded Overworld terrain. Existing NPC towns remain when this is disabled. They begin neutral, produce real goods, and can accept supply routes.",
+  "wwmc.configuration.npcTownSpacing": "NPC town spacing (blocks)",
+  "wwmc.configuration.npcTownSpacing.tooltip": "Region size used to space candidate towns. Default: 1408 blocks, usually about 1000–2000 blocks between nearby candidates. Terrain and player claims can leave larger gaps. Changing this affects future discoveries.",
+  "wwmc.configuration.maxNpcTowns": "Generated town limit",
+  "wwmc.configuration.maxNpcTowns.tooltip": "Maximum automatically generated NPC towns in the Overworld. Default: 48; zero prevents new discoveries. This does not remove existing towns.",
+  "wwmc.configuration.category.world": "Trade & Other Towns",
+  "wwmc.configuration.category.world.tooltip": "Trader travel limits and discovery of neutral NPC settlements."
 }

@@ -6,7 +6,7 @@ public enum StructureRole {
     HOSPITAL("hospital", false, false), WAREHOUSE("warehouse", false, false),
     FARM("farm", false, true), LUMBER("lumber", false, true), MINE("mine", false, true), QUARRY("quarry", false, true), GUARD("guard", false, true),
     CRAFTSMAN("craftsman", false, true), SMELTERY("smeltery", false, true), COOK("cook", false, true), BLACKSMITH("blacksmith", false, true),
-    COURIER("courier", false, true), ENCHANTER("enchanter", false, true);
+    COURIER("courier", false, true), ENCHANTER("enchanter", false, true), TRADER("trader", false, true);
     private final String id;
     private final boolean residential;
     private final boolean worker;
@@ -20,7 +20,7 @@ public enum StructureRole {
     public boolean excavates() { return this==MINE || this==QUARRY; }
     public boolean processes() { return this==SMELTERY || this==COOK; }
     /** Jobs whose barrels in range hold their tools, supplies and finished goods; couriers move goods between them and the warehouse. */
-    public boolean keepsJobStorage() { return worker && this!=GUARD && this!=BLACKSMITH && this!=COURIER; }
+    public boolean keepsJobStorage() { return worker && this!=GUARD && this!=BLACKSMITH && this!=COURIER && this!=TRADER; }
     /** Display name such as "Craftsman". */
     public String title() { return Character.toUpperCase(id.charAt(0))+id.substring(1); }
 }

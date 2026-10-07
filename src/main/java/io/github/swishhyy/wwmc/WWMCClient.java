@@ -5,6 +5,7 @@ import io.github.swishhyy.wwmc.client.screen.CitizenScreen;
 import io.github.swishhyy.wwmc.client.screen.CraftsmanScreen;
 import io.github.swishhyy.wwmc.client.screen.PanelScreen;
 import io.github.swishhyy.wwmc.client.screen.WwmcConfigScreen;
+import io.github.swishhyy.wwmc.client.screen.TraderScreen;
 import io.github.swishhyy.wwmc.menu.ViewMenu;
 import io.github.swishhyy.wwmc.menu.WwmcMenus;
 import io.github.swishhyy.wwmc.menu.WwmcNetwork;
@@ -50,6 +51,7 @@ public final class WWMCClient {
         event.register(WwmcMenus.PANEL.get(),PanelScreen::new);
         event.register(WwmcMenus.CRAFTSMAN.get(),CraftsmanScreen::new);
         event.register(WwmcMenus.CITIZEN.get(),CitizenScreen::new);
+        event.register(WwmcMenus.TRADER.get(),TraderScreen::new);
     }
     /** A refresh only applies to the screen it was built for. */
     private static void payloads(RegisterClientPayloadHandlersEvent event) {

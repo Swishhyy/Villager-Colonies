@@ -34,6 +34,11 @@ public final class Config {
     public static final ModConfigSpec.DoubleValue WAVE_MOBS_PER_CITIZEN = B.comment("Additional hostiles per citizen, rounded up.").defineInRange("waveMobsPerCitizen", 0.5, 0.0, 4.0);
     public static final ModConfigSpec.IntValue WAVE_MAX_MOBS = B.comment("Largest possible wave before population upgrades.").defineInRange("waveMaxMobs", 40, 1, 128);
     public static final ModConfigSpec.IntValue WAVE_MOBS_PER_UPGRADE = B.comment("Extra hostiles in every wave per population upgrade, also above the largest wave. Upgraded towns also face pillagers, and from the third upgrade vindicators.").defineInRange("waveMobsPerUpgrade", 2, 0, 16);
+    public static final ModConfigSpec.IntValue MAX_TRADERS = B.comment("Maximum towns whose trader keeps a moving 3x3 chunk window active in one dimension.").defineInRange("maxActiveTraders", 8, 1, 32);
+    public static final ModConfigSpec.IntValue TRADE_DISTANCE = B.comment("Longest permitted trader route in blocks, measured between town banners.").defineInRange("tradeRouteDistance", 8192, 512, 32768);
+    public static final ModConfigSpec.BooleanValue RANDOM_TOWNS = B.comment("Discover small neutral NPC settlements in suitable loaded Overworld terrain.").define("randomSettlements", true);
+    public static final ModConfigSpec.IntValue NPC_SPACING = B.comment("Size of deterministic NPC town regions; actual distance varies with terrain and the town's position.").defineInRange("npcTownSpacing", 1408, 1008, 4096);
+    public static final ModConfigSpec.IntValue MAX_NPC_TOWNS = B.comment("Maximum automatically generated NPC towns in the Overworld.").defineInRange("maxNpcTowns", 48, 0, 256);
     public static final ModConfigSpec SPEC = B.build();
     private Config() {}
 }

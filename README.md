@@ -6,7 +6,9 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.8.1-alpha
+## Current build: 0.9.0-alpha
+
+0.9.0 adds **multiple owned towns, Trader Blocks, physical supply routes, and small neutral NPC towns**. Each town has one trader checkpoint and one partner. Set exports with Keep and Send controls; traders carry real goods between warehouses, preserving cargo through full storage and restarts. Towns owned by different players require both owners to choose the route. Neutral NPC towns have farming, timber, or mining specialties and use the existing citizen jobs, food, beds, and storage. See [Trading and other settlements](#trading-and-other-settlements).
 
 0.8.1 makes the in-game server config readable: six sections, short setting names, and hover explanations with units and tick-to-time conversions. Existing config keys, values and defaults remain unchanged.
 
@@ -27,7 +29,7 @@ This is the first settlement foundation, not the completed warfare game.
 Implemented:
 
 - Persistent named settlements, owners, non-overlapping claims, and town priorities.
-- Settlement banner and fifteen role stations, each with its own detailed model, survival crafting recipes and a creative tab.
+- Settlement banner and sixteen role stations, each with its own detailed model, survival crafting recipes and a creative tab.
 - Emerald upgrades: wider station ranges, more crew slots, and room for more citizens at the price of larger enemy waves.
 - Screens for the town, every station, the Craftsman's orders and each citizen, refreshed every second.
 - A 240-block minimum claim radius and red banners at the four claim corners.
@@ -132,7 +134,7 @@ When miners encounter caves near the selected depth, they scan a bounded nearby 
 | `/wwmc alarm` | Sound the alarm yourself, or call the all-clear early while it rings. |
 | `/wwmc wave` | Bring the next enemy wave forward to now, even in daylight. |
 
-Commands affect your own settlement. A prototype supports one settlement per owner in the Overworld. Claims do not implement general-purpose land protection; station removal is owner-restricted. An occupied settlement's banner is its fixed rally point and cannot be mined normally.
+Commands affect your own town at your current position. You can own several towns in the Overworld, each with its own population limit. If you own several and stand outside them, use a banner screen or enter the town you want to manage. Claims do not implement general-purpose land protection; station removal is owner-restricted. An occupied settlement's banner is its fixed rally point and cannot be mined normally.
 
 ### Job blocks define building purpose
 
@@ -191,9 +193,35 @@ All markers use eight planks around a center item in a crafting table.
 
 The Station Inspector is a shapeless recipe with two paper and one stick. The **Settlement Guide** is a shapeless recipe with one book and one blue dye; right-click it to open the native book screen. `/wwmc guide` gives another copy. Tools consumed to craft stations are separate from tools supplied to workers.
 
+### Trading and other settlements
+
+Craft a **Trader Block** with a compass surrounded by eight planks. Place one inside each town; a second Trader Block in the same claim is rejected without consuming its item. One citizen works as the trader. Trader Blocks have no crew or range upgrades.
+
+1. Found a second town outside the first claim and give both towns housing, citizens, and warehouses. Population limits belong to each town separately.
+2. Open the Trader Block empty-handed and select the other town on **Routes**. Your own towns connect immediately; another player's town must select yours to accept. Each town supports one partner at a time.
+3. Click the example slot with an item, or shift-click one from your inventory, to add it to **Exports**. The example stays with you. Up to six items can be listed.
+4. Set **Keep** to the amount that must remain in this town's warehouse and **Send** to the maximum carried per trip. For example, Keep 64 / Send 32 sends up to 32 carrots above a 64-carrot reserve. Send 0 pauses that item. Configure the other town's exports separately.
+5. The citizen loads goods at home, visits the home checkpoint, walks to the other checkpoint, deposits goods in its warehouse, and returns. These are supply routes, with no automatic price or payment.
+
+Goods in transit remain separate from meals and ordinary work supplies. Full destination storage keeps the remaining load on the citizen. **Pause** stops new departures; **Disconnect** returns undelivered goods. A blocked route waits for a clear path; roads, bridges, and open doors help. Traders do not teleport, use portals, sail boats, or build roads. A dead trader drops its actual goods and the town can assign another citizen.
+
+Each active trader maintains a moving **3×3 chunk window**. The route does not keep every intervening chunk loaded. The default server limit is **8 active town traders**, and the maximum route length is **8,192 blocks**. Travel continues on a running server when an owner logs off. Ordinary workers still require ticking chunks; distant abstract town simulation is future work. Install matching mod versions on server and clients because the screen protocol changes in 0.9.0.
+
+Small NPC towns appear as you explore suitable **loaded Overworld terrain**. Deterministic regions usually put candidate towns about **1,000–2,000 blocks apart**, with larger gaps where terrain or claims prevent building. Sites must be dry, gently sloped, clear of block entities and recorded player blocks, and outside every existing town claim. Construction is saved and proceeds in batches of 128 block placements per tick. Revisiting a region cannot duplicate its town; destroying it does not cause a respawn.
+
+NPC towns start neutral with a house, 12 beds, warehouse, trader checkpoint, guard, farm, lumber operation, renewable iron vein, smelter, kitchen, and courier. They begin with six named citizens (subject to the population cap) and starter supplies, then can recruit up to ten using real surplus food and available housing while ticking. Small crews take one worker per station. Farmers export carrots, timber towns oak logs, and mining towns iron ingots; their own reserves are protected. A free neutral town accepts a proposed route automatically. Deliveries build goodwill; attacking its citizens ends your route, makes it refuse further trade, and its guards defend the town. Countries, sieges, conquest, negotiated prices, route networks, carts and escorts remain future work.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `maxActiveTraders` | 8 | Town traders with a moving 9-chunk window in one dimension. |
+| `tradeRouteDistance` | 8192 | Longest banner-to-banner trader route, in blocks. |
+| `randomSettlements` | true | Discover new neutral NPC towns; disabling leaves existing towns intact. |
+| `npcTownSpacing` | 1408 | Region size for future candidate towns, in blocks. |
+| `maxNpcTowns` | 48 | Maximum automatically generated NPC towns in the Overworld. |
+
 ### Server configuration
 
-Open **Mods → WWMC → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Worker Crews**, **Mining & Quarries**, **Work & Food**, **Enchanting**, and **Defense & Waves**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Existing TOML keys stay in their original locations, so earlier settings carry over. Multiplayer server configuration remains controlled by the server.
+Open **Mods → WWMC → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Worker Crews**, **Mining & Quarries**, **Work & Food**, **Enchanting**, **Defense & Waves**, and **Trade & Other Towns**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Existing TOML keys stay in their original locations, so earlier settings carry over. Multiplayer server configuration remains controlled by the server.
 
 The generated WWMC server config controls these defaults:
 
@@ -404,7 +432,7 @@ Automated checks do not replace an in-game playtest. Check previews, border plac
 3. **Living neighboring world:** persisted AI settlements, weighted distant events, history, player-distance generation, and mode handoff.
 4. **Military foundation:** build on town guards with trained soldiers, squad orders, wounded citizens, and hospital treatment.
 5. **Raids and trade:** independent targets, physical convoys, scouting, cargo loss, and supply disruption.
-6. **Countries and progression:** multiple towns, territory, diplomacy, sieges, varied faction technology, and conquest rules.
+6. **Countries and progression:** territory, deeper diplomacy, sieges, varied faction technology, and conquest rules. Multiple towns and the first neutral settlements and trader routes are playable in 0.9.0.
 
 Keep the first playable scope small, preserve real resource accounting, and make every existing feature explicit before broadening the world.
 

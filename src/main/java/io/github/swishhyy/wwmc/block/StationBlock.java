@@ -35,7 +35,16 @@ public final class StationBlock extends Block {
         registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH).setValue(RANGE,0).setValue(CREW,0));
     }
     @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> builder) { builder.add(FACING,RANGE,CREW); }
-    @Override public BlockState getStateForPlacement(BlockPlaceContext context) { return defaultBlockState().setValue(FACING,context.getHorizontalDirection()); }
+    @Override public BlockState getStateForPlacement(BlockPlaceContext context) {
+        if(role==StructureRole.TRADER && context.getLevel() instanceof ServerLevel server && context.getPlayer()!=null) {
+            var town=io.github.swishhyy.wwmc.settlement.SettlementData.get(server).at(context.getClickedPos());
+            if(!SettlementService.owns(context.getPlayer(),town)) { SettlementService.notify(context.getPlayer(),"Place the Trader Block inside your own town."); return null; }
+            if(!io.github.swishhyy.wwmc.settlement.TradeRoutes.uniqueCheckpoint(server,town,context.getClickedPos())) {
+                SettlementService.notify(context.getPlayer(),"Each town can have only one Trader Block."); return null;
+            }
+        }
+        return defaultBlockState().setValue(FACING,context.getHorizontalDirection());
+    }
     public StructureRole role() { return role; }
     @Override protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
         // Let held tools reach Item.useOn; only an empty hand inspects this station.
