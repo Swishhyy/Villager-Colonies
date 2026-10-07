@@ -42,6 +42,90 @@ public final class WorkWorldTests {
         var data=SettlementData.get(level);
         test.citizen().discard(); data.settlements.remove(test.town()); data.setDirty();
     }
+    private static WorkTown enchanterTown(ServerLevel level,BlockPos start,BlockPos table) {
+        BlockPos station=new BlockPos(table.getX(),start.getY(),table.getZ()-4);
+        level.setBlockAndUpdate(table,Blocks.ENCHANTING_TABLE.defaultBlockState());
+        level.setBlockAndUpdate(station.west(2),Blocks.BARREL.defaultBlockState());
+        Container barrel=(Container)level.getBlockEntity(station.west(2));
+        barrel.setItem(0,new ItemStack(Items.BOOK)); barrel.setItem(1,new ItemStack(Items.LAPIS_LAZULI,9));
+        var work=town(level,start,new Station(station,StructureRole.ENCHANTER));
+        work.town().jobs.assign(work.citizen().getUUID(),station);
+        return work;
+    }
+
+    @GameTest(timeoutTicks=1800)
+    @EmptyTemplate
+    @TestHolder(description="An enchanter walks to clear ground in reach of a raised table even when no path can enter the table block itself.")
+    static void enchantsAtRaisedTable(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-1480));
+            var chunks=CitizenNavigationTests.pinArea(level,start,-8,40,-12,12);
+            CitizenNavigationTests.meadow(level,start,-8,40,-12,12);
+            BlockPos table=start.offset(28,2,0);
+            level.setBlockAndUpdate(table.below(),Blocks.STONE.defaultBlockState());
+            level.setBlockAndUpdate(table.below(2),Blocks.STONE.defaultBlockState());
+            var work=enchanterTown(level,start,table); var citizen=work.citizen();
+            helper.runAtTickTime(5,() -> {
+                var path=citizen.getNavigation().createPath(table,1);
+                helper.assertTrue(path==null || !path.canReach(),"Fixture must prevent walking into the raised table itself");
+                helper.succeedWhen(() -> {
+                    helper.assertTrue(citizen.enchantProgress()>0,"Not walking to or using the raised table: "+citizen.activity()+" at "+citizen.blockPosition());
+                    helper.assertTrue(citizen.position().distanceToSqr(net.minecraft.world.phys.Vec3.atBottomCenterOf(start))>100,"Enchanter worked from across town");
+                    helper.assertTrue(CitizenReach.canUse(level,citizen.getEyePosition(),table),"Enchanter bypassed four-block reach or clear view");
+                    leave(level,work); CitizenNavigationTests.release(level,start,chunks);
+                });
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=7800)
+    @EmptyTemplate
+    @TestHolder(description="An enchanter walks to a bookshelf room, completes a real book enchantment and returns it to its job barrel.")
+    static void enchantsInBookshelfRoom(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-1640));
+            var chunks=CitizenNavigationTests.pinArea(level,start,-8,40,-12,12);
+            CitizenNavigationTests.meadow(level,start,-8,40,-12,12);
+            BlockPos table=start.east(28);
+            for(int x=-2;x<=2;x++) for(int z=-2;z<=2;z++) if((Math.abs(x)==2 || Math.abs(z)==2) && !(x==-2 && z==0))
+                for(int y=0;y<2;y++) level.setBlockAndUpdate(table.offset(x,y,z),Blocks.BOOKSHELF.defaultBlockState());
+            var work=enchanterTown(level,start,table); var citizen=work.citizen();
+            Container barrel=(Container)level.getBlockEntity(work.town().stations.getFirst().position().west(2));
+            helper.succeedWhen(() -> {
+                helper.assertTrue(InventoryOps.count(List.of(barrel),s -> s.is(Items.ENCHANTED_BOOK))==1,"Book was not enchanted and returned: "+citizen.activity()+" at "+citizen.blockPosition());
+                helper.assertTrue(InventoryOps.count(List.of(barrel),s -> s.is(Items.BOOK))==0,"The input book was duplicated");
+                helper.assertTrue(citizen.bag().count(Items.LAPIS_LAZULI)<9,"Enchanting spent no lapis");
+                leave(level,work); CitizenNavigationTests.release(level,start,chunks);
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=900)
+    @EmptyTemplate
+    @TestHolder(description="An enchanter cannot work through a sealed room, but starts walking and enchanting soon after its entrance opens.")
+    static void retriesEnchantingWhenEntranceOpens(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-1800));
+            var chunks=CitizenNavigationTests.pinArea(level,start,-8,40,-12,12);
+            CitizenNavigationTests.meadow(level,start,-8,40,-12,12);
+            BlockPos table=start.east(28);
+            for(int x=-2;x<=2;x++) for(int z=-2;z<=2;z++) {
+                if(Math.abs(x)==2 || Math.abs(z)==2) for(int y=0;y<3;y++)
+                    level.setBlockAndUpdate(table.offset(x,y,z),Blocks.STONE.defaultBlockState());
+                level.setBlockAndUpdate(table.offset(x,3,z),Blocks.STONE.defaultBlockState());
+            }
+            var work=enchanterTown(level,start,table); var citizen=work.citizen();
+            helper.runAtTickTime(250,() -> {
+                helper.assertTrue(citizen.enchantProgress()==0,"Enchanter worked through the closed wall");
+                for(int y=0;y<2;y++) level.setBlockAndUpdate(table.offset(-2,y,0),Blocks.AIR.defaultBlockState());
+                helper.succeedWhen(() -> {
+                    helper.assertTrue(citizen.enchantProgress()>0,"Did not retry after opening the entrance: "+citizen.activity()+" at "+citizen.blockPosition());
+                    helper.assertTrue(CitizenReach.canUse(level,citizen.getEyePosition(),table),"Enchanter worked without clear reach after the entrance opened");
+                    leave(level,work); CitizenNavigationTests.release(level,start,chunks);
+                });
+            });
+        });
+    }
 
     @GameTest(timeoutTicks=2400)
     @EmptyTemplate
