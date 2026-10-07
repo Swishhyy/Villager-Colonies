@@ -139,8 +139,8 @@ public final class UpgradeChecks {
         check(JobStorage.needsSupplies(supplies,StructureRole.ENCHANTER,List.of(empty),List.of(warehouse)),"An enchanter's empty barrel gets lapis");
         CitizenInventory bag=new CitizenInventory(player -> true);
         check(JobStorage.load(supplies,StructureRole.ENCHANTER,List.of(empty),List.of(warehouse),bag)==18 && bag.count(Items.LAPIS_LAZULI)==18,"Couriers carry two reserves of lapis");
-        check(JobStorage.input(supplies,StructureRole.ENCHANTER,new ItemStack(Items.LAPIS_LAZULI)) && !JobStorage.input(supplies,StructureRole.ENCHANTER,new ItemStack(Items.BOOK)),
-                "Only lapis is delivered to enchanters");
+        check(JobStorage.input(supplies,StructureRole.ENCHANTER,new ItemStack(Items.LAPIS_LAZULI)) && JobStorage.input(supplies,StructureRole.ENCHANTER,new ItemStack(Items.BOOK)),
+                "Couriers deliver both lapis and unenchanted books to enchanters");
 
         PanelView view=new PanelView(Component.literal("Lumber Station"),Component.literal("range 9x9x9"),List.of(),
                 List.of(new PanelView.Action(Panels.RANGE_UP,"Range: 16 emeralds",false,"Widen the range from 9x9x9 to 11x11x11")));

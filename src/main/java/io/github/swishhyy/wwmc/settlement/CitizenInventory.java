@@ -103,6 +103,6 @@ public final class CitizenInventory extends SimpleContainer {
             if(!food.test(stack)) return true;
             rations+=stack.getCount();
         }
-        return rations>8;
+        return rations>FoodSharing.PERSONAL_LIMIT;
     }
 }

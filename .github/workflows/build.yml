@@ -32,7 +32,7 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build --console=plain
 
-      - name: Test citizen roads, bridges, and trader travel
+      - name: Test citizen work, logistics, food, and travel
         run: ./gradlew runGameTestServer --console=plain
 
       - name: Upload mod JAR

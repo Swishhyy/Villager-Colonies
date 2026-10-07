@@ -10,11 +10,12 @@ public final class Config {
     public static final ModConfigSpec.IntValue POPULATION_STEP = B.comment("Extra citizens each population upgrade allows.").defineInRange("populationPerUpgrade", 5, 1, 64);
     public static final ModConfigSpec.IntValue POPULATION_COST = B.comment("Emeralds for the first population upgrade; each later upgrade costs this much more than the one before.").defineInRange("populationUpgradeCost", 8, 0, 4096);
     public static final ModConfigSpec.IntValue STATION_COST = B.comment("Emeralds for a station's first range or crew upgrade; each further level costs twice as much as the last.").defineInRange("stationUpgradeCost", 8, 0, 4096);
-    public static final ModConfigSpec.IntValue STATION_WORKERS = B.comment("Workers sharing each lumber or mine station before crew upgrades. Farms, craftsmen and enchanters always have one worker.").defineInRange("stationWorkers", 4, 1, 32);
+    public static final ModConfigSpec.IntValue STATION_WORKERS = B.comment("Workers sharing each lumber station before crew upgrades. Mines, farms, craftsmen and enchanters always have one worker.").defineInRange("stationWorkers", 4, 1, 32);
     public static final ModConfigSpec.IntValue COURIER_WORKERS = B.comment("Couriers per courier station before crew upgrades.").defineInRange("courierWorkers", 2, 1, 16);
     public static final ModConfigSpec.IntValue QUARRY_WORKERS = B.comment("Workers sharing each quarry station before crew upgrades.").defineInRange("quarryWorkers", 8, 1, 32);
     public static final ModConfigSpec.IntValue GUARD_WORKERS = B.comment("Guard crew slots per guard station before crew upgrades.").defineInRange("guardWorkers", 2, 1, 16);
     public static final ModConfigSpec.IntValue PROCESSING_WORKERS = B.comment("Workers sharing each smeltery or cook station before crew upgrades.").defineInRange("processingWorkers", 2, 1, 16);
+    public static final ModConfigSpec.IntValue ANIMAL_WORKERS = B.comment("Workers per hunter, fisherman, animal keeper or butcher station before crew upgrades.").defineInRange("animalWorkers", 2, 1, 16);
     public static final ModConfigSpec.IntValue BLACKSMITH_WORKERS = B.comment("Blacksmiths sharing each repair station before crew upgrades.").defineInRange("blacksmithWorkers", 2, 1, 16);
     public static final ModConfigSpec.IntValue ENCHANT_MINUTES = B.comment("Minutes an enchanter works on a book or common item. Iron and gold gear take 1.3 times as long, diamond 1.6, netherite twice, and uncommon, rare and epic items longer still.").defineInRange("enchantMinutes", 5, 1, 60);
     public static final ModConfigSpec.IntValue ENCHANTER_MAX_LEVEL = B.comment("Highest enchanting level an enchanter reaches, whatever the bookshelves; players alone reach 30.").defineInRange("enchanterMaxLevel", 25, 1, 29);
@@ -25,7 +26,11 @@ public final class Config {
     public static final ModConfigSpec.IntValue MINE_BRANCH_LENGTH = B.comment("Length of each side tunnel.").defineInRange("mineBranchLength", 24, 1, 64);
     public static final ModConfigSpec.IntValue MINE_BRANCH_PAIRS = B.comment("Pairs of branch tunnels spaced three blocks apart.").defineInRange("mineBranchPairs", 4, 1, 16);
     public static final ModConfigSpec.IntValue WORK_TICKS = B.comment("Ticks to harvest a block after reaching it.").defineInRange("workTicks", 80, 20, 400);
-    public static final ModConfigSpec.IntValue RATION_TICKS = B.comment("Loaded server ticks between meals.").defineInRange("rationTicks", 2400, 200, 24000);
+    public static final ModConfigSpec.IntValue RATION_TICKS = B.comment("Base loaded server ticks between meals; multiply by mealIntervalMultiplier for the actual interval.").defineInRange("rationTicks", 2400, 200, 24000);
+    public static final ModConfigSpec.IntValue MEAL_MULTIPLIER = B.comment("Multiplies the saved rationTicks value. Default 3 makes regular meals three times less frequent, including in existing worlds.").defineInRange("mealIntervalMultiplier", 3, 1, 12);
+    public static final ModConfigSpec.IntValue FISHING_SECONDS = B.comment("Seconds spent fishing at a valid bank for each whole fish catch.").defineInRange("fishingSeconds", 30, 5, 300);
+    public static final ModConfigSpec.IntValue ANIMAL_BREEDERS = B.comment("Adult animals kept for breeding per species in each keeper pen. Only surplus adults are harvested; babies, named animals and mating animals are preserved.").defineInRange("animalBreeders", 4, 2, 16);
+    public static int mealIntervalTicks() { return RATION_TICKS.get()*MEAL_MULTIPLIER.get(); }
     public static final ModConfigSpec.IntValue ALARM_THRESHOLD = B.comment("Hostiles citizens must sight at once before a guard runs to ring the town bell.").defineInRange("alarmThreshold", 10, 3, 128);
     public static final ModConfigSpec.BooleanValue WAVES = B.comment("Send hostile waves against settlements while their owner is home.").define("enemyWaves", true);
     public static final ModConfigSpec.IntValue WAVE_MIN_POPULATION = B.comment("Citizens a town needs before waves are scheduled.").defineInRange("waveMinPopulation", 3, 1, 128);
