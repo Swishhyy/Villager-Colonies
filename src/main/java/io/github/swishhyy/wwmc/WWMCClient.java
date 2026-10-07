@@ -4,6 +4,7 @@ import io.github.swishhyy.wwmc.client.StationRangePreview;
 import io.github.swishhyy.wwmc.client.screen.CitizenScreen;
 import io.github.swishhyy.wwmc.client.screen.CraftsmanScreen;
 import io.github.swishhyy.wwmc.client.screen.PanelScreen;
+import io.github.swishhyy.wwmc.client.screen.WwmcConfigScreen;
 import io.github.swishhyy.wwmc.menu.ViewMenu;
 import io.github.swishhyy.wwmc.menu.WwmcMenus;
 import io.github.swishhyy.wwmc.menu.WwmcNetwork;
@@ -14,7 +15,6 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.network.event.RegisterClientPayloadHandlersEvent;
-import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
@@ -27,7 +27,7 @@ import net.minecraft.world.item.BlockItem;
 @Mod(value=WWMC.MODID,dist=Dist.CLIENT)
 public final class WWMCClient {
     public WWMCClient(IEventBus bus, ModContainer container) {
-        container.registerExtensionPoint(IConfigScreenFactory.class,ConfigurationScreen::new);
+        container.registerExtensionPoint(IConfigScreenFactory.class,WwmcConfigScreen::create);
         bus.addListener(WWMCClient::renderers);
         bus.addListener(WWMCClient::layers);
         bus.addListener(WWMCClient::screens);
