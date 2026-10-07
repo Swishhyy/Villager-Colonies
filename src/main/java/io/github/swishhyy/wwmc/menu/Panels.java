@@ -26,9 +26,8 @@ import net.minecraft.world.phys.Vec3;
 
 /** Builds every settlement screen on the server and applies its buttons. Only the town's owner sees these screens. */
 public final class Panels {
-    public static final int PRIORITY=1,ALARM=2,RECRUIT=3,BREAD=4,POSTS=5,RANGE_UP=6,CREW_UP=7,GROW=8,TARGET=10,RAISE=11,FORGET=12;
+    public static final int PRIORITY=1,ALARM=2,RECRUIT=3,BREAD=4,POSTS=5,RANGE_UP=6,CREW_UP=7,GROW=8,TARGET=10,RAISE=11,FORGET=12,JOB=13,JOB_STEP=14;
     public static final int GREEN=0xFF3FA34D,RED=0xFFC0392B,AMBER=0xFFD39B1E,GRAY=0xFF707070;
-    private static final List<String> PRIORITIES=List.of("balanced","food","materials");
     private Panels() {}
     private static ServerLevel level(ServerPlayer player) { return (ServerLevel)player.level(); }
     private static ItemStack icon(ItemLike item) { return new ItemStack(item); }
@@ -106,10 +105,11 @@ public final class Panels {
         overview.add(new Row(icon(Items.BARREL),"Job barrels",barrels==0 ? "None: put a barrel in a work station's range"
                 : barrels+" barrels"+(SettlementService.couriers(level,town) ? ", emptied by couriers" : "; add a Courier Station to collect from them")));
         overview.add(new Row(icon(Items.COMPASS),"Claim",town.radius+" blocks from the banner on X and Z"));
-        overview.add(new Row(icon(Items.WHEAT),"Work priority",switch(town.priority) {
-            case "food" -> "Food: farms and cooks first";
-            case "materials" -> "Materials: forestry, mining and workshops first";
-            default -> "Balanced";
+        overview.add(new Row(icon(Items.WHEAT),"Job priorities",switch(town.priority) {
+            case "food" -> "Food preset: farms and cooks first";
+            case "materials" -> "Materials preset: farms and cooks last";
+            case "balanced" -> "Balanced preset: guards and traders first";
+            default -> "Custom: see the Jobs tab";
         }));
         overview.add(alarm(town));
         overview.add(new Row(icon(Items.IRON_SWORD),"Enemy waves",WaveService.status(level,town)+"; "+town.waves+" repelled"));
@@ -122,13 +122,14 @@ public final class Panels {
         for(Station station:town.stations) stations.add(summary(level,town,station));
         String recruit=free>0 ? "Recruit ("+free+" free)" : town.citizens.size()>=limit ? "Recruit (at limit)" : "Recruit (needs beds)";
         List<Action> actions=List.of(
-            new Action(PRIORITY,"Priority: "+town.priority,true,"Idle workers prefer food or material jobs; click to switch"),
+            new Action(PRIORITY,"Preset: "+town.priority,true,"Sets every job's priority: balanced, food first or materials first. "
+                    +"Set single jobs in the Jobs tab. Citizens keep their jobs unless a higher-priority job has an open place."),
             new Action(ALARM,DefenseService.alarmed(town) ? "Sound the all-clear" : "Sound the alarm",true,
                     "Sends civilians to cover and every guard on duty, or ends the alarm"),
             new Action(RECRUIT,recruit,free>0,"A citizen needs a free housing bed and room under the population limit of "+limit),
             grow(town,viewer));
         return new PanelView(Component.literal(town.name),Component.literal(town.citizens.size()+" citizens · "+town.stations.size()+" stations · claim "+town.radius),
-                List.of(new Tab("Overview",overview),new Tab("Citizens",people),new Tab("Stations",stations)),actions);
+                List.of(new Tab("Overview",overview),new Tab("Jobs",jobRows(town)),new Tab("Citizens",people),new Tab("Stations",stations)),actions);
     }
     /** The population upgrade button: its price, and greyed out when unaffordable or at the ceiling. */
     private static Action grow(Settlement town,ServerPlayer viewer) {
@@ -145,8 +146,13 @@ public final class Panels {
         Row row=new Row(icon(Items.BELL),"Alarm",DefenseService.status(town));
         return DefenseService.alarmed(town) ? new Row(row.icon(),row.text(),row.detail(),RED,PanelView.NO_BAR,PanelView.NO_VALUE) : row;
     }
+    /** A citizen's own station: where it works by assignment, even while asleep or on an errand. */
+    private static Station home(Settlement town,CitizenEntity citizen) {
+        BlockPos home=town.jobs.home(citizen.getUUID());
+        return home==null ? null : town.station(home);
+    }
     private static Row person(Settlement town,CitizenEntity citizen) {
-        Station job=citizen.workplace()==null ? null : town.station(citizen.workplace());
+        Station job=home(town,citizen);
         float health=citizen.getHealth()/Math.max(1,citizen.getMaxHealth());
         return new Row(job==null ? icon(Items.PAPER) : stationIcon(job.role()),citizen.getName().getString(),
                 (job==null ? "No job" : job.role().title())+": "+citizen.activity()).bar(health,health<0.5F ? RED : GREEN);
@@ -158,12 +164,16 @@ public final class Panels {
         float fill=used/(float)Math.max(1,slots);
         return new Row(icon,name,containers.size()+" containers, "+Math.round(fill*100)+"% of slots used").bar(fill,fill>0.9F ? RED : fill>0.7F ? AMBER : GREEN);
     }
-    public static void townAction(ServerPlayer player,BlockPos pos,int action) {
+    public static void townAction(ServerPlayer player,BlockPos pos,int action,int value,String key) {
         Settlement town=owned(player,pos);
         if(town==null) return;
         ServerLevel level=level(player);
         switch(action) {
-            case PRIORITY -> { town.priority=PRIORITIES.get((PRIORITIES.indexOf(town.priority)+1)%PRIORITIES.size()); dirty(player); }
+            case PRIORITY -> SettlementService.applyPreset(level,town,JobBoard.PRESETS.get((JobBoard.PRESETS.indexOf(town.priority)+1)%JobBoard.PRESETS.size()));
+            case JOB -> {
+                StructureRole role=workRole(key);
+                if(role!=null && value>=JobBoard.OFF && value<=JobBoard.HIGH) SettlementService.setJobLevel(level,town,role,value);
+            }
             case ALARM -> DefenseService.toggle(level,town);
             case RECRUIT -> {
                 int added=SettlementService.recruit(level,town,1);
@@ -181,15 +191,46 @@ public final class Panels {
         Station station=stationAt(player,pos);
         return station==null ? null : station(level(player),owned(player,pos),station,player);
     }
-    private static String crew(ServerLevel level,Station station) {
-        return station.role().providesWork() ? "Crew "+SettlementService.workers(level).count(station.position(),level.getGameTime())+"/"+SettlementService.workerLimit(station) : "No crew";
+    private static String crew(Settlement town,Station station) {
+        return station.role().providesWork() ? "Crew "+town.jobs.assigned(station.position())+"/"+SettlementService.workerLimit(town,station) : "No crew";
+    }
+    private static StructureRole workRole(String id) {
+        for(StructureRole role:StructureRole.values()) if(role.providesWork() && role.id().equals(id)) return role;
+        return null;
+    }
+    private static int levelColor(int level) { return level==JobBoard.OFF ? GRAY : level==JobBoard.HIGH ? GREEN : 0; }
+    /**
+     * One row per job the town has stations for: its priority, with buttons to change it, and who holds its places.
+     * Rows keep a fixed order so they do not move under the buttons.
+     */
+    private static List<Row> jobRows(Settlement town) {
+        List<Row> rows=new ArrayList<>();
+        rows.add(new Row(icon(Items.BOOK),"Citizens keep their jobs","Open places in higher-priority jobs fill first and draw citizens from lower ones. Off frees a job's crew."));
+        for(StructureRole role:StructureRole.values()) {
+            if(!role.providesWork()) continue;
+            List<Station> stations=town.stations.stream().filter(station -> station.role()==role).toList();
+            if(stations.isEmpty()) continue;
+            int places=0;
+            List<String> names=new ArrayList<>();
+            for(Station station:stations) {
+                places+=SettlementService.workerLimit(town,station);
+                for(UUID id:town.jobs.crew(station.position())) names.add(town.citizenNames.getOrDefault(id,"a citizen"));
+            }
+            int level=town.jobs.level(role);
+            String detail=level==JobBoard.OFF ? "Switched off: nobody works here"
+                    : names.size()+" of "+places+" places filled"+(names.isEmpty() ? "" : ": "+String.join(", ",names));
+            rows.add(new Row(stationIcon(role),Component.literal(role.title()+" · "+JobBoard.levelName(level)),Component.literal(detail),
+                    levelColor(level),PanelView.NO_BAR,level,role.id()));
+        }
+        if(rows.size()==1) rows.add(new Row(icon(Items.PAPER),"No work stations","Place a job station inside the claim to give citizens work"));
+        return rows;
     }
     /** One line for the town's station list. */
     private static Row summary(ServerLevel level,Settlement town,Station station) {
         List<Row> lines=status(level,town,station);
         String first=lines.isEmpty() ? "" : lines.getFirst().detail().getString();
         return new Row(stationIcon(station.role()),station.role().title()+" Station",station.position().toShortString()+" · "
-                +(station.role().providesWork() ? crew(level,station)+" · " : "")+first);
+                +(station.role().providesWork() ? crew(town,station)+" · " : "")+first);
     }
     public static PanelView station(ServerLevel level,Settlement town,Station station) { return station(level,town,station,null); }
     public static PanelView station(ServerLevel level,Settlement town,Station station,ServerPlayer viewer) {
@@ -205,7 +246,12 @@ public final class Panels {
         if(role==StructureRole.GUARD) actions.add(new Action(POSTS,"Choose guard posts",true,"Then right-click the ground for the day post and the night post"));
         if(Upgrades.widens(role)) actions.add(upgrade(station,true,viewer));
         if(Upgrades.hires(role)) actions.add(upgrade(station,false,viewer));
-        return new PanelView(Component.literal(role.title()+" Station"),Component.literal(crew(level,station)+" · "
+        if(role.providesWork()) {
+            int priority=town.jobs.level(role);
+            actions.add(new Action(JOB_STEP,role.title()+" priority: "+JobBoard.levelName(priority),true,"Sets the priority of every "+role.id()
+                    +" station: Off, Low, Normal or High. Higher-priority jobs fill first and draw citizens from lower ones; Off frees the crew. Click for the next level."));
+        }
+        return new PanelView(Component.literal(role.title()+" Station"),Component.literal(crew(town,station)+" · "
                 +(role.excavates() ? "facing "+station.facing().getName() : "range "+station.size())),tabs,actions);
     }
     /** A range or crew upgrade button with its price; greyed out when maxed or unaffordable. */
@@ -234,11 +280,15 @@ public final class Panels {
         rows.add(new Row(stationIcon(role),"Kept when moved","A broken station's item keeps its upgrades"));
         return rows;
     }
+    /** The citizens whose job is this station, including those asleep, on an errand or out of loaded range. */
     private static List<Row> crewRows(ServerLevel level,Settlement town,Station station) {
         List<Row> rows=new ArrayList<>();
-        for(UUID id:SettlementService.workers(level).members(station.position(),level.getGameTime()))
+        for(UUID id:town.jobs.crew(station.position())) {
             if(level.getEntity(id) instanceof CitizenEntity citizen) rows.add(person(town,citizen));
-        if(rows.isEmpty()) rows.add(new Row(icon(Items.PAPER),"Nobody assigned",station.role().providesWork() ? "Idle citizens take open crew slots" : ""));
+            else rows.add(new Row(icon(Items.MAP),town.citizenNames.getOrDefault(id,"A citizen"),"Out of range: their chunk is not loaded"));
+        }
+        if(rows.isEmpty()) rows.add(new Row(icon(Items.PAPER),"Nobody assigned",town.jobs.level(station.role())==JobBoard.OFF ? "This job is switched off"
+                : "Citizens without a job, or in a lower-priority job, take open places"));
         return rows;
     }
     /** Totals of each item in these containers, largest first. */
@@ -333,6 +383,8 @@ public final class Panels {
         } else if(action==POSTS && station.role()==StructureRole.GUARD) {
             player.closeContainer();
             GuardService.begin(level(player),player,pos);
+        } else if(action==JOB_STEP && station.role().providesWork()) {
+            SettlementService.setJobLevel(level(player),town,station.role(),(town.jobs.level(station.role())+1)%(JobBoard.HIGH+1));
         }
     }
 
@@ -355,7 +407,7 @@ public final class Panels {
             orders.add(new Row(new ItemStack(item),new ItemStack(item).getHoverName().copy().append(order.anyWood() ? " (any wood)" : ""),
                     Component.literal(have+" in town · "+note),color,order.target()==0 ? 0 : have/(float)order.target(),order.target()));
         }
-        return new PanelView(Component.literal("Craftsman Station · "+crew(level,station)),
+        return new PanelView(Component.literal("Craftsman Station · "+crew(town,station)),
                 Component.literal(feedback.isEmpty() ? "Click the slot with an item, or shift-click one, to teach its recipe" : feedback),
                 List.of(new Tab("Orders",orders),new Tab("Crew",crewRows(level,town,station))),List.of());
     }
@@ -390,7 +442,7 @@ public final class Panels {
     public static PanelView citizen(CitizenEntity citizen) {
         ServerLevel level=(ServerLevel)citizen.level();
         Settlement town=citizen.town(level);
-        Station job=town==null || citizen.workplace()==null ? null : town.station(citizen.workplace());
+        Station job=town==null ? null : home(town,citizen);
         List<Row> status=new ArrayList<>();
         status.add(new Row(job==null ? icon(Items.PAPER) : stationIcon(job.role()),job==null ? "No job" : job.role().title()+" at "+job.position().toShortString(),citizen.activity()));
         if(citizen.tradeCargoCount()>0) status.add(new Row(icon(Items.BUNDLE),"Trade load",citizen.tradeCargoCount()+" items reserved for the destination; separate from meals and job supplies"));

@@ -18,9 +18,10 @@ public final class GuardService {
         return GuardDuty.active(SettlementService.workers(level).members(station,level.getGameTime()),guard,
                 SettlementService.night(level),DefenseService.alarmed(town));
     }
+    /** A guard post nobody is assigned to, which a guard from a post with several may take over. */
     public static Station uncovered(ServerLevel level,Settlement town) {
         return town.stations.stream().filter(s -> s.role()==StructureRole.GUARD && SettlementService.active(level,s)
-                && SettlementService.workers(level).count(s.position(),level.getGameTime())==0).findFirst().orElse(null);
+                && town.jobs.assigned(s.position())==0).findFirst().orElse(null);
     }
     private record Selection(BlockPos station,BlockPos day,long until) {}
     private static final Map<ServerLevel,Map<UUID,Selection>> SELECTING=new WeakHashMap<>();

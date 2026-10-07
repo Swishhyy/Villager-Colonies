@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Container;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -19,23 +20,27 @@ import net.neoforged.testframework.gametest.GameTest;
 
 /** Citizens doing their jobs in a real world: choosing the station, walking there and working. */
 public final class WorkWorldTests {
-    /** A small town on an open meadow whose only station is a mine, with one miner holding a pickaxe at the start. */
-    private record MineTown(Settlement town,CitizenEntity miner) {}
-    private static MineTown mineTown(ServerLevel level,BlockPos start,BlockPos mine) {
-        Settlement town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Mine test",start.west(4),48,List.of(),
-                List.of(new Station(mine,StructureRole.MINE)),"balanced");
+    /** A small town on an open meadow with these stations, and one citizen at the start. */
+    private record WorkTown(Settlement town,CitizenEntity citizen) {}
+    private static WorkTown town(ServerLevel level,BlockPos start,Station... stations) {
+        Settlement town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Work test",start.west(4),48,List.of(),List.of(stations),"balanced");
         var data=SettlementData.get(level); data.settlements.add(town); data.setDirty();
         level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState());
-        level.setBlockAndUpdate(mine,WWMC.STATIONS.get(StructureRole.MINE).get().defaultBlockState());
-        var miner=new CitizenEntity(WWMC.CITIZEN.get(),level);
-        miner.join(town.id); miner.setItemSlot(EquipmentSlot.MAINHAND,new ItemStack(Items.IRON_PICKAXE));
-        miner.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5);
-        town.citizens.add(miner.getUUID()); level.addFreshEntity(miner);
-        return new MineTown(town,miner);
+        for(Station station:stations) level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+        var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
+        citizen.join(town.id); citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5);
+        town.citizens.add(citizen.getUUID()); level.addFreshEntity(citizen);
+        return new WorkTown(town,citizen);
     }
-    private static void leave(ServerLevel level,MineTown test) {
+    /** A town whose only station is a mine, with one miner holding a pickaxe at the start. */
+    private static WorkTown mineTown(ServerLevel level,BlockPos start,BlockPos mine) {
+        var town=town(level,start,new Station(mine,StructureRole.MINE));
+        town.citizen().setItemSlot(EquipmentSlot.MAINHAND,new ItemStack(Items.IRON_PICKAXE));
+        return town;
+    }
+    private static void leave(ServerLevel level,WorkTown test) {
         var data=SettlementData.get(level);
-        test.miner().discard(); data.settlements.remove(test.town()); data.setDirty();
+        test.citizen().discard(); data.settlements.remove(test.town()); data.setDirty();
     }
 
     @GameTest(timeoutTicks=2400)
@@ -51,7 +56,7 @@ public final class WorkWorldTests {
             level.setBlockAndUpdate(ore,Blocks.IRON_ORE.defaultBlockState());
             var town=mineTown(level,start,mine);
             helper.succeedWhen(() -> {
-                helper.assertTrue(OreVeins.readyAt(level,ore)>0,"Vein not worked: "+town.miner().activity()+" at "+town.miner().blockPosition());
+                helper.assertTrue(OreVeins.readyAt(level,ore)>0,"Vein not worked: "+town.citizen().activity()+" at "+town.citizen().blockPosition());
                 helper.assertTrue(level.getBlockState(ore).is(Blocks.IRON_ORE),"The vein's ore was removed");
                 leave(level,town); CitizenNavigationTests.release(level,start,chunks);
             });
@@ -73,8 +78,39 @@ public final class WorkWorldTests {
             var town=mineTown(level,start,mine);
             helper.succeedWhen(() -> {
                 helper.assertTrue(OreVeins.find(level,town.town(),town.town().stations.getFirst())!=null,"Ore two blocks away was not found as the mine's vein");
-                helper.assertTrue(OreVeins.readyAt(level,ore)>0,"Vein not worked: "+town.miner().activity()+" at "+town.miner().blockPosition());
+                helper.assertTrue(OreVeins.readyAt(level,ore)>0,"Vein not worked: "+town.citizen().activity()+" at "+town.citizen().blockPosition());
                 leave(level,town); CitizenNavigationTests.release(level,start,chunks);
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=3000)
+    @EmptyTemplate
+    @TestHolder(description="A farmer whose farm has no crops waits there instead of taking the open mine, then moves to the mine once mining is raised to High.")
+    static void keepsJobUntilPromoted(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel();
+            BlockPos start=helper.absolutePos(new BlockPos(0,2,-800));
+            var chunks=CitizenNavigationTests.pinArea(level,start,-8,28,-8,8);
+            CitizenNavigationTests.meadow(level,start,-8,28,-8,8);
+            BlockPos farm=start.east(4),mine=start.east(18),ore=mine.east();
+            level.setBlockAndUpdate(ore,Blocks.IRON_ORE.defaultBlockState());
+            // The mine's job barrel holds the pickaxe the farmer needs once it becomes a miner.
+            level.setBlockAndUpdate(mine.north(),Blocks.BARREL.defaultBlockState());
+            ((Container)level.getBlockEntity(mine.north())).setItem(0,new ItemStack(Items.IRON_PICKAXE));
+            var work=town(level,start,new Station(farm,StructureRole.FARM),new Station(mine,StructureRole.MINE));
+            Settlement town=work.town();
+            CitizenEntity citizen=work.citizen();
+            town.jobs.assign(citizen.getUUID(),farm);
+            helper.runAtTickTime(400,() -> {
+                helper.assertTrue(farm.equals(town.jobs.home(citizen.getUUID())),"The farmer left the farm: "+citizen.activity());
+                helper.assertTrue(!mine.equals(citizen.workplace()) && OreVeins.readyAt(level,ore)==0,"The farmer took the open mine without a promotion: "+citizen.activity());
+                SettlementService.setJobLevel(level,town,StructureRole.MINE,JobBoard.HIGH);
+                helper.succeedWhen(() -> {
+                    helper.assertTrue(mine.equals(town.jobs.home(citizen.getUUID())),"Not moved to the higher-priority mine: "+citizen.activity());
+                    helper.assertTrue(OreVeins.readyAt(level,ore)>0,"Moved to the mine but not mining: "+citizen.activity()+" at "+citizen.blockPosition());
+                    leave(level,work); CitizenNavigationTests.release(level,start,chunks);
+                });
             });
         });
     }

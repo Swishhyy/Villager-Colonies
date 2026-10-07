@@ -75,6 +75,18 @@ public final class SettlementService {
     }
     /** NPC crews spread their small population across all essential jobs. */
     public static int workerLimit(Settlement town,Station station) { return town.trading.npc ? 1 : workerLimit(station); }
+    /** Sets every job's priority from a preset. Citizens keep their jobs unless a job of higher priority has an open place. */
+    public static void applyPreset(ServerLevel level,Settlement town,String preset) {
+        town.priority=preset; town.jobs.apply(preset);
+        SettlementData.get(level).setDirty();
+    }
+    /** Changes one job's priority; switching a job off sends its crew to look for other work. */
+    public static void setJobLevel(ServerLevel level,Settlement town,StructureRole role,int value) {
+        town.jobs.setLevel(role,value);
+        if(value==JobBoard.OFF) town.jobs.releaseRole(town,role);
+        town.priority=town.jobs.matchingPreset();
+        SettlementData.get(level).setDirty();
+    }
     public static ReservationBook<BlockPos> reservations(ServerLevel level) {
         return RESERVATIONS.computeIfAbsent(level, l -> new ReservationBook<>());
     }
@@ -469,14 +481,27 @@ public final class SettlementService {
                 s.name=name; SettlementData.get(c.getSource().getLevel()).setDirty(); return 1;
             })))
             .then(Commands.literal("priority").then(Commands.argument("priority",StringArgumentType.word())
-                .suggests((c,b) -> { for(String p:List.of("balanced","food","materials")) b.suggest(p); return b.buildFuture(); })
+                .suggests((c,b) -> { for(String p:JobBoard.PRESETS) b.suggest(p); return b.buildFuture(); })
                 .executes(c -> {
                     Settlement s=owned(c.getSource()); if(s==null) return 0;
                     String p=StringArgumentType.getString(c,"priority");
-                    if(!List.of("balanced","food","materials").contains(p)) { c.getSource().sendFailure(Component.literal("Choose balanced, food, or materials.")); return 0; }
-                    s.priority=p; SettlementData.get(c.getSource().getLevel()).setDirty();
-                    c.getSource().sendSuccess(() -> Component.literal("Town priority set to "+p+". Idle workers will prefer those stations."),false); return 1;
+                    if(!JobBoard.PRESETS.contains(p)) { c.getSource().sendFailure(Component.literal("Choose balanced, food, or materials.")); return 0; }
+                    applyPreset(c.getSource().getLevel(),s,p);
+                    c.getSource().sendSuccess(() -> Component.literal("Job priorities set to "+p+". Citizens move to open places in higher-priority jobs; the rest keep their jobs."),false); return 1;
                 })))
+            .then(Commands.literal("job").then(Commands.argument("job",StringArgumentType.word())
+                .suggests((c,b) -> { for(StructureRole role:StructureRole.values()) if(role.providesWork()) b.suggest(role.id()); return b.buildFuture(); })
+                .then(Commands.argument("level",StringArgumentType.word())
+                    .suggests((c,b) -> { for(String level:JobBoard.LEVEL_NAMES) b.suggest(level.toLowerCase(java.util.Locale.ROOT)); return b.buildFuture(); })
+                    .executes(c -> {
+                        Settlement s=owned(c.getSource()); if(s==null) return 0;
+                        String job=StringArgumentType.getString(c,"job"),name=StringArgumentType.getString(c,"level");
+                        StructureRole role=java.util.Arrays.stream(StructureRole.values()).filter(r -> r.providesWork() && r.id().equals(job)).findFirst().orElse(null);
+                        int level=JobBoard.LEVEL_NAMES.stream().map(n -> n.toLowerCase(java.util.Locale.ROOT)).toList().indexOf(name.toLowerCase(java.util.Locale.ROOT));
+                        if(role==null || level<0) { c.getSource().sendFailure(Component.literal("Use /wwmc job <job> <off|low|normal|high>, for example /wwmc job farm high.")); return 0; }
+                        setJobLevel(c.getSource().getLevel(),s,role,level);
+                        c.getSource().sendSuccess(() -> Component.literal(role.title()+" priority set to "+JobBoard.levelName(level)+"."),false); return 1;
+                    }))))
             .then(Commands.literal("citizens").executes(c -> {
                 Settlement s=owned(c.getSource());
                 if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
@@ -541,6 +566,7 @@ public final class SettlementService {
             placeBorders(level,s);
             if(s.populationLevel<0) { s.populationLevel=populationLevel(s); data.setDirty(); }
             if(s.stations.removeIf(station -> level.hasChunkAt(station.position()) && !active(level,station))) data.setDirty();
+            if(s.jobs.prune(s,station -> workerLimit(s,station))) data.setDirty();
         }
     }
     /** Quarry crews work on safety lines: a fall inside their town's pit does no damage. */
