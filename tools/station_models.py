@@ -91,37 +91,46 @@ M["lumber_station"] = model(
         box([10, 13.5, 10.75], [12, 15.5, 12.25], "iron"),
     ])
 
+# Mine and quarry share a timber frame: corner posts with beams along the top edge.
+def frame(top, wood):
+    posts = [box([0, 0, 0], [1.5, top, 1.5], wood), box([14.5, 0, 0], [16, top, 1.5], wood),
+             box([0, 0, 14.5], [1.5, top, 16], wood), box([14.5, 0, 14.5], [16, top, 16], wood)]
+    beams = [box([1.5, top - 1.5, 0], [14.5, top, 1], wood), box([1.5, top - 1.5, 15], [14.5, top, 16], wood),
+             box([0, top - 1.5, 1.5], [1, top, 14.5], wood), box([15, top - 1.5, 1.5], [16, top, 14.5], wood)]
+    return posts + beams
+
+
 # The mine digs toward its north face, where the tunnel entrance is.
 M["mine_station"] = model(
     {"particle": "cobblestone", "stone": "cobblestone", "beam": "dark_oak_log", "plank": "dark_oak_planks", "dark": "coal_block",
      "iron": "iron_ore", "coal": "coal_ore", "gold": "gold_ore", "copper": "copper_ore"},
-    [
+    frame(11, "beam") + [
         box([0, 0, 0], [16, 1, 16], "stone"),
-        box([0, 1, 2], [16, 11, 16], "stone"),
-        box([0, 1, 0], [3, 11, 2], "stone"),
-        box([13, 1, 0], [16, 11, 2], "stone"),
-        box([3, 9, 0], [13, 11, 2], "stone"),
-        box([3, 1, 0], [4, 9, 2], "beam"),
-        box([12, 1, 0], [13, 9, 2], "beam"),
-        box([4, 8, 0], [12, 9, 2], "plank"),
+        box([1, 1, 2], [15, 11, 15], "stone"),
+        box([1.5, 1, 1], [3, 9.5, 2], "stone"),
+        box([13, 1, 1], [14.5, 9.5, 2], "stone"),
+        box([3, 9, 1], [13, 9.5, 2], "stone"),
+        box([3, 1, 0.5], [4, 9, 2], "plank"),
+        box([12, 1, 0.5], [13, 9, 2], "plank"),
+        box([4, 8, 0.5], [12, 9, 2], "plank"),
         box([4, 1, 1.9], [12, 8, 2], {"north": "dark"}),
-        box([2, 11, 3], [6, 14, 7], "iron"),
+        box([2.5, 11, 3], [6.5, 14, 7], "iron"),
         box([6.5, 11, 8], [10.5, 13.5, 12], "coal"),
         box([10, 11, 3], [13, 13, 6], "gold"),
         box([2.5, 11, 9], [5.5, 13, 12], "copper"),
     ])
 
-# The quarry digs the chunk past its north side, marked by a red flag on the rim.
+# The quarry digs the chunk past its north side, marked by a red flag on the frame.
 ring = lambda a, b, h, tex: [
     box([a, 0, a], [b, h, a + 2], tex), box([a, 0, b - 2], [b, h, b], tex),
     box([a, 0, a + 2], [a + 2, h, b - 2], tex), box([b - 2, 0, a + 2], [b, h, b - 2], tex)]
 M["quarry_station"] = model(
     {"particle": "cobblestone", "cobble": "cobblestone", "stone": "stone", "andesite": "andesite", "gravel": "gravel",
-     "pole": "oak_log", "flag": "red_wool"},
-    ring(0, 16, 13, "cobble") + ring(2, 14, 10, "stone") + ring(4, 12, 7, "andesite") + [
-        box([6, 0, 6], [10, 4, 10], "gravel"),
-        box([7.5, 13, 0.5], [8.5, 16, 1.5], "pole"),
-        box([8.5, 14, 0.75], [11.5, 15.75, 1.25], "flag"),
+     "wood": "spruce_log", "pole": "oak_log", "flag": "red_wool"},
+    frame(13, "wood") + ring(1, 15, 11.5, "cobble") + ring(3, 13, 9, "stone") + ring(5, 11, 6, "andesite") + [
+        box([7, 0, 7], [9, 3, 9], "gravel"),
+        box([7.5, 13, 0.25], [8.5, 16, 1], "pole"),
+        box([8.5, 14, 0.4], [11.5, 15.75, 0.85], "flag"),
     ])
 
 M["guard_station"] = model(
