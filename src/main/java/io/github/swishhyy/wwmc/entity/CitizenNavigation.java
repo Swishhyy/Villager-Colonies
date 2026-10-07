@@ -36,6 +36,12 @@ public final class CitizenNavigation extends GroundPathNavigation {
     }
 
     /**
+     * Minecraft's planner overwrites a node's walked distance whenever a neighbour looks at it, even from a longer way
+     * round, so beyond an obstacle routes look far longer than they are and are cut off at the route length. The limit
+     * is raised by this factor; the planning region around the citizen and the search budget still bound the search.
+     */
+    private static final float WALK_SLACK=4.0F;
+    /**
      * Plans the road-preferring route first. Its wider search can run out around long obstacles, so when it does not
      * reach the goal, the plain shortest route is planned instead; a route that arrives matters more than the road.
      */
@@ -43,11 +49,12 @@ public final class CitizenNavigation extends GroundPathNavigation {
         private final RoadEvaluator roads;
         RoadPathFinder(RoadEvaluator roads,int maximumNodes) { super(roads,maximumNodes); this.roads=roads; }
         @Override public Path findPath(PathNavigationRegion region,Mob mob,Set<BlockPos> targets,float maxRange,int accuracy,float searchDepthMultiplier) {
-            Path preferred=super.findPath(region,mob,targets,maxRange,accuracy,searchDepthMultiplier);
+            float walk=maxRange*WALK_SLACK;
+            Path preferred=super.findPath(region,mob,targets,walk,accuracy,searchDepthMultiplier);
             if(preferred!=null && preferred.canReach()) return preferred;
             roads.plain=true;
             try {
-                Path plain=super.findPath(region,mob,targets,maxRange,accuracy,searchDepthMultiplier);
+                Path plain=super.findPath(region,mob,targets,walk,accuracy,searchDepthMultiplier);
                 if(plain==null) return preferred;
                 return preferred==null || plain.canReach() || plain.getDistToTarget()<preferred.getDistToTarget() ? plain : preferred;
             } finally { roads.plain=false; }
