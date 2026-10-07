@@ -1959,6 +1959,15 @@ public final class CitizenEntity extends Villager {
         if(station==null || !SettlementService.active(level,station)
                 || !SettlementService.workers(level).claim(workplace,getUUID(),level.getGameTime(),200,SettlementService.workerLimit(town,station))) {
             if(workplace!=null || target!=null) releaseWork(level);
+            // Idle jobs still need meals. The search cooldown must not keep a hungry citizen away from the pantry.
+            Station assigned=homeStation(town);
+            if((assigned==null || assigned.role()!=StructureRole.GUARD) && wantsMeal()
+                    && InventoryOps.count(List.of(cargo),this::food)==0 && level.getGameTime()>=nextFoodTripAt) {
+                BlockPos pantry=SettlementService.warehouse(level,town,blockPosition());
+                if(pantry!=null && (handNear(pantry) || canReach(pantry))
+                        && !visitPantry(level,town) && !canUse(level,pantry)) return;
+                nextFoodTripAt=level.getGameTime()+200;
+            }
             if(searchDelay>0) { searchDelay-=10; return; }
             station=chooseJob(level,town);
             if(station==null) {
