@@ -13,6 +13,8 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -43,6 +45,9 @@ public final class TradeWorldTests {
                 level.setBlockAndUpdate(start.offset(x,-1,z),Blocks.STONE.defaultBlockState());
                 for(int y=0;y<=3;y++) level.setBlockAndUpdate(start.offset(x,y,z),Blocks.AIR.defaultBlockState());
             }
+            // Partial-height dirt paths must remain valid high-level travel waypoints.
+            for(int x=-8;x<=648;x++)
+                level.setBlockAndUpdate(start.offset(x,-1,0),Blocks.DIRT_PATH.defaultBlockState());
             // Heightmap waypoints land on this roof. There is two-block headroom all the way beneath it.
             for(int x=296;x<=352;x++) for(int z=-20;z<=20;z++)
                 level.setBlockAndUpdate(start.offset(x,3,z),Blocks.OAK_LOG.defaultBlockState());
@@ -53,7 +58,9 @@ public final class TradeWorldTests {
                 for(int y=-3;y<=-1;y++) level.setBlockAndUpdate(start.offset(x,y,z),Blocks.WATER.defaultBlockState());
             }
             for(int x=440;x<=508;x++)
-                level.setBlockAndUpdate(start.offset(x,-1,6),Blocks.OAK_PLANKS.defaultBlockState());
+                level.setBlockAndUpdate(start.offset(x,-1,6),Blocks.OAK_SLAB.defaultBlockState()
+                        .setValue(BlockStateProperties.SLAB_TYPE,SlabType.TOP)
+                        .setValue(BlockStateProperties.WATERLOGGED,true));
             UUID owner=UUID.randomUUID();
             Settlement a=town(owner,"Start",start),b=town(owner,"End",start.east(640));
             var data=SettlementData.get(level); data.settlements.add(a); data.settlements.add(b);

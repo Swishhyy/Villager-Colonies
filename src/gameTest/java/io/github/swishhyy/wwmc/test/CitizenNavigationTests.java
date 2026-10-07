@@ -53,6 +53,7 @@ public final class CitizenNavigationTests {
                 level.setBlockAndUpdate(start.offset(x,-1,z),Blocks.DIRT_PATH.defaultBlockState());
             var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
             citizen.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(48);
+            citizen.getNavigation().updatePathfinderMaxVisitedNodes();
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
             BlockPos end=start.east(20);
             helper.runAtTickTime(5,() -> {
@@ -92,6 +93,7 @@ public final class CitizenNavigationTests {
             for(int x=10;x<=16;x++) level.setBlockAndUpdate(start.offset(x,-1,9),Blocks.OAK_PLANKS.defaultBlockState());
             var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
             citizen.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(48);
+            citizen.getNavigation().updatePathfinderMaxVisitedNodes();
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
             BlockPos end=start.east(20);
             helper.runAtTickTime(5,() -> {
@@ -129,6 +131,7 @@ public final class CitizenNavigationTests {
             }
             var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
             citizen.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(32);
+            citizen.getNavigation().updatePathfinderMaxVisitedNodes();
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
             helper.runAtTickTime(5,() -> {
                 var path=citizen.getNavigation().createPath(start.east(20),0);
