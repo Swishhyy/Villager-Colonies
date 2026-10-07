@@ -6,7 +6,9 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.7.0-alpha
+## Current build: 0.8.0-alpha
+
+0.8.0 adds **emerald upgrades**. A station's screen sells a wider range or more crew slots, three levels each, and the town screen sells room for more citizens: a new town holds 10, and each population upgrade adds 5, costs more emeralds than the last and makes every enemy wave larger and tougher, bringing pillagers and then vindicators. Farms, craftsmen and the new enchanters always have exactly one worker. A new **Enchanter Station** enchants unenchanted gear and books with lapis at a nearby enchanting table: slowly (about five minutes per item, longer for rarer gear) and never above level 25. Citizens who spot a hostile **call the guards**, who send up to two guards on duty to deal with it; wave attackers **glow**, and any still alive a minute after a wave arrives are reported so the guards hunt them down. Every station and the banner have a new detailed model, turned to face whoever placed it. Existing towns keep their citizens: a town from an earlier build counts as having bought enough population upgrades for everyone it already has.
 
 0.7.0 replaces chat read-outs with screens: right-click the settlement banner for a town overview (citizens, stations, food, storage, alarm and waves, with buttons for work priority, the alarm and recruiting), a station for its status, crew and storage, or a citizen for their job, health, meals and equipment above their bag. Craftsmen now learn any crafting-table recipe: click the Craftsman Station's teach slot with an item, then set how many to keep with its slider. Barrels near work stations become job storage, and a new **Courier Station** employs couriers who carry finished goods to the warehouse and keep smelters' and cooks' barrels stocked. A Mine Station touching an ore works it as an endless vein. Farms take one farmer each by default. Short notices now appear above the hotbar instead of in chat. Existing towns keep their stations and progress; their craftsman orders become learned orders.
 
@@ -23,7 +25,8 @@ This is the first settlement foundation, not the completed warfare game.
 Implemented:
 
 - Persistent named settlements, owners, non-overlapping claims, and town priorities.
-- Settlement banner and fourteen role stations, with survival crafting recipes and a creative tab.
+- Settlement banner and fifteen role stations, each with its own detailed model, survival crafting recipes and a creative tab.
+- Emerald upgrades: wider station ranges, more crew slots, and room for more citizens at the price of larger enemy waves.
 - Screens for the town, every station, the Craftsman's orders and each citizen, refreshed every second.
 - A 240-block minimum claim radius and red banners at the four claim corners.
 - Automatic 7×7×7 station detection and live updates when nearby furniture/resources change.
@@ -35,9 +38,11 @@ Implemented:
 - Guards with day/night posts, town patrols, visible shared shift armor, equipment upgrades, and swords, spears, or bows they find themselves.
 - A craftable Settlement Guide with every block recipe and instructions for the playable systems.
 - Blacksmiths who repair tools, weapons, and protective armor at actual anvils with the matching warehouse materials.
+- Enchanters who slowly enchant unenchanted gear and books with lapis at an enchanting table, up to level 25.
 - Nutrition-based citizen healing from carried food and direct feeding, with a five-second cooldown.
 - Bell alarms: manual, projectile, redstone, and guard bell rings activate every assigned guard; civilians take cover until the all-clear. Guards also run to the bell when citizens sight a large hostile force.
-- Population-scaled hostile waves that arrive at night while the owner is home.
+- Civilians who call the guards about hostiles they spot, and guards who go and deal with them.
+- Population-scaled hostile waves that arrive at night while the owner is home, glow, and are hunted down if they linger.
 - Autonomous harvesting and replanting of existing wheat, carrot, potato, and beetroot crops.
 - Whole-tree felling, player-placement protection, and planting from actual saplings in storage.
 - Endless ore veins for mine stations placed against an ore, automatic mine depth selection between Y −30 and 10, descending tunnels, accessible cave ore gathering, and full-chunk quarries that crews enter by a spiral staircase.
@@ -59,20 +64,22 @@ Install the same mod JAR on the NeoForge 26.2 client and server. Use a new test 
 2. Build a small camp with beds. Place a **Housing Station** or **Barracks Station** inside it.
 3. Beds are detected automatically within **three blocks of the station on every axis**: a **7×7×7 cube**, including the station block. Both halves of each bed must fit inside the cube and your claim. No corner selection is required.
 4. Place a **Warehouse Station** within that same range of your chests or barrels. It detects multiple containers, including trapped and double chests. Stock food, axes, appropriate pickaxes, saplings, and cobblestone or other tunnel floor supplies. You can add or remove storage later without registering it again.
-5. Place **Farm** and **Lumber Stations** with crops or tree roots inside their **7×7×7** ranges. A farm takes **one farmer** by default; a lumber station or mine supports **four workers** and a quarry **eight**. Citizens reserve individual trees or excavation positions so a shared crew cannot harvest the same target twice. Housing, hospital, barracks, and warehouse ranges protect their structures from harvesting.
+5. Place **Farm** and **Lumber Stations** with crops or tree roots inside their **7×7×7** ranges. A farm always takes **one farmer**; a lumber station or mine supports **four workers** and a quarry **eight**, and crew upgrades add more (see [Station upgrades](#station-upgrades)). Citizens reserve individual trees or excavation positions so a shared crew cannot harvest the same target twice. Housing, hospital, barracks, and warehouse ranges protect their structures from harvesting.
 6. Prepare farmland and plant crops yourself. Carrots or potatoes supply both food and replanting stock; wheat is collected, and a cook makes it into bread. Put a lumber station by natural trees or accessible clear soil. It fells the connected tree, collects real leaf drops, and replants when storage has enough saplings. If no tree is accessible, it can plant a new one instead. Trees grow at Minecraft's normal rate.
 7. For mining, the simplest choice is a **Mine Station placed touching an exposed ore** (any of the 26 blocks around it, with at least one open side): its miner works that ore as an endless vein. See [Ore veins](#ore-veins). A Mine Station with no ore beside it digs tunnels instead: place it facing into the intended descent, with open walking space in front. It chooses and saves a random depth between **Y −30 and 10**, then digs a staircase and eight 24-block side branches. Near that depth, workers also walk to accessible exposed cave ores they can reach. Alternatively, place a **Quarry Station** facing the neighboring chunk you want excavated. The quarry removes that complete 16×16 chunk from the surface down to Y −64, preserving bedrock. Keep the station and level, walkable ground outside the target chunk, in line with the station, where the crew's staircase begins. The whole plan must fit inside the town claim.
-8. Run `/wwmc recruit 3`. Recruitment is limited by loaded housing beds and the configured population cap. Citizens choose available crew slots, obtain supplies, work, and deliver cargo in batches.
+8. Run `/wwmc recruit 3`. Recruitment is limited by loaded housing beds and the town's population limit: 10 citizens at first, raised with emeralds on the town screen (see [Population](#population)). Citizens choose available crew slots, obtain supplies, work, and deliver cargo in batches.
 9. Right-click your citizen with an empty hand to open their screen: job, current activity, health, next meal and equipment above their **36-slot bag**. Add food, spare tools, saplings, or guard gear directly. Sneak-right-click releases their job; holding an item while interacting shows their status above the hotbar. Right-click the banner for the town screen. Mine depths are automatic.
 10. Place a **Guard Station**, supply armor stands in its local range, and configure its day/night posts as described below. Up to two citizens become guards automatically; defense slots fill before production jobs.
 11. Place a **Craftsman Station** near your warehouse and teach it what to make (see [Craftsmen](#craftsmen)). Add a **Smeltery Station** with a furnace or blast furnace in range, and a **Cook Station** with a smoker or lit campfire in range. Stock raw ores, raw food, wheat, and fuel in the warehouse. See [Smelters and cooks](#smelters-and-cooks).
 12. Add a **Blacksmith Station** with an anvil within three blocks on each axis. Stock repair materials in the warehouse. Blacksmiths repair damaged tools/weapons and worn guard armor, retaining names and enchantments.
 13. Hang a **bell** inside the town so guards can raise the alarm, and prepare for the first enemy wave once the town has three citizens. See [Alarms and enemy waves](#alarms-and-enemy-waves).
 14. Put **barrels** within three blocks of busy work stations and place a **Courier Station** so goods stop piling up in workers' bags. See [Job barrels and couriers](#job-barrels-and-couriers).
+15. Place an **Enchanter Station** within five blocks of an enchanting table surrounded by bookshelves, and stock lapis lazuli. See [Enchanters](#enchanters).
+16. Spend spare emeralds on the stations that matter most and on room for more citizens. See [Station upgrades](#station-upgrades).
 
 **Range preview:** hold any station block and aim at a block face to see a blue outline at its prospective placement position. The outline accounts for replaceable grass/snow. It turns red when the placement context is blocked. Placing a station displays a green outline for about three seconds. Right-click an existing station with an empty hand to open its screen and briefly show its range. The **Station Inspector** also previews an existing station while you aim at it and opens its screen when right-clicked.
 
-Ordinary stations show their local 7×7×7 area; a quarry shows the neighboring chunk's footprint. The quarry outline indicates its horizontal target, not the complete depth. Mines extend beyond the local outline along their planned tunnels. Inspection reports facing, depth, progress, and active crew size.
+Ordinary stations show their local 7×7×7 area, or their upgraded range; an Enchanter Station shows 11×11×11; a quarry shows the neighboring chunk's footprint. The quarry outline indicates its horizontal target, not the complete depth. Mines extend beyond the local outline along their planned tunnels. Inspection reports facing, depth, progress, and active crew size.
 
 Keep doors and paths accessible. Stations are solid blocks; citizens need to reach a neighboring block. A full warehouse, missing tools, inaccessible resources, or missing food produces a visible worker status instead of creating supplies out of thin air.
 
@@ -148,9 +155,10 @@ Only loaded blocks inside the settlement claim count. Scanning never loads chunk
 | Cook | Raw food cooked in smokers or lit campfires; three wheat become bread. | More meals and food orders. |
 | Blacksmith | Repairs warehouse equipment and retired guard-stand armor at nearby anvils. | Repair orders and specialized smithing. |
 | Guard | Day/night posts, patrols, armor and weapons from stands or storage, melee and archery, bell alarms. | Squad orders, training. |
-| Courier | Carries goods from job barrels to the warehouse and stocks smeltery and cook barrels. | Convoys between towns. |
+| Courier | Carries goods from job barrels to the warehouse and stocks smeltery, cook and enchanter barrels. | Convoys between towns. |
+| Enchanter | Enchants unenchanted gear and books with lapis at an enchanting table within 5 blocks, up to level 25. | Enchanting orders and libraries. |
 
-Marker blocks use vanilla textures as placeholder visuals. Stations declare use; this build does not infer enclosed rooms, roofs, or architectural quality. Work validates supplies, protection, reservations, loaded terrain, and access before changing blocks.
+Each station has its own small model built from vanilla textures, a workbench, a watchtower or a tent for example, turned to face the player who placed it. A mine's tunnel entrance and a quarry's red flag point the way they dig. Stations declare use; this build does not infer enclosed rooms, roofs, or architectural quality. Work validates supplies, protection, reservations, loaded terrain, and access before changing blocks.
 
 Saves from 0.1.0-alpha keep their towns and stations, but old selected room bounds are ignored in favor of the fixed range. Reposition stations or furniture if an earlier selected room extended farther than three blocks. Existing surveyor items become Station Inspectors and retain the `wwmc:surveyor` ID and recipe.
 
@@ -177,6 +185,7 @@ All markers use eight planks around a center item in a crafting table.
 | Guard Station | Iron helmet |
 | Blacksmith Station | Iron ingot |
 | Courier Station | Barrel |
+| Enchanter Station | Book |
 
 The Station Inspector is a shapeless recipe with two paper and one stick. The **Settlement Guide** is a shapeless recipe with one book and one blue dye; right-click it to open the native book screen. `/wwmc guide` gives another copy. Tools consumed to craft stations are separate from tools supplied to workers.
 
@@ -187,23 +196,28 @@ The generated WWMC server config controls these defaults:
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `settlementRadius` | 240 | Horizontal radius of new towns; 240 is also the minimum. |
-| `maxCitizens` | 32 | Population cap, also limited by available housing beds. |
-| `stationWorkers` | 4 | Crew slots per lumber station or mine. |
-| `farmWorkers` | 1 | Farmers per Farm Station. |
-| `courierWorkers` | 2 | Couriers per Courier Station. |
+| `maxCitizens` | 64 | Hard ceiling on citizens per town, whatever its population upgrades; housing beds also limit recruiting. |
+| `basePopulation` | 10 | Citizen limit of a town before population upgrades. |
+| `populationPerUpgrade` | 5 | Extra citizens each population upgrade allows. |
+| `populationUpgradeCost` | 8 | Emeralds for the first population upgrade; each later one costs this much more than the last. |
+| `stationUpgradeCost` | 8 | Emeralds for a station's first range or crew upgrade; each further level costs twice the last. |
+| `stationWorkers` | 4 | Crew slots per lumber station or mine before crew upgrades. Farms, craftsmen and enchanters always have one. |
+| `courierWorkers` | 2 | Couriers per Courier Station before crew upgrades. |
 | `oreVeinSeconds` | 15 | Seconds between yields of a common ore vein; gold ×2, diamond and emerald ×6, ancient debris ×8. |
-| `quarryWorkers` | 8 | Crew slots per quarry. |
-| `craftsmanWorkers` | 2 | Crew slots per Craftsman Station. |
-| `processingWorkers` | 2 | Crew slots per Smeltery or Cook Station. |
-| `blacksmithWorkers` | 2 | Crew slots per Blacksmith Station. |
-| `guardWorkers` | 2 | Guard crew slots per Guard Station. |
+| `quarryWorkers` | 8 | Crew slots per quarry before crew upgrades. |
+| `processingWorkers` | 2 | Crew slots per Smeltery or Cook Station before crew upgrades. |
+| `blacksmithWorkers` | 2 | Crew slots per Blacksmith Station before crew upgrades. |
+| `guardWorkers` | 2 | Guard crew slots per Guard Station before crew upgrades. |
+| `enchantMinutes` | 5 | Minutes an enchanter spends on a book or common item; iron and gold ×1.3, diamond ×1.6, netherite ×2, plus more for uncommon, rare and epic items. |
+| `enchanterMaxLevel` | 25 | Highest enchanting level enchanters reach (at most 29); level 30 is the player's alone. |
 | `alarmThreshold` | 10 | Hostiles citizens must sight at once before a guard runs to ring the bell. |
 | `enemyWaves` | true | Send hostile waves against towns while their owner is home. |
 | `waveMinPopulation` | 3 | Citizens a town needs before waves are scheduled. |
 | `waveIntervalDays` | 2 | Average in-game days between waves, ±25%. |
 | `waveBaseMobs` | 2 | Hostiles in every wave before population scaling. |
 | `waveMobsPerCitizen` | 0.5 | Extra hostiles per citizen, rounded up. |
-| `waveMaxMobs` | 40 | Largest possible wave. |
+| `waveMaxMobs` | 40 | Largest possible wave before population upgrades. |
+| `waveMobsPerUpgrade` | 2 | Extra hostiles per population upgrade, also above `waveMaxMobs`. |
 | `mineMinY` | −30 | Lower endpoint for a new mine's randomly chosen depth. |
 | `mineMaxY` | 10 | Upper endpoint for a new mine's randomly chosen depth. |
 | `quarryTargetY` | −64 | Bottom depth when a new quarry plan is created. |
@@ -259,7 +273,7 @@ Only loaded, owned appliances in range count. Overlapping stations assign each a
 
 ### Craftsmen
 
-A **Craftsman Station** (eight planks around a crafting table) gives two citizens bench work by default (`craftsmanWorkers`). Right-click it to open its order screen.
+A **Craftsman Station** (eight planks around a crafting table) employs one craftsman, always; place more stations for more craftsmen. Right-click it to open its order screen.
 
 **Teaching.** Click the **Teach** slot while holding any item, or shift-click an item in your inventory, and the craftsmen learn the crafting-table recipe that makes it. You keep the item. Any shaped or shapeless recipe works, including recipes added by other mods and datapacks; special recipes such as dyeing armor, copying maps or fireworks cannot be taught. A town knows up to 27 orders. Teaching any planks makes a **planks (any wood)** order that uses whichever logs the town holds.
 
@@ -273,8 +287,8 @@ New towns, and towns from earlier builds, start with these orders: stone pickaxe
 
 Right-click with an empty hand to open:
 
-- **Settlement banner:** the town overview (population and beds, food, warehouse fill, job barrels, claim, work priority, alarm and waves), every loaded citizen with their job, activity and health, and every station with its crew and status. Buttons cycle the work priority, sound the alarm or the all-clear, and recruit a citizen when housing beds are free.
-- **Any station:** its detected resources and job status, its crew and what each member is doing, and the contents of its barrels (or the warehouse's containers). The Cook Station adds a bread switch; the Guard Station a button to choose its posts.
+- **Settlement banner:** the town overview (population, limit and beds, population upgrades, food, warehouse fill, job barrels, claim, work priority, alarm and waves), every loaded citizen with their job, activity and health, and every station with its crew and status. Buttons cycle the work priority, sound the alarm or the all-clear, recruit a citizen when housing beds are free, and grow the population limit.
+- **Any station:** its detected resources and job status, its crew and what each member is doing, the contents of its barrels (or the warehouse's containers), and its upgrades. The Cook Station adds a bread switch, the Guard Station a button to choose its posts, and stations that can be upgraded buttons for range and crew upgrades. Hover a button to see exactly what it does and costs.
 - **Craftsman Station:** the order screen described above.
 - **Citizen:** their job, activity, health, next meal and equipment above their bag.
 
@@ -282,13 +296,13 @@ Screens refresh every second and close when you move more than eight blocks away
 
 ### Job barrels and couriers
 
-A **barrel within three blocks of a work station** on every axis becomes that job's storage, unless a Warehouse Station's range also covers it. Overlapping job ranges give each barrel to the nearest station. Guards, blacksmiths and couriers do not use job barrels.
+A **barrel within three blocks of a work station** on every axis becomes that job's storage, unless a Warehouse Station's range also covers it. Overlapping job ranges give each barrel to the nearest station. Guards, blacksmiths and couriers do not use job barrels. An enchanter's barrels hold its lapis and the gear waiting its turn.
 
 Workers take tools and supplies from their job's barrels before walking to the warehouse: pickaxes, axes, saplings, floor blocks, and for smelters and cooks their ingredients and fuel. Craftsmen use the materials in their barrels first.
 
 **Finished goods** stay in the job's barrels only when a **Courier Station** exists in town, or when there is no reachable warehouse; otherwise workers deliver to the warehouse as before. When a job's barrels are full, workers fall back to the warehouse. A barrel a worker cannot reach within 20 seconds, for example behind a trapdoor, is skipped for a minute.
 
-A **Courier Station** (eight planks around a barrel) employs two couriers by default (`courierWorkers`). Couriers walk to a job's barrels once 32 goods are waiting, the barrels are nearly full, or food is waiting while the warehouse pantry is low, take everything the job does not use and deliver it to the warehouse. When there is nothing bigger to do they also fetch smaller loads, so a pair of new tools never waits for a full load. They leave tools, supplies, 16 floor blocks at mines and quarries, and 32 saplings at lumber stations; worn tools leave for repair. They also bring smeltery and cook barrels two furnace loads of ore or raw food, sixteen fuel, and wheat for bread, while those barrels have free slots. A smelter whose barrel holds ore but no fuel fetches both from the warehouse. Only one courier serves a job's barrels at a time, and couriers take other work when nothing needs moving.
+A **Courier Station** (eight planks around a barrel) employs two couriers by default (`courierWorkers`). Couriers walk to a job's barrels once 32 goods are waiting, the barrels are nearly full, or food is waiting while the warehouse pantry is low, take everything the job does not use and deliver it to the warehouse. When there is nothing bigger to do they also fetch smaller loads, so a pair of new tools never waits for a full load. They leave tools, supplies, 16 floor blocks at mines and quarries, and 32 saplings at lumber stations; worn tools leave for repair. They also bring smeltery and cook barrels two furnace loads of ore or raw food, sixteen fuel, and wheat for bread, and enchanter barrels lapis lazuli, while those barrels have free slots. A smelter whose barrel holds ore but no fuel fetches both from the warehouse. Only one courier serves a job's barrels at a time, and couriers take other work when nothing needs moving.
 
 ### Ore veins
 
@@ -296,13 +310,38 @@ A **Mine Station placed touching an exposed ore**, in any of the 26 blocks aroun
 
 A vein replenishes every 15 seconds (`oreVeinSeconds`). Gold takes twice as long, diamond and emerald six times, and ancient debris eight times. Any block in the `c:ores` tag counts, including other mods' ores. Ores sharing a face with the station come first. If the ore is removed, the station looks for another one beside it, and a station with no exposed ore beside it digs tunnels as described above. The miner also needs open standing room within reach of the ore and a clear view of it.
 
+### Enchanters
+
+An **Enchanter Station** (eight planks around a book) needs an **enchanting table within five blocks on each axis**, an 11×11×11 range, larger than other stations'. Surround the table with bookshelves as you would for yourself: the bookshelves set the enchanting level exactly as for a player, but an enchanter never goes above level **25** (`enchanterMaxLevel`); level 30 stays yours. One enchanter works each station.
+
+Stock **lapis lazuli** and **unenchanted gear or books** in the warehouse or the station's barrel. The enchanter takes one item at a time, its own barrel first, armor and weapons before tools and books, and the rarest first. Each item costs one, two or three lapis by level, like the table's rows, and takes a long time: about **five minutes** for a book or a common item (`enchantMinutes`), 1.3 times as long for iron or gold gear, 1.6 for diamond and twice as long for netherite, with uncommon, rare and epic items taking longer still. Work only happens during the working day, so a busy enchanter finishes a few items each day. Progress is saved; the station screen shows the table's level, the lapis in stock, the items waiting and how far along the current item is. Finished items go back to the barrel when couriers collect from it, otherwise to the warehouse. Nearly broken gear waits for the blacksmith first.
+
+### Station upgrades
+
+Every station that can use them sells upgrades on its screen, paid in **emeralds from your inventory**; emerald blocks count as nine, with change given back. Creative players pay nothing.
+
+- **Range**, up to three levels: each level widens the station's cube by a block in every direction, from 7×7×7 to 9×9×9, 11×11×11 and 13×13×13 (an enchanter goes from 11 up to 17). Wider ranges reach more beds, chests, crops, trees, furnaces, anvils, armor stands and barrels. Quarries, mines, couriers and craftsmen have no range upgrades.
+- **Crew**, up to three levels: each adds a worker slot. Farms, craftsmen and enchanters always have exactly one worker.
+
+Each level costs twice the one before: 8, 16, then 32 emeralds by default (`stationUpgradeCost`). A broken station's item keeps its upgrades and shows them in its tooltip, so you can move an upgraded station without paying again; plain stations still stack with freshly crafted ones. The range preview shows the upgraded range.
+
+### Population
+
+A new town holds up to **10 citizens** (`basePopulation`). The town screen's **Grow** button raises the limit by **5** (`populationPerUpgrade`) for emeralds: 8 for the first upgrade, then 16, 24 and so on (`populationUpgradeCost`), up to the server's ceiling (`maxCitizens`, 64). Housing beds still limit recruiting as before.
+
+A bigger town draws bigger attacks. Each population upgrade adds **2 attackers** to every wave (`waveMobsPerUpgrade`), even beyond `waveMaxMobs`; from the first upgrade a tenth of each wave per upgrade are **pillagers**, and from the third upgrade **vindicators** join them. Towns from earlier builds count as having bought enough upgrades for the citizens they already have.
+
 ### Alarms and enemy waves
 
 **Noticing a threat.** Every second, the town counts the hostile monsters its citizens can see inside the claim: guards watch out to 24 blocks (32 during an alarm), other citizens only notice hostiles within 8 blocks. One or two monsters are left to the guards. When at least `alarmThreshold` (default **10**) are in sight at once, the guard closest to a **bell** within 96 blocks runs to ring it. Bells must be inside the claim and loaded. If that guard is killed, cannot find a path, or takes longer than a minute, another guard is sent. Without a reachable bell, you receive a warning instead and the town is not alerted.
 
 **The alarm.** Any bell rung inside the town—by a player, projectile, redstone, or a guard—raises the alarm and **wakes every assigned guard at every station**, including resting reserves. Guard-raised alarms also briefly make nearby hostiles glow and tell you how many were sighted. While it rings, civilians stop working, flee hostiles from 20 blocks away instead of 12, and **duck and cover** at the nearest housing or barracks station (the banner if there is none). Alarms at night find civilians in their beds. A citizen may still volunteer for an empty guard slot. Guards stay at their posts instead of making supply trips unless they have no weapon, patrol faster, and engage from farther away. After **30 seconds** without a sighted hostile, the bell rings again for the **all-clear**, everyone returns to work, and guards resume their station shifts. That automatic all-clear ring does not raise a second alarm. `/wwmc alarm` raises the alarm without a runner, or calls the all-clear early.
 
-**Enemy waves.** Once a town has `waveMinPopulation` (default **3**) citizens, a wave is scheduled about every `waveIntervalDays` (default **2**) in-game days. It arrives after sunset, only while you are online and within 64 blocks of the claim, and never while the previous wave's attackers are still alive. Waves contain `waveBaseMobs + waveMobsPerCitizen × population` hostiles, rounded up and capped at `waveMaxMobs`: four for a three-citizen town, 12 for 20 citizens, 18 for 32. Small towns face zombies; from 6 citizens a quarter of each wave are skeletons, and from 10 citizens 15% are spiders. The wave gathers 40–64 blocks from the banner on loaded open ground inside the claim, away from stations and at least 24 blocks from you, then marches on the banner and attacks citizens on sight. You are told its size and compass direction, and again when it has been repelled. Wave mobs do not despawn and remember their town across restarts. `/wwmc status` shows the alarm state and the next wave; `/wwmc wave` calls the next wave immediately. Peaceful difficulty prevents waves.
+**Enemy waves.** Once a town has `waveMinPopulation` (default **3**) citizens, a wave is scheduled about every `waveIntervalDays` (default **2**) in-game days. It arrives after sunset, only while you are online and within 64 blocks of the claim, and never while the previous wave's attackers are still alive. Waves contain `waveBaseMobs + waveMobsPerCitizen × population` hostiles, rounded up and capped at `waveMaxMobs`: four for a three-citizen town, 12 for 20 citizens, 18 for 32. Small towns face zombies; from 6 citizens a quarter of each wave are skeletons, and from 10 citizens 15% are spiders. The wave gathers 40–64 blocks from the banner on loaded open ground inside the claim, away from stations and at least 24 blocks from you, then marches on the banner and attacks citizens on sight. You are told its size and compass direction, and again when it has been repelled. Wave mobs do not despawn and remember their town across restarts. `/wwmc status` shows the alarm state and the next wave; `/wwmc wave` calls the next wave immediately. Peaceful difficulty prevents waves. Population upgrades make every wave larger and bring pillagers and vindicators; see [Population](#population).
+
+**Glowing attackers.** Every wave attacker glows through walls, so you can find them. If any are still alive a minute after the wave arrives, the town reports them to the guards, who hunt them down, and you are told how many remain.
+
+**Calling the guards.** Citizens who see a hostile within 16 blocks of them inside the claim, near their work for example, call the guards. Up to two guards on duty answer each call: they walk to the hostile, wherever it has gone in town, and fight it as soon as they see it. A guard who cannot reach it within 90 seconds leaves it to the others for two minutes. Calm endermen and other neutral mobs that are not angry are not reported. The citizen's screen shows the call for a few seconds, and the town screen's alarm row shows how many hostiles are reported.
 
 ## Player direction and citizen autonomy
 
@@ -331,10 +370,11 @@ There is no generative AI or external service dependency. Initial decisions use 
 | --- | --- |
 | `core` | Minecraft-independent bounds, workforce leases, atomic target reservations, and tunnel/quarry geometry. |
 | `settlement` | Claims, block ownership/protection, forestry, saved excavation plans, commands, inventory transfers, guard weapons, bell alarms, and enemy waves. |
-| `block` / `item` | Banner, automatic role stations, and station inspection. |
+| `block` / `item` | Banner, automatic role stations with their upgrade levels in the block state, and station inspection. |
 | `entity` | Citizen goals, harvesting, supply trips, food, rest, and entity persistence. |
 | `client` / `WWMCClient` | Citizen model/renderer and transient range outlines; dedicated servers do not load rendering classes. |
-| `src/main/resources` | Block/item models, language, drops, and recipes. |
+| `src/main/resources` | Block/item models, language, drops (which keep station upgrades), and recipes. |
+| `tools/station_models.py` | Generates the station and banner models from vanilla block textures; rerun it after editing a model. |
 
 Settlement records are dimension SavedData under `wwmc:settlements`. Placement provenance, planting sites, and excavation progress use a separate `wwmc:world_work` record so older settlement saves remain readable. Normal world saves persist both; temporary crew and target reservations expire and are reconstructed after reload. All current gameplay changes happen on the logical server thread. Persistent IDs keep future diplomacy and military systems independent from entity instances.
 
@@ -349,14 +389,14 @@ Use a **Java 25 JDK**, not just a Java runtime. The Gradle wrapper and ModDevGra
 
 On Windows, use `gradlew.bat build` and `gradlew.bat runClient`. Development servers use `./gradlew runServer`.
 
-`build` runs regression checks for ranges, beds/storage, overlap ownership, shared crews, atomic target claims, tunnel/quarry geometry, random depth/shift boundaries, name uniqueness, construction-aware tree recognition, sapling conservation, local inventory conservation/backlog, armor transfers, weapon classification/ranking, quarry staircase geometry and persistence, quarry collision tracing, four-block surface/vertical reach, blocked work rays, clear tree approach candidates, persisted natural-tree proof after access clearing, role-specific crafting orders, appliance recipe eligibility, furnace slot/component conservation, independent station guard shifts and alarm rosters, alarm thresholds and all-clear timing, wave sizes/composition/timing, claim widening, save round-trips, legacy migration, recipe/drop decoding with Minecraft's codecs, shared shift armor, full-bag overflow armor returns and occupied-slot conservation, armor upgrades, the exact durability cutoff, material-funded repairs with preserved names/enchantments, healing meal/bowl conservation and cooldowns, guide-page bounds and anvil eligibility, learned crafting against the server's real recipes (shaped layout, any-wood planks, container remainders, paused and stocked orders, ingot/block cycle protection, legacy order migration), job barrel collection rules and courier supply loads, ore vein detection and rarity pacing, screen data network round trips, staggered 30-citizen updates, bounded reachability probes, and shared resource scan expiry/invalidation. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
+`build` runs regression checks for ranges, beds/storage, overlap ownership, shared crews, atomic target claims, tunnel/quarry geometry, random depth/shift boundaries, name uniqueness, construction-aware tree recognition, sapling conservation, local inventory conservation/backlog, armor transfers, weapon classification/ranking, quarry staircase geometry and persistence, quarry collision tracing, four-block surface/vertical reach, blocked work rays, clear tree approach candidates, persisted natural-tree proof after access clearing, role-specific crafting orders, appliance recipe eligibility, furnace slot/component conservation, independent station guard shifts and alarm rosters, alarm thresholds and all-clear timing, wave sizes/composition/timing, claim widening, save round-trips, legacy migration, recipe/drop decoding with Minecraft's codecs, shared shift armor, full-bag overflow armor returns and occupied-slot conservation, armor upgrades, the exact durability cutoff, material-funded repairs with preserved names/enchantments, healing meal/bowl conservation and cooldowns, guide-page bounds and anvil eligibility, learned crafting against the server's real recipes (shaped layout, any-wood planks, container remainders, paused and stocked orders, ingot/block cycle protection, legacy order migration), job barrel collection rules and courier supply loads, ore vein detection and rarity pacing, screen data network round trips, upgrade prices, emerald payments with change, upgraded ranges and fixed crews, wave threat from population upgrades, enchanting rarity timing, lapis costs, the level cap and item priority against the server's real enchantments, staggered 30-citizen updates, bounded reachability probes, and shared resource scan expiry/invalidation. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
 
-Automated checks do not replace an in-game playtest. Check previews, border placement, shared station crews, protected player logs, large-tree felling/replanting, tunnel/cave pathfinding, quarry staircase descent and climb-out, quarry obstructions and skipped blocks, craftsman/smelter/cook trips, fuel use and appliance output collection, guard shift changes and shared armor returns, blacksmith pickup/repair/return trips, every screen and its buttons, teaching orders and their sliders, courier trips and job barrel use, ore vein mining, guide crafting/reading, meal healing and direct feeding, armor upgrades/patrol/combat, weapon scavenging and archery, bell runs and civilian cover, wave spawning, inventory menus, tool breakage, bed use, and save/restart behavior before using this alpha in an important world.
+Automated checks do not replace an in-game playtest. Check previews, border placement, shared station crews, protected player logs, large-tree felling/replanting, tunnel/cave pathfinding, quarry staircase descent and climb-out, quarry obstructions and skipped blocks, craftsman/smelter/cook trips, fuel use and appliance output collection, guard shift changes and shared armor returns, blacksmith pickup/repair/return trips, every screen and its buttons, teaching orders and their sliders, courier trips and job barrel use, ore vein mining, station and population upgrades with emeralds, the new station models, enchanter trips and enchanting, guards answering calls and hunting glowing wave stragglers, guide crafting/reading, meal healing and direct feeding, armor upgrades/patrol/combat, weapon scavenging and archery, bell runs and civilian cover, wave spawning, inventory menus, tool breakage, bed use, and save/restart behavior before using this alpha in an important world.
 
 ## Development stages
 
-1. **Settlement foundation — this build:** claims, role blocks, shared crews, real inventory, crop/tree cycles, automatic tunnel/cave mining, quarries, named citizens, inventories, armed guards, bell alarms, and the first enemy waves.
-2. **Self-sustaining small town:** dedicated hauling, more food processing, approved housing construction, robust room validation, and migration. Craftsmen are the first step.
+1. **Settlement foundation — this build:** claims, role blocks, shared crews, real inventory, crop/tree cycles, automatic tunnel/cave mining, quarries, named citizens, inventories, armed guards, bell alarms, the first enemy waves, and emerald upgrades.
+2. **Self-sustaining small town:** more food processing, approved housing construction, robust room validation, and migration. Craftsmen, couriers and enchanters are the first steps.
 3. **Living neighboring world:** persisted AI settlements, weighted distant events, history, player-distance generation, and mode handoff.
 4. **Military foundation:** build on town guards with trained soldiers, squad orders, wounded citizens, and hospital treatment.
 5. **Raids and trade:** independent targets, physical convoys, scouting, cargo loss, and supply disruption.

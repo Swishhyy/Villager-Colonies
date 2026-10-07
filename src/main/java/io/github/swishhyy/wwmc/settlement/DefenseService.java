@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.ai.village.poi.PoiTypes;
 import net.minecraft.world.entity.monster.Monster;
@@ -79,6 +80,10 @@ public final class DefenseService {
         String calls=reported==0 ? "" : ", "+reported+(reported==1 ? " hostile" : " hostiles")+" reported to the guards";
         if(alert==null || alert.state.phase()==AlarmState.Phase.CALM) return "calm"+calls;
         return (alert.state.ringing() ? "ALARM, "+alert.sighted+" hostiles in sight" : "a guard is running to the bell")+calls;
+    }
+    /** An enderman or other neutral mob that is not angry and hunting nobody is no reason to call the guards. */
+    private static boolean calm(Monster monster) {
+        return monster instanceof NeutralMob neutral && !neutral.isAngry() && monster.getTarget()==null;
     }
     /** Hostiles currently reported in this town. */
     public static int threats(Settlement town) { Map<UUID,Threat> threats=THREATS.get(town.id); return threats==null ? 0 : threats.size(); }
@@ -213,6 +218,7 @@ public final class DefenseService {
                 double distance=citizen.distanceToSqr(monster);
                 if(distance>scan*scan || !citizen.hasLineOfSight(monster)) continue;
                 if(distance<=range*range) seen.add(monster);
+                if(!guard && calm(monster)) continue;
                 if(!guard && reported.add(monster)) {
                     report(town,monster,citizen.getName().getString(),false,now);
                     citizen.called(monster,guards);

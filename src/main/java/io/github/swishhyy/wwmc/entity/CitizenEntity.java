@@ -98,6 +98,9 @@ public final class CitizenEntity extends Villager {
     private final Map<UUID,Long> ignoredThreats=new HashMap<>();
     private UUID respondTarget;
     private int respondTicks;
+    /** A civilian's call to the guards, shown instead of the activity for a few seconds. */
+    private String callNote="";
+    private long callNoteUntil;
     /** The job worked last; a change sends that job's tools, weapons and armor back to the warehouse. */
     private StructureRole lastRole;
     private boolean returningGear;
@@ -1057,7 +1060,7 @@ public final class CitizenEntity extends Villager {
         respondTicks+=10;
         activity=(call.wave() ? "Hunting a glowing "+name+" left from the wave" : "Answering "+call.reporter()+"'s call about a "+name)
                 +" near "+enemy.blockPosition().toShortString();
-        if(respondTicks>1200 || !walk(enemy.blockPosition(),0.8) && onGround()) {
+        if(respondTicks>1800 || !walk(enemy.blockPosition(),0.8) && onGround()) {
             ignoredThreats.put(enemy.getUUID(),level.getGameTime()+2400);
             DefenseService.release(town,enemy.getUUID(),getUUID());
             respondTarget=null; respondTicks=0; return false;
@@ -1067,8 +1070,9 @@ public final class CitizenEntity extends Villager {
     /** A civilian who spots a hostile near their work calls the guards to deal with it. */
     public void called(Monster monster,boolean guards) {
         if(isGuard()) return;
-        activity=guards ? "Called the guards about a "+monster.getName().getString()+" nearby"
+        callNote=guards ? "Called the guards about a "+monster.getName().getString()+" nearby"
                 : "Spotted a "+monster.getName().getString()+" nearby, but the town has no guards";
+        callNoteUntil=level().getGameTime()+100;
     }
     private void runToBell(ServerLevel level,Settlement town,BlockPos bell) {
         setTarget(null);
@@ -1409,7 +1413,7 @@ public final class CitizenEntity extends Villager {
         // Rotate through the station's appliances; progress stays in their block entities.
         processor=devices.get((devices.indexOf(processor)+1)%devices.size());
     }
-    public String activity() { return activity; }
+    public String activity() { return level().getGameTime()<callNoteUntil ? callNote : activity; }
     /** Station this citizen works at, or null. */
     public BlockPos workplace() { return workplace; }
     /** Ticks until the next scheduled meal. */
