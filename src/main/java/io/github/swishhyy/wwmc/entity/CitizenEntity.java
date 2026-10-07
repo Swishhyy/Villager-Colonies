@@ -305,7 +305,8 @@ public final class CitizenEntity extends Villager {
     /** A guard post has an open place and guarding matters more than this citizen's own job, so it volunteers. */
     private boolean guardVacancy(ServerLevel level,Settlement town) {
         int guard=town.jobs.level(StructureRole.GUARD);
-        if(guard==JobBoard.OFF) return false;
+        // A citizen finishing an enchantment, a repair or a trade run cannot change job yet, so the post waits for another.
+        if(guard==JobBoard.OFF || midTask()) return false;
         Station home=homeStation(town);
         if(home!=null && (home.role()==StructureRole.GUARD || town.jobs.level(home.role())>=guard)) return false;
         return town.stations.stream().anyMatch(s -> s.role()==StructureRole.GUARD && SettlementService.active(level,s)
@@ -1885,9 +1886,9 @@ public final class CitizenEntity extends Villager {
             station=chooseJob(level,town);
             if(station==null) {
                 activity=jobNote; searchDelay=40;
-                // Wait at the station rather than wherever the last errand ended.
+                // Wait at the station rather than wherever the last errand ended, heading there even while it is beyond loaded ground.
                 Station own=homeStation(town);
-                if(own!=null && !night(level) && level.hasChunkAt(own.position()) && distanceToSqr(Vec3.atCenterOf(own.position()))>100) walk(own.position());
+                if(own!=null && !night(level) && distanceToSqr(Vec3.atCenterOf(own.position()))>100) walk(own.position());
                 return;
             }
             workplace=station.position();
