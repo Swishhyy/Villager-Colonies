@@ -196,7 +196,8 @@ public final class AnimalWork {
             if(!fishable(level,water)) continue;
             for(int distance=1;distance<=3;distance++) for(int[] side:new int[][]{{distance,0},{-distance,0},{0,distance},{0,-distance}}) {
                 BlockPos bank=water.offset(side[0],1,side[1]);
-                if(CitizenReach.standing(view,bank) && CitizenReach.within(Vec3.atBottomCenterOf(bank).add(0,worker.getEyeHeight(),0),water))
+                Vec3 eyes=Vec3.atBottomCenterOf(bank).add(0,worker.getEyeHeight(),0);
+                if(CitizenReach.standing(view,bank) && CitizenReach.within(eyes,water) && clearCast(level,worker,eyes,water))
                     spots.add(new FishingSpot(bank.immutable(),water.immutable()));
             }
         }
@@ -209,6 +210,10 @@ public final class AnimalWork {
         }
         return null;
     }
+    private static boolean clearCast(ServerLevel level,CitizenEntity worker,Vec3 eyes,BlockPos water) {
+        var hit=level.clip(new ClipContext(eyes,Vec3.atCenterOf(water),ClipContext.Block.COLLIDER,ClipContext.Fluid.ANY,worker));
+        return hit.getType()==HitResult.Type.MISS || level.getFluidState(hit.getBlockPos()).is(FluidTags.WATER);
+    }
     private void fish(ServerLevel level,Settlement town,Station station,CitizenEntity worker) {
         if(fishing==null || !fishable(level,fishing.water())) {
             fishing=null; progress=0;
@@ -217,9 +222,9 @@ public final class AnimalWork {
             fishing=findFishingSpot(level,town,station,worker);
             if(fishing==null) { worker.workActivity("Needs a dry bank beside open, two-block-deep water in range"); return; }
         }
-        if(worker.blockPosition().distSqr(fishing.bank())>1) { worker.workActivity("Walking to the fishing bank"); worker.workWalk(fishing.bank()); return; }
-        var hit=level.clip(new ClipContext(worker.getEyePosition(),Vec3.atCenterOf(fishing.water()),ClipContext.Block.COLLIDER,ClipContext.Fluid.ANY,worker));
-        if(hit.getType()!=HitResult.Type.MISS && !hit.getBlockPos().equals(fishing.water())) { fishing=null; progress=0; return; }
+        if(worker.blockPosition().distSqr(fishing.bank())>1 || !clearCast(level,worker,worker.getEyePosition(),fishing.water())) {
+            worker.workActivity("Walking to a clear fishing bank"); worker.workStandAt(fishing.bank()); return;
+        }
         worker.getNavigation().stop();
         worker.getLookControl().setLookAt(fishing.water().getX()+0.5,fishing.water().getY()+0.9,fishing.water().getZ()+0.5);
         worker.workActivity("Fishing: "+progress/20+" / "+Config.FISHING_SECONDS.get()+" seconds");

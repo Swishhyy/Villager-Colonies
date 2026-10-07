@@ -61,7 +61,7 @@ public final class SettlementService {
         if(scans!=null) scans.refresh(town.id);
     }
     public static WorkforceBook<BlockPos> workers(ServerLevel level) { return WORKFORCE.computeIfAbsent(level,l -> new WorkforceBook<>()); }
-    /** Crew slots: the configured crew plus any bought with emeralds. Farms, craftsmen and enchanters always have one. */
+    /** Crew slots: the configured crew plus upgrades, except solo jobs such as mines, farms and craftsmen. */
     public static int workerLimit(Station station) {
         if(Upgrades.soloCrew(station.role())) return 1;
         return station.crew()+switch(station.role()) {

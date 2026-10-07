@@ -534,6 +534,12 @@ public final class CitizenEntity extends Villager {
     private boolean eatFrom(List<Container> supplies) {
         if(!wantsMeal()) return false;
         boolean personal=supplies.size()==1 && supplies.getFirst()==cargo;
+        // A courier's bag is town cargo. Deliver its meals intact, then eat fairly from the communal stock.
+        if(personal && level() instanceof ServerLevel server) {
+            Settlement town=town(server);
+            Station home=town==null ? null : homeStation(town);
+            if(home!=null && home.role()==StructureRole.COURIER) return false;
+        }
         if(!personal && level() instanceof ServerLevel server) {
             Settlement town=town(server);
             if(town!=null) {
@@ -716,7 +722,7 @@ public final class CitizenEntity extends Villager {
         }
         depotTarget=null; depotTicks=0;
         getNavigation().stop();
-        int[] foodReserve={role.foodJob() ? 0 : FoodSharing.PERSONAL_LIMIT};
+        int[] foodReserve={role.foodJob() || role==StructureRole.COURIER ? 0 : FoodSharing.PERSONAL_LIMIT};
         int[] fuelReserve={ProcessingService.FUEL_LOAD};
         if(deposit) cargo.deposit(storage,stack -> {
             if(role.processes() && ProcessingService.fuel(level,stack)) {
@@ -745,7 +751,7 @@ public final class CitizenEntity extends Villager {
             activity="Waiting my turn for food in the warehouse"; return false;
         }
         int rations=InventoryOps.count(List.of(cargo),this::food);
-        int allowance=role.foodJob() ? 0 : FoodSharing.spareLimit(InventoryOps.count(storage,this::food),town.citizens.size());
+        int allowance=role.foodJob() || role==StructureRole.COURIER ? 0 : FoodSharing.spareLimit(InventoryOps.count(storage,this::food),town.citizens.size());
         for(int count=rations;count<allowance;count++) {
             ItemStack ration=InventoryOps.takeOne(storage,this::food);
             if(ration.isEmpty()) break;
@@ -1365,7 +1371,7 @@ public final class CitizenEntity extends Villager {
             else craftJob=null;
         }
     }
-    /** Couriers carry finished goods from job barrels to the warehouse and keep smelters' and cooks' barrels supplied. */
+    /** Couriers carry finished goods to the warehouse and supply every production job's local barrels. */
     private void courier(ServerLevel level,Settlement town,Station station) {
         eatFrom(List.of(cargo));
         BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
@@ -1378,7 +1384,10 @@ public final class CitizenEntity extends Villager {
         if(barrels.isEmpty() || nearestBarrel(barrels)==null) {
             haulStation=null; haulSupply=false;
             // Goods already carried reach the warehouse before the next errand.
-            if(cargo.hasDeliverable(this::retainSupply,this::food)) { visitWarehouse(level,town,StructureRole.COURIER); return; }
+            if(cargo.hasDeliverable(this::retainSupply,this::food) || InventoryOps.count(List.of(cargo),this::food)>0) {
+                visitWarehouse(level,town,StructureRole.COURIER); return;
+            }
+            if(wantsMeal() && level.getGameTime()>=nextFoodTripAt && !visitPantry(level,town)) return;
             job=errand(level,town,warehouse);
             if(job==null) {
                 activity="No goods waiting in job barrels";
@@ -1437,7 +1446,7 @@ public final class CitizenEntity extends Villager {
         haulStation=null; haulSupply=false;
     }
     /**
-     * The next courier errand: the largest worthwhile load, otherwise supplies for a smeltery or kitchen, otherwise any
+     * The next courier errand: the largest worthwhile load, otherwise supplies for a production job, otherwise any
      * waiting goods at all, so a pair of new tools or a few ingots never wait for a full load.
      */
     private Station errand(ServerLevel level,Settlement town,BlockPos warehouse) {
@@ -1528,6 +1537,7 @@ public final class CitizenEntity extends Villager {
     public StructureRole jobRole() { return role(); }
     public CitizenInventory bag() { return cargo; }
     public boolean workWalk(BlockPos pos) { return walk(pos); }
+    public boolean workStandAt(BlockPos pos) { return walk(pos,0.65,0); }
     public boolean workAt(ServerLevel level,BlockPos pos) { return canUse(level,pos); }
     public boolean workDepot(ServerLevel level,Settlement town,Station station) { return visitDepot(level,town,station); }
     public void workActivity(String text) { activity=text; }
