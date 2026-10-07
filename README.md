@@ -6,7 +6,9 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.11.0-alpha
+## Current build: 0.11.1-alpha
+
+0.11.1 fixes enchanters reporting usable tables as unreachable without walking. They choose reachable, clear standing ground within four-block work reach instead of trying to path into the table block. Blocked views remain blocked; opening an entrance or changing the furniture lets them try a new approach without blacklisting the table itself. Existing enchanting progress and local courier supplies are preserved.
 
 0.11.0 adds **hunters, fishermen, animal keepers and butchers**, with a whole-carcass → raw-portions → cooked-meals food chain. **Couriers are now the only haulers within a town**: production workers use their own job barrels, and wait for deliveries or free storage. Every mine has exactly **one miner**, including older upgraded mines. Regular meals are three times less frequent by default (six loaded minutes), healing meals have a 30-second cooldown, and scarce food is shared with priority for hungry citizens who were fed least recently. Hire couriers and add local barrels when updating an existing town.
 

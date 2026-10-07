@@ -95,7 +95,7 @@ public final class CitizenEntity extends Villager {
     private ItemStack enchantItem=ItemStack.EMPTY;
     private int enchantTicks,enchantLevel;
     private boolean enchantDone;
-    private BlockPos enchantTable;
+    private BlockPos enchantTable,enchantStand;
     private long nextEnchantAt;
     /** Kinds of item no enchantment fit, skipped until the given game time. */
     private final Map<Item,Long> unenchantable=new HashMap<>();
@@ -356,6 +356,7 @@ public final class CitizenEntity extends Villager {
         }
         leaveBed();
         animalWork.reset();
+        enchantTable=null; enchantStand=null;
         var book=SettlementService.reservations(level);
         if(workplace!=null) SettlementService.workers(level).release(workplace,getUUID());
         if(target!=null) book.release(target,getUUID());
@@ -1640,20 +1641,36 @@ public final class CitizenEntity extends Villager {
         }
     }
     private int lapisCarried() { return InventoryOps.count(List.of(cargo),Enchanting::lapis); }
-    /**
-     * Enchanters take one unenchanted item at a time, from their own barrels first and then the warehouse, armor and
-     * weapons before tools and books, and work it at the enchanting table for minutes before lapis seals the enchantment.
-     */
+    private boolean enchantStandUsable(ServerLevel level,Settlement town,BlockPos stand,BlockPos table) {
+        return stand!=null && CitizenReach.standing(standingView(level,town),stand)
+                && CitizenReach.canUse(level,Vec3.atBottomCenterOf(stand).add(0,getEyeHeight(),0),table);
+    }
+    /** A solid table is a work target, not a walking destination. Probe only clear ground from which it can be used. */
+    private boolean chooseEnchantingApproach(ServerLevel level,Settlement town,List<BlockPos> tables) {
+        enchantTable=null; enchantStand=null;
+        var view=standingView(level,town);
+        for(BlockPos table:tables.stream().sorted(Comparator.comparingDouble(p -> p.distSqr(blockPosition()))).toList()) {
+            if(canUse(level,table)) { enchantTable=table; return true; }
+            for(BlockPos stand:CitizenReach.stands(view,table,position(),getEyeHeight())) {
+                Vec3 eyes=Vec3.atBottomCenterOf(stand).add(0,getEyeHeight(),0);
+                // Obstructed views do not spend a path probe or blacklist the table.
+                if(!CitizenReach.canUse(level,eyes,table)) continue;
+                if(reachableStand(stand)) { enchantTable=table; enchantStand=stand; return true; }
+                if(reachBudget.deferred()) return false;
+            }
+        }
+        return false;
+    }
+    /** Enchanters take one item and lapis from their local barrels and work from clear ground within reach of a table. */
     private void enchanter(ServerLevel level,Settlement town,Station station) {
         eatFrom(List.of(cargo));
         if(!enchantItem.isEmpty() && enchantDone) { deliverEnchanted(level,town,station); return; }
         if(level.getGameTime()<nextEnchantAt) return;
         unenchantable.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
         List<BlockPos> tables=SettlementService.enchantingTables(level,town,station);
-        if(enchantTable==null || !tables.contains(enchantTable)) {
-            enchantTable=tables.stream().sorted(Comparator.comparingDouble(p -> p.distSqr(blockPosition())))
-                    .filter(p -> handNear(p) || canReach(p)).findFirst().orElse(null);
-            if(enchantTable==null) {
+        if(enchantTable==null || !tables.contains(enchantTable)
+                || !canUse(level,enchantTable) && !enchantStandUsable(level,town,enchantStand,enchantTable)) {
+            if(!chooseEnchantingApproach(level,town,tables)) {
                 if(reachBudget.deferred()) { activity="Looking for a reachable enchanting table"; return; }
                 activity=tables.isEmpty() ? "Needs an enchanting table within "+station.radius()+" blocks of the Enchanter Station" : "Cannot reach the enchanting table";
                 nextEnchantAt=level.getGameTime()+100; return;
@@ -1666,8 +1683,8 @@ public final class CitizenEntity extends Villager {
         String name=enchantItem.getHoverName().getString();
         if(!canUse(level,enchantTable)) {
             activity="Carrying "+name+" to the enchanting table"; pathTicks+=10;
-            if(!walk(enchantTable) && onGround() || pathTicks>1200) {
-                enchantTable=null; pathTicks=0;
+            if(!walk(enchantStand,0.65,0) && onGround() || pathTicks>1200) {
+                if(failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(enchantStand,level.getGameTime()+1200);
                 idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level);
             }
             return;
@@ -1700,7 +1717,7 @@ public final class CitizenEntity extends Villager {
         playSound(SoundEvents.ENCHANTMENT_TABLE_USE,1.0F,1.0F);
         activity="Enchanted "+result.getHoverName().getString();
     }
-    /** Collect an item to enchant and lapis for it: from this station's barrels when they hold what is missing, else from the warehouse. */
+    /** Collect an item and lapis from this station's courier-supplied barrels. */
     private boolean gatherForEnchanting(ServerLevel level,Settlement town,Station station,int cap) {
         Predicate<ItemStack> skipped=stack -> unenchantable.containsKey(stack.getItem());
         int needed=Enchanting.lapisCost(enchantLevel>0 ? enchantLevel : cap);
