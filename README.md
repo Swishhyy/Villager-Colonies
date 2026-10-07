@@ -6,7 +6,9 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.8.0-alpha
+## Current build: 0.8.1-alpha
+
+0.8.1 makes the in-game server config readable: six sections, short setting names, and hover explanations with units and tick-to-time conversions. Existing config keys, values and defaults remain unchanged.
 
 0.8.0 adds **emerald upgrades**. A station's screen sells a wider range or more crew slots, three levels each, and the town screen sells room for more citizens: a new town holds 10, and each population upgrade adds 5, costs more emeralds than the last and makes every enemy wave larger and tougher, bringing pillagers and then vindicators. Farms, craftsmen and the new enchanters always have exactly one worker. A new **Enchanter Station** enchants unenchanted gear and books with lapis at a nearby enchanting table: slowly (about five minutes per item, longer for rarer gear) and never above level 25. Citizens who spot a hostile **call the guards**, who send up to two guards on duty to deal with it; wave attackers **glow**, and any still alive a minute after a wave arrives are reported so the guards hunt them down. Every station and the banner have a new detailed model, turned to face whoever placed it. Existing towns keep their citizens: a town from an earlier build counts as having bought enough population upgrades for everyone it already has.
 
@@ -190,6 +192,8 @@ All markers use eight planks around a center item in a crafting table.
 The Station Inspector is a shapeless recipe with two paper and one stick. The **Settlement Guide** is a shapeless recipe with one book and one blue dye; right-click it to open the native book screen. `/wwmc guide` gives another copy. Tools consumed to craft stations are separate from tools supplied to workers.
 
 ### Server configuration
+
+Open **Mods → WWMC → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Worker Crews**, **Mining & Quarries**, **Work & Food**, **Enchanting**, and **Defense & Waves**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Existing TOML keys stay in their original locations, so earlier settings carry over. Multiplayer server configuration remains controlled by the server.
 
 The generated WWMC server config controls these defaults:
 
