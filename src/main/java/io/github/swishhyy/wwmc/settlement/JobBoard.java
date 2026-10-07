@@ -50,6 +50,8 @@ public final class JobBoard {
     }
     private static int presetLevel(String preset,StructureRole role) {
         if(role==StructureRole.GUARD || role==StructureRole.TRADER) return HIGH;
+        // Food and material production depend on deliveries; do not promote their couriers away.
+        if(role==StructureRole.COURIER && ("food".equals(preset) || "materials".equals(preset))) return HIGH;
         boolean food=role.foodJob();
         return switch(preset==null ? "" : preset) {
             case "food" -> food ? HIGH : NORMAL;

@@ -85,6 +85,9 @@ public final class FoodEconomyChecks {
             assertEquals(JobBoard.HIGH,JobBoard.preset("food").level(role));
             assertEquals(JobBoard.LOW,JobBoard.preset("materials").level(role));
         }
+        assertEquals(JobBoard.HIGH,JobBoard.preset("food").level(StructureRole.COURIER));
+        assertEquals(JobBoard.HIGH,JobBoard.preset("materials").level(StructureRole.COURIER));
+        assertEquals(JobBoard.NORMAL,JobBoard.preset("balanced").level(StructureRole.COURIER));
     }
     @Test @ExtendWith(EphemeralTestServerProvider.class)
     void excessPersonalFoodIsReturnedInsteadOfAnEightMealReserve(MinecraftServer server) {

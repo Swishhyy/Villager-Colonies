@@ -86,7 +86,9 @@ public final class FoodWorldTests {
             Animal game=fixture.cow(start.east(8),false,true),named=fixture.cow(start.offset(10,0,2),false,true);
             named.setCustomName(Component.literal("Protected cow"));
             helper.succeedWhen(() -> {
-                String state="hunter="+hunt.activity()+", butcher="+prepare.activity()+", cook="+chef.activity()+", couriers="+haulA.activity()+" / "+haulB.activity();
+                String state="hunter="+describe(hunt,level)+", butcher="+describe(prepare,level)+", cook="+describe(chef,level)
+                        +", couriers="+describe(haulA,level)+" / "+describe(haulB,level)
+                        +", tools in warehouse="+count(pantry,Items.IRON_SWORD)+" sword / "+count(pantry,Items.IRON_AXE)+" axe";
                 helper.assertTrue(count(pantry,Items.COOKED_BEEF)==4,"Food chain unfinished: "+state);
                 helper.assertTrue(!game.isAlive() && named.isAlive(),"The hunt failed or killed a named animal");
                 helper.assertTrue(count(pantry,Items.BEEF)+count(huntBarrel,Items.BEEF)+count(butcherBarrel,Items.BEEF)+count(cookBarrel,Items.BEEF)==0,"Duplicate raw meat survived the four cooked portions");
@@ -112,7 +114,8 @@ public final class FoodWorldTests {
             helper.succeedWhen(() -> {
                 if(fisher.isInWater()) wet.set(true);
                 int fish=count(storage,Carcasses.Kind.COD.stack().getItem())+count(storage,Carcasses.Kind.SALMON.stack().getItem());
-                helper.assertTrue(fish>0,"Not fishing: "+fisher.activity()+" at "+fisher.blockPosition());
+                helper.assertTrue(fish>0,"Not fishing: "+describe(fisher,level)+", station="+level.getBlockState(station.position())
+                        +", assigned="+fixture.town.jobs.home(fisher.getUUID())+", rod="+count(storage,Items.FISHING_ROD));
                 helper.assertTrue(!wet.get(),"Fisherman entered the pond instead of using its bank");
                 helper.assertTrue(count(storage,Items.COD)+count(storage,Items.SALMON)==0,"The catch bypassed butchery");
                 fixture.close();
@@ -193,5 +196,11 @@ public final class FoodWorldTests {
                 fixture.close(); helper.succeed();
             });
         });
+    }
+
+    private static String describe(CitizenEntity citizen,ServerLevel level) {
+        return citizen.activity()+" ("+citizen.jobRole()+", at "+citizen.blockPosition()+", ticks="+citizen.tickCount
+                +", alive="+citizen.isAlive()+", ticking="+level.isPositionEntityTicking(citizen.blockPosition())
+                +", town="+(citizen.town(level)!=null)+", hand="+citizen.getMainHandItem()+")";
     }
 }
