@@ -53,7 +53,7 @@ public final class ExpeditionService {
             for(int y=-3;y<=4;y++) {
                 BlockPos block=feet.offset(0,y,0); var state=level.getBlockState(block);
                 if(protection.protectedBlocks.contains(block) || level.getBlockEntity(block)!=null) return "protected construction at "+block.toShortString();
-                if(!state.isAir() && !state.is(BlockTags.DIRT) && !state.is(BlockTags.BASE_STONE_OVERWORLD) && !state.is(BlockTags.LEAVES)
+                if(!state.isAir() && !state.is(Blocks.GRASS_BLOCK) && !state.is(BlockTags.DIRT) && !state.is(BlockTags.BASE_STONE_OVERWORLD) && !state.is(BlockTags.LEAVES)
                         && !state.is(BlockTags.LOGS) && !state.canBeReplaced()) return "non-natural block "+BuiltInRegistries.BLOCK.getKey(state.getBlock())+" at "+block.toShortString();
             }
         }
