@@ -56,10 +56,14 @@ public final class NpcSettlements {
     }
     private boolean discover(ServerLevel level,NpcTownPlan.Candidate candidate) {
         NpcWorldData regions=NpcWorldData.get(level);
-        if(regions.generated.contains(candidate.region()) || !loaded(level,candidate.center())) return false;
+        if(regions.generated.contains(candidate.region())) return false;
         var data=SettlementData.get(level); int radius=Config.SETTLEMENT_RADIUS.get();
-        if(data.settlements.stream().anyMatch(t -> t.overlaps(candidate.center(),radius))) return false;
-        BlockPos center=suitable(level,candidate.center());
+        BlockPos center=null;
+        for(BlockPos site:NpcTownPlan.sites(candidate)) {
+            if(!loaded(level,site) || data.settlements.stream().anyMatch(t -> t.overlaps(site,radius))) continue;
+            center=suitable(level,site);
+            if(center!=null) break;
+        }
         if(center==null) return false;
         Settlement town=new Settlement(candidate.id(),candidate.id(),candidate.name().strip(),center,radius,List.of(),List.of(),
                 candidate.specialty().equals("farming") ? "food" : "materials");

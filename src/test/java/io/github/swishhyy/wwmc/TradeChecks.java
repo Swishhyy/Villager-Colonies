@@ -40,6 +40,10 @@ public final class TradeChecks {
         assertEquals(16,TradeGoods.load(List.of(warehouse),orders,new TradeShipment()));
         assertEquals(80,InventoryOps.count(List.of(warehouse),s -> s.is(Items.OAK_LOG)));
         assertEquals(64,warehouse.getItem(2).getCount());
+        TradeShipment packed=new TradeShipment();
+        for(int n=0;n<packed.getContainerSize();n++) packed.setItem(n,new ItemStack(Items.COBBLESTONE,64));
+        assertEquals(0,TradeGoods.load(List.of(warehouse),List.of(new TradeSettings.Export("minecraft:oak_log",0,64)),packed));
+        assertEquals(80,InventoryOps.count(List.of(warehouse),s -> s.is(Items.OAK_LOG)));
     }
     @Test void fullWarehousesKeepCargoAndComponents() {
         var source=new SimpleContainer(1); ItemStack named=new ItemStack(Items.IRON_INGOT,10);
@@ -50,7 +54,7 @@ public final class TradeChecks {
         var full=new SimpleContainer(1); full.setItem(0,new ItemStack(Items.COBBLESTONE,64));
         assertEquals(0,TradeGoods.unload(cargo,List.of(full)));
         assertEquals(10,cargo.getItem(0).getCount());
-        var target=new SimpleContainer(1); target.setItem(0,named.copyWithCount(60));
+        var target=new SimpleContainer(1); target.setItem(0,cargo.getItem(0).copyWithCount(60));
         assertEquals(4,TradeGoods.unload(cargo,List.of(target)));
         assertEquals(6,cargo.getItem(0).getCount());
         assertEquals("Town's iron",cargo.getItem(0).getHoverName().getString());

@@ -18,9 +18,10 @@ public final class TradeChunks {
     private static final Map<ServerLevel,Map<UUID,Set<Long>>> HELD=new WeakHashMap<>();
     private static final TicketController CONTROLLER=new TicketController(Identifier.fromNamespaceAndPath(WWMC.MODID,"traders"),(level,helper) -> {
         var towns=SettlementData.get(level);
+        Set<UUID> allowed=allowed(level);
         for(var entry:helper.getEntityTickets().entrySet()) {
             Settlement town=towns.byId(entry.getKey());
-            if(town==null || !needed(level,town)) { helper.removeAllTickets(entry.getKey()); continue; }
+            if(town==null || !allowed.contains(town.id)) { helper.removeAllTickets(entry.getKey()); continue; }
             Set<Long> wanted=window(town.trading.runnerPos==null ? town.center : town.trading.runnerPos);
             Set<Long> restored=new HashSet<>();
             for(long chunk:entry.getValue().normal()) {
@@ -33,6 +34,12 @@ public final class TradeChunks {
     public static void register(RegisterTicketControllersEvent event) { event.register(CONTROLLER); }
     /** A stranded carrier is kept ticking until it can return its goods, even after a route is removed. */
     private static boolean needed(ServerLevel level,Settlement town) { return town.trading.runner!=null || TradeRoutes.canDepart(level,town); }
+    private static Set<UUID> allowed(ServerLevel level) {
+        Set<UUID> result=new LinkedHashSet<>();
+        SettlementData.get(level).settlements.stream().filter(t -> needed(level,t)).sorted(Comparator.comparing(t -> t.id))
+                .limit(Config.MAX_TRADERS.get()).forEach(t -> result.add(t.id));
+        return result;
+    }
     public static Set<Long> window(BlockPos pos) {
         Set<Long> result=new HashSet<>();
         int x=Math.floorDiv(pos.getX(),16),z=Math.floorDiv(pos.getZ(),16);
@@ -40,6 +47,7 @@ public final class TradeChunks {
         return result;
     }
     public static boolean keep(ServerLevel level,Settlement town,BlockPos pos) {
+        if(!allowed(level).contains(town.id)) return false;
         var held=HELD.computeIfAbsent(level,l -> new HashMap<>());
         if(!held.containsKey(town.id) && held.size()>=Config.MAX_TRADERS.get()) return false;
         Set<Long> next=window(pos),old=held.getOrDefault(town.id,Set.of());
@@ -57,11 +65,12 @@ public final class TradeChunks {
         if(!(event.getLevel() instanceof ServerLevel level) || level.getGameTime()%40!=0) return;
         SettlementData data=SettlementData.get(level);
         var held=HELD.computeIfAbsent(level,l -> new HashMap<>());
+        Set<UUID> allowed=allowed(level);
         for(UUID id:new ArrayList<>(held.keySet())) {
             Settlement town=data.byId(id);
-            if(town==null || !needed(level,town)) release(level,id);
+            if(town==null || !allowed.contains(id)) release(level,id);
         }
-        for(Settlement town:data.settlements) if(needed(level,town)) {
+        for(Settlement town:data.settlements) if(allowed.contains(town.id)) {
             if(!keep(level,town,town.trading.runnerPos==null ? town.center : town.trading.runnerPos)) town.trading.status="Waiting for a server trader slot";
         }
     }
