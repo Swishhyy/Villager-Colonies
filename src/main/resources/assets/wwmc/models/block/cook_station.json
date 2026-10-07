@@ -1,8 +1,149 @@
 {
-  "parent": "minecraft:block/orientable",
+  "parent": "minecraft:block/block",
   "textures": {
+    "particle": "minecraft:block/smoker_side",
     "side": "minecraft:block/smoker_side",
+    "front": "minecraft:block/smoker_front",
     "top": "minecraft:block/smoker_top",
-    "front": "minecraft:block/smoker_front"
-  }
+    "bottom": "minecraft:block/smoker_bottom",
+    "board": "minecraft:block/stripped_birch_log",
+    "loaf": "minecraft:block/stripped_jungle_log",
+    "pot": "minecraft:block/polished_blackstone",
+    "soup": "minecraft:block/orange_terracotta"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        12,
+        16
+      ],
+      "faces": {
+        "down": {
+          "texture": "#bottom",
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#top"
+        },
+        "north": {
+          "texture": "#side",
+          "cullface": "north"
+        },
+        "south": {
+          "texture": "#front",
+          "cullface": "south"
+        },
+        "west": {
+          "texture": "#side",
+          "cullface": "west"
+        },
+        "east": {
+          "texture": "#side",
+          "cullface": "east"
+        }
+      }
+    },
+    {
+      "from": [
+        2,
+        12,
+        2.5
+      ],
+      "to": [
+        8.5,
+        12.75,
+        8
+      ],
+      "faces": {
+        "down": {
+          "texture": "#board"
+        },
+        "up": {
+          "texture": "#board"
+        },
+        "north": {
+          "texture": "#board"
+        },
+        "south": {
+          "texture": "#board"
+        },
+        "west": {
+          "texture": "#board"
+        },
+        "east": {
+          "texture": "#board"
+        }
+      }
+    },
+    {
+      "from": [
+        3,
+        12.75,
+        3.5
+      ],
+      "to": [
+        7.5,
+        14.5,
+        6.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#loaf"
+        },
+        "up": {
+          "texture": "#loaf"
+        },
+        "north": {
+          "texture": "#loaf"
+        },
+        "south": {
+          "texture": "#loaf"
+        },
+        "west": {
+          "texture": "#loaf"
+        },
+        "east": {
+          "texture": "#loaf"
+        }
+      }
+    },
+    {
+      "from": [
+        9.5,
+        12,
+        8.5
+      ],
+      "to": [
+        14,
+        15.5,
+        13
+      ],
+      "faces": {
+        "down": {
+          "texture": "#pot"
+        },
+        "up": {
+          "texture": "#soup"
+        },
+        "north": {
+          "texture": "#pot"
+        },
+        "south": {
+          "texture": "#pot"
+        },
+        "west": {
+          "texture": "#pot"
+        },
+        "east": {
+          "texture": "#pot"
+        }
+      }
+    }
+  ]
 }

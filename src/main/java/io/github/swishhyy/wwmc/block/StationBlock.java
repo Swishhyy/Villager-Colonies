@@ -1,5 +1,6 @@
 package io.github.swishhyy.wwmc.block;
 import io.github.swishhyy.wwmc.core.StructureRole;
+import io.github.swishhyy.wwmc.core.Upgrades;
 import io.github.swishhyy.wwmc.event.StationPreviewEvent;
 import io.github.swishhyy.wwmc.settlement.SettlementService;
 import net.minecraft.core.BlockPos;
@@ -17,16 +18,23 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
+/**
+ * A station block. Its range and crew upgrade levels are also kept in the block state, so the client can draw the
+ * upgraded range and a broken station's item keeps the upgrades for wherever it is placed next.
+ */
 public final class StationBlock extends Block {
     public static final EnumProperty<Direction> FACING=BlockStateProperties.HORIZONTAL_FACING;
+    public static final IntegerProperty RANGE=IntegerProperty.create("range",0,Upgrades.MAX_STATION_LEVEL);
+    public static final IntegerProperty CREW=IntegerProperty.create("crew",0,Upgrades.MAX_STATION_LEVEL);
     private final StructureRole role;
     public StationBlock(StructureRole role, Properties properties) {
         super(properties); this.role=role;
-        registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH));
+        registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH).setValue(RANGE,0).setValue(CREW,0));
     }
-    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> builder) { builder.add(FACING); }
+    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> builder) { builder.add(FACING,RANGE,CREW); }
     @Override public BlockState getStateForPlacement(BlockPlaceContext context) { return defaultBlockState().setValue(FACING,context.getHorizontalDirection()); }
     public StructureRole role() { return role; }
     @Override protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {

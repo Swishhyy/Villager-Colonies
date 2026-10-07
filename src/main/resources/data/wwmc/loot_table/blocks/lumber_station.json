@@ -6,7 +6,30 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "wwmc:lumber_station"
+          "name": "wwmc:lumber_station",
+          "functions": [
+            {
+              "function": "minecraft:copy_state",
+              "block": "wwmc:lumber_station",
+              "properties": [
+                "range",
+                "crew"
+              ],
+              "conditions": [
+                {
+                  "condition": "minecraft:inverted",
+                  "term": {
+                    "condition": "minecraft:block_state_property",
+                    "block": "wwmc:lumber_station",
+                    "properties": {
+                      "range": "0",
+                      "crew": "0"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
         }
       ],
       "conditions": [

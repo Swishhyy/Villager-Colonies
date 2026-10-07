@@ -11,12 +11,15 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
@@ -27,21 +30,31 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 /**
- * Hostile waves sized by population. They gather inside the claim at nightfall, only while the owner is home,
- * then march on the banner and attack citizens. Wave mobs carry entity tags so they keep marching after a reload.
+ * Hostile waves sized by population and by the town's population upgrades. They gather inside the claim at nightfall,
+ * only while the owner is home, then march on the banner and attack citizens. Wave mobs glow so they are easy to find,
+ * and any still alive a minute after the wave arrived are reported to the guards, who hunt them down. Wave mobs carry
+ * entity tags so they keep marching after a reload.
  */
 public final class WaveService {
     public static final String WAVE_TAG="wwmc_wave";
     private static final String TOWN_TAG=WAVE_TAG+":";
     private static final int INTERVAL=100,RETRY_TICKS=1200,SPREAD=4,MIN_DISTANCE=40,MAX_DISTANCE=64;
+    /** Attackers still alive this long after a wave arrives are reported to the guards. */
+    private static final int LINGER_TICKS=1200;
+    /** Glowing lasts an hour and is renewed whenever a wave mob loads. */
+    private static final int GLOW_TICKS=72000;
     /** Wave mobs still alive per town, so the owner hears when a wave is beaten. */
     private static final Map<UUID,Integer> ACTIVE=new HashMap<>();
+    /** When each town's current wave arrived, and the towns whose owner already heard the guards are hunting stragglers. */
+    private static final Map<UUID,Long> STARTED=new HashMap<>();
+    private static final Set<UUID> HUNTED=new HashSet<>();
     private static Mob create(ServerLevel level,WavePlan.Attacker attacker) {
         var type=BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.withDefaultNamespace(attacker.name().toLowerCase(Locale.ROOT)));
         return type.create(level,EntitySpawnReason.EVENT) instanceof Mob mob ? mob : null;
     }
     public static int size(Settlement town) {
-        return WavePlan.size(town.citizens.size(),Config.WAVE_BASE_MOBS.get(),Config.WAVE_MOBS_PER_CITIZEN.get(),Config.WAVE_MAX_MOBS.get());
+        return WavePlan.size(town.citizens.size(),Config.WAVE_BASE_MOBS.get(),Config.WAVE_MOBS_PER_CITIZEN.get(),Config.WAVE_MAX_MOBS.get(),
+                SettlementService.populationLevel(town),Config.WAVE_MOBS_PER_UPGRADE.get());
     }
     public static String status(ServerLevel level,Settlement town) {
         if(!Config.WAVES.get()) return "enemy waves are disabled";
@@ -86,7 +99,7 @@ public final class WaveService {
         if(site==null) return 0;
         var random=level.getRandom();
         int spawned=0;
-        for(var entry:WavePlan.compose(size(town),town.citizens.size()).entrySet()) {
+        for(var entry:WavePlan.compose(size(town),town.citizens.size(),SettlementService.populationLevel(town)).entrySet()) {
             for(int i=0;i<entry.getValue();i++) {
                 BlockPos pos=null;
                 for(int attempt=0;attempt<8 && pos==null;attempt++)
@@ -105,14 +118,17 @@ public final class WaveService {
         }
         if(spawned>0) {
             town.waves++; ACTIVE.merge(town.id,spawned,Integer::sum);
+            STARTED.put(town.id,level.getGameTime()); HUNTED.remove(town.id);
             String direction=WavePlan.compass(site.getX()-town.center.getX(),site.getZ()-town.center.getZ());
-            if(owner!=null) SettlementService.notify(owner,"Wave "+town.waves+": "+spawned+" hostiles are attacking "+town.name+" from the "+direction+"!");
+            if(owner!=null) SettlementService.notify(owner,"Wave "+town.waves+": "+spawned+" glowing hostiles are attacking "+town.name+" from the "+direction+"!");
         }
         return spawned;
     }
     private static void enlist(Mob mob,Settlement town) {
-        mob.setPersistenceRequired(); mob.addTag(WAVE_TAG); mob.addTag(TOWN_TAG+town.id);
+        mob.setPersistenceRequired(); mob.addTag(WAVE_TAG); mob.addTag(TOWN_TAG+town.id); glow(mob);
     }
+    /** An outline through walls, like a bell's warning, so the owner can find every attacker. */
+    private static void glow(Mob mob) { mob.addEffect(new MobEffectInstance(MobEffects.GLOWING,GLOW_TICKS,0,false,false)); }
     private static Settlement townOf(ServerLevel level,Mob mob) {
         for(String tag:mob.entityTags()) if(tag.startsWith(TOWN_TAG)) {
             try { return SettlementData.get(level).byId(UUID.fromString(tag.substring(TOWN_TAG.length()))); }
@@ -120,11 +136,22 @@ public final class WaveService {
         }
         return null;
     }
-    private static int attackers(ServerLevel level,Settlement town) {
+    private static List<Mob> attackers(ServerLevel level,Settlement town) {
         int reach=town.radius+MAX_DISTANCE;
         AABB area=new AABB(town.center.getX()-reach,level.getMinY(),town.center.getZ()-reach,town.center.getX()+reach+1,level.getMaxY(),town.center.getZ()+reach+1);
         String tag=TOWN_TAG+town.id;
-        return level.getEntitiesOfClass(Mob.class,area,m -> m.isAlive() && m.entityTags().contains(tag)).size();
+        return level.getEntitiesOfClass(Mob.class,area,m -> m.isAlive() && m.entityTags().contains(tag));
+    }
+    /** Report every attacker still inside the claim to the guards; the owner hears about it once per wave. */
+    private static void hunt(ServerLevel level,Settlement town,List<Mob> alive) {
+        int reported=0;
+        for(Mob mob:alive) if(mob instanceof Monster monster && town.contains(mob.blockPosition())) {
+            DefenseService.report(town,monster,"",true,level.getGameTime()); reported++;
+        }
+        if(reported>0 && HUNTED.add(town.id)) {
+            ServerPlayer owner=level.getServer().getPlayerList().getPlayer(town.owner);
+            if(owner!=null) SettlementService.notify(owner,reported+" wave "+(reported==1 ? "attacker is" : "attackers are")+" still at large in "+town.name+". They glow; the guards are hunting them.");
+        }
     }
     private static void schedule(ServerLevel level,Settlement town) {
         town.nextWave=level.getGameTime()+WavePlan.delay(Config.WAVE_INTERVAL_DAYS.get(),level.getRandom()::nextInt);
@@ -137,8 +164,11 @@ public final class WaveService {
         return spawned;
     }
     private static void update(ServerLevel level,Settlement town) {
-        int alive=town.waves>0 ? attackers(level,town) : 0;
+        List<Mob> attackers=town.waves>0 ? attackers(level,town) : List.of();
+        int alive=attackers.size();
         Integer before=alive>0 ? ACTIVE.put(town.id,alive) : ACTIVE.remove(town.id);
+        if(alive==0) { STARTED.remove(town.id); HUNTED.remove(town.id); }
+        else if(level.getGameTime()-STARTED.computeIfAbsent(town.id,id -> level.getGameTime())>=LINGER_TICKS) hunt(level,town,attackers);
         if(before!=null && before>0 && alive==0 && level.hasChunkAt(town.center)) {
             ServerPlayer owner=level.getServer().getPlayerList().getPlayer(town.owner);
             if(owner!=null) SettlementService.notify(owner,town.name+" has repelled the wave.");
@@ -163,10 +193,11 @@ public final class WaveService {
         if(!(event.getLevel() instanceof ServerLevel level) || !(event.getEntity() instanceof Mob mob) || !mob.entityTags().contains(WAVE_TAG)) return;
         Settlement town=townOf(level,mob);
         if(town==null) return;
+        glow(mob);
         mob.targetSelector.addGoal(3,new NearestAttackableTargetGoal<>(mob,CitizenEntity.class,true));
         if(mob instanceof PathfinderMob walker) mob.goalSelector.addGoal(4,new MarchGoal(walker,town.center));
     }
-    @SubscribeEvent public void stopped(ServerStoppedEvent event) { ACTIVE.clear(); }
+    @SubscribeEvent public void stopped(ServerStoppedEvent event) { ACTIVE.clear(); STARTED.clear(); HUNTED.clear(); }
     /** Without a target, walk toward the town banner. */
     private static final class MarchGoal extends Goal {
         private final PathfinderMob mob;

@@ -6,7 +6,30 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "wwmc:housing_station"
+          "name": "wwmc:housing_station",
+          "functions": [
+            {
+              "function": "minecraft:copy_state",
+              "block": "wwmc:housing_station",
+              "properties": [
+                "range",
+                "crew"
+              ],
+              "conditions": [
+                {
+                  "condition": "minecraft:inverted",
+                  "term": {
+                    "condition": "minecraft:block_state_property",
+                    "block": "wwmc:housing_station",
+                    "properties": {
+                      "range": "0",
+                      "crew": "0"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
         }
       ],
       "conditions": [

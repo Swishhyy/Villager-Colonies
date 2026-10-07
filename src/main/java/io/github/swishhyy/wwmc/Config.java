@@ -5,15 +5,19 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class Config {
     private static final ModConfigSpec.Builder B = new ModConfigSpec.Builder();
     public static final ModConfigSpec.IntValue SETTLEMENT_RADIUS = B.comment("Horizontal claim radius of new settlements; never below 240.").defineInRange("settlementRadius", Settlement.MIN_RADIUS, Settlement.MIN_RADIUS, 512);
-    public static final ModConfigSpec.IntValue MAX_CITIZENS = B.comment("Citizen limit; housing beds are also required.").defineInRange("maxCitizens", 32, 1, 128);
-    public static final ModConfigSpec.IntValue STATION_WORKERS = B.comment("Workers sharing each lumber or mine station.").defineInRange("stationWorkers", 4, 1, 32);
-    public static final ModConfigSpec.IntValue FARM_WORKERS = B.comment("Farmers per farm station; one farmer tends a whole 7x7x7 plot.").defineInRange("farmWorkers", 1, 1, 16);
-    public static final ModConfigSpec.IntValue COURIER_WORKERS = B.comment("Couriers per courier station.").defineInRange("courierWorkers", 2, 1, 16);
-    public static final ModConfigSpec.IntValue QUARRY_WORKERS = B.comment("Workers sharing each quarry station.").defineInRange("quarryWorkers", 8, 1, 32);
-    public static final ModConfigSpec.IntValue CRAFTSMAN_WORKERS = B.comment("Craftsmen sharing each craftsman station.").defineInRange("craftsmanWorkers", 2, 1, 16);
-    public static final ModConfigSpec.IntValue GUARD_WORKERS = B.comment("Guard crew slots per guard station.").defineInRange("guardWorkers", 2, 1, 16);
-    public static final ModConfigSpec.IntValue PROCESSING_WORKERS = B.comment("Workers sharing each smeltery or cook station.").defineInRange("processingWorkers", 2, 1, 16);
-    public static final ModConfigSpec.IntValue BLACKSMITH_WORKERS = B.comment("Blacksmiths sharing each repair station.").defineInRange("blacksmithWorkers", 2, 1, 16);
+    public static final ModConfigSpec.IntValue MAX_CITIZENS = B.comment("Hard ceiling on citizens in one town, whatever population upgrades it buys; housing beds are also required.").defineInRange("maxCitizens", 64, 1, 256);
+    public static final ModConfigSpec.IntValue BASE_POPULATION = B.comment("Citizen limit of a town before it buys population upgrades at its banner.").defineInRange("basePopulation", 10, 1, 256);
+    public static final ModConfigSpec.IntValue POPULATION_STEP = B.comment("Extra citizens each population upgrade allows.").defineInRange("populationPerUpgrade", 5, 1, 64);
+    public static final ModConfigSpec.IntValue POPULATION_COST = B.comment("Emeralds for the first population upgrade; each later upgrade costs this much more than the one before.").defineInRange("populationUpgradeCost", 8, 0, 4096);
+    public static final ModConfigSpec.IntValue STATION_COST = B.comment("Emeralds for a station's first range or crew upgrade; each further level costs twice as much as the last.").defineInRange("stationUpgradeCost", 8, 0, 4096);
+    public static final ModConfigSpec.IntValue STATION_WORKERS = B.comment("Workers sharing each lumber or mine station before crew upgrades. Farms, craftsmen and enchanters always have one worker.").defineInRange("stationWorkers", 4, 1, 32);
+    public static final ModConfigSpec.IntValue COURIER_WORKERS = B.comment("Couriers per courier station before crew upgrades.").defineInRange("courierWorkers", 2, 1, 16);
+    public static final ModConfigSpec.IntValue QUARRY_WORKERS = B.comment("Workers sharing each quarry station before crew upgrades.").defineInRange("quarryWorkers", 8, 1, 32);
+    public static final ModConfigSpec.IntValue GUARD_WORKERS = B.comment("Guard crew slots per guard station before crew upgrades.").defineInRange("guardWorkers", 2, 1, 16);
+    public static final ModConfigSpec.IntValue PROCESSING_WORKERS = B.comment("Workers sharing each smeltery or cook station before crew upgrades.").defineInRange("processingWorkers", 2, 1, 16);
+    public static final ModConfigSpec.IntValue BLACKSMITH_WORKERS = B.comment("Blacksmiths sharing each repair station before crew upgrades.").defineInRange("blacksmithWorkers", 2, 1, 16);
+    public static final ModConfigSpec.IntValue ENCHANT_MINUTES = B.comment("Minutes an enchanter works on a book or common item. Iron and gold gear take 1.3 times as long, diamond 1.6, netherite twice, and uncommon, rare and epic items longer still.").defineInRange("enchantMinutes", 5, 1, 60);
+    public static final ModConfigSpec.IntValue ENCHANTER_MAX_LEVEL = B.comment("Highest enchanting level an enchanter reaches, whatever the bookshelves; players alone reach 30.").defineInRange("enchanterMaxLevel", 25, 1, 29);
     public static final ModConfigSpec.IntValue ORE_VEIN_SECONDS = B.comment("Seconds an ore vein beside a mine station needs between yields; gold takes twice as long, diamond and emerald six times, ancient debris eight.").defineInRange("oreVeinSeconds", 15, 1, 600);
     public static final ModConfigSpec.IntValue MINE_MIN_Y = B.comment("Lowest randomly chosen strip-mine floor Y; saved per mine.").defineInRange("mineMinY", -30, -64, 319);
     public static final ModConfigSpec.IntValue MINE_MAX_Y = B.comment("Highest randomly chosen strip-mine floor Y.").defineInRange("mineMaxY", 10, -64, 319);
@@ -28,7 +32,8 @@ public final class Config {
     public static final ModConfigSpec.IntValue WAVE_INTERVAL_DAYS = B.comment("Average in-game days between waves; each wave arrives at night.").defineInRange("waveIntervalDays", 2, 1, 30);
     public static final ModConfigSpec.IntValue WAVE_BASE_MOBS = B.comment("Hostiles in every wave before population scaling.").defineInRange("waveBaseMobs", 2, 0, 64);
     public static final ModConfigSpec.DoubleValue WAVE_MOBS_PER_CITIZEN = B.comment("Additional hostiles per citizen, rounded up.").defineInRange("waveMobsPerCitizen", 0.5, 0.0, 4.0);
-    public static final ModConfigSpec.IntValue WAVE_MAX_MOBS = B.comment("Largest possible wave.").defineInRange("waveMaxMobs", 40, 1, 128);
+    public static final ModConfigSpec.IntValue WAVE_MAX_MOBS = B.comment("Largest possible wave before population upgrades.").defineInRange("waveMaxMobs", 40, 1, 128);
+    public static final ModConfigSpec.IntValue WAVE_MOBS_PER_UPGRADE = B.comment("Extra hostiles in every wave per population upgrade, also above the largest wave. Upgraded towns also face pillagers, and from the third upgrade vindicators.").defineInRange("waveMobsPerUpgrade", 2, 0, 16);
     public static final ModConfigSpec SPEC = B.build();
     private Config() {}
 }

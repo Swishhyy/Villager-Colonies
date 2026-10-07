@@ -17,6 +17,12 @@ import net.neoforged.neoforge.client.network.event.RegisterClientPayloadHandlers
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
+import io.github.swishhyy.wwmc.block.StationBlock;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.BlockItem;
 
 @Mod(value=WWMC.MODID,dist=Dist.CLIENT)
 public final class WWMCClient {
@@ -27,6 +33,16 @@ public final class WWMCClient {
         bus.addListener(WWMCClient::screens);
         bus.addListener(WWMCClient::payloads);
         NeoForge.EVENT_BUS.register(new StationRangePreview());
+        NeoForge.EVENT_BUS.addListener(WWMCClient::tooltip);
+    }
+    /** A station item from a broken, upgraded station names the upgrades it will bring back. */
+    private static void tooltip(ItemTooltipEvent event) {
+        if(!(event.getItemStack().getItem() instanceof BlockItem item) || !(item.getBlock() instanceof StationBlock)) return;
+        var state=event.getItemStack().get(DataComponents.BLOCK_STATE);
+        if(state==null) return;
+        String range=state.properties().getOrDefault(StationBlock.RANGE.getName(),"0"),crew=state.properties().getOrDefault(StationBlock.CREW.getName(),"0");
+        if(!range.equals("0")) event.getToolTip().add(Component.literal("Range upgrade "+range).withStyle(ChatFormatting.GREEN));
+        if(!crew.equals("0")) event.getToolTip().add(Component.literal("Crew upgrade "+crew).withStyle(ChatFormatting.GREEN));
     }
     private static void renderers(EntityRenderersEvent.RegisterRenderers event) { event.registerEntityRenderer(WWMC.CITIZEN.get(),CitizenRenderer::new); }
     private static void layers(EntityRenderersEvent.RegisterLayerDefinitions event) { event.registerLayerDefinition(CitizenRenderer.LAYER,CitizenRenderer::createBodyLayer); }

@@ -1,7 +1,19 @@
 {
   "variants": {
-    "": {
+    "facing=north": {
       "model": "wwmc:block/farm_station"
+    },
+    "facing=east": {
+      "model": "wwmc:block/farm_station",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "wwmc:block/farm_station",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "wwmc:block/farm_station",
+      "y": 270
     }
   }
 }

@@ -18,10 +18,10 @@ import net.minecraft.world.level.block.entity.FuelValues;
 /**
  * What stays in a job's barrels and what couriers carry. A job keeps its tools and supplies (with a small reserve of
  * floor blocks and saplings); everything it produced is collected for the warehouse. Smelters and cooks also get
- * their barrels filled with a load of ingredients and fuel.
+ * their barrels filled with a load of ingredients and fuel, and enchanters with lapis.
  */
 public final class JobStorage {
-    public static final int SUPPORT_RESERVE=16,SAPLING_RESERVE=32,FUEL_RESERVE=8,WHEAT_RESERVE=9;
+    public static final int SUPPORT_RESERVE=16,SAPLING_RESERVE=32,FUEL_RESERVE=8,WHEAT_RESERVE=9,LAPIS_RESERVE=9;
     /** A courier sets out once this many goods wait, or sooner when a barrel is nearly full or the pantry is low. */
     public static final int COLLECT_LOAD=32,PANTRY_LOW=16;
     public record Pickup(Container container,int slot,int amount) {}
@@ -41,9 +41,13 @@ public final class JobStorage {
     private static boolean tool(StructureRole role,ItemStack stack) {
         return role==StructureRole.LUMBER && stack.is(ItemTags.AXES) || role.excavates() && stack.is(ItemTags.PICKAXES);
     }
-    /** Inputs the job takes from its own barrels; a craftsman's barrels hold materials, so only finished orders leave. */
+    /**
+     * Inputs the job takes from its own barrels; a craftsman's barrels hold materials, so only finished orders leave,
+     * and an enchanter's hold lapis and the items waiting their turn, so only enchanted goods leave.
+     */
     private static boolean supply(Supplies supplies,Settlement town,StructureRole role,ItemStack stack) {
         if(role.processes()) return ProcessingService.supply(supplies.fuels(),role,stack);
+        if(role==StructureRole.ENCHANTER) return Enchanting.lapis(stack) || Enchanting.candidate(stack);
         return role==StructureRole.CRAFTSMAN && !Workshop.product(town,stack);
     }
     /** Goods a courier may take from these barrels, leaving the job's tools, supplies and reserves. */
@@ -86,18 +90,20 @@ public final class JobStorage {
         for(Container container:containers) for(int slot=0;slot<container.getContainerSize();slot++) if(container.getItem(slot).isEmpty()) free++;
         return free;
     }
-    /** Something a smeltery or kitchen barrel is stocked with: smeltable or cookable ingredients, fuel, and wheat for bread. */
+    /** Something a job's barrel is stocked with: smeltable or cookable ingredients, fuel and wheat for bread, or an enchanter's lapis. */
     public static boolean input(Supplies supplies,StructureRole role,ItemStack stack) {
+        if(role==StructureRole.ENCHANTER) return Enchanting.lapis(stack);
         if(!role.processes() || stack.isEmpty()) return false;
         return supplies.fuel(stack) || role==StructureRole.COOK && stack.is(Items.WHEAT) || supplies.ingredient(role,stack);
     }
     private static Predicate<ItemStack> ingredient(Supplies supplies,StructureRole role) {
         return s -> !supplies.fuel(s) && !s.is(Items.WHEAT) && supplies.ingredient(role,s);
     }
-    /** Inputs a processing job's barrels are short of, have room for, and the warehouse can supply. */
+    /** Inputs a processing or enchanting job's barrels are short of, have room for, and the warehouse can supply. */
     public static boolean needsSupplies(Supplies supplies,StructureRole role,List<Container> barrels,List<Container> warehouse) {
         // A full barrel would send the load straight back to the warehouse, errand after errand.
-        if(!role.processes() || freeSlots(barrels)<2) return false;
+        if(!role.processes() && role!=StructureRole.ENCHANTER || freeSlots(barrels)<2) return false;
+        if(role==StructureRole.ENCHANTER) return InventoryOps.count(barrels,Enchanting::lapis)<LAPIS_RESERVE && InventoryOps.count(warehouse,Enchanting::lapis)>0;
         Predicate<ItemStack> ingredients=ingredient(supplies,role),fuel=supplies::fuel,wheat=s -> s.is(Items.WHEAT);
         return InventoryOps.count(barrels,ingredients)<ProcessingService.INPUT_LOAD && InventoryOps.count(warehouse,ingredients)>0
                 || InventoryOps.count(barrels,fuel)<FUEL_RESERVE && InventoryOps.count(warehouse,fuel)>0
@@ -105,6 +111,7 @@ public final class JobStorage {
     }
     /** Load the courier's bag with what the barrels are short of; returns the items taken from the warehouse. */
     public static int load(Supplies supplies,StructureRole role,List<Container> barrels,List<Container> warehouse,CitizenInventory bag) {
+        if(role==StructureRole.ENCHANTER) return carry(warehouse,bag,Enchanting::lapis,LAPIS_RESERVE*2-InventoryOps.count(barrels,Enchanting::lapis));
         Predicate<ItemStack> ingredients=ingredient(supplies,role),fuel=supplies::fuel,wheat=s -> s.is(Items.WHEAT);
         int moved=carry(warehouse,bag,ingredients,ProcessingService.INPUT_LOAD*2-InventoryOps.count(barrels,ingredients));
         moved+=carry(warehouse,bag,fuel,FUEL_RESERVE*2-InventoryOps.count(barrels,fuel));

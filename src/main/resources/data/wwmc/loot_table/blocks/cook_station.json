@@ -6,7 +6,30 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "wwmc:cook_station"
+          "name": "wwmc:cook_station",
+          "functions": [
+            {
+              "function": "minecraft:copy_state",
+              "block": "wwmc:cook_station",
+              "properties": [
+                "range",
+                "crew"
+              ],
+              "conditions": [
+                {
+                  "condition": "minecraft:inverted",
+                  "term": {
+                    "condition": "minecraft:block_state_property",
+                    "block": "wwmc:cook_station",
+                    "properties": {
+                      "range": "0",
+                      "crew": "0"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
         }
       ],
       "conditions": [

@@ -6,7 +6,30 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "wwmc:warehouse_station"
+          "name": "wwmc:warehouse_station",
+          "functions": [
+            {
+              "function": "minecraft:copy_state",
+              "block": "wwmc:warehouse_station",
+              "properties": [
+                "range",
+                "crew"
+              ],
+              "conditions": [
+                {
+                  "condition": "minecraft:inverted",
+                  "term": {
+                    "condition": "minecraft:block_state_property",
+                    "block": "wwmc:warehouse_station",
+                    "properties": {
+                      "range": "0",
+                      "crew": "0"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
         }
       ],
       "conditions": [

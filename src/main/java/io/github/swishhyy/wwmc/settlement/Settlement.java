@@ -17,6 +17,8 @@ import net.minecraft.core.BlockPos;
 public final class Settlement {
     /** Every claim extends at least this far from its banner. */
     public static final int MIN_RADIUS=240;
+    /** The population level of a town saved before population upgrades, until the server works out what it already holds. */
+    public static final int UNSET=-1;
     public static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
     public static final Codec<Settlement> CODEC = RecordCodecBuilder.create(i -> i.group(
         UUID_CODEC.fieldOf("id").forGetter(s -> s.id), UUID_CODEC.fieldOf("owner").forGetter(s -> s.owner),
@@ -30,7 +32,8 @@ public final class Settlement {
         Codec.LONG.optionalFieldOf("next_wave",0L).forGetter(s -> s.nextWave),
         Codec.INT.optionalFieldOf("waves",0).forGetter(s -> s.waves),
         Codec.STRING.listOf().optionalFieldOf("disabled_recipes",List.of()).forGetter(s -> new ArrayList<>(s.disabledRecipes)),
-        Workshop.Order.CODEC.listOf().optionalFieldOf("craft_orders").forGetter(s -> Optional.of(s.craftOrders))
+        Workshop.Order.CODEC.listOf().optionalFieldOf("craft_orders").forGetter(s -> Optional.of(s.craftOrders)),
+        Codec.INT.optionalFieldOf("population_level",UNSET).forGetter(s -> s.populationLevel)
     ).apply(i, Settlement::new));
     public final UUID id, owner;
     public String name, priority;
@@ -43,6 +46,8 @@ public final class Settlement {
     public final Set<String> disabledRecipes;
     /** What craftsmen keep in stock, in priority order. */
     public final List<Workshop.Order> craftOrders;
+    /** Population upgrades bought with emeralds at the banner; each raises the citizen limit and the waves' strength. */
+    public int populationLevel;
     public final List<UUID> citizens;
     public final List<Station> stations;
     public final List<BlockPos> borderBanners;
@@ -59,8 +64,11 @@ public final class Settlement {
     public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority,List<BlockPos> borderBanners,Map<UUID,String> citizenNames,long nextWave,int waves,List<String> disabledRecipes) {
         this(id,owner,name,center,radius,citizens,stations,priority,borderBanners,citizenNames,nextWave,waves,disabledRecipes,Optional.empty());
     }
-    /** Towns saved before orders were learnable start with the default orders, minus any the owner had switched off. */
     public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority,List<BlockPos> borderBanners,Map<UUID,String> citizenNames,long nextWave,int waves,List<String> disabledRecipes,Optional<List<Workshop.Order>> craftOrders) {
+        this(id,owner,name,center,radius,citizens,stations,priority,borderBanners,citizenNames,nextWave,waves,disabledRecipes,craftOrders,0);
+    }
+    /** Towns saved before orders were learnable start with the default orders, minus any the owner had switched off. */
+    public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority,List<BlockPos> borderBanners,Map<UUID,String> citizenNames,long nextWave,int waves,List<String> disabledRecipes,Optional<List<Workshop.Order>> craftOrders,int populationLevel) {
         this.id=id; this.owner=owner; this.name=name; this.center=center.immutable(); this.radius=radius;
         this.citizens=new ArrayList<>(citizens); this.stations=new ArrayList<>(stations); this.priority=priority;
         this.borderBanners=new ArrayList<>();
@@ -69,6 +77,7 @@ public final class Settlement {
         this.nextWave=nextWave; this.waves=waves;
         this.disabledRecipes=new LinkedHashSet<>(disabledRecipes);
         this.craftOrders=new ArrayList<>(craftOrders.orElseGet(() -> Workshop.defaults(disabledRecipes)));
+        this.populationLevel=Math.max(UNSET,populationLevel);
     }
     public boolean contains(BlockPos pos) {
         return Math.abs((long)pos.getX()-center.getX()) <= radius && Math.abs((long)pos.getZ()-center.getZ()) <= radius;
@@ -90,4 +99,9 @@ public final class Settlement {
         radius=minimum; return true;
     }
     public Station station(BlockPos pos) { return stations.stream().filter(s -> s.position().equals(pos)).findFirst().orElse(null); }
+    /** Swap in a station's new record, such as after an upgrade; returns false when no station stands there. */
+    public boolean replace(Station station) {
+        for(int i=0;i<stations.size();i++) if(stations.get(i).position().equals(station.position())) { stations.set(i,station); return true; }
+        return false;
+    }
 }

@@ -23,8 +23,10 @@ public record PanelView(Component title,Component subtitle,List<Tab> tabs,List<A
     public record Tab(Component name,List<Row> rows) {
         public Tab(String name,List<Row> rows) { this(Component.literal(name),rows); }
     }
-    public record Action(int id,Component label,boolean enabled) {
-        public Action(int id,String label,boolean enabled) { this(id,Component.literal(label),enabled); }
+    /** A button; its tooltip explains what it does, such as what an upgrade costs. */
+    public record Action(int id,Component label,boolean enabled,Component tooltip) {
+        public Action(int id,String label,boolean enabled) { this(id,Component.literal(label),enabled,Component.empty()); }
+        public Action(int id,String label,boolean enabled,String tooltip) { this(id,Component.literal(label),enabled,Component.literal(tooltip)); }
     }
     public static final StreamCodec<RegistryFriendlyByteBuf,PanelView> STREAM_CODEC=StreamCodec.of(PanelView::write,PanelView::read);
     private static void write(RegistryFriendlyByteBuf buf,PanelView view) {
@@ -47,6 +49,7 @@ public record PanelView(Component title,Component subtitle,List<Tab> tabs,List<A
         buf.writeVarInt(actions.size());
         for(Action action:actions) {
             buf.writeVarInt(action.id()); ComponentSerialization.STREAM_CODEC.encode(buf,action.label()); buf.writeBoolean(action.enabled());
+            ComponentSerialization.STREAM_CODEC.encode(buf,action.tooltip());
         }
     }
     private static PanelView read(RegistryFriendlyByteBuf buf) {
@@ -66,7 +69,12 @@ public record PanelView(Component title,Component subtitle,List<Tab> tabs,List<A
         }
         int actionCount=Math.min(MAX_TABS,buf.readVarInt());
         List<Action> actions=new ArrayList<>();
-        for(int a=0;a<actionCount;a++) actions.add(new Action(buf.readVarInt(),ComponentSerialization.STREAM_CODEC.decode(buf),buf.readBoolean()));
+        for(int a=0;a<actionCount;a++) {
+            int id=buf.readVarInt();
+            Component label=ComponentSerialization.STREAM_CODEC.decode(buf);
+            boolean enabled=buf.readBoolean();
+            actions.add(new Action(id,label,enabled,ComponentSerialization.STREAM_CODEC.decode(buf)));
+        }
         return new PanelView(title,subtitle,tabs,actions);
     }
 }

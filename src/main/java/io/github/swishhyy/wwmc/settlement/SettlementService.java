@@ -12,6 +12,7 @@ import io.github.swishhyy.wwmc.core.CitizenNames;
 import io.github.swishhyy.wwmc.core.RoomBounds;
 import io.github.swishhyy.wwmc.core.ShiftClock;
 import io.github.swishhyy.wwmc.core.StructureRole;
+import io.github.swishhyy.wwmc.core.Upgrades;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.menu.Panels;
 import java.util.*;
@@ -28,13 +29,17 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -56,13 +61,13 @@ public final class SettlementService {
         if(scans!=null) scans.refresh(town.id);
     }
     public static WorkforceBook<BlockPos> workers(ServerLevel level) { return WORKFORCE.computeIfAbsent(level,l -> new WorkforceBook<>()); }
+    /** Crew slots: the configured crew plus any bought with emeralds. Farms, craftsmen and enchanters always have one. */
     public static int workerLimit(Station station) {
-        return switch(station.role()) {
-            case FARM -> Config.FARM_WORKERS.get();
+        if(Upgrades.soloCrew(station.role())) return 1;
+        return station.crew()+switch(station.role()) {
             case COURIER -> Config.COURIER_WORKERS.get();
             case QUARRY -> Config.QUARRY_WORKERS.get();
             case GUARD -> Config.GUARD_WORKERS.get();
-            case CRAFTSMAN -> Config.CRAFTSMAN_WORKERS.get();
             case SMELTERY,COOK -> Config.PROCESSING_WORKERS.get();
             case BLACKSMITH -> Config.BLACKSMITH_WORKERS.get();
             default -> Config.STATION_WORKERS.get();
@@ -96,9 +101,11 @@ public final class SettlementService {
         if(data.settlements.stream().anyMatch(s -> s.overlaps(pos,radius))) { notify(player,"Move your banner farther away: settlement claims cannot overlap."); return; }
         if(data.settlements.stream().anyMatch(s -> s.owner.equals(player.getUUID()))) { notify(player,"You already own a settlement. Multiple towns are planned for a later build."); return; }
         Settlement settlement=new Settlement(UUID.randomUUID(),player.getUUID(),player.getName().getString()+"'s settlement",pos,radius,List.of(),List.of(),"balanced");
+        settlement.populationLevel=0;
         data.settlements.add(settlement); data.setDirty();
         placeBorders(level,settlement);
-        tell(player,"Founded "+settlement.name+". Place housing, warehouse, and work stations inside the "+radius+"-block claim.");
+        tell(player,"Founded "+settlement.name+". Place housing, warehouse, and work stations inside the "+radius+"-block claim. Up to "
+                +populationLimit(settlement)+" citizens may live here; buy room for more with emeralds on the town screen.");
     }
     public static void registerStation(ServerLevel level,Player player,BlockPos pos,StructureRole role) {
         SettlementData data=SettlementData.get(level);
@@ -106,7 +113,8 @@ public final class SettlementService {
         if(!owns(player,settlement)) { notify(player,"Place stations inside your own settlement claim."); return; }
         if(settlement.station(pos)==null) {
             var state=level.getBlockState(pos);
-            Station station=new Station(pos,role,state.getValue(StationBlock.FACING));
+            // A station broken and placed again keeps the upgrades its item carries.
+            Station station=new Station(pos,role,state.getValue(StationBlock.FACING),state.getValue(StationBlock.RANGE),state.getValue(StationBlock.CREW));
             if(role==StructureRole.QUARRY) {
                 var bounds=MiningLayout.quarry(pos.getX(),pos.getZ(),station.facing().getStepX(),station.facing().getStepZ(),pos.getY(),pos.getY());
                 if(!settlement.contains(new BlockPos(bounds.minX(),pos.getY(),bounds.minZ())) || !settlement.contains(new BlockPos(bounds.maxX(),pos.getY(),bounds.maxZ()))) {
@@ -114,7 +122,7 @@ public final class SettlementService {
                 }
             }
             settlement.stations.add(station); data.setDirty();
-            notify(player,"Registered the "+role.title()+" Station. Right-click it to open its screen.");
+            notify(player,"Registered the "+role.title()+" Station"+(station.range()+station.crew()>0 ? " with its upgrades" : "")+". Right-click it to open its screen.");
         }
     }
     public static boolean active(ServerLevel level,Station station) {
@@ -207,6 +215,17 @@ public final class SettlementService {
         }).stream().filter(pos -> availableCell(level,town,pos) && StationDetection.anvil(level.getBlockState(pos))
                 && ownsBlock(level,town,station,pos)).toList();
     }
+    /** Enchanting tables an enchanter station owns. */
+    public static List<BlockPos> enchantingTables(ServerLevel level,Settlement town,Station station) {
+        if(station.role()!=StructureRole.ENCHANTER || !active(level,station)) return List.of();
+        return resourcePositions(level,town,station,"tables",() -> {
+            List<BlockPos> found=new ArrayList<>();
+            for(BlockPos pos:cells(station)) if(availableCell(level,town,pos) && StationDetection.enchantingTable(level.getBlockState(pos))
+                    && ownsBlock(level,town,station,pos)) found.add(pos.immutable());
+            return found;
+        }).stream().filter(pos -> availableCell(level,town,pos) && StationDetection.enchantingTable(level.getBlockState(pos))
+                && ownsBlock(level,town,station,pos)).toList();
+    }
     public static List<Container> storage(ServerLevel level,Settlement settlement) {
         return storageAt(level,settlement,null);
     }
@@ -282,6 +301,85 @@ public final class SettlementService {
             if(level.setBlock(pos,banner,3)) { town.borderBanners.add(pos); SettlementData.get(level).setDirty(); }
         }
     }
+    // ---------- Emerald upgrades ----------
+    /** Population level, counting a town from before upgrades as having bought enough for the citizens it already has. */
+    public static int populationLevel(Settlement town) {
+        return town.populationLevel>=0 ? town.populationLevel : Upgrades.levelFor(town.citizens.size(),Config.BASE_POPULATION.get(),Config.POPULATION_STEP.get());
+    }
+    public static int populationLimit(Settlement town) { return populationLimitAt(populationLevel(town)); }
+    public static int populationLimitAt(int level) {
+        return Upgrades.populationLimit(level,Config.BASE_POPULATION.get(),Config.POPULATION_STEP.get(),Config.MAX_CITIZENS.get());
+    }
+    /** Whether the town can still raise its limit, and what that costs. */
+    public static boolean canGrow(Settlement town) { return populationLimitAt(populationLevel(town)+1)>populationLimit(town); }
+    public static int populationCost(Settlement town) { return Upgrades.populationCost(Config.POPULATION_COST.get(),populationLevel(town)); }
+    public static int stationCost(Station station,boolean range) { return Upgrades.stationCost(Config.STATION_COST.get(),range ? station.range() : station.crew()); }
+    /** Emeralds a player carries, counting each emerald block as nine. */
+    public static int emeralds(Player player) {
+        Inventory inventory=player.getInventory();
+        long total=0;
+        for(int slot=0;slot<inventory.getContainerSize();slot++) {
+            ItemStack stack=inventory.getItem(slot);
+            if(stack.is(Items.EMERALD)) total+=stack.getCount(); else if(stack.is(Items.EMERALD_BLOCK)) total+=9L*stack.getCount();
+        }
+        return (int)Math.min(Integer.MAX_VALUE,total);
+    }
+    /** Take the price from the player's inventory, emerald blocks broken into change as needed. Creative players pay nothing. */
+    public static boolean pay(Player player,int cost) {
+        if(cost<=0 || player.getAbilities().instabuild) return true;
+        Inventory inventory=player.getInventory();
+        int emeralds=0,blocks=0;
+        for(int slot=0;slot<inventory.getContainerSize();slot++) {
+            ItemStack stack=inventory.getItem(slot);
+            if(stack.is(Items.EMERALD)) emeralds+=stack.getCount(); else if(stack.is(Items.EMERALD_BLOCK)) blocks+=stack.getCount();
+        }
+        Upgrades.Payment payment=Upgrades.pay(emeralds,blocks,cost);
+        if(payment==null) return false;
+        take(inventory,Items.EMERALD,payment.emeralds());
+        take(inventory,Items.EMERALD_BLOCK,payment.blocks());
+        if(payment.change()>0) {
+            ItemStack change=new ItemStack(Items.EMERALD,payment.change());
+            if(!inventory.add(change)) player.drop(change,false);
+        }
+        inventory.setChanged();
+        return true;
+    }
+    private static void take(Inventory inventory,Item item,int amount) {
+        for(int slot=0;slot<inventory.getContainerSize() && amount>0;slot++) {
+            ItemStack stack=inventory.getItem(slot);
+            if(!stack.is(item)) continue;
+            int taken=Math.min(amount,stack.getCount());
+            stack.shrink(taken); amount-=taken;
+        }
+    }
+    /** Buy the station's next range or crew level. The block state carries the levels too, for the range preview and the dropped item. */
+    public static void upgradeStation(ServerLevel level,Player player,Settlement town,Station station,boolean range) {
+        StructureRole role=station.role();
+        if(range ? !Upgrades.widens(role) : !Upgrades.hires(role)) {
+            notify(player,"The "+role.title()+" Station has no "+(range ? "range" : "crew")+" upgrades."); return;
+        }
+        int current=range ? station.range() : station.crew();
+        if(current>=Upgrades.MAX_STATION_LEVEL) { notify(player,"This station's "+(range ? "range" : "crew")+" is fully upgraded."); return; }
+        int cost=stationCost(station,range);
+        if(!pay(player,cost)) { notify(player,"That upgrade costs "+cost+" emeralds; you carry "+emeralds(player)+"."); return; }
+        Station upgraded=range ? station.withRange(current+1) : station.withCrew(current+1);
+        if(!town.replace(upgraded)) return;
+        BlockState state=level.getBlockState(station.position());
+        if(state.getBlock() instanceof StationBlock)
+            level.setBlock(station.position(),state.setValue(StationBlock.RANGE,upgraded.range()).setValue(StationBlock.CREW,upgraded.crew()),3);
+        refreshResources(level,town);
+        SettlementData.get(level).setDirty();
+        notify(player,range ? "The "+role.title()+" Station now reaches "+upgraded.size()+"." : "The "+role.title()+" Station now has "+workerLimit(upgraded)+" crew slots.");
+    }
+    /** Buy room for more citizens. Each upgrade costs more than the last, and the town's waves grow with it. */
+    public static void upgradePopulation(ServerLevel level,Player player,Settlement town) {
+        if(!canGrow(town)) { notify(player,town.name+" is at the server's ceiling of "+Config.MAX_CITIZENS.get()+" citizens."); return; }
+        int cost=populationCost(town);
+        if(!pay(player,cost)) { notify(player,"Room for more citizens costs "+cost+" emeralds; you carry "+emeralds(player)+"."); return; }
+        town.populationLevel=populationLevel(town)+1;
+        SettlementData.get(level).setDirty();
+        notify(player,town.name+" can now hold "+populationLimit(town)+" citizens. Word spreads: enemy waves will be larger.");
+    }
     public static String citizenName(ServerLevel level,Settlement town,UUID citizen) {
         String saved=town.citizenNames.get(citizen);
         if(saved!=null) return saved;
@@ -294,7 +392,7 @@ public final class SettlementService {
         town.citizenNames.put(citizen,name); SettlementData.get(level).setDirty(); return name;
     }
     public static String status(ServerLevel level,Settlement settlement) {
-        return settlement.name+": "+settlement.citizens.size()+" citizens / "+housingBeds(level,settlement).size()+
+        return settlement.name+": "+settlement.citizens.size()+" of "+populationLimit(settlement)+" citizens allowed / "+housingBeds(level,settlement).size()+
                 " loaded housing beds, "+settlement.stations.size()+" stations, priority: "+settlement.priority+". Claim radius: "+settlement.radius+
                 ". Defense: "+DefenseService.status(settlement)+"; "+WaveService.status(level,settlement)+".";
     }
@@ -314,7 +412,7 @@ public final class SettlementService {
     public static int recruit(ServerLevel level,Settlement settlement,int count) {
         refreshResources(level,settlement);
         List<BlockPos> beds=housingBeds(level,settlement);
-        int limit=Math.min(beds.size(),Config.MAX_CITIZENS.get());
+        int limit=Math.min(beds.size(),populationLimit(settlement));
         int added=0;
         for(int i=0;i<count && settlement.citizens.size()<limit;i++) {
             CitizenEntity citizen=WWMC.CITIZEN.get().create(level,EntitySpawnReason.COMMAND);
@@ -433,6 +531,7 @@ public final class SettlementService {
                 if(owner!=null) tell(owner,s.name+"'s claim now extends "+s.radius+" blocks from its banner.");
             }
             placeBorders(level,s);
+            if(s.populationLevel<0) { s.populationLevel=populationLevel(s); data.setDirty(); }
             if(s.stations.removeIf(station -> level.hasChunkAt(station.position()) && !active(level,station))) data.setDirty();
         }
     }

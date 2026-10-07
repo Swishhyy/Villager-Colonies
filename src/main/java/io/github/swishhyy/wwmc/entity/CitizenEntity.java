@@ -86,6 +86,18 @@ public final class CitizenEntity extends Villager {
     private BlockPos depotTarget;
     private int depotTicks;
     private static final int BARREL_WALK_TICKS=400;
+    /** An enchanter's item, kept apart from the bag until it is delivered, with the work done on it and the level rolled for it. */
+    private ItemStack enchantItem=ItemStack.EMPTY;
+    private int enchantTicks,enchantLevel;
+    private boolean enchantDone;
+    private BlockPos enchantTable;
+    private long nextEnchantAt;
+    /** Kinds of item no enchantment fit, skipped until the given game time. */
+    private final Map<Item,Long> unenchantable=new HashMap<>();
+    /** Reported hostiles this guard could not reach, ignored until the given game time, and how long it has chased the current one out of sight. */
+    private final Map<UUID,Long> ignoredThreats=new HashMap<>();
+    private UUID respondTarget;
+    private int respondTicks;
     /** The job worked last; a change sends that job's tools, weapons and armor back to the warehouse. */
     private StructureRole lastRole;
     private boolean returningGear;
@@ -309,6 +321,9 @@ public final class CitizenEntity extends Villager {
             default -> 0;
         }).thenComparingInt(s -> book.count(s.position(),level.getGameTime()))
                 .thenComparingDouble(s -> distanceToSqr(Vec3.atCenterOf(s.position()))));
+        // An enchanter part-way through an item goes back to a table rather than starting other work.
+        if(!enchantItem.isEmpty()) for(Station station:jobs) if(station.role()==StructureRole.ENCHANTER
+                && book.claim(station.position(),getUUID(),level.getGameTime(),200,SettlementService.workerLimit(station))) return station;
         for(Station station:jobs) if(book.claim(station.position(),getUUID(),level.getGameTime(),200,SettlementService.workerLimit(station))) return station;
         return null;
     }
@@ -427,6 +442,7 @@ public final class CitizenEntity extends Villager {
                 || order!=null && order.uses(stack)
                 || craftJob!=null && role==StructureRole.CRAFTSMAN && craftJob.plan().uses(stack)
                 || role==StructureRole.COURIER && haulSupply && haulingInput(stack)
+                || role==StructureRole.ENCHANTER && Enchanting.lapis(stack)
                 || action==Action.PLANT && forestTask!=null && stack.is(forestTask.planting().species().seed)
                 || action==Action.SUPPORT && ExcavationService.supportMaterial(stack);
     }
@@ -444,6 +460,7 @@ public final class CitizenEntity extends Villager {
     /** A new job: put away the previous one's equipment and return it before starting. */
     private void changeRole(StructureRole role) {
         if(role!=StructureRole.BLACKSMITH && !repairItem.isEmpty()) { cargo.offer(repairItem); repairItem=ItemStack.EMPTY; repairStand=null; repairSlot=null; repairAnvil=null; }
+        if(role!=StructureRole.ENCHANTER && !enchantItem.isEmpty()) { cargo.offer(enchantItem); enchantItem=ItemStack.EMPTY; enchantTicks=0; enchantLevel=0; enchantDone=false; }
         if(role!=StructureRole.BLACKSMITH) { repairStand=null; repairSlot=null; repairAnvil=null; repairDelivery=false; }
         guardWasActive=false;
         if(isUsingItem()) stopUsingItem();
@@ -1021,6 +1038,38 @@ public final class CitizenEntity extends Villager {
             }
         } else walk(enemy.blockPosition(),0.8);
     }
+    /**
+     * Head for a hostile a citizen reported, or a wave straggler, and fight it once it is in sight. One that stays out
+     * of reach for a minute, or has no path at all, is left to the other guards for two minutes.
+     */
+    private boolean respond(ServerLevel level,Settlement town,DefenseService.Call call) {
+        Monster enemy=call.mob();
+        String name=enemy.getName().getString();
+        if(!enemy.getUUID().equals(respondTarget)) { respondTarget=enemy.getUUID(); respondTicks=0; }
+        if(distanceToSqr(enemy)<=GuardWeapons.BOW_MAX_RANGE*GuardWeapons.BOW_MAX_RANGE && hasLineOfSight(enemy)) {
+            respondTicks=0;
+            fight(level,enemy);
+            activity=call.wave() ? "Fighting a straggler from the wave" : "Dealing with the "+name+" "+call.reporter()+" reported";
+            return true;
+        }
+        setTarget(null);
+        if(isUsingItem()) stopUsingItem();
+        respondTicks+=10;
+        activity=(call.wave() ? "Hunting a glowing "+name+" left from the wave" : "Answering "+call.reporter()+"'s call about a "+name)
+                +" near "+enemy.blockPosition().toShortString();
+        if(respondTicks>1200 || !walk(enemy.blockPosition(),0.8) && onGround()) {
+            ignoredThreats.put(enemy.getUUID(),level.getGameTime()+2400);
+            DefenseService.release(town,enemy.getUUID(),getUUID());
+            respondTarget=null; respondTicks=0; return false;
+        }
+        return true;
+    }
+    /** A civilian who spots a hostile near their work calls the guards to deal with it. */
+    public void called(Monster monster,boolean guards) {
+        if(isGuard()) return;
+        activity=guards ? "Called the guards about a "+monster.getName().getString()+" nearby"
+                : "Spotted a "+monster.getName().getString()+" nearby, but the town has no guards";
+    }
     private void runToBell(ServerLevel level,Settlement town,BlockPos bell) {
         setTarget(null);
         if(isUsingItem()) stopUsingItem();
@@ -1065,6 +1114,10 @@ public final class CitizenEntity extends Villager {
                 m -> m.isAlive() && town.contains(m.blockPosition()) && hasLineOfSight(m)).stream()
                 .min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
         if(enemy!=null) { fight(level,enemy); return; }
+        ignoredThreats.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
+        DefenseService.Call call=DefenseService.assignment(level,town,this,ignoredThreats::containsKey);
+        if(call!=null && respond(level,town,call)) return;
+        respondTarget=null; respondTicks=0;
         setTarget(null);
         if(isUsingItem()) stopUsingItem();
         if(returnGuardArmor(level,town,station,false)) return;
@@ -1454,6 +1507,136 @@ public final class CitizenEntity extends Villager {
             repairDelivery=true; finishRepair(level,town);
         }
     }
+    private int lapisCarried() { return InventoryOps.count(List.of(cargo),Enchanting::lapis); }
+    /**
+     * Enchanters take one unenchanted item at a time, from their own barrels first and then the warehouse, armor and
+     * weapons before tools and books, and work it at the enchanting table for minutes before lapis seals the enchantment.
+     */
+    private void enchanter(ServerLevel level,Settlement town,Station station) {
+        eatFrom(List.of(cargo));
+        if(!enchantItem.isEmpty() && enchantDone) { deliverEnchanted(level,town,station); return; }
+        if(level.getGameTime()<nextEnchantAt) return;
+        unenchantable.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
+        List<BlockPos> tables=SettlementService.enchantingTables(level,town,station);
+        if(enchantTable==null || !tables.contains(enchantTable)) {
+            enchantTable=tables.stream().sorted(Comparator.comparingDouble(p -> p.distSqr(blockPosition())))
+                    .filter(p -> handNear(p) || canReach(p)).findFirst().orElse(null);
+            if(enchantTable==null) {
+                if(reachBudget.deferred()) { activity="Looking for a reachable enchanting table"; return; }
+                activity=tables.isEmpty() ? "Needs an enchanting table within "+station.radius()+" blocks of the Enchanter Station" : "Cannot reach the enchanting table";
+                nextEnchantAt=level.getGameTime()+100; return;
+            }
+            pathTicks=0;
+        }
+        int cap=Config.ENCHANTER_MAX_LEVEL.get();
+        if((enchantItem.isEmpty() || lapisCarried()<Enchanting.lapisCost(enchantLevel>0 ? enchantLevel : cap))
+                && !gatherForEnchanting(level,town,station,cap)) return;
+        String name=enchantItem.getHoverName().getString();
+        if(!canUse(level,enchantTable)) {
+            activity="Carrying "+name+" to the enchanting table"; pathTicks+=10;
+            if(!walk(enchantTable) && onGround() || pathTicks>1200) {
+                enchantTable=null; pathTicks=0;
+                idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level);
+            }
+            return;
+        }
+        getNavigation().stop(); pathTicks=0;
+        getLookControl().setLookAt(enchantTable.getX()+0.5,enchantTable.getY()+0.75,enchantTable.getZ()+0.5);
+        if(enchantLevel<=0) enchantLevel=Enchanting.level(getRandom(),Enchanting.power(level,enchantTable),enchantItem,cap);
+        if(enchantLevel<=0) {
+            unenchantable.put(enchantItem.getItem(),level.getGameTime()+12000);
+            enchantDone=true; activity="Nothing can enchant "+name; return;
+        }
+        int duration=Enchanting.ticks(enchantItem,Config.ENCHANT_MINUTES.get());
+        enchantTicks=Math.min(duration,enchantTicks+10);
+        if(enchantTicks%40==0) level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,enchantTable.getX()+0.5,enchantTable.getY()+1.3,enchantTable.getZ()+0.5,6,0.5,0.3,0.5,0.6);
+        if(enchantTicks<duration) {
+            int minutes=(duration-enchantTicks+Enchanting.TICKS_PER_MINUTE-1)/Enchanting.TICKS_PER_MINUTE;
+            activity="Enchanting "+name+" at level "+enchantLevel+": "+enchantTicks*100/duration+"% done, about "+minutes+" min left";
+            return;
+        }
+        int lapis=Enchanting.lapisCost(enchantLevel);
+        if(lapisCarried()<lapis) { activity="Needs "+lapis+" lapis lazuli to finish "+name; return; }
+        ItemStack result=Enchanting.enchant(level.registryAccess(),getRandom(),enchantItem,enchantLevel);
+        if(result.isEmpty()) {
+            unenchantable.put(enchantItem.getItem(),level.getGameTime()+12000);
+            enchantDone=true; activity="No enchantment fits "+name; return;
+        }
+        for(int spent=0;spent<lapis;spent++) InventoryOps.takeOne(List.of(cargo),Enchanting::lapis);
+        enchantItem=result; enchantDone=true;
+        swing(InteractionHand.MAIN_HAND);
+        playSound(SoundEvents.ENCHANTMENT_TABLE_USE,1.0F,1.0F);
+        activity="Enchanted "+result.getHoverName().getString();
+    }
+    /** Collect an item to enchant and lapis for it: from this station's barrels when they hold what is missing, else from the warehouse. */
+    private boolean gatherForEnchanting(ServerLevel level,Settlement town,Station station,int cap) {
+        Predicate<ItemStack> skipped=stack -> unenchantable.containsKey(stack.getItem());
+        int needed=Enchanting.lapisCost(enchantLevel>0 ? enchantLevel : cap);
+        boolean wantItem=enchantItem.isEmpty(),wantLapis=lapisCarried()<needed;
+        BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
+        List<Container> local=barrel==null ? List.of() : SettlementService.jobStorage(level,town,station);
+        BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
+        List<Container> stored=warehouse==null ? List.of() : SettlementService.storageAt(level,town,warehouse);
+        boolean itemLocal=Enchanting.waiting(local,skipped),itemStored=Enchanting.waiting(stored,skipped);
+        if(wantItem && !itemLocal && !itemStored) {
+            activity="Nothing to enchant: put unenchanted gear or books in the warehouse or this station's barrel";
+            idleStations.put(station.position(),level.getGameTime()+400); releaseWork(level); searchDelay=20; return false;
+        }
+        int lapisLocal=InventoryOps.count(local,Enchanting::lapis),lapisStored=InventoryOps.count(stored,Enchanting::lapis);
+        if(wantLapis && lapisCarried()+lapisLocal+lapisStored<needed) {
+            activity="Needs "+needed+" lapis lazuli in the warehouse or this station's barrel";
+            nextEnchantAt=level.getGameTime()+200; return false;
+        }
+        boolean useBarrel=barrel!=null && (wantItem && itemLocal || wantLapis && lapisLocal>0);
+        BlockPos depot=useBarrel ? barrel : warehouse;
+        List<Container> source=useBarrel ? local : stored;
+        if(depot==null) { activity="Needs a loaded warehouse"; nextEnchantAt=level.getGameTime()+200; return false; }
+        if(!visitStorage(level,town,StructureRole.ENCHANTER,depot,source,!useBarrel)) return false;
+        if(wantItem) {
+            ItemStack next=Enchanting.takeNext(source,skipped);
+            if(!next.isEmpty()) { enchantItem=next; enchantTicks=0; enchantLevel=0; enchantDone=false; }
+        }
+        for(int count=lapisCarried();count<Enchanting.LAPIS_CARRY;count++) {
+            ItemStack lapis=InventoryOps.takeOne(source,Enchanting::lapis);
+            if(lapis.isEmpty()) break;
+            cargo.offer(lapis);
+        }
+        return !enchantItem.isEmpty() && lapisCarried()>=Enchanting.lapisCost(enchantLevel>0 ? enchantLevel : cap);
+    }
+    /** Bring a finished item to this station's barrels when goods may stay there (see {@link #dropOff}), else to the warehouse. */
+    private void deliverEnchanted(ServerLevel level,Settlement town,Station station) {
+        String name=enchantItem.getHoverName().getString();
+        BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
+        List<Container> local=barrel==null ? List.of() : SettlementService.jobStorage(level,town,station);
+        boolean toBarrel=barrel!=null && dropOff(level,town,local);
+        BlockPos depot=toBarrel ? barrel : SettlementService.warehouse(level,town,blockPosition());
+        if(depot==null) { activity="Holding the finished "+name+": needs a warehouse, or a barrel by the station"; nextEnchantAt=level.getGameTime()+100; return; }
+        if(!canUse(level,depot)) {
+            activity="Delivering the finished "+name; pathTicks+=10;
+            if(!walk(depot) && onGround() || pathTicks>1200) {
+                if(toBarrel && failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(barrel,level.getGameTime()+1200);
+                pathTicks=0; nextEnchantAt=level.getGameTime()+100;
+            }
+            return;
+        }
+        getNavigation().stop(); pathTicks=0;
+        ItemStack rest=enchantItem;
+        for(Container container:toBarrel ? local : SettlementService.storageAt(level,town,depot)) rest=InventoryOps.insert(container,rest);
+        enchantItem=rest;
+        if(!rest.isEmpty()) { activity="Storage is full; holding the finished "+name; nextEnchantAt=level.getGameTime()+100; return; }
+        enchantTicks=0; enchantLevel=0; enchantDone=false;
+        swing(InteractionHand.MAIN_HAND);
+        activity="Delivered the finished "+name;
+    }
+    /** The item an enchanter is working on, or empty. */
+    public ItemStack enchanting() { return enchantItem; }
+    /** The level rolled for that item, or zero before it reaches the table. */
+    public int enchantLevel() { return enchantLevel; }
+    /** Work done on that item, from 0 to 1. */
+    public float enchantProgress() {
+        if(enchantItem.isEmpty()) return 0F;
+        return enchantDone ? 1F : enchantTicks/(float)Math.max(1,Enchanting.ticks(enchantItem,Config.ENCHANT_MINUTES.get()));
+    }
     /** Station role this citizen works, or "none". */
     public String job() {
         if(!(level() instanceof ServerLevel server) || workplace==null || town(server)==null) return "none";
@@ -1495,7 +1678,8 @@ public final class CitizenEntity extends Villager {
         // Armor outside the guard job, or a tool or weapon this job does not use, also counts as a change (e.g. after a reload).
         boolean wrongKit=role!=StructureRole.GUARD && Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> !getItemBySlot(slot).isEmpty())
                 || gear(getMainHandItem()) && !retainSupply(getMainHandItem())
-                || role!=StructureRole.BLACKSMITH && !repairItem.isEmpty();
+                || role!=StructureRole.BLACKSMITH && !repairItem.isEmpty()
+                || role!=StructureRole.ENCHANTER && !enchantItem.isEmpty();
         if(lastRole!=null && lastRole!=role || wrongKit) changeRole(role);
         lastRole=role;
         // A guard drafted during an alarm defends first and returns old gear afterwards.
@@ -1503,6 +1687,7 @@ public final class CitizenEntity extends Villager {
         if(station.role()==StructureRole.GUARD) { guard(level,town,station); return; }
         if(station.role()==StructureRole.BLACKSMITH) { blacksmith(level,town,station); return; }
         if(station.role()==StructureRole.COURIER) { courier(level,town,station); return; }
+        if(station.role()==StructureRole.ENCHANTER) { enchanter(level,town,station); return; }
         useLocalSupplies(station.role());
         if(getHealth()<getMaxHealth() && wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0
                 && level.getGameTime()>=nextFoodTripAt) {
@@ -1669,6 +1854,10 @@ public final class CitizenEntity extends Villager {
         output.putInt("wwmc_healing_ticks",healingTicks);
         output.store("wwmc_repair_item",ItemStack.OPTIONAL_CODEC,repairItem);
         output.putBoolean("wwmc_repair_delivery",repairDelivery);
+        output.store("wwmc_enchant_item",ItemStack.OPTIONAL_CODEC,enchantItem);
+        output.putInt("wwmc_enchant_ticks",enchantTicks);
+        output.putInt("wwmc_enchant_level",enchantLevel);
+        output.putBoolean("wwmc_enchant_done",enchantDone);
         if(repairStand!=null) output.putString("wwmc_repair_stand",repairStand.toString());
         if(repairSlot!=null) output.putString("wwmc_repair_slot",repairSlot.name());
         output.store("wwmc_cargo",ItemStack.OPTIONAL_CODEC.listOf(),cargo.contents());
@@ -1683,6 +1872,10 @@ public final class CitizenEntity extends Villager {
         healingTicks=Math.clamp(input.getIntOr("wwmc_healing_ticks",0),0,FoodHealing.COOLDOWN);
         repairItem=input.read("wwmc_repair_item",ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY);
         repairDelivery=input.getBooleanOr("wwmc_repair_delivery",false);
+        enchantItem=input.read("wwmc_enchant_item",ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY);
+        enchantTicks=Math.max(0,input.getIntOr("wwmc_enchant_ticks",0));
+        enchantLevel=Math.clamp(input.getIntOr("wwmc_enchant_level",0),0,30);
+        enchantDone=input.getBooleanOr("wwmc_enchant_done",false);
         try { repairStand=UUID.fromString(input.getStringOr("wwmc_repair_stand","")); } catch(IllegalArgumentException e) { repairStand=null; }
         try { repairSlot=EquipmentSlot.valueOf(input.getStringOr("wwmc_repair_slot","")); } catch(IllegalArgumentException e) { repairSlot=null; }
         var stacks=input.read("wwmc_cargo",ItemStack.OPTIONAL_CODEC.listOf()).orElse(List.of());
@@ -1691,6 +1884,7 @@ public final class CitizenEntity extends Villager {
     @Override public void die(DamageSource source) {
         if(level() instanceof ServerLevel level) {
             Containers.dropItemStack(level,getX(),getY(),getZ(),repairItem); repairItem=ItemStack.EMPTY;
+            Containers.dropItemStack(level,getX(),getY(),getZ(),enchantItem); enchantItem=ItemStack.EMPTY;
             Settlement town=town(level);
             if(town!=null) { town.citizens.remove(getUUID()); town.citizenNames.remove(getUUID()); SettlementData.get(level).setDirty(); }
             releaseWork(level);

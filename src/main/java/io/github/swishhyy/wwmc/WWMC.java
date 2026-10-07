@@ -43,13 +43,14 @@ public final class WWMC {
     public static final DeferredRegister.Items ITEMS=DeferredRegister.createItems(MODID);
     public static final DeferredRegister.Entities ENTITIES=DeferredRegister.createEntities(MODID);
     public static final DeferredRegister<CreativeModeTab> TABS=DeferredRegister.create(Registries.CREATIVE_MODE_TAB,MODID);
-    public static final DeferredBlock<SettlementBannerBlock> BANNER=BLOCKS.registerBlock("settlement_banner",SettlementBannerBlock::new,p -> p.mapColor(MapColor.COLOR_BLUE).strength(2));
+    // Both models are detailed rather than full cubes, so they must not hide their neighbours' faces.
+    public static final DeferredBlock<SettlementBannerBlock> BANNER=BLOCKS.registerBlock("settlement_banner",SettlementBannerBlock::new,p -> p.mapColor(MapColor.COLOR_BLUE).strength(2).noOcclusion());
     public static final DeferredItem<BlockItem> BANNER_ITEM=ITEMS.registerSimpleBlockItem(BANNER);
     public static final Map<StructureRole,DeferredBlock<StationBlock>> STATIONS=new EnumMap<>(StructureRole.class);
     public static final Map<StructureRole,DeferredItem<BlockItem>> STATION_ITEMS=new EnumMap<>(StructureRole.class);
     static {
         for(StructureRole role:StructureRole.values()) {
-            var block=BLOCKS.registerBlock(role.id()+"_station",p -> new StationBlock(role,p),p -> p.mapColor(MapColor.WOOD).strength(2));
+            var block=BLOCKS.registerBlock(role.id()+"_station",p -> new StationBlock(role,p),p -> p.mapColor(MapColor.WOOD).strength(2).noOcclusion());
             STATIONS.put(role,block); STATION_ITEMS.put(role,ITEMS.registerSimpleBlockItem(block));
         }
     }

@@ -1,6 +1,209 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "minecraft:block/block",
   "textures": {
-    "all": "minecraft:block/blue_wool"
-  }
+    "particle": "minecraft:block/blue_wool",
+    "plinth": "minecraft:block/stone_bricks",
+    "step": "minecraft:block/polished_andesite",
+    "pole": "minecraft:block/dark_oak_log",
+    "pole_top": "minecraft:block/dark_oak_log_top",
+    "finial": "minecraft:block/gold_block",
+    "flag": "minecraft:block/blue_wool",
+    "stripe": "minecraft:block/yellow_wool"
+  },
+  "elements": [
+    {
+      "from": [
+        1,
+        0,
+        1
+      ],
+      "to": [
+        15,
+        2,
+        15
+      ],
+      "faces": {
+        "down": {
+          "texture": "#plinth",
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#plinth"
+        },
+        "north": {
+          "texture": "#plinth"
+        },
+        "south": {
+          "texture": "#plinth"
+        },
+        "west": {
+          "texture": "#plinth"
+        },
+        "east": {
+          "texture": "#plinth"
+        }
+      }
+    },
+    {
+      "from": [
+        3,
+        2,
+        3
+      ],
+      "to": [
+        13,
+        3,
+        13
+      ],
+      "faces": {
+        "down": {
+          "texture": "#step"
+        },
+        "up": {
+          "texture": "#step"
+        },
+        "north": {
+          "texture": "#step"
+        },
+        "south": {
+          "texture": "#step"
+        },
+        "west": {
+          "texture": "#step"
+        },
+        "east": {
+          "texture": "#step"
+        }
+      }
+    },
+    {
+      "from": [
+        7,
+        3,
+        7
+      ],
+      "to": [
+        9,
+        15,
+        9
+      ],
+      "faces": {
+        "down": {
+          "texture": "#pole_top"
+        },
+        "up": {
+          "texture": "#pole_top"
+        },
+        "north": {
+          "texture": "#pole"
+        },
+        "south": {
+          "texture": "#pole"
+        },
+        "west": {
+          "texture": "#pole"
+        },
+        "east": {
+          "texture": "#pole"
+        }
+      }
+    },
+    {
+      "from": [
+        6.5,
+        15,
+        6.5
+      ],
+      "to": [
+        9.5,
+        16,
+        9.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#finial"
+        },
+        "up": {
+          "texture": "#finial",
+          "cullface": "up"
+        },
+        "north": {
+          "texture": "#finial"
+        },
+        "south": {
+          "texture": "#finial"
+        },
+        "west": {
+          "texture": "#finial"
+        },
+        "east": {
+          "texture": "#finial"
+        }
+      }
+    },
+    {
+      "from": [
+        9,
+        7.5,
+        7.6
+      ],
+      "to": [
+        15.5,
+        14.5,
+        8.4
+      ],
+      "faces": {
+        "down": {
+          "texture": "#flag"
+        },
+        "up": {
+          "texture": "#flag"
+        },
+        "north": {
+          "texture": "#flag"
+        },
+        "south": {
+          "texture": "#flag"
+        },
+        "west": {
+          "texture": "#flag"
+        },
+        "east": {
+          "texture": "#flag"
+        }
+      }
+    },
+    {
+      "from": [
+        9.05,
+        10.25,
+        7.5
+      ],
+      "to": [
+        15.45,
+        11.75,
+        8.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#stripe"
+        },
+        "up": {
+          "texture": "#stripe"
+        },
+        "north": {
+          "texture": "#stripe"
+        },
+        "south": {
+          "texture": "#stripe"
+        },
+        "west": {
+          "texture": "#stripe"
+        },
+        "east": {
+          "texture": "#stripe"
+        }
+      }
+    }
+  ]
 }

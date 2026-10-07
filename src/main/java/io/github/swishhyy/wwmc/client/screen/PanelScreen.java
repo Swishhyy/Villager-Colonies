@@ -6,12 +6,13 @@ import io.github.swishhyy.wwmc.menu.WwmcNetwork;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
-/** The town overview and station panels: tabs of rows that refresh every second, and the owner's buttons. */
+/** The town overview and station panels: tabs of rows that refresh every second, and the owner's buttons, two to a row. */
 public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
     private static final int WIDTH=256,HEIGHT=214,ROW=22,LIST_TOP=48;
     private int tab,scroll;
@@ -35,12 +36,16 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
             addRenderableWidget(button);
         }
         List<PanelView.Action> actions=view.actions();
-        int actionWidth=actions.isEmpty() ? 0 : Math.min(120,(imageWidth-14)/actions.size());
+        int rows=actionRows(),half=(imageWidth-14)/2;
         for(int i=0;i<actions.size();i++) {
             PanelView.Action action=actions.get(i);
+            int row=i/2,column=i%2;
+            // A last button alone on its row spans the whole width.
+            boolean alone=column==0 && i==actions.size()-1;
             Button button=Button.builder(action.label(),b -> ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,action.id(),0,0,"")))
-                    .bounds(leftPos+7+i*actionWidth,topPos+imageHeight-26,actionWidth-2,20).build();
+                    .bounds(leftPos+7+column*half,topPos+imageHeight-6-(rows-row)*22,alone ? half*2-2 : half-2,20).build();
             button.active=action.enabled();
+            if(!action.tooltip().getString().isEmpty()) button.setTooltip(Tooltip.create(action.tooltip()));
             addRenderableWidget(button);
         }
         shown=view; layout=layout(view);
@@ -49,14 +54,15 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
     private static String layout(PanelView view) {
         StringBuilder key=new StringBuilder();
         for(PanelView.Tab tab:view.tabs()) key.append(tab.name().getString()).append('|');
-        for(PanelView.Action action:view.actions()) key.append(action.label().getString()).append(action.enabled()).append('|');
+        for(PanelView.Action action:view.actions()) key.append(action.label().getString()).append(action.enabled()).append(action.tooltip().getString()).append('|');
         return key.toString();
     }
     private List<PanelView.Row> rows() {
         List<PanelView.Tab> tabs=view().tabs();
         return tabs.isEmpty() ? List.of() : tabs.get(Math.min(tab,tabs.size()-1)).rows();
     }
-    private int listBottom() { return topPos+imageHeight-(view().actions().isEmpty() ? 8 : 30); }
+    private int actionRows() { return (view().actions().size()+1)/2; }
+    private int listBottom() { return topPos+imageHeight-8-actionRows()*22; }
     private int visibleRows() { return (listBottom()-(topPos+LIST_TOP)-2)/ROW; }
     @Override public void extractBackground(GuiGraphicsExtractor g,int mouseX,int mouseY,float partialTick) {
         int x=leftPos,y=topPos;

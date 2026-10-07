@@ -1,0 +1,359 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "minecraft:block/bookshelf",
+    "base": "minecraft:block/obsidian",
+    "shelf": "minecraft:block/bookshelf",
+    "wood": "minecraft:block/oak_planks",
+    "cloth": "minecraft:block/enchanting_table_top",
+    "cloth_side": "minecraft:block/red_wool",
+    "gem": "minecraft:block/lapis_block",
+    "page": "minecraft:block/white_wool",
+    "cover": "minecraft:block/purple_wool"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        3,
+        16
+      ],
+      "faces": {
+        "down": {
+          "texture": "#base",
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#base"
+        },
+        "north": {
+          "texture": "#base",
+          "cullface": "north"
+        },
+        "south": {
+          "texture": "#base",
+          "cullface": "south"
+        },
+        "west": {
+          "texture": "#base",
+          "cullface": "west"
+        },
+        "east": {
+          "texture": "#base",
+          "cullface": "east"
+        }
+      }
+    },
+    {
+      "from": [
+        1,
+        3,
+        1
+      ],
+      "to": [
+        15,
+        11,
+        15
+      ],
+      "faces": {
+        "down": {
+          "texture": "#wood"
+        },
+        "up": {
+          "texture": "#wood"
+        },
+        "north": {
+          "texture": "#shelf"
+        },
+        "south": {
+          "texture": "#shelf"
+        },
+        "west": {
+          "texture": "#shelf"
+        },
+        "east": {
+          "texture": "#shelf"
+        }
+      }
+    },
+    {
+      "from": [
+        0.5,
+        11,
+        0.5
+      ],
+      "to": [
+        15.5,
+        13,
+        15.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#cloth_side"
+        },
+        "up": {
+          "texture": "#cloth"
+        },
+        "north": {
+          "texture": "#cloth_side"
+        },
+        "south": {
+          "texture": "#cloth_side"
+        },
+        "west": {
+          "texture": "#cloth_side"
+        },
+        "east": {
+          "texture": "#cloth_side"
+        }
+      }
+    },
+    {
+      "from": [
+        1,
+        13,
+        1
+      ],
+      "to": [
+        3,
+        15,
+        3
+      ],
+      "faces": {
+        "down": {
+          "texture": "#gem"
+        },
+        "up": {
+          "texture": "#gem"
+        },
+        "north": {
+          "texture": "#gem"
+        },
+        "south": {
+          "texture": "#gem"
+        },
+        "west": {
+          "texture": "#gem"
+        },
+        "east": {
+          "texture": "#gem"
+        }
+      }
+    },
+    {
+      "from": [
+        13,
+        13,
+        1
+      ],
+      "to": [
+        15,
+        15,
+        3
+      ],
+      "faces": {
+        "down": {
+          "texture": "#gem"
+        },
+        "up": {
+          "texture": "#gem"
+        },
+        "north": {
+          "texture": "#gem"
+        },
+        "south": {
+          "texture": "#gem"
+        },
+        "west": {
+          "texture": "#gem"
+        },
+        "east": {
+          "texture": "#gem"
+        }
+      }
+    },
+    {
+      "from": [
+        1,
+        13,
+        13
+      ],
+      "to": [
+        3,
+        15,
+        15
+      ],
+      "faces": {
+        "down": {
+          "texture": "#gem"
+        },
+        "up": {
+          "texture": "#gem"
+        },
+        "north": {
+          "texture": "#gem"
+        },
+        "south": {
+          "texture": "#gem"
+        },
+        "west": {
+          "texture": "#gem"
+        },
+        "east": {
+          "texture": "#gem"
+        }
+      }
+    },
+    {
+      "from": [
+        13,
+        13,
+        13
+      ],
+      "to": [
+        15,
+        15,
+        15
+      ],
+      "faces": {
+        "down": {
+          "texture": "#gem"
+        },
+        "up": {
+          "texture": "#gem"
+        },
+        "north": {
+          "texture": "#gem"
+        },
+        "south": {
+          "texture": "#gem"
+        },
+        "west": {
+          "texture": "#gem"
+        },
+        "east": {
+          "texture": "#gem"
+        }
+      }
+    },
+    {
+      "from": [
+        5,
+        13,
+        6.5
+      ],
+      "to": [
+        11,
+        13.5,
+        10.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#cover"
+        },
+        "up": {
+          "texture": "#cover"
+        },
+        "north": {
+          "texture": "#cover"
+        },
+        "south": {
+          "texture": "#cover"
+        },
+        "west": {
+          "texture": "#cover"
+        },
+        "east": {
+          "texture": "#cover"
+        }
+      }
+    },
+    {
+      "from": [
+        4.5,
+        13.5,
+        7
+      ],
+      "to": [
+        8,
+        14,
+        10
+      ],
+      "faces": {
+        "down": {
+          "texture": "#page"
+        },
+        "up": {
+          "texture": "#page"
+        },
+        "north": {
+          "texture": "#page"
+        },
+        "south": {
+          "texture": "#page"
+        },
+        "west": {
+          "texture": "#page"
+        },
+        "east": {
+          "texture": "#page"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8,
+          13.5,
+          8.5
+        ],
+        "axis": "z",
+        "angle": -22.5
+      }
+    },
+    {
+      "from": [
+        8,
+        13.5,
+        7
+      ],
+      "to": [
+        11.5,
+        14,
+        10
+      ],
+      "faces": {
+        "down": {
+          "texture": "#page"
+        },
+        "up": {
+          "texture": "#page"
+        },
+        "north": {
+          "texture": "#page"
+        },
+        "south": {
+          "texture": "#page"
+        },
+        "west": {
+          "texture": "#page"
+        },
+        "east": {
+          "texture": "#page"
+        }
+      },
+      "rotation": {
+        "origin": [
+          8,
+          13.5,
+          8.5
+        ],
+        "axis": "z",
+        "angle": 22.5
+      }
+    }
+  ]
+}

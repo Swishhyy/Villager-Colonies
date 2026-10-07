@@ -1,6 +1,244 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "minecraft:block/block",
   "textures": {
-    "all": "minecraft:block/barrel_side"
-  }
+    "particle": "minecraft:block/barrel_side",
+    "pallet": "minecraft:block/spruce_planks",
+    "barrel": "minecraft:block/barrel_side",
+    "barrel_top": "minecraft:block/barrel_top",
+    "barrel_bottom": "minecraft:block/barrel_bottom",
+    "crate": "minecraft:block/oak_planks",
+    "boards": "minecraft:block/stripped_spruce_log",
+    "sack": "minecraft:block/brown_wool"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        2,
+        16
+      ],
+      "faces": {
+        "down": {
+          "texture": "#pallet",
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#pallet"
+        },
+        "north": {
+          "texture": "#pallet",
+          "cullface": "north"
+        },
+        "south": {
+          "texture": "#pallet",
+          "cullface": "south"
+        },
+        "west": {
+          "texture": "#pallet",
+          "cullface": "west"
+        },
+        "east": {
+          "texture": "#pallet",
+          "cullface": "east"
+        }
+      }
+    },
+    {
+      "from": [
+        1.5,
+        2,
+        1.5
+      ],
+      "to": [
+        9.5,
+        14,
+        9.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#barrel_bottom"
+        },
+        "up": {
+          "texture": "#barrel_top"
+        },
+        "north": {
+          "texture": "#barrel"
+        },
+        "south": {
+          "texture": "#barrel"
+        },
+        "west": {
+          "texture": "#barrel"
+        },
+        "east": {
+          "texture": "#barrel"
+        }
+      }
+    },
+    {
+      "from": [
+        10,
+        2,
+        1.5
+      ],
+      "to": [
+        15,
+        7,
+        6.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#crate"
+        },
+        "up": {
+          "texture": "#crate"
+        },
+        "north": {
+          "texture": "#crate"
+        },
+        "south": {
+          "texture": "#crate"
+        },
+        "west": {
+          "texture": "#crate"
+        },
+        "east": {
+          "texture": "#crate"
+        }
+      }
+    },
+    {
+      "from": [
+        10.5,
+        7,
+        2
+      ],
+      "to": [
+        14.5,
+        9,
+        6
+      ],
+      "faces": {
+        "down": {
+          "texture": "#sack"
+        },
+        "up": {
+          "texture": "#sack"
+        },
+        "north": {
+          "texture": "#sack"
+        },
+        "south": {
+          "texture": "#sack"
+        },
+        "west": {
+          "texture": "#sack"
+        },
+        "east": {
+          "texture": "#sack"
+        }
+      }
+    },
+    {
+      "from": [
+        1.5,
+        2,
+        10
+      ],
+      "to": [
+        7.5,
+        8,
+        15
+      ],
+      "faces": {
+        "down": {
+          "texture": "#boards"
+        },
+        "up": {
+          "texture": "#boards"
+        },
+        "north": {
+          "texture": "#boards"
+        },
+        "south": {
+          "texture": "#boards"
+        },
+        "west": {
+          "texture": "#boards"
+        },
+        "east": {
+          "texture": "#boards"
+        }
+      }
+    },
+    {
+      "from": [
+        2.5,
+        8,
+        10.5
+      ],
+      "to": [
+        6.5,
+        12,
+        14.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#crate"
+        },
+        "up": {
+          "texture": "#crate"
+        },
+        "north": {
+          "texture": "#crate"
+        },
+        "south": {
+          "texture": "#crate"
+        },
+        "west": {
+          "texture": "#crate"
+        },
+        "east": {
+          "texture": "#crate"
+        }
+      }
+    },
+    {
+      "from": [
+        9.5,
+        2,
+        9.5
+      ],
+      "to": [
+        14.5,
+        9,
+        14.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#barrel_bottom"
+        },
+        "up": {
+          "texture": "#barrel_top"
+        },
+        "north": {
+          "texture": "#barrel"
+        },
+        "south": {
+          "texture": "#barrel"
+        },
+        "west": {
+          "texture": "#barrel"
+        },
+        "east": {
+          "texture": "#barrel"
+        }
+      }
+    }
+  ]
 }
