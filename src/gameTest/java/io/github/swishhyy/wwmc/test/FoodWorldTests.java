@@ -181,14 +181,16 @@ public final class FoodWorldTests {
             List<CitizenEntity> citizens=new ArrayList<>();
             for(int n=0;n<10;n++) {
                 barrel(level,stations.get(n).position().south(2));
-                var citizen=fixture.worker(stations.get(n),warehouse.position().offset(-2+n%3,0,-2+n/3%3));
+                // Ten distinct clear spots; do not spawn citizens inside the warehouse or its barrel.
+                var citizen=fixture.worker(stations.get(n),warehouse.position().offset(-2-n%2,0,-3+n/2));
                 citizen.setHealth(1);
                 try { var hunger=CitizenEntity.class.getDeclaredField("mealTicks"); hunger.setAccessible(true); hunger.setInt(citizen,0); }
                 catch(ReflectiveOperationException e) { throw new RuntimeException(e); }
                 citizens.add(citizen);
             }
             helper.runAtTickTime(900,() -> {
-                helper.assertTrue(count(pantry,Items.BREAD)==0,"Some hungry citizens never reached the communal pantry");
+                helper.assertTrue(count(pantry,Items.BREAD)==0,"Some hungry citizens never reached the communal pantry; loaves="+count(pantry,Items.BREAD)
+                        +", citizens="+citizens.stream().map(c -> c.getHealth()+" hp, "+c.activity()+" at "+c.blockPosition()).toList());
                 for(CitizenEntity citizen:citizens) {
                     helper.assertTrue(citizen.getHealth()==6,"A citizen did not get exactly one loaf: health="+citizen.getHealth()+", "+citizen.activity());
                     helper.assertTrue(citizen.bag().count(Items.BREAD)==0,"A citizen stockpiled scarce bread");
