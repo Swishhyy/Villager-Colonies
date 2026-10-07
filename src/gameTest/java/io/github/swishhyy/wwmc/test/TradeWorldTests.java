@@ -98,6 +98,62 @@ public final class TradeWorldTests {
         });
     }
 
+    @GameTest(timeoutTicks=12000)
+    @EmptyTemplate
+    @TestHolder(description="A trader crosses a river by its only bridge, sixty blocks to the side of the straight line, instead of stopping at the bank.")
+    static void crossesByTheFarBridge(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel();
+            BlockPos start=helper.absolutePos(new BlockPos(0,2,1400));
+            var chunks=CitizenNavigationTests.pinArea(level,start,-90,90,-12,152);
+            for(int x=-90;x<=90;x++) for(int z=-12;z<=152;z++) {
+                level.setBlockAndUpdate(start.offset(x,-2,z),Blocks.STONE.defaultBlockState());
+                level.setBlockAndUpdate(start.offset(x,-1,z),Blocks.GRASS_BLOCK.defaultBlockState());
+                for(int y=0;y<=3;y++) level.setBlockAndUpdate(start.offset(x,y,z),Blocks.AIR.defaultBlockState());
+            }
+            // A river across all the land, crossed only by a one-block deck sixty blocks west of the straight line.
+            for(int x=-90;x<=90;x++) for(int z=64;z<=76;z++) {
+                level.setBlockAndUpdate(start.offset(x,-4,z),Blocks.STONE.defaultBlockState());
+                for(int y=-3;y<=-1;y++) level.setBlockAndUpdate(start.offset(x,y,z),Blocks.WATER.defaultBlockState());
+            }
+            for(int z=63;z<=77;z++) level.setBlockAndUpdate(start.offset(-60,-1,z),Blocks.OAK_PLANKS.defaultBlockState());
+            UUID owner=UUID.randomUUID();
+            Settlement a=town(owner,"Ford",start),b=town(owner,"Far Bank",start.south(140));
+            var data=SettlementData.get(level); data.settlements.add(a); data.settlements.add(b);
+            for(Settlement town:List.of(a,b)) {
+                level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState());
+                for(Station station:town.stations)
+                    level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+                level.setBlockAndUpdate(town.center.south(3),Blocks.BARREL.defaultBlockState());
+            }
+            Container from=(Container)level.getBlockEntity(a.center.south(3));
+            from.setItem(0,new ItemStack(Items.IRON_INGOT,16));
+            from.setItem(1,new ItemStack(Items.BREAD,64));
+            a.trading.exports.add(new TradeSettings.Export("minecraft:iron_ingot",0,16));
+            TradeRoutes.link(a,b,data.settlements,8192);
+            // A player flying over the land would let traders see it; here the test reads the loaded land directly.
+            TradeAtlas.get(level).survey(level,start.offset(-90,0,-12),start.offset(90,0,152));
+            CitizenEntity trader=new CitizenEntity(WWMC.CITIZEN.get(),level);
+            trader.join(a.id); trader.setPos(start.getX()+2.5,start.getY(),start.getZ()+0.5);
+            a.citizens.add(trader.getUUID()); level.addFreshEntity(trader); data.setDirty();
+            var wet=new AtomicBoolean();
+            var offBridge=new AtomicBoolean();
+            helper.succeedWhen(() -> {
+                if(trader.isInWater()) wet.set(true);
+                int z=trader.blockPosition().getZ()-start.getZ(),x=trader.blockPosition().getX()-start.getX();
+                if(z>=64 && z<=76 && Math.abs(x+60)>1) offBridge.set(true);
+                helper.assertTrue(trader.isAlive(),"Trader died: "+a.trading.status);
+                helper.assertTrue(!wet.get(),"Trader swam instead of walking to the far bridge");
+                helper.assertTrue(!offBridge.get(),"Trader crossed the river somewhere other than the bridge");
+                helper.assertTrue(a.trading.delivered==16,"Not delivered: "+a.trading.status+" at "+trader.blockPosition());
+                helper.assertTrue(trader.blockPosition().distSqr(a.center)<64,"Not returned: "+a.trading.status+" at "+trader.blockPosition());
+                TradeChunks.release(level,a.id); TradeChunks.release(level,b.id);
+                trader.discard(); data.settlements.remove(a); data.settlements.remove(b); data.setDirty();
+                CitizenNavigationTests.release(level,start,chunks);
+            });
+        });
+    }
+
     private static Settlement town(UUID owner,String name,BlockPos center) {
         return new Settlement(UUID.randomUUID(),owner,name,center,240,List.of(),
                 List.of(new Station(center.east(2),StructureRole.TRADER),new Station(center.south(2),StructureRole.WAREHOUSE)),"balanced");

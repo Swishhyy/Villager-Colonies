@@ -1763,8 +1763,9 @@ public final class CitizenEntity extends Villager {
     private boolean tradeArrive(ServerLevel level,Settlement home,BlockPos destination) {
         if(canUse(level,destination)) { getNavigation().stop(); tradeNavigation.reset(); return true; }
         lastWalkTick=tickCount;
-        if(!tradeNavigation.walk(level,this,destination,0.75))
-            tradeNote(home,"Trade route blocked: clear a walkable path or build a road");
+        // A leg that is only being planned again is not a blockage; report one after fifteen seconds without progress.
+        if(!tradeNavigation.walk(level,this,destination,0.75) && tradeNavigation.stuck(level.getGameTime()))
+            tradeNote(home,"Trade route blocked near "+blockPosition().getX()+", "+blockPosition().getZ()+": clear a walkable path, bridge the water or build a road");
         return false;
     }
     /** A saved itinerary, with isolated goods that neither meals nor another job can consume. */
