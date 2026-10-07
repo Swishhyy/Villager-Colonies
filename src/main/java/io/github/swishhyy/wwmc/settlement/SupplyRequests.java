@@ -17,6 +17,7 @@ public final class SupplyRequests {
     }
     public static boolean set(Settlement town,String key,int target) {
         Item item=item(key); if(item==null || item==Items.AIR || target<0 || target>4096) return false;
+        key=BuiltInRegistries.ITEM.getKey(item).toString();
         if(target==0) town.campaign.requests.remove(key);
         else if(town.campaign.requests.size()<24 || town.campaign.requests.containsKey(key)) town.campaign.requests.put(key,target);
         else return false;

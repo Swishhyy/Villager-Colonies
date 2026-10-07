@@ -20,6 +20,7 @@ public final class SquadService {
         if(!town.campaign.projects.contains("armory")) return "Complete the Armory project at the town banner first.";
         if(requested<1 || requested>limit(town)) return "Choose 1 to "+limit(town)+" guards.";
         if(town.campaign.squads.stream().anyMatch(s -> s.leader().equals(leader.getUUID()))) return "You already lead a squad from this town. Release it before mustering another.";
+        if(town.campaign.squads.size()>=8) return "This town already has eight squads deployed. Release one before forming another.";
         var available=DefenseService.loadedCitizens(level,town).stream().filter(c -> c.isAlive() && c.isGuard()
                 && town.campaign.squad(c.getUUID())==null && c.distanceToSqr(leader)<64*64 && c.getHealth()>c.getMaxHealth()*0.5F
                 && GuardWeapons.weapon(c.getMainHandItem())).sorted(Comparator.comparingDouble(c -> c.distanceToSqr(leader))).limit(requested).toList();

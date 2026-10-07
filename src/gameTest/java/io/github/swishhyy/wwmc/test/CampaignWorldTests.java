@@ -9,6 +9,7 @@ import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -151,6 +152,32 @@ public final class CampaignWorldTests {
             for(UUID id:new ArrayList<>(outpost.citizens)) if(level.getEntity(id) instanceof CitizenEntity citizen) citizen.discard();
             leave(level,outpost); leave(level,parent); ExpeditionData.get(level).sites.remove(site); ExpeditionData.get(level).setDirty();
             CitizenNavigationTests.release(level,start,chunks); helper.succeed();
+        });
+    }
+    @GameTest(timeoutTicks=100)
+    @EmptyTemplate
+    @TestHolder(description="Actual warehouse handoffs credit only an accepted contract's customer, leave partial demand open, and transfer the escrowed payment once.")
+    static void contractDeliveryPaysItsCustomerOnce(DynamicTest test) {
+        test.onGameTest(helper -> {
+            ServerLevel level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-3250));
+            var chunks=CitizenNavigationTests.pinArea(level,start,-8,8,-8,8); CitizenNavigationTests.meadow(level,start,-8,8,-8,8);
+            Settlement npc=town(level,start,new Station(start.east(2),StructureRole.WAREHOUSE)); npc.trading.npc=true;
+            Settlement customer=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Customer",start.west(640),32,List.of(),List.of(),"balanced");
+            Settlement stranger=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Stranger",start.east(640),32,List.of(),List.of(),"balanced");
+            level.setBlockAndUpdate(start.east(3),Blocks.BARREL.defaultBlockState()); var warehouse=SettlementService.storage(level,npc);
+            SupplyContract order=new SupplyContract(UUID.randomUUID(),"minecraft:bread",32,0,new ItemStack(Items.EMERALD,4),Optional.of(customer.id),level.getGameTime()+72000); npc.campaign.contracts.add(order);
+            var rewards=new SimpleContainer(2);
+            for(int n=0;n<3;n++) {
+                var shipment=new TradeShipment(); shipment.setItem(0,new ItemStack(Items.BREAD,16)); int delivered=TradeGoods.unload(shipment,warehouse);
+                helper.assertTrue(delivered==16,"Real contract goods could not enter the warehouse");
+                CampaignContracts.delivered(level,n==0 ? stranger : customer,npc,Map.of("minecraft:bread",delivered),rewards);
+                helper.assertTrue(order.delivered==(n==0 ? 0 : n*16),"Wrong customer credited, or delivery amount changed");
+                if(n<2) helper.assertTrue(rewards.isEmpty() && SupplyRequests.deficit(npc,"minecraft:bread")==order.remaining(),"Partial order lost its outstanding demand or paid too soon");
+            }
+            helper.assertTrue(order.complete() && rewards.getItem(0).is(Items.EMERALD) && rewards.getItem(0).getCount()==4 && order.reward.isEmpty(),"Physical reward transfer failed");
+            CampaignContracts.delivered(level,customer,npc,Map.of("minecraft:bread",16),rewards);
+            helper.assertTrue(rewards.getItem(0).getCount()==4,"Duplicate delivery event paid the contract twice");
+            leave(level,npc); CitizenNavigationTests.release(level,start,chunks); helper.succeed();
         });
     }
 }

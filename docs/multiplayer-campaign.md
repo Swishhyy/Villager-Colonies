@@ -36,7 +36,7 @@ All costs come from loaded warehouse containers. Materials are checked before an
 
 Supply and equip your normal guards first. The squad system borrows them; it does not create extra population, equipment or supplies. Their original station assignments are retained, and remaining guards cover shifts. Taking an entire station's crew away leaves its post unstaffed.
 
-Open **Army** on Campaign or run `/wwmc squad` anywhere for field controls. Muster one, two or four nearby healthy, armed guards; Officer School also allows six. `/wwmc squad muster 2` works directly. One player can lead one squad per town.
+Open **Army** on Campaign or run `/wwmc squad` anywhere for field controls. Muster one, two or four nearby healthy, armed guards; Officer School also allows six. `/wwmc squad muster 2` works directly. One player can lead one squad per town, with up to eight deployed squads in a town.
 
 | Order | Behavior |
 | --- | --- |

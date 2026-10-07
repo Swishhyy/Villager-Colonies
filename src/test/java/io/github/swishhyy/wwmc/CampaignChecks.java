@@ -36,7 +36,7 @@ public final class CampaignChecks {
         a.campaign.extraRoutes.add(b.id); b.campaign.extraRoutes.add(a.id); assertTrue(TradeRoutes.agreed(a,b));
         TownAccess.leaveAlliance(a,b); assertFalse(TownAccess.allied(a,b)); assertFalse(TradeRoutes.agreed(a,b));
     }
-    @Test void stockTargetsReserveHomeSupplyAndStopAtTheDestinationTarget() {
+    @Test void stockTargetsReserveHomeSupplyAndStopAtTheDestinationTarget(MinecraftServer server) {
         Settlement source=town(UUID.randomUUID(),0),destination=town(source.owner,1000);
         source.campaign.requests.put("minecraft:bread",32); source.trading.exports.add(new TradeSettings.Export("minecraft:bread",8,64));
         destination.campaign.requests.put("minecraft:bread",16);
@@ -55,14 +55,15 @@ public final class CampaignChecks {
         town.campaign.stock.put("minecraft:iron_ingot",48); town.campaign.incoming.remove(first); assertEquals(0,SupplyRequests.deficit(town,"minecraft:iron_ingot"));
         town.campaign.incoming.remove(second); assertEquals(16,SupplyRequests.deficit(town,"minecraft:iron_ingot"));
     }
-    @Test void pausedExportsRemainPausedEvenWhenAnotherTownRequestsThem() {
+    @Test void pausedExportsRemainPausedEvenWhenAnotherTownRequestsThem(MinecraftServer server) {
         Settlement source=town(UUID.randomUUID(),0),destination=town(source.owner,1000); destination.campaign.requests.put("minecraft:iron_ingot",64);
         source.trading.exports.add(new TradeSettings.Export("minecraft:iron_ingot",0,0));
         assertEquals(0,SupplyRequests.policy(source,destination,true).getFirst().load());
         assertFalse(SupplyRequests.set(source,"minecraft:air",16)); assertFalse(SupplyRequests.set(source,"missing:gone_item",16));
         assertTrue(SupplyRequests.set(source,"minecraft:bread",32)); assertTrue(SupplyRequests.set(source,"minecraft:bread",0)); assertFalse(source.campaign.requests.containsKey("minecraft:bread"));
+        assertTrue(SupplyRequests.set(source,"bread",32)); assertEquals(32,source.campaign.requests.get("minecraft:bread")); assertFalse(source.campaign.requests.containsKey("bread"));
     }
-    @Test void contractDemandTracksRemainingDeliveryAfterStockChanges() {
+    @Test void contractDemandTracksRemainingDeliveryAfterStockChanges(MinecraftServer server) {
         Settlement npc=town(UUID.randomUUID(),1000),customer=town(UUID.randomUUID(),0); npc.trading.npc=true;
         SupplyContract order=new SupplyContract(UUID.randomUUID(),"minecraft:bread",32,0,new ItemStack(Items.EMERALD,4),Optional.of(customer.id),72000);
         npc.campaign.contracts.add(order); SimpleContainer pantry=new SimpleContainer(2); pantry.setItem(0,new ItemStack(Items.BREAD,16));
@@ -71,7 +72,7 @@ public final class CampaignChecks {
         pantry.getItem(0).shrink(8); SupplyRequests.snapshot(npc,List.of(pantry)); assertEquals(16,SupplyRequests.deficit(npc,"minecraft:bread"));
         order.delivered=32; SupplyRequests.snapshot(npc,List.of(pantry)); assertFalse(npc.campaign.requests.containsKey("minecraft:bread"));
     }
-    @Test void projectsSpendMaterialsAtomicallyAndOnlyOnce() {
+    @Test void projectsSpendMaterialsAtomicallyAndOnlyOnce(MinecraftServer server) {
         var stock=new SimpleContainer(3); stock.setItem(0,new ItemStack(Items.IRON_INGOT,24)); stock.setItem(1,new ItemStack(Items.BIRCH_PLANKS,31));
         var costs=TownProjects.byId("armory").costs(); assertFalse(TownProjects.pay(List.of(stock),costs)); assertEquals(24,stock.getItem(0).getCount());
         stock.getItem(1).grow(1); assertTrue(TownProjects.pay(List.of(stock),costs)); assertTrue(stock.isEmpty()); assertFalse(TownProjects.pay(List.of(stock),costs));
@@ -114,13 +115,5 @@ public final class CampaignChecks {
         Settlement town=town(UUID.randomUUID(),0); town.campaign.specialty="mining"; assertEquals(100,Specialization.ticks(town,StructureRole.FARM,100));
         assertEquals(90,Specialization.ticks(town,StructureRole.MINE,100)); town.campaign.projects.add("terrain_bonus"); assertEquals(80,Specialization.ticks(town,StructureRole.MINE,100));
         assertEquals(4,SquadService.limit(town)); town.campaign.projects.add("training"); assertEquals(6,SquadService.limit(town));
-    }
-    @Test void contractCreditRequiresTheCorrectCustomerAndNeverPaysTwice(MinecraftServer server) {
-        var level=server.overworld(); Settlement npc=town(UUID.randomUUID(),1000),customer=town(UUID.randomUUID(),0),other=town(UUID.randomUUID(),2000); npc.trading.npc=true;
-        var contract=new SupplyContract(UUID.randomUUID(),"minecraft:bread",32,0,new ItemStack(Items.EMERALD,4),Optional.of(customer.id),12000); npc.campaign.contracts.add(contract);
-        var rewards=new SimpleContainer(2); CampaignContracts.delivered(level,other,npc,Map.of("minecraft:bread",64),rewards); assertEquals(0,contract.delivered); assertTrue(rewards.isEmpty());
-        CampaignContracts.delivered(level,customer,npc,Map.of("minecraft:bread",16),rewards); assertEquals(16,contract.delivered); assertTrue(rewards.isEmpty());
-        CampaignContracts.delivered(level,customer,npc,Map.of("minecraft:bread",64),rewards); assertTrue(contract.complete()); assertEquals(4,rewards.getItem(0).getCount()); assertTrue(contract.reward.isEmpty());
-        CampaignContracts.delivered(level,customer,npc,Map.of("minecraft:bread",64),rewards); assertEquals(4,rewards.getItem(0).getCount());
     }
 }
