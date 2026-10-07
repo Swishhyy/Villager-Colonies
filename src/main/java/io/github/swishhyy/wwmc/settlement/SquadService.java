@@ -80,7 +80,9 @@ public final class SquadService {
         BlockPos formation=target.offset((index%3-1)*2,0,2+index/3*2);
         double distance=guard.distanceToSqr(Vec3.atCenterOf(target));
         if(returning && distance<100) {
-            if(squad.order().equals("retreat") && leader!=null && leader.level()==level && guard.getHealth()>=guard.getMaxHealth()*0.3F) {
+            if(squad.order().equals("retreat") && leader!=null && leader.level()==level && guard.getHealth()>=guard.getMaxHealth()*0.3F
+                    && GuardWeapons.weapon(guard.getMainHandItem()) && GuardEquipment.usable(guard.getMainHandItem())
+                    && Arrays.stream(GuardEquipment.ARMOR).noneMatch(slot -> GuardEquipment.worn(guard.getItemBySlot(slot)))) {
                 guard.getNavigation().stop(); guard.workActivity("Regrouped at home; awaiting new orders"); return true;
             }
             remove(level,town,guard.getUUID()); guard.workActivity("Returned to normal guard duty"); return false;

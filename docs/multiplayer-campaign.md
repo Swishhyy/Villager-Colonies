@@ -47,7 +47,7 @@ Open **Army** on Campaign or run `/wwmc squad` anywhere for field controls. Must
 | Escort | After a Depot, follow that town's travelling trader; the trader waits for separated escorts |
 | Release | Walk home, then return to normal guard shifts |
 
-Orders persist across restart. A missing, dead, disconnected or dimension-changing leader causes guards to walk home. Guards below 30% health fall back individually. Squads use the same road/bridge-aware travel and weapon combat as existing citizens. They do not force-load a new army corridor; a nearby player or trader window supplies loaded terrain.
+Orders persist across restart. A missing, dead, disconnected or dimension-changing leader causes guards to walk home. Guards below 30% health fall back individually. Broken or below-25%-durability equipment also sends a guard home to resume the normal repair and shared-armor routine, even after a retreat order. Squads use the same road/bridge-aware travel and weapon combat as existing citizens. They do not force-load a new army corridor; a nearby player or trader window supplies loaded terrain.
 
 Explore for **Bandit Camps**, **Occupied Mines** and **Ruined Forts**. Discovery uses loaded, dry, relatively level natural ground outside existing claims. It rejects player-protected blocks and block entities. Sites contain finite defenders, supplies, beds and useful storage; generation never rebuilds over later player changes. Site state, defender identities and cleared status persist across restart. Campaign -> Sites lists discovered coordinates and remaining defenders.
 
@@ -59,7 +59,7 @@ After a Frontier Charter, walk to a cleared, unclaimed site and use `/wwmc outpo
 
 A reciprocal extra route connects the outpost to its parent without replacing the parent's main trading partner. Requests start at 32 bread, two stone pickaxes and 16 oak planks; raw iron exports keep four at the outpost. Couriers remain the only internal haulers. Mining and other production wait when both local food stock and the worker's food bag are empty. Traders and couriers continue so a shortage can recover through deliveries. Players can expand or change the outpost like another town.
 
-Complete Field Hospital and supply its barrel through couriers with **edible meals and paper dressings**. The project sets the hospital job to high priority. One medic works there. Citizens below 60% health seek and reserve patient beds, then remain in treatment until at least 95% health. A present medic spends one meal and one paper to restore four health per treatment. Medics can treat their own wounds. Hospital beds never count toward recruitment. Paper shortages, occupied beds or a missing medic are visible in citizen activity; scarce meals reduce hospital courier demand so other citizens still get food.
+Complete Field Hospital and supply its barrel through couriers with **edible meals and paper dressings**. The project sets the hospital job to high priority. One medic works there. Citizens below 60% health seek and reserve patient beds, then remain in treatment until at least 95% health. A present medic spends one meal and one paper to restore four health per treatment. Medics can treat their own wounds and keep the bowl or bottle left by a meal. Hospital beds never count toward recruitment. Paper shortages, occupied beds or a missing medic are visible in citizen activity; scarce meals reduce hospital courier demand so other citizens still get food.
 
 ## Neighbor opportunities and journal
 
