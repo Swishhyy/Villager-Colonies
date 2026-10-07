@@ -128,8 +128,8 @@ public final class CitizenEntity extends Villager {
     private BlockPos pathDestination;
     private String activity="Waiting for a job station";
     private TradeShipment tradeShipment=new TradeShipment();
-    private BlockPos tradeWaypoint;
-    private long nextTradeAt,nextTradePathAt;
+    private final TradeNavigation tradeNavigation=new TradeNavigation();
+    private long nextTradeAt;
     private int lastNpcHurt=-1;
     public CitizenEntity(EntityType<? extends Villager> type,Level level) {
         super(type,level); setPersistenceRequired(); setCanPickUpLoot(false);
@@ -1677,28 +1677,10 @@ public final class CitizenEntity extends Villager {
     }
     private void tradeNote(Settlement home,String message) { activity=message; home.trading.status=message; }
     private boolean tradeArrive(ServerLevel level,Settlement home,BlockPos destination) {
-        if(canUse(level,destination)) { getNavigation().stop(); tradeWaypoint=null; return true; }
-        if(tradeWaypoint==null || near(tradeWaypoint) || level.getGameTime()>=nextTradePathAt) {
-            tradeWaypoint=null; nextTradePathAt=level.getGameTime()+200;
-            double dx=destination.getX()-getX(),dz=destination.getZ()-getZ(),distance=Math.sqrt(dx*dx+dz*dz);
-            if(distance<=18) { tradeWaypoint=destination; }
-            else {
-                double angle=Math.atan2(dz,dx);
-                for(double offset:new double[]{0,0.55,-0.55,1.1,-1.1}) {
-                    int x=(int)Math.floor(getX()+Math.cos(angle+offset)*16),z=(int)Math.floor(getZ()+Math.sin(angle+offset)*16);
-                    BlockPos probe=new BlockPos(x,blockPosition().getY(),z);
-                    if(!level.hasChunkAt(probe) || !level.getWorldBorder().isWithinBounds(probe)) continue;
-                    int y=level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,x,z);
-                    BlockPos candidate=new BlockPos(x,y,z);
-                    var path=getNavigation().createPath(candidate,1);
-                    if(path!=null && path.canReach()) { tradeWaypoint=candidate; break; }
-                }
-            }
-        }
-        if(tradeWaypoint==null || !walk(tradeWaypoint,0.75)) {
-            getNavigation().stop(); tradeNote(home,"Trade route blocked: clear a walkable path or build a road");
-            nextTradePathAt=Math.min(nextTradePathAt,level.getGameTime()+100);
-        }
+        if(canUse(level,destination)) { getNavigation().stop(); tradeNavigation.reset(); return true; }
+        lastWalkTick=tickCount;
+        if(!tradeNavigation.walk(level,this,destination,0.75))
+            tradeNote(home,"Trade route blocked: clear a walkable path or build a road");
         return false;
     }
     /** A saved itinerary, with isolated goods that neither meals nor another job can consume. */
@@ -1718,7 +1700,7 @@ public final class CitizenEntity extends Villager {
                 || !TradeRoutes.agreed(home,destination) || arrival==null
                 || level.hasChunkAt(arrival.position()) && !SettlementService.active(level,arrival);
         if(tradeShipment.travelling() && !List.of("return","home").contains(tradeShipment.stage) && broken) {
-            tradeShipment.stage="return"; tradeWaypoint=null;
+            tradeShipment.stage="return"; tradeNavigation.reset();
         }
         switch(tradeShipment.stage) {
             case "idle" -> {
@@ -1738,15 +1720,15 @@ public final class CitizenEntity extends Villager {
                 }
                 int moved=TradeGoods.load(SettlementService.storageAt(level,home,warehouse),home.trading.exports,tradeShipment);
                 if(moved==0) { tradeNote(home,"Waiting for warehouse goods above the export reserves"); nextTradeAt=level.getGameTime()+200; return; }
-                tradeShipment.destination=destination.id; tradeShipment.stage="checkpoint"; tradeWaypoint=null;
+                tradeShipment.destination=destination.id; tradeShipment.stage="checkpoint"; tradeNavigation.reset();
             }
             case "checkpoint" -> {
                 tradeNote(home,"Taking "+tradeCargoCount()+" items to the home checkpoint");
-                if(tradeArrive(level,home,checkpoint.position())) { tradeShipment.stage="outbound"; tradeWaypoint=null; }
+                if(tradeArrive(level,home,checkpoint.position())) { tradeShipment.stage="outbound"; tradeNavigation.reset(); }
             }
             case "outbound" -> {
                 tradeNote(home,"Travelling to "+destination.name+" with "+tradeCargoCount()+" items");
-                if(tradeArrive(level,home,arrival.position())) { tradeShipment.stage="deliver"; tradeWaypoint=null; }
+                if(tradeArrive(level,home,arrival.position())) { tradeShipment.stage="deliver"; tradeNavigation.reset(); }
             }
             case "deliver" -> {
                 BlockPos warehouse=tradeWarehouse(destination);
@@ -1757,14 +1739,14 @@ public final class CitizenEntity extends Villager {
                 home.trading.delivered+=moved;
                 if(moved>0 && destination.trading.npc) destination.trading.relations.merge(home.owner,moved,(a,b) -> Math.min(1000,a+b));
                 if(moved>0) SettlementData.get(level).setDirty();
-                if(tradeShipment.isEmpty()) { tradeShipment.stage="return"; tradeWaypoint=null; }
+                if(tradeShipment.isEmpty()) { tradeShipment.stage="return"; tradeNavigation.reset(); }
                 else { tradeNote(home,"Destination storage is full; keeping "+tradeCargoCount()+" items"); nextTradeAt=level.getGameTime()+100; }
             }
             case "return" -> {
                 tradeNote(home,"Returning to "+home.name+(tradeShipment.isEmpty() ? "" : " with undelivered goods"));
                 BlockPos rally=checkpoint==null ? home.center : checkpoint.position();
                 if(!handNear(rally) && !tradeArrive(level,home,rally)) return;
-                tradeShipment.stage="home"; tradeWaypoint=null;
+                tradeShipment.stage="home"; tradeNavigation.reset();
             }
             case "home" -> {
                 if(!tradeShipment.isEmpty()) {
@@ -1776,7 +1758,7 @@ public final class CitizenEntity extends Villager {
                 }
                 tradeShipment.finish();
                 if(!TradeRoutes.canDepart(level,home)) { home.trading.runner=null; home.trading.runnerPos=null; }
-                tradeWaypoint=null; nextTradeAt=level.getGameTime()+200; SettlementData.get(level).setDirty();
+                tradeNavigation.reset(); nextTradeAt=level.getGameTime()+200; SettlementData.get(level).setDirty();
                 tradeNote(home,"Returned; preparing the next trip");
             }
             default -> tradeShipment.stage="return";

@@ -6,7 +6,9 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.9.0-alpha
+## Current build: 0.9.1-alpha
+
+0.9.1 fixes traders stopping on walkable routes beneath roofs and tree overhangs. They choose reachable ground near their feet, try shorter and sideways legs, and retry stalled paths without teleporting or losing cargo. A headless world regression checks real delivery and return over 640 blocks, beneath an overhang and around a wall, with no nearby player.
 
 0.9.0 adds **multiple owned towns, Trader Blocks, physical supply routes, and small neutral NPC towns**. Each town has one trader checkpoint and one partner. Set exports with Keep and Send controls; traders carry real goods between warehouses, preserving cargo through full storage and restarts. Towns owned by different players require both owners to choose the route. Neutral NPC towns have farming, timber, or mining specialties and use the existing citizen jobs, food, beds, and storage. See [Trading and other settlements](#trading-and-other-settlements).
 
@@ -203,7 +205,7 @@ Craft a **Trader Block** with a compass surrounded by eight planks. Place one in
 4. Set **Keep** to the amount that must remain in this town's warehouse and **Send** to the maximum carried per trip. For example, Keep 64 / Send 32 sends up to 32 carrots above a 64-carrot reserve. Send 0 pauses that item. Configure the other town's exports separately.
 5. The citizen loads goods at home, visits the home checkpoint, walks to the other checkpoint, deposits goods in its warehouse, and returns. These are supply routes, with no automatic price or payment.
 
-Goods in transit remain separate from meals and ordinary work supplies. Full destination storage keeps the remaining load on the citizen. **Pause** stops new departures; **Disconnect** returns undelivered goods. A blocked route waits for a clear path; roads, bridges, and open doors help. Traders do not teleport, use portals, sail boats, or build roads. A dead trader drops its actual goods and the town can assign another citizen.
+Goods in transit remain separate from meals and ordinary work supplies. Full destination storage keeps the remaining load on the citizen. **Pause** stops new departures; **Disconnect** returns undelivered goods. Traders follow reachable ground waypoints, including beneath roofs, and retry stalled legs with shorter and sideways alternatives. A genuinely blocked route waits for a clear path; roads, bridges, and open doors help. Traders do not teleport, use portals, sail boats, or build roads. A dead trader drops its actual goods and the town can assign another citizen.
 
 Each active trader maintains a moving **3×3 chunk window**. The route does not keep every intervening chunk loaded. The default server limit is **8 active town traders**, and the maximum route length is **8,192 blocks**. Travel continues on a running server when an owner logs off. Ordinary workers still require ticking chunks; distant abstract town simulation is future work. Install matching mod versions on server and clients because the screen protocol changes in 0.9.0.
 
@@ -416,10 +418,13 @@ Use a **Java 25 JDK**, not just a Java runtime. The Gradle wrapper and ModDevGra
 
 ```bash
 ./gradlew build
+./gradlew runGameTestServer
 ./gradlew runClient
 ```
 
 On Windows, use `gradlew.bat build` and `gradlew.bat runClient`. Development servers use `./gradlew runServer`.
+
+`runGameTestServer` checks a 640-block trader delivery and return beneath a low roof and around a wall, with no player-loaded chunks, and verifies the actual warehouse inventories after chunk reload. The test mod in `src/gameTest` is excluded from the release JAR. GitHub Actions runs this world test after `build`.
 
 `build` runs regression checks for ranges, beds/storage, overlap ownership, shared crews, atomic target claims, tunnel/quarry geometry, random depth/shift boundaries, name uniqueness, construction-aware tree recognition, sapling conservation, local inventory conservation/backlog, armor transfers, weapon classification/ranking, quarry staircase geometry and persistence, quarry collision tracing, four-block surface/vertical reach, blocked work rays, clear tree approach candidates, persisted natural-tree proof after access clearing, role-specific crafting orders, appliance recipe eligibility, furnace slot/component conservation, independent station guard shifts and alarm rosters, alarm thresholds and all-clear timing, wave sizes/composition/timing, claim widening, save round-trips, legacy migration, recipe/drop decoding with Minecraft's codecs, shared shift armor, full-bag overflow armor returns and occupied-slot conservation, armor upgrades, the exact durability cutoff, material-funded repairs with preserved names/enchantments, healing meal/bowl conservation and cooldowns, guide-page bounds and anvil eligibility, learned crafting against the server's real recipes (shaped layout, any-wood planks, container remainders, paused and stocked orders, ingot/block cycle protection, legacy order migration), job barrel collection rules and courier supply loads, ore vein detection and rarity pacing, screen data network round trips, upgrade prices, emerald payments with change, upgraded ranges and fixed crews, wave threat from population upgrades, enchanting rarity timing, lapis costs, the level cap and item priority against the server's real enchantments, staggered 30-citizen updates, bounded reachability probes, and shared resource scan expiry/invalidation. GitHub Actions builds with Java 25 and uploads the mod JAR as **wwmc-mc26.2**. Local JARs appear in `build/libs/`.
 

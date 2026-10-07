@@ -38,9 +38,22 @@ base {
 // Mojang ships Java 25 to end users in 26.2, so mods should target Java 25.
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
+// Headless world tests have their own mod, excluded from the released JAR.
+sourceSets {
+    gameTest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+configurations {
+    gameTestImplementation.extendsFrom implementation
+    gameTestRuntimeOnly.extendsFrom runtimeOnly
+}
+
 neoForge {
     // Specify the version of NeoForge to use.
     version = project.neo_version
+    addModdingDependenciesTo sourceSets.gameTest
 
     // This line is optional. Access Transformers are automatically detected
     // accessTransformers = project.files('src/main/resources/META-INF/accesstransformer.cfg')
@@ -65,7 +78,9 @@ neoForge {
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
             type = "gameTestServer"
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            sourceSet = sourceSets.gameTest
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'wwmc_tests'
+            systemProperty 'neoforge.gameTestServer.report', 'build/reports/gametest.xml'
         }
 
         data {
@@ -100,11 +115,19 @@ neoForge {
         "${mod_id}" {
             sourceSet(sourceSets.main)
         }
+        wwmc_tests {
+            sourceSet(sourceSets.gameTest)
+        }
     }
     unitTest {
         enable()
         testedMod = mods."${mod_id}"
+        loadedMods = [mods."${mod_id}"]
     }
+}
+
+neoForge.runs.configureEach {
+    loadedMods = name == 'gameTestServer' ? [neoForge.mods."${mod_id}", neoForge.mods.wwmc_tests] : [neoForge.mods."${mod_id}"]
 }
 
 // Sets up a dependency configuration called 'localRuntime'.
@@ -119,6 +142,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
     testImplementation "net.neoforged:testframework:${neo_version}"
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    gameTestImplementation "net.neoforged:testframework:${neo_version}"
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"

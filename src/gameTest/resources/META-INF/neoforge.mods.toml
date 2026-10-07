@@ -1,0 +1,14 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="MIT"
+
+[[mods]]
+modId="wwmc_tests"
+version="1"
+displayName="WWMC world tests"
+
+[[dependencies.wwmc_tests]]
+modId="wwmc"
+type="required"
+ordering="AFTER"
+side="BOTH"
