@@ -6,11 +6,11 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "wwmc:farm_station",
+          "name": "wwmc:enchanter_station",
           "functions": [
             {
               "function": "minecraft:copy_state",
-              "block": "wwmc:farm_station",
+              "block": "wwmc:enchanter_station",
               "properties": [
                 "range",
                 "crew"
@@ -20,7 +20,7 @@
                   "condition": "minecraft:inverted",
                   "term": {
                     "condition": "minecraft:block_state_property",
-                    "block": "wwmc:farm_station",
+                    "block": "wwmc:enchanter_station",
                     "properties": {
                       "range": "0",
                       "crew": "0"

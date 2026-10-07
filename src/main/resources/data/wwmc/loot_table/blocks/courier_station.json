@@ -6,7 +6,30 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "wwmc:courier_station"
+          "name": "wwmc:courier_station",
+          "functions": [
+            {
+              "function": "minecraft:copy_state",
+              "block": "wwmc:courier_station",
+              "properties": [
+                "range",
+                "crew"
+              ],
+              "conditions": [
+                {
+                  "condition": "minecraft:inverted",
+                  "term": {
+                    "condition": "minecraft:block_state_property",
+                    "block": "wwmc:courier_station",
+                    "properties": {
+                      "range": "0",
+                      "crew": "0"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
         }
       ],
       "conditions": [

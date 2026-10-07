@@ -8,6 +8,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.CampfireBlock;
+import net.minecraft.world.level.block.EnchantingTableBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.neoforged.neoforge.common.Tags;
@@ -31,6 +32,7 @@ public final class StationDetection {
         };
     }
     public static boolean anvil(BlockState state) { return state.is(BlockTags.ANVIL); }
+    public static boolean enchantingTable(BlockState state) { return state.getBlock() instanceof EnchantingTableBlock; }
     public static boolean workBlock(StructureRole role, BlockState state) {
         return switch(role) {
             case FARM -> state.getBlock() instanceof CropBlock crop && crop.isMaxAge(state)

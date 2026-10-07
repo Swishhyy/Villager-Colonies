@@ -17,5 +17,6 @@
   "block.wwmc.cook_station": "Cook Station",
   "item.wwmc.settlement_guide": "Settlement Guide",
   "block.wwmc.blacksmith_station": "Blacksmith Station",
-  "block.wwmc.courier_station": "Courier Station"
+  "block.wwmc.courier_station": "Courier Station",
+  "block.wwmc.enchanter_station": "Enchanter Station"
 }

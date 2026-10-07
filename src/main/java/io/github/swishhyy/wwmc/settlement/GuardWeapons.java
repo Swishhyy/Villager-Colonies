@@ -36,7 +36,7 @@ public final class GuardWeapons {
     public static boolean bow(ItemStack stack) { return kind(stack)==Kind.BOW; }
     public static boolean arrow(ItemStack stack) { return !stack.isEmpty() && stack.getItem() instanceof ArrowItem; }
     public static double reach(ItemStack held) { return kind(held)==Kind.SPEAR ? SPEAR_REACH : SWORD_REACH; }
-    /** Main-hand attack damage the item adds; durability breaks ties so worn weapons are used last. */
+    /** Main-hand attack damage the item adds, plus some for its enchantments; durability breaks ties so worn weapons are used last. */
     public static double score(ItemStack stack) {
         if(!melee(stack)) return 0;
         double damage=0;
@@ -45,6 +45,6 @@ public final class GuardWeapons {
                     && entry.modifier().operation()==AttributeModifier.Operation.ADD_VALUE) damage+=entry.modifier().amount();
         }
         double wear=stack.isDamageableItem() ? (stack.getMaxDamage()-stack.getDamageValue())/(double)Math.max(1,stack.getMaxDamage()) : 1.0;
-        return 1.0+damage+wear*0.01;
+        return 1.0+damage+0.3*GuardEquipment.enchantmentLevels(stack)+wear*0.01;
     }
 }

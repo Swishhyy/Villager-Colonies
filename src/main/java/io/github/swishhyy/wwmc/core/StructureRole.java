@@ -6,7 +6,7 @@ public enum StructureRole {
     HOSPITAL("hospital", false, false), WAREHOUSE("warehouse", false, false),
     FARM("farm", false, true), LUMBER("lumber", false, true), MINE("mine", false, true), QUARRY("quarry", false, true), GUARD("guard", false, true),
     CRAFTSMAN("craftsman", false, true), SMELTERY("smeltery", false, true), COOK("cook", false, true), BLACKSMITH("blacksmith", false, true),
-    COURIER("courier", false, true);
+    COURIER("courier", false, true), ENCHANTER("enchanter", false, true);
     private final String id;
     private final boolean residential;
     private final boolean worker;

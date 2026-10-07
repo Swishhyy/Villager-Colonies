@@ -3,6 +3,7 @@ package io.github.swishhyy.wwmc.menu;
 import io.github.swishhyy.wwmc.Config;
 import io.github.swishhyy.wwmc.WWMC;
 import io.github.swishhyy.wwmc.core.StructureRole;
+import io.github.swishhyy.wwmc.core.Upgrades;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.menu.PanelView.Action;
 import io.github.swishhyy.wwmc.menu.PanelView.Row;
@@ -25,7 +26,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Builds every settlement screen on the server and applies its buttons. Only the town's owner sees these screens. */
 public final class Panels {
-    public static final int PRIORITY=1,ALARM=2,RECRUIT=3,BREAD=4,POSTS=5,TARGET=10,RAISE=11,FORGET=12;
+    public static final int PRIORITY=1,ALARM=2,RECRUIT=3,BREAD=4,POSTS=5,RANGE_UP=6,CREW_UP=7,GROW=8,TARGET=10,RAISE=11,FORGET=12;
     public static final int GREEN=0xFF3FA34D,RED=0xFFC0392B,AMBER=0xFFD39B1E,GRAY=0xFF707070;
     private static final List<String> PRIORITIES=List.of("balanced","food","materials");
     private Panels() {}
@@ -52,7 +53,7 @@ public final class Panels {
 
     // ---------- Opening ----------
     public static void openTown(ServerPlayer player,Settlement town) {
-        PanelView view=town(level(player),town);
+        PanelView view=town(level(player),town,player);
         BlockPos pos=town.center;
         player.openMenu(new SimpleMenuProvider((id,inventory,p) -> new PanelMenu(id,PanelMenu.Kind.TOWN,pos,player,view),view.title()),
                 buf -> PanelMenu.write(buf,PanelMenu.Kind.TOWN,pos,view));
@@ -65,7 +66,7 @@ public final class Panels {
                     buf -> CraftsmanMenu.write(buf,pos,view));
             return;
         }
-        PanelView view=station(level(player),town,station);
+        PanelView view=station(level(player),town,station,player);
         player.openMenu(new SimpleMenuProvider((id,inventory,p) -> new PanelMenu(id,PanelMenu.Kind.STATION,pos,player,view),view.title()),
                 buf -> PanelMenu.write(buf,PanelMenu.Kind.STATION,pos,view));
     }
@@ -81,21 +82,27 @@ public final class Panels {
     // ---------- Town ----------
     public static PanelView town(ServerPlayer player,BlockPos pos) {
         Settlement town=owned(player,pos);
-        return town==null ? null : town(level(player),town);
+        return town==null ? null : town(level(player),town,player);
     }
-    private static int freeBeds(ServerLevel level,Settlement town) {
-        return Math.max(0,Math.min(SettlementService.housingBeds(level,town).size(),Config.MAX_CITIZENS.get())-town.citizens.size());
+    /** Citizens who could join now: free housing beds, within the population limit. */
+    private static int vacancies(ServerLevel level,Settlement town) {
+        return Math.max(0,Math.min(SettlementService.housingBeds(level,town).size(),SettlementService.populationLimit(town))-town.citizens.size());
     }
-    public static PanelView town(ServerLevel level,Settlement town) {
-        int beds=SettlementService.housingBeds(level,town).size(),free=freeBeds(level,town);
+    public static PanelView town(ServerLevel level,Settlement town) { return town(level,town,null); }
+    public static PanelView town(ServerLevel level,Settlement town,ServerPlayer viewer) {
+        int beds=SettlementService.housingBeds(level,town).size(),free=vacancies(level,town),limit=SettlementService.populationLimit(town);
         List<Container> everything=SettlementService.townStorage(level,town);
         List<Row> overview=new ArrayList<>();
-        overview.add(new Row(icon(WWMC.BANNER_ITEM.get()),"Population",town.citizens.size()+" citizens, "+beds+" housing beds (limit "+Config.MAX_CITIZENS.get()+")"));
+        overview.add(new Row(icon(WWMC.BANNER_ITEM.get()),"Population",town.citizens.size()+" of "+limit+" citizens allowed, "+beds+" housing beds")
+                .bar(town.citizens.size()/(float)Math.max(1,limit),town.citizens.size()>=limit ? AMBER : GREEN));
+        overview.add(new Row(icon(Items.EMERALD),"Population upgrades",SettlementService.populationLevel(town)+" bought"
+                +(SettlementService.canGrow(town) ? "; the next allows "+SettlementService.populationLimitAt(SettlementService.populationLevel(town)+1)
+                    +" citizens for "+SettlementService.populationCost(town)+" emeralds" : "; the town is at the server's ceiling")));
         overview.add(new Row(icon(Items.BREAD),"Food",InventoryOps.count(everything,FoodHealing::food)+" meals in storage"));
         overview.add(storage(icon(Items.CHEST),"Warehouse",SettlementService.storage(level,town),"No loaded warehouse with a chest or barrel in range"));
         int barrels=0;
         for(Station station:town.stations) barrels+=SettlementService.jobBarrels(level,town,station).size();
-        overview.add(new Row(icon(Items.BARREL),"Job barrels",barrels==0 ? "None: put a barrel within 3 blocks of a work station"
+        overview.add(new Row(icon(Items.BARREL),"Job barrels",barrels==0 ? "None: put a barrel in a work station's range"
                 : barrels+" barrels"+(SettlementService.couriers(level,town) ? ", emptied by couriers" : "; add a Courier Station to collect from them")));
         overview.add(new Row(icon(Items.COMPASS),"Claim",town.radius+" blocks from the banner on X and Z"));
         overview.add(new Row(icon(Items.WHEAT),"Work priority",switch(town.priority) {
@@ -112,12 +119,26 @@ public final class Panels {
         if(loaded.size()<town.citizens.size()) people.add(new Row(icon(Items.MAP),(town.citizens.size()-loaded.size())+" more citizens","Out of range: their chunks are not loaded"));
         List<Row> stations=new ArrayList<>();
         for(Station station:town.stations) stations.add(summary(level,town,station));
+        String recruit=free>0 ? "Recruit ("+free+" free)" : town.citizens.size()>=limit ? "Recruit (at limit)" : "Recruit (needs beds)";
         List<Action> actions=List.of(
-            new Action(PRIORITY,"Priority: "+town.priority,true),
-            new Action(ALARM,DefenseService.alarmed(town) ? "Sound the all-clear" : "Sound the alarm",true),
-            new Action(RECRUIT,free>0 ? "Recruit ("+free+" beds free)" : "Recruit (needs beds)",free>0));
+            new Action(PRIORITY,"Priority: "+town.priority,true,"Idle workers prefer food or material jobs; click to switch"),
+            new Action(ALARM,DefenseService.alarmed(town) ? "Sound the all-clear" : "Sound the alarm",true,
+                    "Sends civilians to cover and every guard on duty, or ends the alarm"),
+            new Action(RECRUIT,recruit,free>0,"A citizen needs a free housing bed and room under the population limit of "+limit),
+            grow(town,viewer));
         return new PanelView(Component.literal(town.name),Component.literal(town.citizens.size()+" citizens · "+town.stations.size()+" stations · claim "+town.radius),
                 List.of(new Tab("Overview",overview),new Tab("Citizens",people),new Tab("Stations",stations)),actions);
+    }
+    /** The population upgrade button: its price, and greyed out when unaffordable or at the ceiling. */
+    private static Action grow(Settlement town,ServerPlayer viewer) {
+        if(!SettlementService.canGrow(town)) return new Action(GROW,"Population: maxed",false,"The town is at the server's ceiling of "+Config.MAX_CITIZENS.get()+" citizens");
+        int cost=SettlementService.populationCost(town),next=SettlementService.populationLimitAt(SettlementService.populationLevel(town)+1);
+        return new Action(GROW,"Grow: "+cost+" emeralds",affords(viewer,cost),"Raise the limit from "+SettlementService.populationLimit(town)+" to "+next
+                +" citizens for "+cost+" emeralds. Each upgrade costs "+Config.POPULATION_COST.get()+" more than the last, and every enemy wave grows: "
+                +Config.WAVE_MOBS_PER_UPGRADE.get()+" more attackers, with pillagers and later vindicators among them.");
+    }
+    private static boolean affords(ServerPlayer viewer,int cost) {
+        return viewer==null || viewer.getAbilities().instabuild || SettlementService.emeralds(viewer)>=cost;
     }
     private static Row alarm(Settlement town) {
         Row row=new Row(icon(Items.BELL),"Alarm",DefenseService.status(town));
@@ -145,8 +166,11 @@ public final class Panels {
             case ALARM -> DefenseService.toggle(level,town);
             case RECRUIT -> {
                 int added=SettlementService.recruit(level,town,1);
-                SettlementService.notify(player,added>0 ? "A new citizen joined "+town.name+"." : "No citizen could join: free housing beds and open ground beside the banner are needed.");
+                SettlementService.notify(player,added>0 ? "A new citizen joined "+town.name+"."
+                        : town.citizens.size()>=SettlementService.populationLimit(town) ? "The town is full: buy room for more citizens with emeralds."
+                        : "No citizen could join: free housing beds and open ground beside the banner are needed.");
             }
+            case GROW -> SettlementService.upgradePopulation(level,player,town);
             default -> {}
         }
     }
@@ -154,7 +178,7 @@ public final class Panels {
     // ---------- Stations ----------
     public static PanelView station(ServerPlayer player,BlockPos pos) {
         Station station=stationAt(player,pos);
-        return station==null ? null : station(level(player),owned(player,pos),station);
+        return station==null ? null : station(level(player),owned(player,pos),station,player);
     }
     private static String crew(ServerLevel level,Station station) {
         return station.role().providesWork() ? "Crew "+SettlementService.workers(level).count(station.position(),level.getGameTime())+"/"+SettlementService.workerLimit(station) : "No crew";
@@ -166,18 +190,48 @@ public final class Panels {
         return new Row(stationIcon(station.role()),station.role().title()+" Station",station.position().toShortString()+" · "
                 +(station.role().providesWork() ? crew(level,station)+" · " : "")+first);
     }
-    public static PanelView station(ServerLevel level,Settlement town,Station station) {
+    public static PanelView station(ServerLevel level,Settlement town,Station station) { return station(level,town,station,null); }
+    public static PanelView station(ServerLevel level,Settlement town,Station station,ServerPlayer viewer) {
         StructureRole role=station.role();
         List<Tab> tabs=new ArrayList<>();
         tabs.add(new Tab("Status",status(level,town,station)));
         if(role.providesWork()) tabs.add(new Tab("Crew",crewRows(level,town,station)));
         if(role==StructureRole.WAREHOUSE) tabs.add(new Tab("Contents",contents(SettlementService.storageAt(level,town,station.position()))));
         else if(role.keepsJobStorage()) tabs.add(new Tab("Barrels",contents(SettlementService.jobStorage(level,town,station))));
+        if(Upgrades.widens(role) || Upgrades.hires(role)) tabs.add(new Tab("Upgrades",upgradeRows(station,viewer)));
         List<Action> actions=new ArrayList<>();
-        if(role==StructureRole.COOK) actions.add(new Action(BREAD,town.disabledRecipes.contains("bread") ? "Bread: off" : "Bread: on",true));
-        if(role==StructureRole.GUARD) actions.add(new Action(POSTS,"Choose guard posts",true));
+        if(role==StructureRole.COOK) actions.add(new Action(BREAD,town.disabledRecipes.contains("bread") ? "Bread: off" : "Bread: on",true,"Cooks bake bread from 3 wheat, up to 32 loaves"));
+        if(role==StructureRole.GUARD) actions.add(new Action(POSTS,"Choose guard posts",true,"Then right-click the ground for the day post and the night post"));
+        if(Upgrades.widens(role)) actions.add(upgrade(station,true,viewer));
+        if(Upgrades.hires(role)) actions.add(upgrade(station,false,viewer));
         return new PanelView(Component.literal(role.title()+" Station"),Component.literal(crew(level,station)+" · "
-                +(role.excavates() ? "facing "+station.facing().getName() : "range 7x7x7")),tabs,actions);
+                +(role.excavates() ? "facing "+station.facing().getName() : "range "+station.size())),tabs,actions);
+    }
+    /** A range or crew upgrade button with its price; greyed out when maxed or unaffordable. */
+    private static Action upgrade(Station station,boolean range,ServerPlayer viewer) {
+        int level=range ? station.range() : station.crew();
+        String kind=range ? "Range" : "Crew";
+        if(level>=Upgrades.MAX_STATION_LEVEL) return new Action(range ? RANGE_UP : CREW_UP,kind+": maxed",false,"Fully upgraded");
+        int cost=SettlementService.stationCost(station,range);
+        Station next=range ? station.withRange(level+1) : station.withCrew(level+1);
+        String effect=range ? "Widen the range from "+station.size()+" to "+next.size()
+                : "Raise the crew from "+SettlementService.workerLimit(station)+" to "+SettlementService.workerLimit(next)+" workers";
+        return new Action(range ? RANGE_UP : CREW_UP,kind+": "+cost+" emeralds",affords(viewer,cost),
+                effect+" for "+cost+" emeralds (level "+(level+1)+" of "+Upgrades.MAX_STATION_LEVEL+"). Emerald blocks count as nine.");
+    }
+    private static List<Row> upgradeRows(Station station,ServerPlayer viewer) {
+        List<Row> rows=new ArrayList<>();
+        StructureRole role=station.role();
+        if(Upgrades.widens(role)) rows.add(new Row(icon(Items.SPYGLASS),"Range "+station.size(),"Level "+station.range()+" of "+Upgrades.MAX_STATION_LEVEL
+                +(station.range()<Upgrades.MAX_STATION_LEVEL ? "; next "+station.withRange(station.range()+1).size()+" for "+SettlementService.stationCost(station,true)+" emeralds" : "; fully upgraded"))
+                .bar(station.range()/(float)Upgrades.MAX_STATION_LEVEL,GREEN));
+        if(Upgrades.hires(role)) rows.add(new Row(icon(Items.IRON_HELMET),"Crew of "+SettlementService.workerLimit(station),"Level "+station.crew()+" of "+Upgrades.MAX_STATION_LEVEL
+                +(station.crew()<Upgrades.MAX_STATION_LEVEL ? "; next adds a worker for "+SettlementService.stationCost(station,false)+" emeralds" : "; fully upgraded"))
+                .bar(station.crew()/(float)Upgrades.MAX_STATION_LEVEL,GREEN));
+        if(viewer!=null) rows.add(new Row(icon(Items.EMERALD),"Your emeralds",viewer.getAbilities().instabuild ? "Creative: upgrades are free"
+                : SettlementService.emeralds(viewer)+" carried, emerald blocks counted as nine"));
+        rows.add(new Row(stationIcon(role),"Kept when moved","A broken station's item keeps its upgrades"));
+        return rows;
     }
     private static List<Row> crewRows(ServerLevel level,Settlement town,Station station) {
         List<Row> rows=new ArrayList<>();
@@ -188,7 +242,7 @@ public final class Panels {
     }
     /** Totals of each item in these containers, largest first. */
     private static List<Row> contents(List<Container> containers) {
-        if(containers.isEmpty()) return List.of(new Row(icon(Items.BARREL),"No storage","Put a barrel within 3 blocks of the station"));
+        if(containers.isEmpty()) return List.of(new Row(icon(Items.BARREL),"No storage","Put a barrel in the station's range"));
         Map<Item,Integer> totals=new LinkedHashMap<>();
         Map<Item,ItemStack> examples=new HashMap<>();
         for(Container container:containers) for(int slot=0;slot<container.getContainerSize();slot++) {
@@ -209,7 +263,7 @@ public final class Panels {
         switch(station.role()) {
             case HOUSING,BARRACKS -> rows.add(new Row(stationIcon(station.role()),"Beds",SettlementService.beds(level,town,station).size()+" complete beds in range house citizens"));
             case HOSPITAL -> rows.add(new Row(stationIcon(StructureRole.HOSPITAL),"Patient beds",SettlementService.beds(level,town,station).size()+" beds; treatment is planned"));
-            case WAREHOUSE -> rows.add(storage(icon(Items.CHEST),"Storage",SettlementService.storageAt(level,town,station.position()),"Put chests or barrels within 3 blocks"));
+            case WAREHOUSE -> rows.add(storage(icon(Items.CHEST),"Storage",SettlementService.storageAt(level,town,station.position()),"Put chests or barrels within "+station.radius()+" blocks"));
             case FARM -> rows.add(new Row(icon(Items.WHEAT),"Crops",SettlementService.workBlocks(level,town,station)+" ripe crops in range"));
             case LUMBER -> rows.add(new Row(icon(Items.OAK_SAPLING),"Forest","Fells whole natural trees and replants saplings in range"));
             case MINE -> {
@@ -229,19 +283,49 @@ public final class Panels {
             case COOK -> rows.add(new Row(icon(Items.SMOKER),"Kitchen",SettlementService.processingDevices(level,town,station).size()+" smokers or lit campfires; bread "+(town.disabledRecipes.contains("bread") ? "off" : "on")));
             case BLACKSMITH -> rows.add(new Row(icon(Items.ANVIL),"Anvils",SettlementService.anvils(level,town,station).size()+" anvils; repairs warehouse gear and worn stand armor"));
             case CRAFTSMAN -> rows.add(new Row(icon(Items.CRAFTING_TABLE),"Orders",town.craftOrders.size()+" learned recipes"));
-            case COURIER -> rows.add(new Row(icon(Items.BUNDLE),"Deliveries","Carries goods from job barrels to the warehouse and stocks smelter and kitchen barrels"));
+            case COURIER -> rows.add(new Row(icon(Items.BUNDLE),"Deliveries","Carries goods from job barrels to the warehouse and stocks smelter, kitchen and enchanter barrels"));
+            case ENCHANTER -> rows.addAll(enchanter(level,town,station));
         }
         if(station.role().keepsJobStorage()) {
             List<Container> barrels=SettlementService.jobStorage(level,town,station);
-            rows.add(storage(icon(Items.BARREL),"Job barrels",barrels,"None: a barrel within 3 blocks keeps tools, supplies and goods here"));
+            rows.add(storage(icon(Items.BARREL),"Job barrels",barrels,"None: a barrel within "+station.radius()+" blocks keeps tools, supplies and goods here"));
         }
+        return rows;
+    }
+    /** The table and its level, lapis, the queue and the item on the table. */
+    private static List<Row> enchanter(ServerLevel level,Settlement town,Station station) {
+        List<Row> rows=new ArrayList<>();
+        int cap=Config.ENCHANTER_MAX_LEVEL.get();
+        List<BlockPos> tables=SettlementService.enchantingTables(level,town,station);
+        if(tables.isEmpty()) rows.add(new Row(icon(Items.ENCHANTING_TABLE),"Enchanting table","None within "+station.radius()+" blocks: place one in range"));
+        else {
+            BlockPos table=tables.getFirst();
+            int power=Enchanting.power(level,table);
+            rows.add(new Row(icon(Items.ENCHANTING_TABLE),"Enchanting table",power+" bookshelves around it: about level "+Enchanting.typicalLevel(power,cap)
+                    +", never above "+cap).bar(Enchanting.typicalLevel(power,cap)/30F,Enchanting.typicalLevel(power,cap)>=cap ? GREEN : AMBER));
+        }
+        List<Container> local=SettlementService.jobStorage(level,town,station),stored=SettlementService.storage(level,town);
+        int lapis=InventoryOps.count(local,Enchanting::lapis)+InventoryOps.count(stored,Enchanting::lapis);
+        rows.add(new Row(icon(Items.LAPIS_LAZULI),"Lapis lazuli",lapis+" in this station's barrels and the warehouse; 1 to 3 per item by level")
+                .bar(Math.min(1F,lapis/27F),lapis==0 ? RED : lapis<9 ? AMBER : GREEN));
+        int waiting=Enchanting.count(local,stack -> false)+Enchanting.count(stored,stack -> false);
+        rows.add(new Row(icon(Items.BOOK),"Waiting",waiting+" unenchanted items and books; armor and weapons go first, then tools, then books"));
+        rows.add(new Row(icon(Items.CLOCK),"Work time",Config.ENCHANT_MINUTES.get()+" min for a book or common item; iron or gold ×1.3, diamond ×1.6, netherite ×2"));
+        for(UUID id:SettlementService.workers(level).members(station.position(),level.getGameTime()))
+            if(level.getEntity(id) instanceof CitizenEntity citizen && !citizen.enchanting().isEmpty()) {
+                ItemStack item=citizen.enchanting();
+                float progress=citizen.enchantProgress();
+                rows.add(new Row(item.copy(),item.getHoverName().copy(),Component.literal(Math.round(progress*100)+"% done"
+                        +(citizen.enchantLevel()>0 ? " at level "+citizen.enchantLevel() : "")),0,progress,PanelView.NO_VALUE));
+            }
         return rows;
     }
     public static void stationAction(ServerPlayer player,BlockPos pos,int action) {
         Station station=stationAt(player,pos);
         if(station==null) return;
         Settlement town=owned(player,pos);
-        if(action==BREAD && station.role()==StructureRole.COOK) {
+        if(action==RANGE_UP || action==CREW_UP) SettlementService.upgradeStation(level(player),player,town,station,action==RANGE_UP);
+        else if(action==BREAD && station.role()==StructureRole.COOK) {
             if(!town.disabledRecipes.remove("bread")) town.disabledRecipes.add("bread");
             dirty(player);
         } else if(action==POSTS && station.role()==StructureRole.GUARD) {

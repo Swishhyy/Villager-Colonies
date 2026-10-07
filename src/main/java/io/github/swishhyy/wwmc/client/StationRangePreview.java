@@ -5,6 +5,7 @@ import io.github.swishhyy.wwmc.core.RoomBounds;
 import io.github.swishhyy.wwmc.core.StationRange;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.core.MiningLayout;
+import io.github.swishhyy.wwmc.core.Upgrades;
 import io.github.swishhyy.wwmc.event.StationPreviewEvent;
 import io.github.swishhyy.wwmc.item.SurveyorItem;
 import java.util.Iterator;
@@ -23,6 +24,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -60,8 +62,7 @@ public final class StationRangePreview {
                 iterator.remove(); continue;
             }
             float alpha=(float)Math.min(1.0,(entry.getValue()-now)/750_000_000.0);
-            StationBlock block=(StationBlock)mc.level.getBlockState(entry.getKey()).getBlock();
-            outline(entry.getKey(),block.role(),mc.level.getBlockState(entry.getKey()).getValue(StationBlock.FACING),ARGB.multiplyAlpha(0xff80ed99,alpha));
+            outline(entry.getKey(),mc.level.getBlockState(entry.getKey()),ARGB.multiplyAlpha(0xff80ed99,alpha));
         }
         if(!(mc.hitResult instanceof BlockHitResult hit) || hit.getType()!=HitResult.Type.BLOCK) return;
         for(InteractionHand hand:InteractionHand.values()) {
@@ -69,18 +70,21 @@ public final class StationRangePreview {
             if(held.getItem() instanceof BlockItem item && item.getBlock() instanceof StationBlock block) {
                 // The placement context handles replaceable blocks such as grass and snow.
                 BlockPlaceContext placement=new BlockPlaceContext(new UseOnContext(mc.player,hand,hit));
-                outline(placement.getClickedPos(),block.role(),placement.getHorizontalDirection(),placement.canPlace() ? 0xff66d9ff : 0xffff6666);
+                outline(placement.getClickedPos(),block.role(),placement.getHorizontalDirection(),0,placement.canPlace() ? 0xff66d9ff : 0xffff6666);
                 return;
             }
             if(held.getItem() instanceof SurveyorItem && mc.level.getBlockState(hit.getBlockPos()).getBlock() instanceof StationBlock) {
-                StationBlock block=(StationBlock)mc.level.getBlockState(hit.getBlockPos()).getBlock();
-                outline(hit.getBlockPos(),block.role(),mc.level.getBlockState(hit.getBlockPos()).getValue(StationBlock.FACING),0xff66d9ff);
+                outline(hit.getBlockPos(),mc.level.getBlockState(hit.getBlockPos()),0xff66d9ff);
                 return;
             }
         }
     }
-    private static void outline(BlockPos pos,StructureRole role,Direction facing,int color) {
-        RoomBounds bounds=StationRange.around(pos.getX(),pos.getY(),pos.getZ());
+    /** A placed station's range, including any range upgrade its block state carries. */
+    private static void outline(BlockPos pos,BlockState state,int color) {
+        if(state.getBlock() instanceof StationBlock block) outline(pos,block.role(),state.getValue(StationBlock.FACING),state.getValue(StationBlock.RANGE),color);
+    }
+    private static void outline(BlockPos pos,StructureRole role,Direction facing,int rangeLevel,int color) {
+        RoomBounds bounds=StationRange.around(pos.getX(),pos.getY(),pos.getZ(),Upgrades.radius(role,Upgrades.widens(role) ? rangeLevel : 0));
         if(role==StructureRole.QUARRY) {
             bounds=MiningLayout.quarry(pos.getX(),pos.getZ(),facing.getStepX(),facing.getStepZ(),pos.getY()+StationRange.RADIUS,pos.getY()-StationRange.RADIUS);
         }

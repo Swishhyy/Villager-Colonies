@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.ai.village.poi.PoiTypes;
 import net.minecraft.world.entity.monster.Monster;
@@ -25,9 +26,17 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 /**
  * Citizens count the hostiles they can see. When the count reaches the alarm threshold, the guard nearest a bell
  * runs to ring it; civilians then take cover until no hostile has been sighted for {@link AlarmState#ALL_CLEAR_TICKS}.
+ * Below the threshold, civilians report the hostiles they spot to the guards, who send up to two on-duty guards to
+ * each; wave attackers that linger are reported the same way.
  */
 public final class DefenseService {
     private static final int INTERVAL=20,GUARD_SIGHT=24,ALERT_SIGHT=32,CIVILIAN_SIGHT=8,BELL_SEARCH=96,REVEAL_RANGE=48,WARNING_TICKS=2400;
+    /** Civilians report hostiles this close, farther than they count them toward the alarm, since they flee at twelve blocks. */
+    private static final int REPORT_SIGHT=16;
+    /** A report lasts this long after the hostile was last seen; guards stop answering a call after two missed checks. */
+    private static final int REPORT_TICKS=600,RESPONDER_TICKS=40;
+    /** Guards sent to one report, and how far they go for it. */
+    private static final int RESPONDERS=2,RESPONSE_RANGE=160;
     private static final class Alert {
         final AlarmState state=new AlarmState();
         /** Guards who failed a bell run, and the game time they may be sent again. */
@@ -39,6 +48,19 @@ public final class DefenseService {
         int sighted;
     }
     private static final Map<UUID,Alert> ALERTS=new HashMap<>();
+    /** A hostile someone reported: where it was last seen, by whom, and the guards answering. */
+    private static final class Threat {
+        final UUID mob;
+        String reporter="";
+        boolean wave;
+        long until;
+        final Map<UUID,Long> responders=new HashMap<>();
+        Threat(UUID mob) { this.mob=mob; }
+    }
+    /** Reports per town, keyed by the hostile. */
+    private static final Map<UUID,Map<UUID,Threat>> THREATS=new HashMap<>();
+    /** A guard's call: the hostile, who reported it ("" for a wave attacker), and whether it came with a wave. */
+    public record Call(Monster mob,String reporter,boolean wave) {}
     /** Two missed runs' worth of time before the same guard is sent to a bell again. */
     private static final long RUNNER_BACKOFF=AlarmState.RUN_TICKS*2L;
     private record BellRing(ServerLevel level,BlockPos position) {}
@@ -54,8 +76,57 @@ public final class DefenseService {
     }
     public static String status(Settlement town) {
         Alert alert=ALERTS.get(town.id);
-        if(alert==null || alert.state.phase()==AlarmState.Phase.CALM) return "calm";
-        return alert.state.ringing() ? "ALARM, "+alert.sighted+" hostiles in sight" : "a guard is running to the bell";
+        int reported=threats(town);
+        String calls=reported==0 ? "" : ", "+reported+(reported==1 ? " hostile" : " hostiles")+" reported to the guards";
+        if(alert==null || alert.state.phase()==AlarmState.Phase.CALM) return "calm"+calls;
+        return (alert.state.ringing() ? "ALARM, "+alert.sighted+" hostiles in sight" : "a guard is running to the bell")+calls;
+    }
+    /** An enderman or other neutral mob that is not angry and hunting nobody is no reason to call the guards. */
+    private static boolean calm(Monster monster) {
+        return monster instanceof NeutralMob neutral && !neutral.isAngry() && monster.getTarget()==null;
+    }
+    /** Hostiles currently reported in this town. */
+    public static int threats(Settlement town) { Map<UUID,Threat> threats=THREATS.get(town.id); return threats==null ? 0 : threats.size(); }
+    /** Ask the guards to deal with a hostile; a fresh sighting keeps the report alive. */
+    public static void report(Settlement town,Monster mob,String reporter,boolean wave,long now) {
+        Threat threat=THREATS.computeIfAbsent(town.id,id -> new HashMap<>()).computeIfAbsent(mob.getUUID(),Threat::new);
+        threat.reporter=reporter; threat.wave|=wave; threat.until=now+REPORT_TICKS;
+    }
+    /**
+     * The reported hostile this on-duty guard should handle: the one it already answers, or else the nearest live
+     * report inside the town with fewer than two guards on it. Null when there is nothing to answer.
+     */
+    public static Call assignment(ServerLevel level,Settlement town,CitizenEntity guard,java.util.function.Predicate<UUID> ignored) {
+        Map<UUID,Threat> threats=THREATS.get(town.id);
+        if(threats==null || threats.isEmpty()) return null;
+        long now=level.getGameTime();
+        Threat chosen=null; Monster target=null; double best=(double)RESPONSE_RANGE*RESPONSE_RANGE;
+        for(Threat threat:threats.values()) {
+            threat.responders.values().removeIf(asked -> asked<now-RESPONDER_TICKS);
+            if(threat.until<now || !(level.getEntity(threat.mob) instanceof Monster mob) || !mob.isAlive()
+                    || !town.contains(mob.blockPosition()) || ignored.test(threat.mob)) {
+                threat.responders.remove(guard.getUUID()); continue;
+            }
+            if(threat.responders.containsKey(guard.getUUID())) { threat.responders.put(guard.getUUID(),now); return new Call(mob,threat.reporter,threat.wave); }
+            double distance=guard.distanceToSqr(mob);
+            if(threat.responders.size()<RESPONDERS && distance<best) { best=distance; chosen=threat; target=mob; }
+        }
+        if(chosen==null) return null;
+        chosen.responders.put(guard.getUUID(),now);
+        return new Call(target,chosen.reporter,chosen.wave);
+    }
+    /** The guard gives up on this report, so another may take it. */
+    public static void release(Settlement town,UUID mob,UUID guard) {
+        Map<UUID,Threat> threats=THREATS.get(town.id);
+        Threat threat=threats==null ? null : threats.get(mob);
+        if(threat!=null) threat.responders.remove(guard);
+    }
+    private static void forgetThreats(ServerLevel level,Settlement town) {
+        Map<UUID,Threat> threats=THREATS.get(town.id);
+        if(threats==null) return;
+        long now=level.getGameTime();
+        threats.values().removeIf(threat -> threat.until<now || level.getEntity(threat.mob) instanceof Monster mob && !mob.isAlive());
+        if(threats.isEmpty()) THREATS.remove(town.id);
     }
     /** Nearest housing or barracks station where civilians wait out an alarm; the banner otherwise. */
     public static BlockPos refuge(ServerLevel level,Settlement town,BlockPos from) {
@@ -131,14 +202,27 @@ public final class DefenseService {
         for(UUID id:town.citizens) if(level.getEntity(id) instanceof CitizenEntity citizen && citizen.isAlive()) result.add(citizen);
         return result;
     }
-    /** Guards watch far, more so on alert; civilians only notice what is close. Each hostile counts once. */
+    /**
+     * Guards watch far, more so on alert; civilians only count what is close toward the alarm. Each hostile counts
+     * once. Civilians also report every hostile they can see within {@link #REPORT_SIGHT} blocks to the guards.
+     */
     private static Set<Monster> sighted(ServerLevel level,Settlement town,List<CitizenEntity> citizens,boolean alert) {
-        Set<Monster> seen=new HashSet<>();
+        Set<Monster> seen=new HashSet<>(),reported=new HashSet<>();
+        boolean guards=citizens.stream().anyMatch(CitizenEntity::isGuard);
+        long now=level.getGameTime();
         for(CitizenEntity citizen:citizens) {
-            int range=citizen.isGuard() ? (alert ? ALERT_SIGHT : GUARD_SIGHT) : CIVILIAN_SIGHT;
-            for(Monster monster:level.getEntitiesOfClass(Monster.class,citizen.getBoundingBox().inflate(range),
-                    m -> m.isAlive() && !seen.contains(m) && town.contains(m.blockPosition()))) {
-                if(citizen.distanceToSqr(monster)<=range*range && citizen.hasLineOfSight(monster)) seen.add(monster);
+            boolean guard=citizen.isGuard();
+            int range=guard ? (alert ? ALERT_SIGHT : GUARD_SIGHT) : CIVILIAN_SIGHT,scan=guard ? range : REPORT_SIGHT;
+            for(Monster monster:level.getEntitiesOfClass(Monster.class,citizen.getBoundingBox().inflate(scan),
+                    m -> m.isAlive() && town.contains(m.blockPosition()) && !(seen.contains(m) && (guard || reported.contains(m))))) {
+                double distance=citizen.distanceToSqr(monster);
+                if(distance>scan*scan || !citizen.hasLineOfSight(monster)) continue;
+                if(distance<=range*range) seen.add(monster);
+                if(!guard && calm(monster)) continue;
+                if(!guard && reported.add(monster)) {
+                    report(town,monster,citizen.getName().getString(),false,now);
+                    citizen.called(monster,guards);
+                }
             }
         }
         return seen;
@@ -172,6 +256,7 @@ public final class DefenseService {
         announce(level,town,"All clear in "+town.name+". Citizens are returning to work.");
     }
     private static void assess(ServerLevel level,Settlement town) {
+        forgetThreats(level,town);
         List<CitizenEntity> citizens=loadedCitizens(level,town);
         Alert alert=ALERTS.get(town.id);
         // With nobody left to see anything, a raised alarm still counts down to the all-clear.
@@ -203,5 +288,5 @@ public final class DefenseService {
         if(!(event.getLevel() instanceof ServerLevel level) || level.getGameTime()%INTERVAL!=0) return;
         for(Settlement town:SettlementData.get(level).settlements) assess(level,town);
     }
-    @SubscribeEvent public void stopped(ServerStoppedEvent event) { ALERTS.clear(); INTERNAL_RINGS.clear(); }
+    @SubscribeEvent public void stopped(ServerStoppedEvent event) { ALERTS.clear(); INTERNAL_RINGS.clear(); THREATS.clear(); }
 }

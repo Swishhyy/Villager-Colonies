@@ -5,6 +5,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import java.util.Arrays;
 
 /** Transfer the actual stand item; neither side receives a copied award. */
@@ -33,13 +34,20 @@ public final class GuardEquipment {
                 && (long)(stack.getMaxDamage()-stack.getDamageValue())*4<stack.getMaxDamage();
     }
     public static boolean usable(ItemStack stack) { return !stack.isEmpty() && !worn(stack); }
+    /** Armor points, a little for toughness, and a quarter point per enchantment level, so an enchanted piece beats a plain one of the same kind. */
     public static double protection(ItemStack stack) {
         double result=0;
         for(var entry:stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS,ItemAttributeModifiers.EMPTY).modifiers()) {
             if(entry.attribute().equals(Attributes.ARMOR)) result+=entry.modifier().amount();
             if(entry.attribute().equals(Attributes.ARMOR_TOUGHNESS)) result+=entry.modifier().amount()*0.1;
         }
-        return result;
+        return result+0.25*enchantmentLevels(stack);
+    }
+    /** Total enchantment levels on an item, such as five for Protection III with Unbreaking II. */
+    public static int enchantmentLevels(ItemStack stack) {
+        int total=0;
+        for(var entry:stack.getOrDefault(DataComponents.ENCHANTMENTS,ItemEnchantments.EMPTY).entrySet()) total+=entry.getIntValue();
+        return total;
     }
     public static boolean upgrade(ItemStack next,ItemStack current,EquipmentSlot slot) {
         return armor(next,slot) && protective(next) && usable(next)

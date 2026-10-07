@@ -1,8 +1,179 @@
 {
-  "parent": "minecraft:block/orientable",
+  "parent": "minecraft:block/block",
   "textures": {
-    "side": "minecraft:block/iron_block",
-    "top": "minecraft:block/anvil",
-    "front": "minecraft:block/smithing_table_front"
-  }
+    "particle": "minecraft:block/polished_blackstone_bricks",
+    "base": "minecraft:block/polished_blackstone_bricks",
+    "front": "minecraft:block/smithing_table_front",
+    "top": "minecraft:block/polished_blackstone",
+    "anvil": "minecraft:block/anvil",
+    "anvil_top": "minecraft:block/anvil_top",
+    "coal": "minecraft:block/coal_block"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        9,
+        16
+      ],
+      "faces": {
+        "down": {
+          "texture": "#top",
+          "cullface": "down"
+        },
+        "up": {
+          "texture": "#top"
+        },
+        "north": {
+          "texture": "#base",
+          "cullface": "north"
+        },
+        "south": {
+          "texture": "#front",
+          "cullface": "south"
+        },
+        "west": {
+          "texture": "#base",
+          "cullface": "west"
+        },
+        "east": {
+          "texture": "#base",
+          "cullface": "east"
+        }
+      }
+    },
+    {
+      "from": [
+        4,
+        9,
+        4.5
+      ],
+      "to": [
+        12,
+        10,
+        11.5
+      ],
+      "faces": {
+        "down": {
+          "texture": "#anvil"
+        },
+        "up": {
+          "texture": "#anvil"
+        },
+        "north": {
+          "texture": "#anvil"
+        },
+        "south": {
+          "texture": "#anvil"
+        },
+        "west": {
+          "texture": "#anvil"
+        },
+        "east": {
+          "texture": "#anvil"
+        }
+      }
+    },
+    {
+      "from": [
+        6,
+        10,
+        6
+      ],
+      "to": [
+        10,
+        12,
+        10
+      ],
+      "faces": {
+        "down": {
+          "texture": "#anvil"
+        },
+        "up": {
+          "texture": "#anvil"
+        },
+        "north": {
+          "texture": "#anvil"
+        },
+        "south": {
+          "texture": "#anvil"
+        },
+        "west": {
+          "texture": "#anvil"
+        },
+        "east": {
+          "texture": "#anvil"
+        }
+      }
+    },
+    {
+      "from": [
+        3,
+        12,
+        5
+      ],
+      "to": [
+        13,
+        15,
+        11
+      ],
+      "faces": {
+        "down": {
+          "texture": "#anvil"
+        },
+        "up": {
+          "texture": "#anvil_top"
+        },
+        "north": {
+          "texture": "#anvil"
+        },
+        "south": {
+          "texture": "#anvil"
+        },
+        "west": {
+          "texture": "#anvil"
+        },
+        "east": {
+          "texture": "#anvil"
+        }
+      }
+    },
+    {
+      "from": [
+        12,
+        9,
+        12
+      ],
+      "to": [
+        15,
+        10.5,
+        15
+      ],
+      "faces": {
+        "down": {
+          "texture": "#coal"
+        },
+        "up": {
+          "texture": "#coal"
+        },
+        "north": {
+          "texture": "#coal"
+        },
+        "south": {
+          "texture": "#coal"
+        },
+        "west": {
+          "texture": "#coal"
+        },
+        "east": {
+          "texture": "#coal"
+        }
+      }
+    }
+  ]
 }
