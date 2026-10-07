@@ -119,6 +119,10 @@ public final class UpgradeChecks {
         ItemStack sword=Enchanting.enchant(server.registryAccess(),random,diamond,25);
         check(sword.is(Items.DIAMOND_SWORD) && sword.isEnchanted() && !diamond.isEnchanted(),"A sword is enchanted as a copy");
         check(!Enchanting.candidate(sword),"An enchanted sword is not enchanted again");
+        check(GuardWeapons.score(sword)>GuardWeapons.score(diamond),"Guards prefer an enchanted sword to a plain one");
+        ItemStack plate=Enchanting.enchant(server.registryAccess(),random,new ItemStack(Items.IRON_CHESTPLATE),25);
+        check(GuardEquipment.protection(plate)>GuardEquipment.protection(new ItemStack(Items.IRON_CHESTPLATE))
+                && GuardEquipment.upgrade(plate,new ItemStack(Items.IRON_CHESTPLATE),net.minecraft.world.entity.EquipmentSlot.CHEST),"Guards swap a plain chestplate for an enchanted one");
         ItemStack tome=Enchanting.enchant(server.registryAccess(),random,new ItemStack(Items.BOOK,5),20);
         check(tome.is(Items.ENCHANTED_BOOK) && tome.getCount()==1,"A book becomes one enchanted book");
         SimpleContainer chest=box(new ItemStack(Items.BOOK,3),new ItemStack(Items.IRON_PICKAXE),new ItemStack(Items.DIAMOND_CHESTPLATE),new ItemStack(Items.LAPIS_LAZULI,10));
