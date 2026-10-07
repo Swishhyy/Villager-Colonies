@@ -117,7 +117,7 @@ public final class Panels {
         List<CitizenEntity> loaded=new ArrayList<>(DefenseService.loadedCitizens(level,town));
         loaded.sort(Comparator.comparing(citizen -> citizen.getName().getString()));
         for(CitizenEntity citizen:loaded) people.add(person(town,citizen));
-        if(loaded.size()<town.citizens.size()) people.add(new Row(icon(Items.MAP),(town.citizens.size()-loaded.size())+" more citizens","Out of range: their chunks are not loaded"));
+        if(loaded.size()<town.citizens.size()) people.add(new Row(icon(Items.MAP),(town.citizens.size()-loaded.size())+" more citizens","Out of range: brought back while their station is loaded"));
         List<Row> stations=new ArrayList<>();
         for(Station station:town.stations) stations.add(summary(level,town,station));
         String recruit=free>0 ? "Recruit ("+free+" free)" : town.citizens.size()>=limit ? "Recruit (at limit)" : "Recruit (needs beds)";
@@ -285,7 +285,7 @@ public final class Panels {
         List<Row> rows=new ArrayList<>();
         for(UUID id:town.jobs.crew(station.position())) {
             if(level.getEntity(id) instanceof CitizenEntity citizen) rows.add(person(town,citizen));
-            else rows.add(new Row(icon(Items.MAP),town.citizenNames.getOrDefault(id,"A citizen"),"Out of range: their chunk is not loaded"));
+            else rows.add(new Row(icon(Items.MAP),town.citizenNames.getOrDefault(id,"A citizen"),CitizenRecall.whereabouts(level,town,id)));
         }
         if(rows.isEmpty()) rows.add(new Row(icon(Items.PAPER),"Nobody assigned",town.jobs.level(station.role())==JobBoard.OFF ? "This job is switched off"
                 : "Citizens without a job, or in a lower-priority job, take open places"));

@@ -39,9 +39,20 @@ public final class Settlement {
         Codec.INT.optionalFieldOf("population_level",UNSET).forGetter(s -> s.populationLevel),
         TradeSettings.CODEC.optionalFieldOf("trading").forGetter(s -> Optional.of(s.trading))
     ).apply(i, Settlement::new));
-    public static final Codec<Settlement> CODEC = Codec.mapPair(CORE,JobBoard.CODEC.optionalFieldOf("jobs")).xmap(
-        pair -> { pair.getFirst().jobs.load(pair.getSecond()); return pair.getFirst(); },
-        s -> Pair.of(s,Optional.of(s.jobs))).codec();
+    /** Each job's priority and holder, and where each citizen was last seen ticking. */
+    private record Extra(Optional<JobBoard> jobs,Map<UUID,BlockPos> places) {}
+    private static final MapCodec<Extra> EXTRA = RecordCodecBuilder.mapCodec(i -> i.group(
+        JobBoard.CODEC.optionalFieldOf("jobs").forGetter(Extra::jobs),
+        Codec.unboundedMap(UUID_CODEC,BlockPos.CODEC).optionalFieldOf("citizen_places",Map.of()).forGetter(Extra::places)
+    ).apply(i, Extra::new));
+    public static final Codec<Settlement> CODEC = Codec.mapPair(CORE,EXTRA).xmap(
+        pair -> {
+            Settlement s=pair.getFirst();
+            s.jobs.load(pair.getSecond().jobs());
+            pair.getSecond().places().forEach((citizen,place) -> s.citizenPlaces.put(citizen,place.immutable()));
+            return s;
+        },
+        s -> Pair.of(s,new Extra(Optional.of(s.jobs),s.citizenPlaces))).codec();
     public final UUID id, owner;
     public String name, priority;
     public final BlockPos center;
@@ -63,6 +74,8 @@ public final class Settlement {
     public final List<Station> stations;
     public final List<BlockPos> borderBanners;
     public final Map<UUID,String> citizenNames;
+    /** Where each citizen last stood while ticking, so one stranded in an unloaded chunk can be found and brought back. */
+    public final Map<UUID,BlockPos> citizenPlaces=new HashMap<>();
     public Settlement(UUID id, UUID owner, String name, BlockPos center, int radius, List<UUID> citizens, List<Station> stations, String priority) {
         this(id,owner,name,center,radius,citizens,stations,priority,List.of());
     }

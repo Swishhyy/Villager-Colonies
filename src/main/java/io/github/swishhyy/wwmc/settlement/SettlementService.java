@@ -509,6 +509,8 @@ public final class SettlementService {
                 var loaded=DefenseService.loadedCitizens(c.getSource().getLevel(),s);
                 StringBuilder text=new StringBuilder(s.name+": "+loaded.size()+" of "+s.citizens.size()+" citizens loaded.");
                 for(CitizenEntity citizen:loaded) text.append("\n").append(citizen.getName().getString()).append(" (").append(citizen.job()).append("): ").append(citizen.activity());
+                for(UUID id:s.citizens) if(!(c.getSource().getLevel().getEntity(id) instanceof CitizenEntity))
+                    text.append("\n").append(s.citizenNames.getOrDefault(id,"A citizen")).append(": ").append(CitizenRecall.whereabouts(c.getSource().getLevel(),s,id));
                 c.getSource().sendSuccess(() -> Component.literal(text.toString()),false); return loaded.size();
             }))
             .then(Commands.literal("craft").executes(c -> {
