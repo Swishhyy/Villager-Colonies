@@ -46,14 +46,14 @@ public final class CitizenInventoryGuardChecks {
         partial.deposit(List.of(warehouse),s -> 0);
         check(warehouse.getItem(0).getCount()==64 && partial.count(Items.COBBLESTONE)==60,"Full storage leaves the undelivered items in the bag");
         CitizenInventory food=new CitizenInventory(p -> true); food.offer(new ItemStack(Items.BREAD,64));
-        SimpleContainer pantry=new SimpleContainer(1); int[] reserve={8};
+        SimpleContainer pantry=new SimpleContainer(1); int[] reserve={FoodSharing.PERSONAL_LIMIT};
         food.deposit(List.of(pantry),s -> { int keep=Math.min(reserve[0],s.getCount()); reserve[0]-=keep; return keep; });
-        check(food.count(Items.BREAD)==8 && pantry.getItem(0).getCount()==56,"Workers keep local rations while the town receives the surplus");
-        check(!food.hasDeliverable(s -> false,s -> s.is(Items.BREAD)),"Keeping eight rations does not cause repeated empty delivery trips");
+        check(food.count(Items.BREAD)==1 && pantry.getItem(0).getCount()==63,"Workers keep local rations while the town receives the surplus");
+        check(!food.hasDeliverable(s -> false,s -> s.is(Items.BREAD)),"Keeping one spare ration does not cause repeated empty delivery trips");
         food.offer(new ItemStack(Items.BREAD,1));
         check(food.hasDeliverable(s -> false,s -> s.is(Items.BREAD)),"Food beyond the reserve is still delivered to feed the town");
         ItemStack ration=InventoryOps.takeOne(List.of(food),s -> s.is(Items.BREAD));
-        check(ration.getCount()==1 && food.count(Items.BREAD)==8,"A local meal consumes an actual stored item");
+        check(ration.getCount()==1 && food.count(Items.BREAD)==1,"A local meal consumes an actual stored item");
 
         Gear stand=new Gear(),guard=new Gear(),otherGuard=new Gear();
         ItemStack helmet=new ItemStack(Items.IRON_HELMET); helmet.setDamageValue(7);

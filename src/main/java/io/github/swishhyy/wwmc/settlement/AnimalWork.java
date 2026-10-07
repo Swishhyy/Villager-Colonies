@@ -108,7 +108,7 @@ public final class AnimalWork {
             if(animal==null) { worker.workActivity(culling ? "Keeping the breeding animals; no surplus adults" : "No unprotected adult game in the hunting area"); return; }
             target=animal.getUUID();
         }
-        ANIMALS.computeIfAbsent(level,l -> new WorkforceBook<>()).claim(target,worker.getUUID(),level.getGameTime(),200,1);
+        if(!ANIMALS.computeIfAbsent(level,l -> new WorkforceBook<>()).claim(target,worker.getUUID(),level.getGameTime(),200,1)) { target=null; return; }
         if(culling) {
             var species=animal.getType();
             long adults=animals(level,town,station,false).stream().filter(a -> !a.isBaby() && a.getType()==species).count();

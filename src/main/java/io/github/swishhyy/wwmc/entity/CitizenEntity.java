@@ -1062,12 +1062,12 @@ public final class CitizenEntity extends Villager {
         for(EquipmentSlot slot:GuardEquipment.ARMOR) if(!getItemBySlot(slot).isEmpty() && (all || GuardEquipment.worn(getItemBySlot(slot)))) {
             cargo.offer(getItemBySlot(slot)); setItemSlot(slot,ItemStack.EMPTY);
         }
-        BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
+        BlockPos warehouse=jobDepot(level,town);
         if(warehouse!=null) {
             if(!canUse(level,warehouse)) {
                 gearPathTicks+=10;
-                if(gearPathTicks<=400 && canReach(warehouse) && walk(warehouse)) { activity="Returning spare armor to the warehouse"; return true; }
-            } else cargo.deposit(SettlementService.storageAt(level,town,warehouse),s -> armor(s) && (all || !retainSupply(s)) ? 0 : s.getCount());
+                if(gearPathTicks<=400 && canReach(warehouse) && walk(warehouse)) { activity="Returning spare armor to the guard barrel"; return true; }
+            } else cargo.deposit(SettlementService.jobStorage(level,town,station),s -> armor(s) && (all || !retainSupply(s)) ? 0 : s.getCount());
         }
         gearPathTicks=0; gearReturnAt=level.getGameTime()+100; return false;
     }
@@ -1226,7 +1226,7 @@ public final class CitizenEntity extends Villager {
             setTarget(null); if(isUsingItem()) stopUsingItem();
             if(returnGuardArmor(level,town,station,true)) return;
             if(wornWeapons() && level.getGameTime()>=guardSupplyAt) {
-                BlockPos depot=SettlementService.warehouse(level,town,blockPosition());
+                BlockPos depot=jobDepot(level,town);
                 if(depot!=null && (handNear(depot) || canReach(depot)) && !visitWarehouse(level,town,StructureRole.GUARD) && !canUse(level,depot)) return;
                 guardSupplyAt=level.getGameTime()+200;
             }
@@ -1261,15 +1261,17 @@ public final class CitizenEntity extends Villager {
         if(armoryTicks>0) armoryTicks-=10;
         else {
             armoryTicks=100;
-            BlockPos depot=SettlementService.warehouse(level,town,blockPosition());
-            armoryStocked=depot!=null && SettlementService.storageAt(level,town,depot).stream().anyMatch(this::stocks);
+            BlockPos depot=jobDepot(level,town);
+            armoryStocked=depot!=null && SettlementService.jobStorage(level,town,station).stream().anyMatch(this::stocks);
         }
         // While the alarm rings, only an unarmed guard leaves the defense to resupply.
+        if(wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0 && level.getGameTime()>=nextFoodTripAt
+                && !alarm && !visitPantry(level,town)) return;
         boolean foodTrip=wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0;
         boolean resupply=alarm ? !carries(GuardWeapons::weapon) && (armoryStocked || wornWeapons())
                 : deliverCargo() || mealTicks<=0 || foodTrip || armoryStocked || wornWeapons();
         if(resupply && level.getGameTime()>=guardSupplyAt) {
-            BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
+            BlockPos warehouse=jobDepot(level,town);
             if(warehouse!=null && (handNear(warehouse) || canReach(warehouse))
                     && !visitWarehouse(level,town,StructureRole.GUARD) && !canUse(level,warehouse)) return;
             // An empty pantry must not leave the station's only sentry waiting there forever.
@@ -1417,6 +1419,17 @@ public final class CitizenEntity extends Villager {
             cargo.deposit(local,stack -> JobStorage.input(supplies,town,role,stack) ? 0 : stack.getCount());
             activity="Stocked the "+role.id()+" station's barrels";
         } else {
+            if(job.role()==StructureRole.GUARD) {
+                ArmorStand rack=GuardService.stands(level,town,job).stream()
+                        .filter(stand -> Arrays.stream(EquipmentSlot.values()).anyMatch(slot -> GuardEquipment.worn(stand.getItemBySlot(slot))))
+                        .min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
+                if(rack!=null) {
+                    if(!standNear(rack)) { approachStand(level,rack,"Collecting retired rack equipment for the blacksmith"); return; }
+                    for(EquipmentSlot slot:EquipmentSlot.values()) if(GuardEquipment.worn(rack.getItemBySlot(slot))) {
+                        cargo.offer(rack.getItemBySlot(slot)); rack.setItemSlot(slot,ItemStack.EMPTY);
+                    }
+                }
+            }
             int moved=JobStorage.collect(JobStorage.Supplies.of(level),town,job.role(),local,cargo);
             activity="Collected "+moved+" goods from the "+job.role().id()+" station";
         }
@@ -1440,6 +1453,8 @@ public final class CitizenEntity extends Villager {
             List<Container> local=SettlementService.jobStorage(level,town,candidate);
             var pickups=JobStorage.collectable(supplies,town,candidate.role(),local);
             int goods=JobStorage.goods(pickups);
+            if(candidate.role()==StructureRole.GUARD) for(ArmorStand rack:GuardService.stands(level,town,candidate))
+                for(EquipmentSlot slot:EquipmentSlot.values()) if(GuardEquipment.worn(rack.getItemBySlot(slot))) goods+=rack.getItemBySlot(slot).getCount();
             if(goods>most && JobStorage.worthCollecting(pickups,JobStorage.freeSlots(local),pantry)) { worthwhile=candidate; most=goods; }
             else if(goods>fewest) { small=candidate; fewest=goods; }
             if(supply==null && JobStorage.needsSupplies(supplies,town,candidate.role(),local,stored)) supply=candidate;
