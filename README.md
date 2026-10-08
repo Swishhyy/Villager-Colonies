@@ -352,7 +352,7 @@ The chain is **producer barrel → courier → warehouse → courier → butcher
 8. **Patrol routes.** Click **Mark patrol route**, then use the Station Inspector on clear ground inside the town for up to eight points in order. Sneak and use it to save the route. The guard walks from its active post through each point and back, skipping any that are unloaded. **Clear route** returns it to its own rounds past the town's stations.
 9. **Watchtowers.** A Guard Station at least six blocks above the lowest ground eight blocks to each side is a watchtower, and its screen says so. Its guard counts hostiles from 48 blocks for the alarm. It also reports newly sighted hostiles outside the claim to managers in town, with their direction from the tower, at most every two minutes. A band of three or more also goes in the journal. Hostiles already reported are not reported again while they linger in view. The Signal Fires research raises this to 64 blocks and once a minute.
 
-Citizens are drawn with the villager head, robe, and skin on a humanoid body with free arms, so armor, weapons, and tools are visible. Biome and profession clothing overlays are not drawn. Patrolling does not yet include formation orders or player/faction warfare.
+Citizens are drawn with the villager head, robe, and skin on a humanoid body with free arms, so armor, weapons, and tools are visible. Assigned citizens now wear job-specific profession clothes, colored accessories and hats; real equipment remains visible over them. Patrolling does not yet include formation orders or player/faction warfare.
 
 ### Worn equipment and blacksmiths
 
