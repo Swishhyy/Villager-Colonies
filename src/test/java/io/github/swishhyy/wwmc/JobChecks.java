@@ -79,17 +79,21 @@ public final class JobChecks {
         UUID miner=UUID.randomUUID();
         Settlement town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Saved jobs",BlockPos.ZERO,240,List.of(miner),List.of(new Station(mine,StructureRole.MINE)),"food");
         town.jobs.assign(miner,mine); town.jobs.setLevel(StructureRole.QUARRY,JobBoard.OFF);
+        BlockPos seen=new BlockPos(300,70,-40);
+        town.citizenPlaces.put(miner,seen);
         var json=Settlement.CODEC.encodeStart(JsonOps.INSTANCE,town).getOrThrow();
         Settlement reloaded=Settlement.CODEC.parse(JsonOps.INSTANCE,json).getOrThrow();
         check(mine.equals(reloaded.jobs.home(miner)) && reloaded.jobs.level(StructureRole.QUARRY)==JobBoard.OFF
                 && reloaded.jobs.level(StructureRole.FARM)==JobBoard.HIGH,"Jobs and priorities survive a restart");
         check(reloaded.name.equals("Saved jobs") && reloaded.stations.size()==1 && reloaded.citizens.equals(List.of(miner)) && reloaded.priority.equals("food"),
                 "The rest of the town still loads beside its jobs");
+        check(seen.equals(reloaded.citizenPlaces.get(miner)) && reloaded.citizenPlaces.size()==1,"Where each citizen was last seen survives a restart");
         var legacy=json.getAsJsonObject();
-        legacy.remove("jobs");
+        legacy.remove("jobs"); legacy.remove("citizen_places");
         Settlement old=Settlement.CODEC.parse(JsonOps.INSTANCE,legacy).getOrThrow();
         check(old.jobs.home(miner)==null && old.jobs.level(StructureRole.FARM)==JobBoard.HIGH && old.jobs.level(StructureRole.QUARRY)==JobBoard.NORMAL,
                 "A town from before job priorities takes its preset's levels");
+        check(old.citizenPlaces.isEmpty() && old.citizens.equals(List.of(miner)),"A town from before last places were kept loads with none known");
         System.out.println("Passed "+checks+" job save checks.");
     }
 }

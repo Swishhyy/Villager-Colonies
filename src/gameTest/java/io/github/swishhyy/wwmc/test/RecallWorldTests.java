@@ -1,0 +1,77 @@
+package io.github.swishhyy.wwmc.test;
+
+import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.core.StructureRole;
+import io.github.swishhyy.wwmc.entity.CitizenEntity;
+import io.github.swishhyy.wwmc.settlement.*;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Blocks;
+import net.neoforged.testframework.DynamicTest;
+import net.neoforged.testframework.annotation.TestHolder;
+import net.neoforged.testframework.gametest.EmptyTemplate;
+import net.neoforged.testframework.gametest.GameTest;
+
+/** Citizens stranded outside the loaded area while their station is loaded, in a player-free world. */
+public final class RecallWorldTests {
+    @GameTest(timeoutTicks=6000)
+    @EmptyTemplate
+    @TestHolder(description="A cook whose chunk unloads while its kitchen stays loaded is fetched back and keeps the job; a citizen nobody can find leaves the roster.")
+    static void bringsBackStrandedCook(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel();
+            BlockPos start=helper.absolutePos(new BlockPos(0,2,2600));
+            BlockPos away=start.east(400);
+            CitizenNavigationTests.meadow(level,start,-6,6,-6,6);
+            CitizenNavigationTests.meadow(level,away,-3,3,-3,3);
+            // A pen keeps the cook in its own chunk until that chunk unloads.
+            for(int dx=-1;dx<=1;dx++) for(int dz=-1;dz<=1;dz++) if(dx!=0 || dz!=0)
+                for(int y=0;y<=2;y++) level.setBlockAndUpdate(away.offset(dx,y,dz),Blocks.STONE.defaultBlockState());
+            var home=CitizenNavigationTests.pinTicking(level,start,1);
+            var far=CitizenNavigationTests.pinTicking(level,away,0);
+            Station kitchen=new Station(start.east(3),StructureRole.COOK);
+            var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Recall",start,240,List.of(),List.of(kitchen),"balanced");
+            var data=SettlementData.get(level); data.settlements.add(town);
+            level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState());
+            level.setBlockAndUpdate(kitchen.position(),WWMC.STATIONS.get(StructureRole.COOK).get().defaultBlockState());
+            var cook=new CitizenEntity(WWMC.CITIZEN.get(),level);
+            cook.join(town.id); cook.setPos(away.getX()+0.5,away.getY(),away.getZ()+0.5);
+            UUID id=cook.getUUID();
+            town.citizens.add(id); town.jobs.assign(id,kitchen.position()); level.addFreshEntity(cook);
+            // Someone the town lists who is nowhere to be found, last seen in an empty field.
+            UUID ghost=UUID.randomUUID();
+            town.citizens.add(ghost); town.citizenNames.put(ghost,"Ghost"); town.citizenPlaces.put(ghost,start.east(200));
+            data.setDirty();
+            var stage=new AtomicInteger();
+            helper.succeedWhen(() -> {
+                helper.assertTrue(level.players().isEmpty(),"Recall test must run without player-loaded chunks");
+                if(stage.get()==0) {
+                    BlockPos seen=town.citizenPlaces.get(id);
+                    helper.assertTrue(seen!=null && seen.distSqr(away)<9,"The cook's place is not recorded: "+seen);
+                    CitizenNavigationTests.releaseTicking(level,away,far);
+                    stage.set(1);
+                }
+                if(stage.get()==1) {
+                    helper.assertTrue(level.getEntity(id)==null,"The cook's chunk has not unloaded yet");
+                    stage.set(2);
+                }
+                if(stage.get()==2) {
+                    var back=level.getEntity(id) instanceof CitizenEntity found ? found : null;
+                    helper.assertTrue(back!=null && back.blockPosition().distSqr(kitchen.position())<16,
+                            "The cook is not back at the kitchen: "+CitizenRecall.whereabouts(level,town,id));
+                    helper.assertTrue(kitchen.position().equals(town.jobs.home(id)),"The cook lost its job");
+                    helper.assertTrue(town.citizens.contains(id),"The cook left the roster");
+                    stage.set(3);
+                }
+                helper.assertTrue(!town.citizens.contains(ghost) && !town.citizenNames.containsKey(ghost) && !town.citizenPlaces.containsKey(ghost),
+                        "The missing citizen is still listed: "+CitizenRecall.whereabouts(level,town,ghost));
+                helper.assertTrue(CitizenRecall.searching(level,town)==0,"A search still holds chunks loaded");
+                if(level.getEntity(id) instanceof CitizenEntity found) found.discard();
+                data.settlements.remove(town); data.setDirty();
+                CitizenNavigationTests.releaseTicking(level,start,home);
+            });
+        });
+    }
+}

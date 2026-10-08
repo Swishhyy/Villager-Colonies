@@ -77,6 +77,7 @@ public final class WWMC {
         bus.addListener(this::attributes);
         bus.addListener(WwmcNetwork::register);
         bus.addListener(TradeChunks::register);
+        bus.addListener(io.github.swishhyy.wwmc.settlement.CitizenRecall::register);
         NeoForge.EVENT_BUS.register(new SettlementService());
         NeoForge.EVENT_BUS.register(new Carcasses());
         NeoForge.EVENT_BUS.register(new WorkProtection());
@@ -84,6 +85,7 @@ public final class WWMC {
         NeoForge.EVENT_BUS.register(new DefenseService());
         NeoForge.EVENT_BUS.register(new WaveService());
         NeoForge.EVENT_BUS.register(new TradeChunks());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CitizenRecall());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.TradeAtlas.Survey());
         NeoForge.EVENT_BUS.register(new NpcSettlements());
         container.registerConfig(ModConfig.Type.SERVER,Config.SPEC);

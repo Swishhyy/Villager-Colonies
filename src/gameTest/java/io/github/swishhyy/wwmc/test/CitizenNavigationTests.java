@@ -40,6 +40,18 @@ public final class CitizenNavigationTests {
             }
         return chunks;
     }
+    /** Chunks within {@code radius} of a spot where entities tick, as they do near a player. */
+    static List<ChunkPos> pinTicking(ServerLevel level,BlockPos center,int radius) {
+        List<ChunkPos> chunks=new ArrayList<>();
+        int cx=Math.floorDiv(center.getX(),16),cz=Math.floorDiv(center.getZ(),16);
+        for(int x=cx-radius;x<=cx+radius;x++) for(int z=cz-radius;z<=cz+radius;z++) {
+            chunks.add(new ChunkPos(x,z)); TICKETS.forceChunk(level,center,x,z,true,true);
+        }
+        return chunks;
+    }
+    static void releaseTicking(ServerLevel level,BlockPos center,List<ChunkPos> chunks) {
+        for(var pos:chunks) TICKETS.forceChunk(level,center,pos.x(),pos.z(),false,true);
+    }
     /** Grass on stone with open air above, like an ordinary meadow. */
     static void meadow(ServerLevel level,BlockPos start,int minX,int maxX,int minZ,int maxZ) {
         for(int x=minX;x<=maxX;x++) for(int z=minZ;z<=maxZ;z++) {

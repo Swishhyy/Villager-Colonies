@@ -215,6 +215,7 @@ public final class CitizenEntity extends Villager {
                         setCustomName(Component.literal(SettlementService.citizenName(server,town,getUUID())));
                     String name=getCustomName().getString();
                     if(!name.equals(town.citizenNames.put(getUUID(),name))) SettlementData.get(server).setDirty();
+                    if(isAlive()) CitizenRecall.seen(server,town,this);
                     checkStuck(server,town);
                 }
             }
@@ -232,23 +233,45 @@ public final class CitizenEntity extends Villager {
         BlockPos spot=rescueSpot(level,town);
         if(spot==null) { activity="Stuck, and the settlement banner has no free standing room"; return; }
         getNavigation().stop();
-        // Abandon the trip that went wrong so the citizen does not walk straight back into the same trap.
+        if(!abandonTrip(level) && workplace!=null) { idleStations.put(workplace,level.getGameTime()+200); releaseWork(level); }
+        setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5); resetFallDistance();
+        activity="Got stuck and returned to the settlement banner";
+    }
+    /** Abandons the trip under way, so the citizen does not walk straight back into the same trap; false when there was none. */
+    private boolean abandonTrip(ServerLevel level) {
         if(action==Action.EXCAVATE && excavation!=null && excavation.quarry() && !excavation.remote() && workplace!=null) {
             SettlementService.reservations(level).release(excavation.lease(),getUUID());
             excavation=excavation.fromControlBlock(workplace); targetLease=excavation.lease(); pathTicks=0; blindTicks=0;
         } else if(target!=null) cancelTarget(level,true);
         else if(returningGear) returningGear=false; // the gear stays in the bag and goes back with the next delivery
         else if(isGuard()) patrolTarget=null;
-        else if(workplace!=null) { idleStations.put(workplace,level.getGameTime()+200); releaseWork(level); }
-        setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5); resetFallDistance();
-        activity="Got stuck and returned to the settlement banner";
+        else return false;
+        return true;
     }
-    /** On top of the banner, or failing that a clear spot with firm footing right beside it; never in an unloaded or frozen chunk. */
-    private static BlockPos rescueSpot(ServerLevel level,Settlement town) {
-        BlockPos banner=town.center;
-        if(!level.hasChunkAt(banner) || !level.isPositionEntityTicking(banner)) return null;
-        List<BlockPos> spots=new ArrayList<>(List.of(banner.above()));
-        for(int dy=1;dy>=-1;dy--) for(int dx=-2;dx<=2;dx++) for(int dz=-2;dz<=2;dz++) if(dx!=0 || dz!=0) spots.add(banner.offset(dx,dy,dz));
+    /**
+     * Brings this citizen back from a frozen or unloaded chunk to its station or banner ({@code home}), keeping its
+     * job. The errand that led it out is dropped. False when it is on a trade trip or there is no room to stand.
+     */
+    public boolean recall(ServerLevel level,Settlement town,BlockPos home) {
+        if(tradeShipment.travelling()) return false;
+        BlockPos spot=standingRoom(level,home);
+        if(spot==null) spot=rescueSpot(level,town);
+        if(spot==null) return false;
+        leaveBed();
+        if(isPassenger()) stopRiding();
+        getNavigation().stop();
+        abandonTrip(level);
+        setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5); resetFallDistance();
+        stuckAnchor=null; stuckTicks=0;
+        activity="Was out of loaded range and came back";
+        return true;
+    }
+    private static BlockPos rescueSpot(ServerLevel level,Settlement town) { return standingRoom(level,town.center); }
+    /** On top of a block such as the banner, or failing that a clear spot with firm footing right beside it; never in an unloaded or frozen chunk. */
+    private static BlockPos standingRoom(ServerLevel level,BlockPos anchor) {
+        if(!level.hasChunkAt(anchor) || !level.isPositionEntityTicking(anchor)) return null;
+        List<BlockPos> spots=new ArrayList<>(List.of(anchor.above()));
+        for(int dy=1;dy>=-1;dy--) for(int dx=-2;dx<=2;dx++) for(int dz=-2;dz<=2;dz++) if(dx!=0 || dz!=0) spots.add(anchor.offset(dx,dy,dz));
         for(BlockPos spot:spots) {
             if(!level.hasChunkAt(spot) || !level.hasChunkAt(spot.above()) || !level.isPositionEntityTicking(spot)) continue;
             if(clear(level,spot) && clear(level,spot.above()) && level.getBlockState(spot.below()).isFaceSturdy(level,spot.below(),net.minecraft.core.Direction.UP)) return spot;
@@ -2158,7 +2181,10 @@ public final class CitizenEntity extends Villager {
             Containers.dropItemStack(level,getX(),getY(),getZ(),repairItem); repairItem=ItemStack.EMPTY;
             Containers.dropItemStack(level,getX(),getY(),getZ(),enchantItem); enchantItem=ItemStack.EMPTY;
             Settlement town=town(level);
-            if(town!=null) { town.citizens.remove(getUUID()); town.citizenNames.remove(getUUID()); town.jobs.release(getUUID()); SettlementData.get(level).setDirty(); }
+            if(town!=null) {
+                town.citizens.remove(getUUID()); town.citizenNames.remove(getUUID()); town.citizenPlaces.remove(getUUID()); town.jobs.release(getUUID());
+                SettlementData.get(level).setDirty();
+            }
             releaseWork(level);
             Containers.dropItemStack(level,getX(),getY(),getZ(),getOffhandItem()); setItemSlot(EquipmentSlot.OFFHAND,ItemStack.EMPTY);
             for(int i=0;i<cargo.getContainerSize();i++) {
