@@ -1613,7 +1613,12 @@ public final class CitizenEntity extends Villager {
         activity=station.role()==StructureRole.COOK ? "Supplying the kitchen and collecting cooked food" : "Supplying furnaces and collecting smelted ores";
         if(collected==0 && !ProcessingService.busy(level,processor) && !ProcessingService.hasInputs(level,station.role(),processor,List.of(cargo))) {
             if(station.role()==StructureRole.COOK && order!=null && !town.disabledRecipes.contains(order.id()) && Crafting.ready(cargo,order)) {
-                craft(level,town,station,processor); return;
+                craft(level,town,station,processor);
+                if(order==null) {
+                    // One bread batch must not monopolize the worker while another appliance has finished meals.
+                    processor=devices.get((devices.indexOf(processor)+1)%devices.size()); processorStand=null; nextProcessingAt=0;
+                }
+                return;
             }
             if(++processingIdle>=devices.size()) {
                 activity="Waiting for courier-delivered processing inputs";

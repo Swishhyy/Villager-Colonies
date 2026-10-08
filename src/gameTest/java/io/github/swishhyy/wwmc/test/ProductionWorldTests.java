@@ -114,6 +114,28 @@ public final class ProductionWorldTests {
         });
     }
 
+    @GameTest(timeoutTicks=3000)
+    @EmptyTemplate
+    @TestHolder(description="A cook alternates bread batches with serving other appliances, collecting the smoker's four actual steaks before the wheat-driven bread target monopolizes the kitchen.")
+    static void breadDoesNotMonopolizeOtherAppliances(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-3800));
+            Station cook=new Station(start.east(24),StructureRole.COOK); var f=fixture(level,start,cook);
+            Container stock=barrel(level,cook.position().south(2),new ItemStack(Items.WHEAT,96),new ItemStack(Items.COAL,4));
+            level.setBlockAndUpdate(cook.position().west(2),Blocks.FURNACE.defaultBlockState());
+            level.setBlockAndUpdate(cook.position().east(2),Blocks.SMOKER.defaultBlockState());
+            var smoker=(AbstractFurnaceBlockEntity)level.getBlockEntity(cook.position().east(2));
+            smoker.setItem(0,new ItemStack(Items.BEEF,4)); smoker.setItem(1,new ItemStack(Items.COAL));
+            var chef=f.worker(cook,start);
+            helper.succeedWhen(() -> {
+                helper.assertTrue(count(stock,Items.COOKED_BEEF)==4,"Cook did not collect all actual smoker meals: "+describe(chef));
+                helper.assertTrue(count(stock,Items.BREAD)>0 && count(stock,Items.BREAD)<32,"Bread monopolized the worker until its full target: "+count(stock,Items.BREAD));
+                helper.assertTrue(count(stock,Items.WHEAT)+chef.bag().count(Items.WHEAT)+3*(count(stock,Items.BREAD)+chef.bag().count(Items.BREAD))==96,"Bread duplicated or destroyed its wheat");
+                f.close();
+            });
+        });
+    }
+
     @GameTest(timeoutTicks=2500)
     @EmptyTemplate
     @TestHolder(description="Actual miners retain ore veins, spend pickaxe durability, replenish at their equipped pickaxe's rate, and farm/mine yield upgrades survive real block loot and appear in the station screen.")
