@@ -24,6 +24,11 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Read build metadata
+        id: build_metadata
+        run: |
+          sed -n -e '/^mod_version=/p' -e '/^minecraft_version=/p' gradle.properties >> "$GITHUB_OUTPUT"
+
       # This is needed to be able to run ./gradlew below
       # You can run `git update-index --chmod +x gradlew` then remove this step.
       - name: Make Gradle wrapper executable
@@ -41,6 +46,6 @@ jobs:
       - name: Upload mod JAR
         uses: actions/upload-artifact@v4
         with:
-          name: wwmc-mc26.2
-          path: build/libs/wwmc-*.jar
+          name: wwmc-${{ steps.build_metadata.outputs.mod_version }}-neoforge-mc${{ steps.build_metadata.outputs.minecraft_version }}
+          path: build/libs/wwmc-${{ steps.build_metadata.outputs.mod_version }}.jar
           if-no-files-found: error
