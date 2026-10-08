@@ -34,6 +34,9 @@ public final class CitizenScreen extends AbstractContainerScreen<CitizenMenu> {
             g.text(font,Ui.fit(font,row.text().getString()+": "+row.detail().getString(),80),barX,y+39,Ui.TEXT,false);
             if(row.bar()>=0) Ui.bar(g,barX,y+49,76,row.bar(),row.color());
         }
+        // Experience at the current job and the diet's effect, in one line; hovering shows every job.
+        List<PanelView.Row> skills=tab(2);
+        if(!skills.isEmpty()) g.text(font,Ui.fit(font,skills.getFirst().text().getString(),width),x+8,y+CitizenMenu.SKILL_Y,0xFF2E6B34,false);
         // Worn armor and held items.
         List<PanelView.Row> gear=tab(1);
         for(int i=0;i<gear.size() && i<6;i++) {
@@ -41,7 +44,7 @@ public final class CitizenScreen extends AbstractContainerScreen<CitizenMenu> {
             Ui.slot(g,slotX,slotY);
             g.item(gear.get(i).icon(),slotX,slotY);
         }
-        if(status.size()>3) g.text(font,"Overflowing",x+120,y+CitizenMenu.GEAR_Y+4,0xFFC0392B,false);
+        if(status.stream().anyMatch(row -> row.key().equals("overflow"))) g.text(font,"Overflowing",x+120,y+CitizenMenu.GEAR_Y+4,0xFFC0392B,false);
         g.text(font,"Bag",x+CitizenMenu.BAG_X,y+CitizenMenu.BAG_Y-10,Ui.TEXT,false);
         for(int row=0;row<4;row++) for(int column=0;column<9;column++) Ui.slot(g,x+CitizenMenu.BAG_X+column*18,y+CitizenMenu.BAG_Y+row*18);
         g.text(font,"Inventory",x+CitizenMenu.INVENTORY_X,y+CitizenMenu.INVENTORY_Y-11,Ui.TEXT,false);
@@ -54,6 +57,12 @@ public final class CitizenScreen extends AbstractContainerScreen<CitizenMenu> {
         for(int i=0;i<gear.size() && i<6;i++) {
             int slotX=leftPos+8+i*18,slotY=topPos+CitizenMenu.GEAR_Y;
             if(mouseX>=slotX && mouseX<slotX+16 && mouseY>=slotY && mouseY<slotY+16) g.setTooltipForNextFrame(font,gear.get(i).icon(),mouseX,mouseY);
+        }
+        List<PanelView.Row> skills=tab(2);
+        if(!skills.isEmpty() && mouseX>=leftPos+8 && mouseX<leftPos+imageWidth-8 && mouseY>=topPos+CitizenMenu.SKILL_Y-1 && mouseY<topPos+CitizenMenu.SKILL_Y+9) {
+            List<Component> lines=new java.util.ArrayList<>();
+            for(PanelView.Row row:skills) lines.addAll(Ui.tooltip(font,row));
+            g.setComponentTooltipForNextFrame(font,lines,mouseX,mouseY);
         }
         List<PanelView.Row> status=tab(0);
         if(!status.isEmpty() && mouseX>=leftPos+28 && mouseX<leftPos+imageWidth-8 && mouseY>=topPos+18 && mouseY<topPos+37)

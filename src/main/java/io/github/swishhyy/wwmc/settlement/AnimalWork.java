@@ -86,10 +86,10 @@ public final class AnimalWork {
         if(!worker.workAt(level,station.position())) { worker.workActivity("Walking to the cutting table"); worker.workWalk(station.position()); return; }
         worker.getNavigation().stop();
         worker.workActivity("Preparing carcasses into raw portions for the cook");
-        progress+=10;
+        progress+=worker.workStep();
         if(progress>=Config.WORK_TICKS.get()) {
             progress=0; Carcasses.prepare(worker.bag()); worker.swing(InteractionHand.MAIN_HAND);
-            worker.getMainHandItem().hurtAndBreak(1,worker,EquipmentSlot.MAINHAND);
+            worker.wearTool(); worker.gainExperience(StructureRole.BUTCHER,1);
         }
     }
     private void hunt(ServerLevel level,Settlement town,Station station,CitizenEntity worker,boolean culling) {
@@ -123,7 +123,10 @@ public final class AnimalWork {
         worker.getNavigation().stop(); worker.workActivity(culling ? "Harvesting a surplus animal for the butcher" : "Hunting a carcass for the butcher");
         if(level.getGameTime()>=nextAttack) {
             nextAttack=level.getGameTime()+20; worker.swing(InteractionHand.MAIN_HAND);
-            if(worker.doHurtTarget(level,animal)) worker.getMainHandItem().hurtAndBreak(1,worker,EquipmentSlot.MAINHAND);
+            if(worker.doHurtTarget(level,animal)) {
+                worker.wearTool();
+                if(!animal.isAlive()) worker.gainExperience(culling ? StructureRole.ANIMAL_KEEPER : StructureRole.HUNTER,1);
+            }
         }
     }
     private void keepAnimals(ServerLevel level,Settlement town,Station station,CitizenEntity worker) {
@@ -229,10 +232,10 @@ public final class AnimalWork {
         worker.getLookControl().setLookAt(fishing.water().getX()+0.5,fishing.water().getY()+0.9,fishing.water().getZ()+0.5);
         worker.workActivity("Fishing: "+progress/20+" / "+Config.FISHING_SECONDS.get()+" seconds");
         if(progress==0) worker.swing(InteractionHand.MAIN_HAND);
-        progress+=10;
+        progress+=worker.workStep();
         if(progress>=Specialization.ticks(town,StructureRole.FISHERMAN,Config.FISHING_SECONDS.get()*20)) {
             progress=0; worker.bag().offer((worker.getRandom().nextBoolean() ? Carcasses.Kind.COD : Carcasses.Kind.SALMON).stack());
-            worker.getMainHandItem().hurtAndBreak(1,worker,EquipmentSlot.MAINHAND); worker.swing(InteractionHand.MAIN_HAND);
+            worker.wearTool(); worker.swing(InteractionHand.MAIN_HAND); worker.gainExperience(StructureRole.FISHERMAN,1);
             level.sendParticles(ParticleTypes.SPLASH,fishing.water().getX()+0.5,fishing.water().getY()+0.9,fishing.water().getZ()+0.5,5,0.3,0.1,0.3,0);
         }
     }

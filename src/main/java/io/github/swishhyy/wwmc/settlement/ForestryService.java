@@ -213,7 +213,8 @@ public final class ForestryService {
         var drops=Block.getDrops(level.getBlockState(leaf),level,leaf,null,worker,worker.getMainHandItem());
         if(!level.destroyBlock(leaf,false,worker)) return null;
         var data=WorldWorkData.get(level); data.clearedTrees.put(current.root(),current); data.setDirty();
-        worker.getMainHandItem().hurtAndBreak(1,worker,EquipmentSlot.MAINHAND);
+        int wear=worker instanceof io.github.swishhyy.wwmc.entity.CitizenEntity citizen ? citizen.toolWear(1) : 1;
+        if(wear>0) worker.getMainHandItem().hurtAndBreak(wear,worker,EquipmentSlot.MAINHAND);
         return drops;
     }
     public static List<ItemStack> fell(ServerLevel level,Settlement town,Station station,BlockPos root,LivingEntity worker) {
@@ -236,7 +237,8 @@ public final class ForestryService {
             var blockDrops=Block.getDrops(state,level,log,null,worker,worker.getMainHandItem());
             if(level.destroyBlock(log,false,worker)) { drops.addAll(blockDrops); removed++; }
         }
-        worker.getMainHandItem().hurtAndBreak(removed,worker,EquipmentSlot.MAINHAND);
+        int wear=worker instanceof io.github.swishhyy.wwmc.entity.CitizenEntity citizen ? citizen.toolWear(removed) : removed;
+        if(wear>0) worker.getMainHandItem().hurtAndBreak(wear,worker,EquipmentSlot.MAINHAND);
         for(BlockPos leaf:foliage) {
             boolean otherTree=false;
             for(BlockPos neighbor:BlockPos.betweenClosed(leaf.offset(-1,-1,-1),leaf.offset(1,1,1))) {

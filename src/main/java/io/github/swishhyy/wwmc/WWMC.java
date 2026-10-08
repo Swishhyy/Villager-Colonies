@@ -94,6 +94,8 @@ public final class WWMC {
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CampaignService());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CampaignCommands());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.ExpeditionService());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CitizenCombat());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.SettlementMap());
         container.registerConfig(ModConfig.Type.SERVER,Config.SPEC);
     }
     private void attributes(EntityAttributeCreationEvent event) {

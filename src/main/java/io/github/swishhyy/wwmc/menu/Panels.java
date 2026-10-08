@@ -26,7 +26,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Builds every settlement screen on the server and applies its buttons. Only the town's owner sees these screens. */
 public final class Panels {
-    public static final int PRIORITY=1,ALARM=2,RECRUIT=3,BREAD=4,POSTS=5,RANGE_UP=6,CREW_UP=7,GROW=8,YIELD_UP=9,TARGET=10,RAISE=11,FORGET=12,JOB=13,JOB_STEP=14;
+    public static final int PRIORITY=1,ALARM=2,RECRUIT=3,BREAD=4,POSTS=5,RANGE_UP=6,CREW_UP=7,GROW=8,YIELD_UP=9,TARGET=10,RAISE=11,FORGET=12,JOB=13,JOB_STEP=14,GUARD_ROLE=15,PATROL=16,PATROL_CLEAR=17;
     public static final int GREEN=0xFF3FA34D,RED=0xFFC0392B,AMBER=0xFFD39B1E,GRAY=0xFF707070;
     private Panels() {}
     private static ServerLevel level(ServerPlayer player) { return (ServerLevel)player.level(); }
@@ -93,6 +93,12 @@ public final class Panels {
         int beds=SettlementService.housingBeds(level,town).size(),free=vacancies(level,town),limit=SettlementService.populationLimit(town);
         List<Container> everything=SettlementService.townStorage(level,town);
         List<Row> overview=new ArrayList<>();
+        List<Row> needs=needRows(level,town);
+        long problems=needs.stream().filter(row -> row.color()!=GREEN).count();
+        long urgent=needs.stream().filter(row -> row.color()==RED).count();
+        overview.add(new Row(icon(Items.WRITABLE_BOOK),Component.literal(problems==0 ? "Nothing needed" : problems+(problems==1 ? " need" : " needs")+(urgent>0 ? ", "+urgent+" urgent" : "")),
+                Component.literal(problems==0 ? "Loaded stations have their workers, storage and supplies" : "See the Needs tab; Show points out each station in the world"),
+                urgent>0 ? RED : problems>0 ? AMBER : GREEN,PanelView.NO_BAR,PanelView.NO_VALUE));
         overview.add(new Row(icon(WWMC.BANNER_ITEM.get()),"Population",town.citizens.size()+" of "+limit+" citizens allowed, "+beds+" housing beds")
                 .bar(town.citizens.size()/(float)Math.max(1,limit),town.citizens.size()>=limit ? AMBER : GREEN));
         overview.add(new Row(icon(Items.EMERALD),"Population upgrades",SettlementService.populationLevel(town)+" bought"
@@ -129,8 +135,44 @@ public final class Panels {
             new Action(RECRUIT,recruit,free>0,"A citizen needs a free housing bed and room under the population limit of "+limit),
             grow(town,viewer),new Action(CampaignViews.OPEN,"Campaign",true,"Warehouse requests, projects, squads, expedition sites and the town journal"),
             new Action(RelationshipViews.OPEN,"Relationships",true,"Player permissions, invitations, alliances and town naming"));
-        return new PanelView(Component.literal(town.name),Component.literal(town.citizens.size()+" citizens · "+town.stations.size()+" stations · claim "+town.radius),
-                List.of(new Tab("Overview",overview),new Tab("Jobs",jobRows(town)),new Tab("Citizens",people),new Tab("Stations",stations)),actions);
+        return new PanelView(Component.literal(town.name),Component.literal(town.citizens.size()+" citizens · "+town.stations.size()+" stations · "
+                +(problems==0 ? "no needs" : problems+(problems==1 ? " need" : " needs"))),
+                List.of(new Tab("Overview",overview),new Tab("Needs",needs),new Tab("Jobs",jobRows(town)),new Tab("Citizens",people),new Tab("Stations",stations)),actions);
+    }
+    /** The town's needs, most urgent first; one at a place has a Show button that outlines it in the world. */
+    private static List<Row> needRows(ServerLevel level,Settlement town) {
+        List<Row> rows=new ArrayList<>();
+        for(TownNeeds.Need need:TownNeeds.assess(level,town)) {
+            int color=need.severity()==TownNeeds.URGENT ? RED : need.severity()==TownNeeds.WARNING ? AMBER : 0;
+            BlockPos at=need.at();
+            rows.add(new Row(need.icon(),Component.literal(need.title()),Component.literal(need.detail()),color,PanelView.NO_BAR,
+                    at==null ? PanelView.NO_VALUE : 0,at==null ? "" : "act:show:"+at.getX()+","+at.getY()+","+at.getZ()));
+            if(rows.size()>=PanelView.MAX_ROWS) break;
+        }
+        if(rows.isEmpty()) rows.add(new Row(icon(Items.EMERALD),Component.literal("Nothing needed"),
+                Component.literal("Every loaded station has its workers, storage and supplies"),GREEN,PanelView.NO_BAR,PanelView.NO_VALUE));
+        return rows;
+    }
+    /** Closes the screen and outlines a block of this town for the player, with directions in chat. */
+    private static void show(ServerPlayer player,Settlement town,String coordinates) {
+        String[] parts=coordinates.split(",");
+        if(parts.length!=3) return;
+        BlockPos pos;
+        try { pos=new BlockPos(Integer.parseInt(parts[0]),Integer.parseInt(parts[1]),Integer.parseInt(parts[2])); }
+        catch(NumberFormatException e) { return; }
+        if(!town.contains(pos)) return;
+        player.closeContainer();
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,new WwmcNetwork.HighlightPayload(pos,20));
+        SettlementService.tell(player,"Marked "+pos.toShortString()+": "+directions(player.blockPosition(),pos)+". The outline shows through walls for 20 seconds.");
+    }
+    /** How far, and which way, from one place to another, such as "34 blocks north-east". */
+    public static String directions(BlockPos from,BlockPos to) {
+        int dx=to.getX()-from.getX(),dz=to.getZ()-from.getZ();
+        int distance=(int)Math.round(Math.sqrt((double)dx*dx+(double)dz*dz));
+        if(distance<2) return "right here";
+        String[] names={"south","south-west","west","north-west","north","north-east","east","south-east"};
+        double angle=Math.toDegrees(Math.atan2(-dx,dz));
+        return distance+" blocks "+names[Math.floorMod((int)Math.round(angle/45.0),8)];
     }
     /** The population upgrade button: its price, and greyed out when unaffordable or at the ceiling. */
     private static Action grow(Settlement town,ServerPlayer viewer) {
@@ -156,7 +198,7 @@ public final class Panels {
         Station job=home(town,citizen);
         float health=citizen.getHealth()/Math.max(1,citizen.getMaxHealth());
         return new Row(job==null ? icon(Items.PAPER) : stationIcon(job.role()),citizen.getName().getString(),
-                (job==null ? "No job" : job.role().title())+": "+citizen.activity()).bar(health,health<0.5F ? RED : GREEN);
+                (job==null ? "No job" : CitizenSkill.title(citizen.skillLevel(job.role()))+" "+job.role().title().toLowerCase(Locale.ROOT))+": "+citizen.activity()).bar(health,health<0.5F ? RED : GREEN);
     }
     private static Row storage(ItemStack icon,String name,List<Container> containers,String none) {
         if(containers.isEmpty()) return new Row(icon,name,none);
@@ -174,6 +216,7 @@ public final class Panels {
             case CampaignViews.OPEN -> CampaignViews.open(player,town);
             case PRIORITY -> SettlementService.applyPreset(level,town,JobBoard.PRESETS.get((JobBoard.PRESETS.indexOf(town.priority)+1)%JobBoard.PRESETS.size()));
             case JOB -> {
+                if(key.startsWith("act:show:")) { show(player,town,key.substring(9)); return; }
                 StructureRole role=workRole(key);
                 if(role!=null && value>=JobBoard.OFF && value<=JobBoard.HIGH) SettlementService.setJobLevel(level,town,role,value);
             }
@@ -246,7 +289,15 @@ public final class Panels {
         if(Upgrades.widens(role) || Upgrades.hires(role) || Upgrades.yields(role)) tabs.add(new Tab("Upgrades",upgradeRows(station,viewer)));
         List<Action> actions=new ArrayList<>();
         if(role==StructureRole.COOK) actions.add(new Action(BREAD,town.disabledRecipes.contains("bread") ? "Bread: off" : "Bread: on",true,"Cooks bake bread from 3 wheat, up to 32 loaves"));
-        if(role==StructureRole.GUARD) actions.add(new Action(POSTS,"Choose guard posts",true,"Then right-click the ground for the day post and the night post"));
+        if(role==StructureRole.GUARD) {
+            GuardPosts plan=GuardService.posts(level,station);
+            actions.add(new Action(POSTS,"Choose guard posts",true,"Then use the Station Inspector on the ground for the day post and the night post"));
+            actions.add(new Action(GUARD_ROLE,"Role: "+GuardPosts.title(plan.role()),true,GuardPosts.describe(plan.role())+". Click for the next role."));
+            actions.add(new Action(PATROL,"Mark patrol route",true,"Then use the Station Inspector on the ground for up to "+GuardPosts.MAX_PATROL
+                    +" points in order, and sneak-use it to save. The guard walks from its post through each point and back."));
+            actions.add(new Action(PATROL_CLEAR,plan.patrol().isEmpty() ? "No marked route" : "Clear route ("+plan.patrol().size()+")",!plan.patrol().isEmpty(),
+                    "The guard picks its own rounds around the town's stations again"));
+        }
         for(Upgrades.Kind kind:Upgrades.Kind.values()) if(kind.supports(role)) actions.add(upgrade(station,kind,viewer));
         if(role.providesWork()) {
             int priority=town.jobs.level(role);
@@ -348,7 +399,18 @@ public final class Panels {
                 if(vein==null) rows.add(new Row(icon(Items.RAW_IRON),"Ore vein","Place the station within "+OreVeins.REACH+" blocks of an exposed ore to mine it forever instead"));
             }
             case QUARRY -> rows.add(new Row(icon(Items.IRON_PICKAXE),"Excavation",ExcavationService.status(level,town,station)));
-            case GUARD -> rows.add(new Row(icon(Items.IRON_SWORD),"Posts",GuardService.status(level,station)));
+            case GUARD -> {
+                GuardPosts plan=GuardService.posts(level,station);
+                rows.add(new Row(icon(plan.role().equals(GuardPosts.ARCHER) ? Items.BOW : plan.role().equals(GuardPosts.SHIELD) ? Items.SHIELD : Items.IRON_SWORD),
+                        GuardPosts.title(plan.role()),GuardPosts.describe(plan.role())));
+                rows.add(new Row(icon(Items.COMPASS),"Posts",GuardService.status(level,station)));
+                if(plan.patrol().isEmpty()) rows.add(new Row(icon(Items.MAP),"Patrol","No marked route: the guard walks rounds past the town's stations"));
+                for(int n=0;n<plan.patrol().size();n++) rows.add(new Row(icon(Items.MAP),"Patrol point "+(n+1),plan.patrol().get(n).toShortString()));
+                boolean tower=GuardRoles.watchtower(level,station.position());
+                rows.add(new Row(icon(Items.SPYGLASS),tower ? "Watchtower" : "Not a watchtower",tower
+                        ? "Raised "+GuardRoles.TOWER_HEIGHT+"+ blocks above the ground: sees hostiles from "+GuardRoles.towerSight(town)+" blocks and warns of approaching ones"
+                        : "Build the station at least "+GuardRoles.TOWER_HEIGHT+" blocks above the surrounding ground for earlier warnings"));
+            }
             case SMELTERY -> rows.add(new Row(icon(Items.FURNACE),"Furnaces",SettlementService.processingDevices(level,town,station).size()+" furnaces or blast furnaces in range"));
             case COOK -> rows.add(new Row(icon(Items.SMOKER),"Kitchen",SettlementService.processingDevices(level,town,station).size()+" furnaces, smokers or lit campfires; bread "+(town.disabledRecipes.contains("bread") ? "off" : "on")));
             case BLACKSMITH -> rows.add(new Row(icon(Items.ANVIL),"Anvils",SettlementService.anvils(level,town,station).size()+" anvils; repairs warehouse gear and worn stand armor"));
@@ -403,6 +465,15 @@ public final class Panels {
         } else if(action==POSTS && station.role()==StructureRole.GUARD) {
             player.closeContainer();
             GuardService.begin(level(player),player,pos);
+        } else if((action==GUARD_ROLE || action==PATROL_CLEAR) && station.role()==StructureRole.GUARD) {
+            WorldWorkData data=WorldWorkData.get(level(player));
+            GuardPosts plan=GuardService.posts(level(player),station);
+            data.guardPosts.put(pos,action==PATROL_CLEAR ? plan.withPatrol(List.of())
+                    : plan.withRole(GuardPosts.ROLES.get((GuardPosts.ROLES.indexOf(plan.role())+1)%GuardPosts.ROLES.size())));
+            data.setDirty();
+        } else if(action==PATROL && station.role()==StructureRole.GUARD) {
+            player.closeContainer();
+            GuardService.beginPatrol(level(player),player,pos);
         } else if(action==JOB_STEP && station.role().providesWork()) {
             SettlementService.setJobLevel(level(player),town,station.role(),(town.jobs.level(station.role())+1)%(JobBoard.HIGH+1));
         }
@@ -464,19 +535,37 @@ public final class Panels {
         Settlement town=citizen.town(level);
         Station job=town==null ? null : home(town,citizen);
         List<Row> status=new ArrayList<>();
-        status.add(new Row(job==null ? icon(Items.PAPER) : stationIcon(job.role()),job==null ? "No job" : job.role().title()+" at "+job.position().toShortString(),citizen.activity()));
-        if(citizen.tradeCargoCount()>0) status.add(new Row(icon(Items.BUNDLE),"Trade load",citizen.tradeCargoCount()+" items reserved for the destination; separate from meals and job supplies"));
+        StructureRole role=citizen.skillRole();
+        int skill=citizen.skillLevel(role);
+        status.add(new Row(job==null ? icon(Items.PAPER) : stationIcon(job.role()),job==null ? "No job"
+                : CitizenSkill.title(skill)+" "+job.role().title().toLowerCase(Locale.ROOT)+" at "+job.position().toShortString(),citizen.activity()));
         float health=citizen.getHealth()/Math.max(1,citizen.getMaxHealth());
         status.add(new Row(icon(Items.GOLDEN_APPLE),"Health",Math.round(citizen.getHealth())+" / "+Math.round(citizen.getMaxHealth())).bar(health,health<0.5F ? RED : GREEN));
         int meal=Math.max(0,citizen.mealTicks());
         status.add(new Row(icon(Items.BREAD),"Next meal",meal==0 ? "Hungry now" : "In about "+Math.max(1,meal/1200)+" min").bar(meal/(float)Math.max(1,Config.mealIntervalTicks()),meal==0 ? RED : AMBER));
-        if(citizen.overflowing()) status.add(new Row(icon(Items.CHEST),"Overflow","Carrying a harvest larger than the bag; it waits for delivery"));
+        if(citizen.overflowing()) status.add(new Row(icon(Items.CHEST),Component.literal("Overflow"),Component.literal("Carrying a harvest larger than the bag; it waits for delivery"),
+                0,PanelView.NO_BAR,PanelView.NO_VALUE,"overflow"));
+        List<Row> skills=new ArrayList<>();
+        List<String> meals=citizen.recentMeals();
+        int morale=MealVariety.bonus(meals);
+        skills.add(new Row(icon(Items.EXPERIENCE_BOTTLE),(role==null ? "No job" : CitizenSkill.title(skill)+" "+role.title().toLowerCase(Locale.ROOT))+" · "+MealVariety.mood(meals),
+                (role==null ? "" : CitizenSkill.perk(role,skill)+"; ")+(morale>0 ? "varied meals: "+morale+"% faster" : "varied meals would add up to 8% speed")));
+        for(StructureRole known:StructureRole.values()) {
+            int points=citizen.experience(known);
+            if(points<=0 && known!=role) continue;
+            int rank=CitizenSkill.level(points),next=CitizenSkill.next(rank);
+            skills.add(new Row(stationIcon(known),known.title()+": "+CitizenSkill.title(rank),points+(next<0 ? " experience, the top level" : " / "+next+" experience")+" · "+CitizenSkill.perk(known,rank))
+                    .bar(next<0 ? 1F : points/(float)next,rank>=CitizenSkill.MAX_LEVEL ? GREEN : AMBER));
+        }
+        skills.add(new Row(icon(Items.COOKED_BEEF),"Diet: "+MealVariety.mood(meals),meals.isEmpty() ? "No meals yet"
+                : MealVariety.distinct(meals)+" kinds in the last "+meals.size()+" meals: "+String.join(", ",meals.stream().map(id -> id.replace("minecraft:","").replace('_',' ')).toList())));
+        if(citizen.tradeCargoCount()>0) skills.add(new Row(icon(Items.BUNDLE),"Trade load",citizen.tradeCargoCount()+" items reserved for the destination; separate from meals and job supplies"));
         List<Row> gear=new ArrayList<>();
         for(EquipmentSlot slot:new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET,EquipmentSlot.MAINHAND,EquipmentSlot.OFFHAND}) {
             ItemStack worn=citizen.getItemBySlot(slot);
             if(!worn.isEmpty()) gear.add(new Row(worn.copy(),worn.getHoverName(),Component.literal(slot.getName()),0,
                     worn.isDamageableItem() ? 1F-worn.getDamageValue()/(float)worn.getMaxDamage() : PanelView.NO_BAR,PanelView.NO_VALUE));
         }
-        return new PanelView(citizen.getName(),Component.literal(town==null ? "" : town.name),List.of(new Tab("Status",status),new Tab("Equipment",gear)),List.of());
+        return new PanelView(citizen.getName(),Component.literal(town==null ? "" : town.name),List.of(new Tab("Status",status),new Tab("Equipment",gear),new Tab("Skills",skills)),List.of());
     }
 }

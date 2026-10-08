@@ -9,6 +9,8 @@ import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -36,6 +38,12 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 /** Player-discovered sites use loaded, unclaimed natural terrain. Defenders and loot are finite and saved. */
 public final class ExpeditionService {
     private int cursor;
+    /** When each neutral town may next be raided, so a friendly visit does not bring raiders every few minutes. */
+    private static final Map<UUID,Long> NEXT_RAID=new HashMap<>();
+    /** Raids in which a player, or a player town's citizen, killed at least one raider. */
+    private static final Set<UUID> FOUGHT=new HashSet<>();
+    /** How often a rescue was attempted while some captives were not loaded yet. */
+    private static final Map<UUID,Integer> RESCUE_TRIES=new HashMap<>();
     private static boolean nearby(ServerLevel level,BlockPos pos,int range) {
         return level.players().stream().anyMatch(p -> p.isAlive() && !p.isSpectator() && p.distanceToSqr(Vec3.atCenterOf(pos))<(double)range*range);
     }
@@ -65,10 +73,18 @@ public final class ExpeditionService {
         if(!level.hasChunkAt(probe)) return null;
         BlockPos pos=new BlockPos(probe.getX(),level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,probe.getX(),probe.getZ()),probe.getZ());
         if(!clearSite(level,pos)) return null;
-        ExpeditionData.Site site=new ExpeditionData.Site(UUID.nameUUIDFromBytes((level.getSeed()+":"+region).getBytes(StandardCharsets.UTF_8)),pos,kind,region);
+        UUID id=UUID.nameUUIDFromBytes((level.getSeed()+":"+region).getBytes(StandardCharsets.UTF_8));
+        String objective=switch(kind) {
+            case "fort" -> ExpeditionData.Site.LEADER;
+            case "camp" -> Math.floorMod(id.hashCode(),2)==0 ? ExpeditionData.Site.RESCUE : ExpeditionData.Site.RECOVER;
+            default -> ExpeditionData.Site.CLEAR;
+        };
+        Regions.Region land=Regions.of(level,pos);
+        ExpeditionData.Site site=new ExpeditionData.Site(id,pos,kind,region,objective,land.id());
         build(level,site); data.sites.add(site); data.setDirty();
         for(Settlement town:SettlementData.get(level).settlements) if(!town.trading.npc && town.center.distSqr(pos)<4096.0*4096.0)
-            CampaignService.record(level,town,"Scouts found a "+site.title()+" at "+pos.toShortString()+". Clear it for supplies and an outpost site.");
+            CampaignService.record(level,town,"Scouts found a "+site.title()+" at "+pos.toShortString()+" in the "+land.title().toLowerCase(Locale.ROOT)
+                    +". "+site.goal()+"; an outpost there would mine "+land.ore().getName().getString().toLowerCase(Locale.ROOT)+".");
         return site;
     }
     private static void put(ServerLevel level,BlockPos pos,net.minecraft.world.level.block.state.BlockState state) {
@@ -96,7 +112,179 @@ public final class ExpeditionService {
         cache.setItem(0,new ItemStack(Items.IRON_INGOT,site.kind.equals("fort") ? 24 : 12));
         cache.setItem(1,new ItemStack(Items.BREAD,16)); cache.setItem(2,new ItemStack(Items.EMERALD,4));
         cache.setItem(3,new ItemStack(Items.STONE_PICKAXE)); cache.setItem(4,new ItemStack(Items.PAPER,16)); cache.setChanged();
-        if(site.kind.equals("mine")) for(int y=0;y<2;y++) level.setBlock(c.offset(-4,y,-1),Blocks.IRON_ORE.defaultBlockState(),3);
+        if(site.kind.equals("mine")) for(int y=0;y<2;y++) level.setBlock(c.offset(-4,y,-1),ore(site).defaultBlockState(),3);
+        if(ExpeditionData.Site.RESCUE.equals(site.objective)) {
+            // A fenced pen in the south-east corner, clear of the outpost's station spots.
+            for(int x=2;x<=4;x++) for(int z=1;z<=4;z++) if((x==2 || x==4 || z==1 || z==4) && !(x==4 && z==4)) put(level,c.offset(x,0,z),Blocks.OAK_FENCE.defaultBlockState());
+        }
+        if(ExpeditionData.Site.RECOVER.equals(site.objective)) {
+            put(level,c.offset(3,0,-3),Blocks.BARREL.defaultBlockState());
+            var stolen=(Container)level.getBlockEntity(c.offset(3,0,-3));
+            stolen.setItem(0,new ItemStack(Items.IRON_INGOT,16)); stolen.setItem(1,new ItemStack(Items.BREAD,24)); stolen.setItem(2,new ItemStack(Items.LEATHER,8));
+            stolen.setItem(3,new ItemStack(Items.GOLD_INGOT,4)); stolen.setItem(4,new ItemStack(Items.IRON_PICKAXE)); stolen.setItem(5,new ItemStack(Items.EMERALD,8));
+            stolen.setChanged();
+        }
+    }
+    /** The ore an outpost at this site mines: its region's, or iron for sites found before regions. */
+    public static net.minecraft.world.level.block.Block ore(ExpeditionData.Site site) {
+        Regions.Region land=Regions.byId(site.resource);
+        return land==null ? Blocks.IRON_ORE : land.ore();
+    }
+    private static void captives(ServerLevel level,ExpeditionData.Site site) {
+        if(!ExpeditionData.Site.RESCUE.equals(site.objective) || !site.captives.isEmpty()) return;
+        List<BlockPos> spots=List.of(site.pos.offset(3,0,2),site.pos.offset(3,0,3));
+        for(int n=0;n<spots.size();n++) {
+            CitizenEntity captive=WWMC.CITIZEN.get().create(level,EntitySpawnReason.EVENT);
+            if(captive==null) continue;
+            BlockPos spot=spots.get(n);
+            captive.setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5);
+            // Captives wait, unharmed, until they are freed.
+            captive.setNoAi(true); captive.setInvulnerable(true);
+            captive.setCustomName(Component.literal("Captive villager"));
+            if(level.addFreshEntity(captive)) site.captives.add(captive.getUUID());
+        }
+        ExpeditionData.get(level).setDirty();
+    }
+    private static void captain(ServerLevel level,ExpeditionData.Site site) {
+        if(!ExpeditionData.Site.LEADER.equals(site.task()) || site.leader!=null || level.getDifficulty()==Difficulty.PEACEFUL) return;
+        var entity=BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.withDefaultNamespace("vindicator")).create(level,EntitySpawnReason.EVENT);
+        if(!(entity instanceof Mob captain)) return;
+        BlockPos pos=site.pos.north(2);
+        captain.setPos(pos.getX()+0.5,pos.getY(),pos.getZ()+0.5);
+        if(!level.noCollision(captain)) captain.setPos(site.pos.getX()+0.5,site.pos.getY(),site.pos.getZ()+0.5);
+        captain.finalizeSpawn(level,level.getCurrentDifficultyAt(pos),EntitySpawnReason.EVENT,null);
+        captain.setCustomName(Component.literal("Bandit Captain")); captain.setCustomNameVisible(true);
+        captain.setItemSlot(EquipmentSlot.HEAD,new ItemStack(Items.IRON_HELMET)); captain.setItemSlot(EquipmentSlot.CHEST,new ItemStack(Items.IRON_CHESTPLATE));
+        captain.setItemSlot(EquipmentSlot.LEGS,new ItemStack(Items.IRON_LEGGINGS)); captain.setItemSlot(EquipmentSlot.FEET,new ItemStack(Items.IRON_BOOTS));
+        captain.setItemSlot(EquipmentSlot.MAINHAND,new ItemStack(Items.IRON_AXE));
+        // The captain's gear is the expedition's equipment reward.
+        for(EquipmentSlot slot:new EquipmentSlot[]{EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET,EquipmentSlot.MAINHAND}) captain.setDropChance(slot,1.0F);
+        var health=captain.getAttribute(Attributes.MAX_HEALTH);
+        if(health!=null) health.setBaseValue(60);
+        captain.setHealth(captain.getMaxHealth());
+        captain.setPersistenceRequired(); captain.addTag("wwmc_expedition_"+site.id); captain.addTag("wwmc_captain");
+        if(level.addFreshEntity(captain)) { site.guards.add(captain.getUUID()); site.leader=captain.getUUID(); ExpeditionData.get(level).setDirty(); }
+    }
+    /** The nearest managing player's town within this many blocks of a place: a main town before an outpost, then the nearest. */
+    private static Settlement credit(ServerLevel level,BlockPos pos,int range) {
+        Settlement best=null; double nearest=(double)range*range;
+        for(ServerPlayer player:level.players()) {
+            if(!player.isAlive() || player.isSpectator()) continue;
+            double distance=player.distanceToSqr(Vec3.atCenterOf(pos));
+            if(distance>nearest) continue;
+            Settlement managed=SettlementData.get(level).settlements.stream().filter(t -> !t.trading.npc && TownAccess.manages(t,player.getUUID()))
+                    .min(Comparator.comparing((Settlement t) -> t.campaign.parent!=null).thenComparingDouble(t -> t.center.distSqr(pos))).orElse(null);
+            if(managed!=null) { nearest=distance; best=managed; }
+        }
+        return best;
+    }
+    /** Grants a cleared site's reward once one of the clearing town's managers is there to receive it. */
+    private static boolean reward(ServerLevel level,ExpeditionData.Site site) {
+        if(ExpeditionData.Site.DEFEND.equals(site.objective) && !FOUGHT.contains(site.id)) {
+            // Nobody from a player town fought: the neighbor's own guards won, and no one is owed thanks.
+            Settlement neighbor=site.victim==null ? null : SettlementData.get(level).byId(site.victim);
+            if(neighbor!=null) CampaignService.record(level,neighbor,neighbor.name+"'s own guards drove off a bandit raid.");
+            site.rewarded=true; ExpeditionData.get(level).setDirty();
+            return true;
+        }
+        Settlement town=credit(level,site.pos,ExpeditionData.Site.DEFEND.equals(site.objective) ? 96 : 24);
+        if(town==null) return false;
+        switch(site.task()) {
+            case ExpeditionData.Site.RESCUE -> {
+                int freed=0;
+                int tries=RESCUE_TRIES.merge(site.id,1,Integer::sum);
+                for(UUID id:List.copyOf(site.captives)) {
+                    // Captives load with their chunk a moment after the player arrives; one still missing later is lost.
+                    if(!(level.getEntity(id) instanceof CitizenEntity captive) || !captive.isAlive()) { if(tries>=5) site.captives.remove(id); continue; }
+                    site.captives.remove(id);
+                    captive.setNoAi(false); captive.setInvulnerable(false);
+                    captive.join(town.id);
+                    if(!town.citizens.contains(id)) town.citizens.add(id);
+                    captive.setCustomName(Component.literal(SettlementService.citizenName(level,town,id)));
+                    freed++;
+                }
+                if(freed>0) CampaignService.record(level,town,freed+(freed==1 ? " captive" : " captives")+" freed at the "+site.title()+" joined "+town.name+". They head home once you leave the camp.");
+                if(!site.captives.isEmpty()) { ExpeditionData.get(level).setDirty(); SettlementData.get(level).setDirty(); return false; }
+                RESCUE_TRIES.remove(site.id);
+            }
+            case ExpeditionData.Site.RECOVER -> CampaignService.record(level,town,"Recovered the stolen supplies at the "+site.title()+" ("+site.pos.east(3).north(3).toShortString()
+                    +"). Carry them home or claim the site as an outpost.");
+            case ExpeditionData.Site.LEADER -> {
+                String schematic=Research.SCHEMATICS.stream().filter(id -> !town.progress.schematics.contains(id)).findFirst().orElse("");
+                if(schematic.isEmpty()) CampaignService.record(level,town,"The Bandit Captain is defeated. "+town.name+" already holds every schematic; keep the captain's gear.");
+                else {
+                    town.progress.schematics.add(schematic);
+                    CampaignService.record(level,town,"The Bandit Captain is defeated. Recovered the "+Research.schematicTitle(schematic).toLowerCase(Locale.ROOT)
+                            +": new research is possible on the Campaign screen.");
+                }
+            }
+            case ExpeditionData.Site.DEFEND -> {
+                Settlement neighbor=site.victim==null ? null : SettlementData.get(level).byId(site.victim);
+                FOUGHT.remove(site.id);
+                if(neighbor!=null) {
+                    neighbor.trading.relations.merge(town.owner,150,(a,b) -> Math.min(1000,a+b));
+                    boolean volunteered=town.citizens.size()<SettlementService.populationLimit(town) && volunteer(level,neighbor,town);
+                    CampaignService.record(level,town,"Drove the raiders off "+neighbor.name+". Its people are grateful"
+                            +(volunteered ? ", and a volunteer joins "+town.name+"." : "; with room in "+town.name+", a volunteer would have joined."));
+                    CampaignService.record(level,neighbor,town.name+" drove off a bandit raid.");
+                }
+            }
+            default -> {}
+        }
+        site.rewarded=true; ExpeditionData.get(level).setDirty(); SettlementData.get(level).setDirty();
+        return true;
+    }
+    /** A neighbor's grateful volunteer: a new citizen beside its banner who joins the defending town and walks home in time. */
+    private static boolean volunteer(ServerLevel level,Settlement neighbor,Settlement town) {
+        CitizenEntity citizen=WWMC.CITIZEN.get().create(level,EntitySpawnReason.EVENT);
+        if(citizen==null) return false;
+        for(int x=-3;x<=3;x++) for(int z=-3;z<=3;z++) {
+            BlockPos trial=neighbor.center.offset(x,0,z);
+            if(!level.hasChunkAt(trial)) continue;
+            citizen.setPos(trial.getX()+0.5,trial.getY(),trial.getZ()+0.5);
+            if(!level.noCollision(citizen) || level.getBlockState(trial.below()).isAir()) continue;
+            citizen.join(town.id);
+            citizen.setCustomName(Component.literal(SettlementService.citizenName(level,town,citizen.getUUID())));
+            if(!level.addFreshEntity(citizen)) return false;
+            town.citizens.add(citizen.getUUID());
+            return true;
+        }
+        return false;
+    }
+    /** Bandits sometimes raid a neutral town while a friendly player visits; at most once every two days per town. */
+    private static void raids(ServerLevel level) {
+        var data=ExpeditionData.get(level);
+        long now=level.getGameTime();
+        for(Settlement npc:SettlementData.get(level).settlements) {
+            if(!npc.trading.npc || npc.citizens.isEmpty() || !level.hasChunkAt(npc.center)) continue;
+            if(NEXT_RAID.getOrDefault(npc.id,0L)>now) continue;
+            if(data.sites.stream().anyMatch(s -> ExpeditionData.Site.DEFEND.equals(s.objective) && !s.rewarded && npc.id.equals(s.victim))) continue;
+            ServerPlayer friend=level.players().stream().filter(p -> p.isAlive() && !p.isSpectator() && p.distanceToSqr(Vec3.atCenterOf(npc.center))<96*96
+                    && npc.trading.relations.getOrDefault(p.getUUID(),0)>=0
+                    && SettlementData.get(level).settlements.stream().anyMatch(t -> !t.trading.npc && TownAccess.manages(t,p.getUUID()))).findFirst().orElse(null);
+            if(friend==null) continue;
+            NEXT_RAID.put(npc.id,now+48000);
+            if(level.getRandom().nextInt(4)!=0) continue;
+            BlockPos ground=raidGround(level,npc.center);
+            if(ground==null) continue;
+            ExpeditionData.Site raid=new ExpeditionData.Site(UUID.randomUUID(),npc.center,"raid","raid:"+npc.id+":"+now,ExpeditionData.Site.DEFEND,"");
+            raid.victim=npc.id; raid.spawned=true;
+            if(spawn(level,raid,ground,4)==0) continue;
+            data.sites.add(raid); data.setDirty();
+            String text="Bandits are raiding "+npc.name+" at "+ground.toShortString()+"! Drive them off for goodwill and a volunteer.";
+            SettlementService.tell(friend,text);
+            for(Settlement town:SettlementData.get(level).settlements) if(!town.trading.npc && TownAccess.manages(town,friend.getUUID())) CampaignService.record(level,town,text);
+        }
+    }
+    private static BlockPos raidGround(ServerLevel level,BlockPos center) {
+        for(int attempt=0;attempt<8;attempt++) {
+            double angle=level.getRandom().nextDouble()*Math.PI*2;
+            BlockPos column=center.offset((int)Math.round(Math.cos(angle)*28),0,(int)Math.round(Math.sin(angle)*28));
+            if(!level.hasChunkAt(column)) continue;
+            BlockPos ground=new BlockPos(column.getX(),level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,column.getX(),column.getZ()),column.getZ());
+            if(level.getFluidState(ground.below()).isEmpty()) return ground;
+        }
+        return null;
     }
     private static int aliveBudget(ServerLevel level) { return ExpeditionData.get(level).sites.stream().mapToInt(s -> s.guards.size()).sum(); }
     public static int spawn(ServerLevel level,ExpeditionData.Site site,BlockPos origin,int count) {
@@ -122,7 +310,7 @@ public final class ExpeditionService {
         if(!TownAccess.manages(parent,player.getUUID())) return "You need steward permission.";
         if(!parent.campaign.projects.contains("frontier")) return "Complete the Frontier Charter project first.";
         if(parent.campaign.extraRoutes.size()>=4) return "Disconnect an extra supply route before claiming another outpost.";
-        if(site==null || !site.cleared || site.claimed!=null) return "Choose an unclaimed, cleared expedition site.";
+        if(site==null || !site.cleared || site.claimed!=null || site.kind.equals("raid")) return "Choose an unclaimed, cleared expedition site.";
         if(player.distanceToSqr(Vec3.atCenterOf(site.pos))>12*12) return "Walk to the cleared site to claim it; use /wwmc outpost claim there.";
         var data=SettlementData.get(level);
         if(data.settlements.stream().anyMatch(t -> t.overlaps(site.pos,Settlement.MIN_RADIUS))) return "This site overlaps a newer settlement claim.";
@@ -136,10 +324,16 @@ public final class ExpeditionService {
         outpost.jobs.setLevel(StructureRole.MINE,JobBoard.HIGH); outpost.priority=JobBoard.CUSTOM;
         outpost.campaign.requests.put("minecraft:bread",32); outpost.campaign.requests.put("minecraft:stone_pickaxe",2);
         outpost.campaign.requests.put("minecraft:oak_planks",16);
-        outpost.trading.exports.add(new TradeSettings.Export("minecraft:raw_iron",4,32));
+        Regions.Region land=Regions.byId(site.resource);
+        outpost.trading.exports.add(new TradeSettings.Export(land==null ? "minecraft:raw_iron" : land.product(),4,32));
         put(level,site.pos,WWMC.BANNER.get().defaultBlockState());
         for(var role:List.of(StructureRole.WAREHOUSE,StructureRole.TRADER,StructureRole.MINE,StructureRole.HOUSING,StructureRole.COURIER)) {
             BlockPos p=station(site.pos,role); put(level,p,WWMC.STATIONS.get(role).get().defaultBlockState()); outpost.stations.add(new Station(p,role));
+        }
+        // Every outpost's mine works its region's ore as an endless vein.
+        for(int y=0;y<2;y++) {
+            BlockPos vein=site.pos.offset(-4,y,-1);
+            if(level.hasChunkAt(vein) && level.getBlockState(vein).isAir()) level.setBlock(vein,ore(site).defaultBlockState(),3);
         }
         data.settlements.add(outpost); site.claimed=outpost.id; ExpeditionData.get(level).setDirty();
         parent.campaign.extraRoutes.add(outpost.id); outpost.campaign.extraRoutes.add(parent.id);
@@ -162,10 +356,15 @@ public final class ExpeditionService {
             BlockPos probe=new BlockPos(rx*768+128+random.nextInt(512),0,rz*768+128+random.nextInt(512));
             discover(level,probe,List.of("camp","mine","fort").get(random.nextInt(3)),rx+":"+rz);
         }
+        if(level.getGameTime()%200==0) raids(level);
+        // A defended raid leaves nothing to claim; its record goes once the defenders are thanked.
+        if(data.sites.removeIf(s -> s.kind.equals("raid") && s.rewarded)) data.setDirty();
         for(var site:data.sites) {
             if(!level.hasChunkAt(site.pos)) continue;
-            if(!site.spawned && nearby(level,site.pos,96) && spawn(level,site,site.pos,site.kind.equals("fort") ? 6 : 3)>0) { site.spawned=true; data.setDirty(); }
-            if(site.cleared) continue;
+            if(!site.spawned && nearby(level,site.pos,96) && spawn(level,site,site.pos,site.kind.equals("fort") ? 6 : 3)>0) {
+                site.spawned=true; captives(level,site); captain(level,site); data.setDirty();
+            }
+            if(site.cleared) { if(!site.rewarded && !site.task().isEmpty() && !site.task().equals(ExpeditionData.Site.CLEAR)) reward(level,site); continue; }
             for(UUID id:site.guards) if(level.getEntity(id) instanceof Mob bandit && bandit.isAlive()) {
                 CitizenEntity soldier=level.getEntitiesOfClass(CitizenEntity.class,bandit.getBoundingBox().inflate(24),c -> c.isAlive() && c.isGuard()
                         && SquadService.assigned(c.town(level),c.getUUID())).stream().min(Comparator.comparingDouble(bandit::distanceToSqr)).orElse(null);
@@ -176,7 +375,7 @@ public final class ExpeditionService {
         }
     }
     private static void ambush(ServerLevel level,ExpeditionData.Site site) {
-        if(!site.spawned || site.cleared || !Config.CONVOY_RAIDS.get()) return;
+        if(!site.spawned || site.cleared || !Config.CONVOY_RAIDS.get() || site.kind.equals("raid")) return;
         if(site.ambush!=null) {
             if(level.getGameTime()<site.nextRaid) return;
             Settlement victim=site.victim==null ? null : SettlementData.get(level).byId(site.victim);
@@ -204,6 +403,9 @@ public final class ExpeditionService {
     }
     @SubscribeEvent public void died(LivingDeathEvent event) {
         if(!(event.getEntity().level() instanceof ServerLevel level)) return;
+        var killer=event.getSource().getEntity();
+        boolean helper=killer instanceof ServerPlayer || killer instanceof CitizenEntity citizen && citizen.town(level)!=null && !citizen.town(level).trading.npc;
+        if(helper) for(var site:ExpeditionData.get(level).sites) if(site.kind.equals("raid") && site.guards.contains(event.getEntity().getUUID())) FOUGHT.add(site.id);
         removed(level,event.getEntity().getUUID());
     }
     @SubscribeEvent public void left(EntityLeaveLevelEvent event) {
@@ -214,6 +416,10 @@ public final class ExpeditionService {
     private static void removed(ServerLevel level,UUID defender) {
         var data=ExpeditionData.get(level);
         for(var site:data.sites) if(site.guards.remove(defender)) {
+            if(defender.equals(site.leader))
+                for(Settlement town:SettlementData.get(level).settlements) if(!town.trading.npc && town.center.distSqr(site.pos)<4096.0*4096.0)
+                    CampaignService.record(level,town,"The Bandit Captain of the "+site.title()+" at "+site.pos.toShortString()+" has fallen; its gear lies where it died.");
+            if(site.spawned && site.guards.isEmpty() && site.kind.equals("raid")) { site.cleared=true; data.setDirty(); break; }
             if(site.spawned && site.guards.isEmpty()) {
                 site.cleared=true; site.ambush=null;
                 for(Settlement town:SettlementData.get(level).settlements) if(!town.trading.npc && town.center.distSqr(site.pos)<4096.0*4096.0)

@@ -1,6 +1,6 @@
-# Multiplayer campaign — 0.12.2-alpha
+# Multiplayer campaign — 0.13.0-alpha
 
-The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same 0.12.2-alpha JAR on the server and every client. Existing towns keep their owners, stations and inventories; new campaign data starts empty. Every job block has one citizen except quarries, which keep their configured crew and upgrades. Surplus workers from old crews take other open jobs.
+The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same 0.13.0-alpha JAR on the server and every client. Existing towns keep their owners, stations and inventories; new campaign data starts empty. Every job block has one citizen except quarries, which keep their configured crew and upgrades. Surplus workers from old crews take other open jobs.
 
 ## Playing together
 
@@ -63,6 +63,20 @@ Orders persist across restart. A missing, dead, disconnected or dimension-changi
 
 Explore for **Bandit Camps**, **Occupied Mines** and **Ruined Forts**. Discovery uses loaded, dry, relatively level natural ground outside existing claims. It rejects player-protected blocks and block entities. Sites contain finite defenders, supplies, beds and useful storage; generation never rebuilds over later player changes. Site state, defender identities and cleared status persist across restart. Campaign -> Sites lists discovered coordinates and remaining defenders.
 
+### Objectives and rewards
+
+Every site found from 0.13.0 has an objective. Sites found earlier keep their plain "drive out the occupiers" goal.
+
+| Site | Objective | Reward |
+| --- | --- | --- |
+| Bandit Camp | **Rescue**: two captive villagers wait unharmed in a fenced pen | They join your town once you stand among them after the fight. When you leave, the recall service brings them home. |
+| Bandit Camp | **Recover**: a second barrel holds stolen iron, gold, leather, bread, emeralds and a pickaxe | The goods themselves; carry them home or claim the site |
+| Ruined Fort | **Defeat the Bandit Captain**: a vindicator in iron armor with 60 health | Its armor and axe drop; your town gains a research schematic |
+| Occupied Mine | **Drive out the occupiers** | An ore vein for an outpost |
+| Neighbor raid | **Defend a neutral town** raided while a friendly player visits, at most once every two days per town | If a player or a player town's citizen killed a raider: goodwill (+150) and a volunteer citizen, if your town has room. A raid the neutral guards repel alone earns nothing. |
+
+Rewards go to a town managed by the nearest player when the site is cleared. That player must be within 24 blocks of a site, or 96 blocks of a raided town. A main town is credited before an outpost, so schematics reach the town that does the research. Forts found before 0.13.0 also hold a captain if not yet entered; a fort cleared before the update gives its schematic the next time a manager visits it. Campaign -> Sites and the settlement map show each site's objective and its region.
+
 Occupied sites close to a trader can issue a 30-second ambush warning. Small convoy attacks launch only with a nearby player and respect the configured bandit cap. Clearing the camp stops that site's ambushes. Existing population-scaled settlement waves continue, now recognizing a present steward as well as the owner. Absent or distant towns retain their major-wave protection.
 
 ## Outposts and recovery
@@ -71,11 +85,58 @@ After a Frontier Charter, walk to a cleared, unclaimed site and use `/wwmc outpo
 
 A reciprocal extra route connects the outpost to its parent without replacing the parent's main trading partner. Requests start at 32 bread, two stone pickaxes and 16 oak planks; raw iron exports keep four at the outpost. Couriers remain the only internal haulers. Mining and other production wait when both local food stock and the worker's food bag are empty. Traders and couriers continue so a shortage can recover through deliveries. Players can expand or change the outpost like another town.
 
+### Regional resources
+
+Each site records the land it stands on. An outpost claimed there places that region's ore beside its mine, so its miner works it as an endless vein. The outpost exports that ore's product home instead of raw iron.
+
+| Region | Ore | Exported |
+| --- | --- | --- |
+| Highlands (mountains, hills) | Emerald | Emeralds |
+| Drylands (badlands, desert) | Gold | Raw gold |
+| Jungle | Lapis lazuli | Lapis lazuli |
+| Coast and rivers | Copper | Raw copper |
+| Savanna | Redstone | Redstone |
+| Northern taiga | Coal | Coal |
+| Lowlands, everywhere else | Iron | Raw iron |
+
+### Research
+
+Campaign -> Research spends real warehouse goods once, like projects. Several costs are regional, so a realm needs outposts in different lands.
+
+| Research | Costs | Effect |
+| --- | --- | --- |
+| Steel Tools | 32 iron ingots, 16 coal, 8 gold ingots | Miners, quarry workers, lumberjacks, hunters, fishermen and butchers wear tools 15% less |
+| Forge Bellows | 24 copper ingots, 16 coal, 8 leather | Cooks and smelters work 15% faster |
+| Crop Rotation | 32 bone meal, 16 lapis lazuli, 32 wheat seeds | Farmers work 15% faster |
+| Field Medicine | 24 paper, 8 gold ingots, 16 lapis lazuli | Hospital beds heal twice as fast |
+| Reinforced Armor | 32 iron ingots, 16 emeralds, 8 leather; armorer's schematic | Guards take 10% less damage |
+| Signal Fires | 32 coal, 16 redstone, 8 copper ingots; signal tower schematic | Watchtowers see 64 blocks and warn every minute |
+| Deep Mining | 32 iron ingots, 16 redstone, 8 gold ingots; deep mining schematic | Ore veins replenish 25% faster |
+
+Each defeated Bandit Captain gives one schematic the town does not yet hold.
+
+### Recovery and supplies
+
 Every injured citizen now rests in a reserved Hospital Station bed until full health. Beds heal 1 health every 5 loaded seconds without supplies. Fund the Field Hospital to unlock a medic, who spends one real meal and one paper dressing for 1 additional health per treatment. See [Production and recovery](production-recovery.md).
 
 Hungry workers also visit the communal pantry while their station is idle. They approach from clear ground within four-block hand reach, including raised warehouses and stations beside storage barrels. Scarce meals remain shared one at a time; an empty pantry lets food producers continue working.
 
 Couriers supply one usable tool per assigned worker and count tools already in workers' hands or bags. An equipped hunter therefore leaves the butcher's axe and other spare tools in shared stock; worn tools still trigger a replacement delivery.
+
+## Shared map and pings
+
+Campaign -> **Map**, or `/wwmc map`, opens a top-down map centered on you. It shows:
+
+- Every claim, colored by its relation to you: yours, allied, neutral, hostile or another player's.
+- The trade routes of your own and allied towns.
+- Expedition sites and raids.
+- Pings, and your own position.
+
+Scroll or use - and + to zoom from 256 to 16,384 blocks across. N, S, E and W pan the map, and Me centers it on you. Hover anything for details.
+
+Choose a ping kind with the Ping button: meet here, build a bridge, build here, danger or resources. Then click the map to place it. Right-click your own ping to remove it; a town's managers can remove any of its pings. `/wwmc ping <kind> [note]` marks where you stand.
+
+A ping belongs to the managed town you stand in, or your nearest one. That town's managers and its allies' managers see it, and placing it is written in the town journal. Each town keeps its 16 newest pings.
 
 ## Neighbor opportunities and journal
 
@@ -107,6 +168,9 @@ For personal deliveries or remaining reward collection, bring goods to the reque
 | `/wwmc outpost claim` | Claim the cleared site you are standing at |
 | `/wwmc contract accept/deliver <contract UUID>` | Accept an offer or make a personal delivery/collect payment |
 | `/wwmc journal` | Read recent town history |
+| `/wwmc needs` | List the town's needs, most urgent first |
+| `/wwmc map` | Open the shared settlement map |
+| `/wwmc ping <kind> [note]` | Share a ping where you stand: meet, bridge, build, danger or resource |
 
 Town commands select the managed town you stand inside, then a town whose squad you lead, then your nearest managed town. Membership and alliance changes always require the immutable owner. Campaign board actions require being within eight blocks of the banner; field orders remain available away from it. All authority and item movement are checked on the server.
 

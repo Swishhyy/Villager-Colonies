@@ -211,7 +211,9 @@ public final class DefenseService {
         long now=level.getGameTime();
         for(CitizenEntity citizen:citizens) {
             boolean guard=citizen.isGuard();
-            int range=guard ? (alert ? ALERT_SIGHT : GUARD_SIGHT) : CIVILIAN_SIGHT,scan=guard ? range : REPORT_SIGHT;
+            BlockPos post=guard ? town.jobs.home(citizen.getUUID()) : null;
+            // A watchtower's guard sees much farther across the town.
+            int range=guard ? (post!=null && GuardRoles.watchtower(level,post) ? GuardRoles.towerSight(town) : alert ? ALERT_SIGHT : GUARD_SIGHT) : CIVILIAN_SIGHT,scan=guard ? range : REPORT_SIGHT;
             for(Monster monster:level.getEntitiesOfClass(Monster.class,citizen.getBoundingBox().inflate(scan),
                     m -> m.isAlive() && town.contains(m.blockPosition()) && !(seen.contains(m) && (guard || reported.contains(m))))) {
                 double distance=citizen.distanceToSqr(monster);
@@ -261,6 +263,7 @@ public final class DefenseService {
         // With nobody left to see anything, a raised alarm still counts down to the all-clear.
         if(citizens.isEmpty() && alert==null) return;
         int threshold=Config.ALARM_THRESHOLD.get();
+        GuardRoles.lookout(level,town,citizens);
         Set<Monster> seen=sighted(level,town,citizens,alert!=null && alert.state.ringing());
         if(alert==null) {
             if(seen.size()<threshold) return;
@@ -287,5 +290,5 @@ public final class DefenseService {
         if(!(event.getLevel() instanceof ServerLevel level) || level.getGameTime()%INTERVAL!=0) return;
         for(Settlement town:SettlementData.get(level).settlements) assess(level,town);
     }
-    @SubscribeEvent public void stopped(ServerStoppedEvent event) { ALERTS.clear(); INTERNAL_RINGS.clear(); THREATS.clear(); }
+    @SubscribeEvent public void stopped(ServerStoppedEvent event) { ALERTS.clear(); INTERNAL_RINGS.clear(); THREATS.clear(); GuardRoles.forget(); }
 }

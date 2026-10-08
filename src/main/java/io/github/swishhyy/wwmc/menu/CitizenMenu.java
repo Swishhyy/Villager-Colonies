@@ -13,7 +13,7 @@ import net.minecraft.world.item.ItemStack;
 
 /** A citizen's status and equipment above their 36-slot bag, which the owner can fill or empty. */
 public final class CitizenMenu extends SettlementMenu {
-    public static final int WIDTH=176,HEIGHT=250,BAG_X=8,BAG_Y=83,INVENTORY_X=8,INVENTORY_Y=168,GEAR_Y=53;
+    public static final int WIDTH=176,HEIGHT=262,BAG_X=8,BAG_Y=95,INVENTORY_X=8,INVENTORY_Y=180,GEAR_Y=65,SKILL_Y=53;
     private final Container bag;
     private final CitizenEntity citizen;
     public CitizenMenu(int id,Inventory inventory,Container bag,CitizenEntity citizen,ServerPlayer viewer,PanelView view) {

@@ -14,7 +14,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Server-owned campaign and field-order panels. Row keys identify operations; every click is authorized afresh. */
 public final class CampaignViews {
-    public static final int OPEN=70,ROW_ACTION=71,BACK=72;
+    public static final int OPEN=70,ROW_ACTION=71,BACK=72,MAP=73;
     private CampaignViews() {}
     private static PanelView.Row row(net.minecraft.world.level.ItemLike icon,String title,String detail,String key,int value) {
         return new PanelView.Row(new ItemStack(icon),Component.literal(title),Component.literal(detail),0,-1,value,key);
@@ -46,7 +46,7 @@ public final class CampaignViews {
     public static PanelView build(ServerLevel level,Settlement town,ServerPlayer viewer,boolean orders) {
         if(orders) return new PanelView(Component.literal(town.name+" · Field Orders"),Component.literal("Lead your guards in person; troops use their own equipment and supplies"),
                 List.of(new PanelView.Tab("Army",army(level,town,viewer)),new PanelView.Tab("Sites",sites(level,town))),List.of());
-        List<PanelView.Row> supply=new ArrayList<>(),projects=new ArrayList<>(),journal=new ArrayList<>();
+        List<PanelView.Row> supply=new ArrayList<>(),projects=new ArrayList<>(),journal=new ArrayList<>(),research=research(level,town);
         SupplyRequests.snapshotLoaded(level,town);
         supply.add(row(Items.COMPASS,"Industry: "+town.campaign.specialty,"Click the industry rows to choose a focus; matching terrain adds a larger bonus","",-1));
         for(String name:Specialization.NAMES) supply.add(action(Items.COMPASS,"Industry: "+name,name.equals("balanced") ? "Normal production speed for all jobs" : Specialization.terrain(level,town,name) ? "Matching terrain: 25% faster matching work" : "10% faster matching work; all other jobs remain available",
@@ -79,9 +79,10 @@ public final class CampaignViews {
             var entry=town.campaign.journal.get(n); journal.add(row(Items.WRITABLE_BOOK,"Day "+(entry.time()/24000+1)+", "+Math.max(0,(level.getGameTime()-entry.time())/1200)+" min ago",entry.text(),"",-1));
         }
         return new PanelView(Component.literal(town.name+" · Campaign"),Component.literal("Shared management, supply goals, projects and expeditions"),
-                List.of(new PanelView.Tab("Supply",supply),new PanelView.Tab("Projects",projects),
+                List.of(new PanelView.Tab("Supply",supply),new PanelView.Tab("Projects",projects),new PanelView.Tab("Research",research),
                         new PanelView.Tab("Army",army(level,town,viewer)),new PanelView.Tab("Sites",sites(level,town)),new PanelView.Tab("Journal",journal)),
-                List.of(new PanelView.Action(BACK,"Town overview",true),new PanelView.Action(RelationshipViews.OPEN,"Relationships",true)));
+                List.of(new PanelView.Action(BACK,"Town overview",true),new PanelView.Action(RelationshipViews.OPEN,"Relationships",true),
+                        new PanelView.Action(MAP,"Map",true,"Claims, trade routes, expedition sites and pings shared with your allies; also /wwmc map")));
     }
     private static List<PanelView.Row> army(ServerLevel level,Settlement town,ServerPlayer viewer) {
         List<PanelView.Row> rows=new ArrayList<>(); boolean led=town.campaign.squads.stream().anyMatch(s -> s.leader().equals(viewer.getUUID()));
@@ -98,11 +99,37 @@ public final class CampaignViews {
         }
         return rows;
     }
+    /** Technologies, their regional costs, and the schematics and regions this town can draw on. */
+    private static List<PanelView.Row> research(ServerLevel level,Settlement town) {
+        List<PanelView.Row> rows=new ArrayList<>();
+        rows.add(row(Items.WRITABLE_BOOK,"Research","Spend warehouse goods, many from regional outposts, on lasting improvements. Schematics: "
+                +(town.progress.schematics.isEmpty() ? "none yet; fortified bandit captains carry them" : String.join(", ",town.progress.schematics.stream().map(Research::schematicTitle).toList())),"",-1));
+        for(Research.Tech tech:Research.ALL) {
+            boolean done=Research.has(town,tech.id());
+            String missing=done ? "" : Research.missing(level,town,tech);
+            String costs=String.join(", ",tech.costs().stream().map(c -> c.count()+" "+c.name()).toList());
+            rows.add(action(done ? Items.ENCHANTED_BOOK : Items.BOOK,tech.title()+": "+(done ? "researched" : missing.isEmpty() ? "ready" : "waiting"),
+                    tech.benefit()+". Costs "+costs+(tech.schematic().isEmpty() ? "" : "; needs the "+Research.schematicTitle(tech.schematic()).toLowerCase(Locale.ROOT))
+                            +(missing.isEmpty() ? "" : ". "+missing),"research:"+tech.id(),!done && missing.isEmpty()));
+        }
+        for(Regions.Region land:Regions.ALL) {
+            List<String> outposts=SettlementData.get(level).settlements.stream().filter(t -> town.id.equals(t.campaign.parent))
+                    .filter(t -> ExpeditionData.get(level).sites.stream().anyMatch(s -> t.id.equals(s.claimed) && land.id().equals(s.resource))).map(t -> t.name).toList();
+            rows.add(row(land.ore(),land.title()+": "+land.ore().getName().getString(),outposts.isEmpty() ? "No outpost here yet: claim a cleared site in this land to mine it endlessly"
+                    : "Mined at "+String.join(", ",outposts),"",-1));
+        }
+        return rows;
+    }
     private static List<PanelView.Row> sites(ServerLevel level,Settlement town) {
         List<PanelView.Row> rows=new ArrayList<>();
         for(var site:ExpeditionData.get(level).sites) {
-            String status=site.claimed!=null ? "Claimed as an outpost" : site.cleared ? "Cleared: walk here and use /wwmc outpost claim with a Frontier Charter" : site.spawned ? site.guards.size()+" defenders remain" : "Uncleared; defenders gather when approached";
-            rows.add(row(Items.FILLED_MAP,site.title()+" · "+site.pos.toShortString(),status+" · "+Math.round(Math.sqrt(town.center.distSqr(site.pos)))+" blocks from town","",-1));
+            String status=site.claimed!=null ? "Claimed as an outpost" : site.kind.equals("raid") ? (site.cleared ? "Raiders driven off" : site.guards.size()+" raiders remain")
+                    : site.cleared ? "Cleared: walk here and use /wwmc outpost claim with a Frontier Charter" : site.spawned ? site.guards.size()+" defenders remain" : "Uncleared; defenders gather when approached";
+            Regions.Region land=Regions.byId(site.resource);
+            Settlement victim=site.kind.equals("raid") && site.victim!=null ? SettlementData.get(level).byId(site.victim) : null;
+            String goal=victim!=null ? "Defend "+victim.name : site.goal();
+            rows.add(row(site.kind.equals("raid") ? Items.CROSSBOW : Items.FILLED_MAP,site.title()+" · "+site.pos.toShortString(),goal+" · "+status+" · "
+                    +Math.round(Math.sqrt(town.center.distSqr(site.pos)))+" blocks from town"+(land==null ? "" : " · "+land.title()+": "+land.ore().getName().getString()),"",-1));
         }
         for(Settlement outpost:SettlementData.get(level).settlements) if(town.id.equals(outpost.campaign.parent))
             rows.add(row(Items.IRON_PICKAXE,outpost.name,"Food target "+outpost.campaign.requests.getOrDefault("minecraft:bread",0)+"; supplies move by trader, production by courier","",-1));
@@ -112,6 +139,7 @@ public final class CampaignViews {
         if(!valid(player,pos,orders)) return; ServerLevel level=(ServerLevel)player.level(); Settlement town=SettlementData.get(level).at(pos);
         if(action==RelationshipViews.OPEN && !orders) { RelationshipViews.open(player,town); return; }
         if(action==BACK && !orders) { Panels.openTown(player,town); return; }
+        if(action==MAP) { player.closeContainer(); SettlementMap.open(player); return; }
         if(action!=ROW_ACTION || key.length()>256) return;
         String message="";
         try {
@@ -137,6 +165,7 @@ public final class CampaignViews {
                     }
                     case "industry" -> CampaignService.chooseSpecialty(level,town,arg);
                     case "project" -> message=TownProjects.build(level,town,arg);
+                    case "research" -> message=Research.study(level,town,arg);
                     case "muster" -> message=SquadService.muster(level,town,player,Integer.parseInt(arg));
                     case "order" -> message=SquadService.order(level,town,player,arg);
                     case "route","unroute" -> {

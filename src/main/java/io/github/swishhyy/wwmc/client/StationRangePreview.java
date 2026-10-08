@@ -37,10 +37,17 @@ public final class StationRangePreview {
     private static final long PREVIEW_NANOS=3_000_000_000L;
     private static final int MAX_RECENT=16;
     private final Map<BlockPos,Long> recent=new LinkedHashMap<>();
+    /** Blocks the server asked to point out, with when each highlight ends. */
+    private static final Map<BlockPos,Long> HIGHLIGHTS=new LinkedHashMap<>();
     private ClientLevel previewLevel;
+    /** Outlines a block through walls, with a tall marker above it, for this many seconds. */
+    public static void highlight(BlockPos pos,int seconds) {
+        HIGHLIGHTS.put(pos.immutable(),System.nanoTime()+Math.clamp(seconds,1,60)*1_000_000_000L);
+        if(HIGHLIGHTS.size()>MAX_RECENT) HIGHLIGHTS.remove(HIGHLIGHTS.keySet().iterator().next());
+    }
 
     private void syncLevel(ClientLevel level) {
-        if(previewLevel!=level) { recent.clear(); previewLevel=level; }
+        if(previewLevel!=level) { recent.clear(); HIGHLIGHTS.clear(); previewLevel=level; }
     }
     @SubscribeEvent public void tick(ClientTickEvent.Post event) { syncLevel(Minecraft.getInstance().level); }
     @SubscribeEvent public void show(StationPreviewEvent event) {
@@ -55,6 +62,12 @@ public final class StationRangePreview {
         syncLevel(event.getLevel());
         if(mc.player==null || mc.level!=event.getLevel()) return;
         long now=System.nanoTime();
+        HIGHLIGHTS.values().removeIf(end -> end<=now);
+        for(var entry:HIGHLIGHTS.entrySet()) {
+            // A slow pulse makes the marker easy to spot against busy scenery.
+            float pulse=0.55F+0.45F*(float)Math.abs(Math.sin(now/300_000_000.0));
+            Gizmos.addGizmo(new MarkerGizmo(entry.getKey(),ARGB.multiplyAlpha(0xffffd166,pulse))).setAlwaysOnTop();
+        }
         Iterator<Map.Entry<BlockPos,Long>> iterator=recent.entrySet().iterator();
         while(iterator.hasNext()) {
             var entry=iterator.next();
@@ -89,6 +102,20 @@ public final class StationRangePreview {
             bounds=MiningLayout.quarry(pos.getX(),pos.getZ(),facing.getStepX(),facing.getStepZ(),pos.getY()+StationRange.RADIUS,pos.getY()-StationRange.RADIUS);
         }
         Gizmos.addGizmo(new RangeGizmo(bounds,color)).setAlwaysOnTop();
+    }
+    /** A block's outline and a vertical line rising above it. */
+    private record MarkerGizmo(BlockPos pos,int color) implements Gizmo {
+        @Override public void emit(GizmoPrimitives primitives,float alphaMultiplier) {
+            int tint=ARGB.multiplyAlpha(color,alphaMultiplier);
+            double x0=pos.getX()-0.05,y0=pos.getY()-0.05,z0=pos.getZ()-0.05,x1=pos.getX()+1.05,y1=pos.getY()+1.05,z1=pos.getZ()+1.05;
+            for(int a=0;a<2;a++) for(int b=0;b<2;b++) {
+                double x=a==0 ? x0 : x1,y=a==0 ? y0 : y1,z=b==0 ? z0 : z1;
+                primitives.addLine(new Vec3(x0,y,z),new Vec3(x1,y,z),tint,3.0F);
+                primitives.addLine(new Vec3(x,y0,z),new Vec3(x,y1,z),tint,3.0F);
+                primitives.addLine(new Vec3(x,b==0 ? y0 : y1,z0),new Vec3(x,b==0 ? y0 : y1,z1),tint,3.0F);
+            }
+            primitives.addLine(new Vec3(pos.getX()+0.5,y1,pos.getZ()+0.5),new Vec3(pos.getX()+0.5,y1+48,pos.getZ()+0.5),tint,4.0F);
+        }
     }
     private record RangeGizmo(RoomBounds bounds,int color) implements Gizmo {
         @Override public void emit(GizmoPrimitives primitives,float alphaMultiplier) {
