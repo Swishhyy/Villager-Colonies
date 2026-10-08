@@ -123,13 +123,14 @@ public final class EquipmentRepairHealingChecks {
         assertFalse(FoodHealing.food(new ItemStack(Items.BEEF))); assertFalse(FoodHealing.food(new ItemStack(Items.POISONOUS_POTATO)));
     }
     @Test @ExtendWith(EphemeralTestServerProvider.class)
-    void nativeGuideAndBlacksmithHardwareAreValid(MinecraftServer server) {
+    void illustratedGuideAndBlacksmithHardwareAreValid(MinecraftServer server) {
         var content=WWMC.GUIDE.get().getDefaultInstance().get(DataComponents.WRITTEN_BOOK_CONTENT);
         assertNotNull(content); assertEquals(GuideBook.pages().size(),content.pages().size());
-        assertTrue(content.pages().size()<=100);
+        assertEquals(1,content.pages().size());
+        assertTrue(WWMC.GUIDE.get() instanceof io.github.swishhyy.wwmc.item.GuideItem);
+        assertTrue(GuideBook.TOPICS.size()<=10);
         for(String page:GuideBook.pages()) { assertTrue(page.split("\n",-1).length<=13); assertTrue(Arrays.stream(page.split("\n",-1)).allMatch(s -> s.length()<=18)); }
-        String text=String.join(" ",GuideBook.PAGES);
-        for(StructureRole role:StructureRole.values()) assertTrue(text.toLowerCase(Locale.ROOT).contains(role.id()),"Missing station chapter: "+role);
+        for(StructureRole role:StructureRole.values()) assertTrue(GuideBook.STATIONS.stream().anyMatch(s -> s.role()==role),"Missing station reference: "+role);
         assertTrue(StationDetection.anvil(Blocks.ANVIL.defaultBlockState()));
         assertTrue(StationDetection.anvil(Blocks.CHIPPED_ANVIL.defaultBlockState()));
         assertFalse(StationDetection.anvil(Blocks.SMITHING_TABLE.defaultBlockState()));

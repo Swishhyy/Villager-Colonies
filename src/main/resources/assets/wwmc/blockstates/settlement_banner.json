@@ -1,18 +1,243 @@
 {
   "variants": {
-    "facing=north": {
+    "facing=north,color=white": {
+      "model": "wwmc:block/settlement_banner_white"
+    },
+    "facing=east,color=white": {
+      "model": "wwmc:block/settlement_banner_white",
+      "y": 90
+    },
+    "facing=south,color=white": {
+      "model": "wwmc:block/settlement_banner_white",
+      "y": 180
+    },
+    "facing=west,color=white": {
+      "model": "wwmc:block/settlement_banner_white",
+      "y": 270
+    },
+    "facing=north,color=orange": {
+      "model": "wwmc:block/settlement_banner_orange"
+    },
+    "facing=east,color=orange": {
+      "model": "wwmc:block/settlement_banner_orange",
+      "y": 90
+    },
+    "facing=south,color=orange": {
+      "model": "wwmc:block/settlement_banner_orange",
+      "y": 180
+    },
+    "facing=west,color=orange": {
+      "model": "wwmc:block/settlement_banner_orange",
+      "y": 270
+    },
+    "facing=north,color=magenta": {
+      "model": "wwmc:block/settlement_banner_magenta"
+    },
+    "facing=east,color=magenta": {
+      "model": "wwmc:block/settlement_banner_magenta",
+      "y": 90
+    },
+    "facing=south,color=magenta": {
+      "model": "wwmc:block/settlement_banner_magenta",
+      "y": 180
+    },
+    "facing=west,color=magenta": {
+      "model": "wwmc:block/settlement_banner_magenta",
+      "y": 270
+    },
+    "facing=north,color=light_blue": {
+      "model": "wwmc:block/settlement_banner_light_blue"
+    },
+    "facing=east,color=light_blue": {
+      "model": "wwmc:block/settlement_banner_light_blue",
+      "y": 90
+    },
+    "facing=south,color=light_blue": {
+      "model": "wwmc:block/settlement_banner_light_blue",
+      "y": 180
+    },
+    "facing=west,color=light_blue": {
+      "model": "wwmc:block/settlement_banner_light_blue",
+      "y": 270
+    },
+    "facing=north,color=yellow": {
+      "model": "wwmc:block/settlement_banner_yellow"
+    },
+    "facing=east,color=yellow": {
+      "model": "wwmc:block/settlement_banner_yellow",
+      "y": 90
+    },
+    "facing=south,color=yellow": {
+      "model": "wwmc:block/settlement_banner_yellow",
+      "y": 180
+    },
+    "facing=west,color=yellow": {
+      "model": "wwmc:block/settlement_banner_yellow",
+      "y": 270
+    },
+    "facing=north,color=lime": {
+      "model": "wwmc:block/settlement_banner_lime"
+    },
+    "facing=east,color=lime": {
+      "model": "wwmc:block/settlement_banner_lime",
+      "y": 90
+    },
+    "facing=south,color=lime": {
+      "model": "wwmc:block/settlement_banner_lime",
+      "y": 180
+    },
+    "facing=west,color=lime": {
+      "model": "wwmc:block/settlement_banner_lime",
+      "y": 270
+    },
+    "facing=north,color=pink": {
+      "model": "wwmc:block/settlement_banner_pink"
+    },
+    "facing=east,color=pink": {
+      "model": "wwmc:block/settlement_banner_pink",
+      "y": 90
+    },
+    "facing=south,color=pink": {
+      "model": "wwmc:block/settlement_banner_pink",
+      "y": 180
+    },
+    "facing=west,color=pink": {
+      "model": "wwmc:block/settlement_banner_pink",
+      "y": 270
+    },
+    "facing=north,color=gray": {
+      "model": "wwmc:block/settlement_banner_gray"
+    },
+    "facing=east,color=gray": {
+      "model": "wwmc:block/settlement_banner_gray",
+      "y": 90
+    },
+    "facing=south,color=gray": {
+      "model": "wwmc:block/settlement_banner_gray",
+      "y": 180
+    },
+    "facing=west,color=gray": {
+      "model": "wwmc:block/settlement_banner_gray",
+      "y": 270
+    },
+    "facing=north,color=light_gray": {
+      "model": "wwmc:block/settlement_banner_light_gray"
+    },
+    "facing=east,color=light_gray": {
+      "model": "wwmc:block/settlement_banner_light_gray",
+      "y": 90
+    },
+    "facing=south,color=light_gray": {
+      "model": "wwmc:block/settlement_banner_light_gray",
+      "y": 180
+    },
+    "facing=west,color=light_gray": {
+      "model": "wwmc:block/settlement_banner_light_gray",
+      "y": 270
+    },
+    "facing=north,color=cyan": {
+      "model": "wwmc:block/settlement_banner_cyan"
+    },
+    "facing=east,color=cyan": {
+      "model": "wwmc:block/settlement_banner_cyan",
+      "y": 90
+    },
+    "facing=south,color=cyan": {
+      "model": "wwmc:block/settlement_banner_cyan",
+      "y": 180
+    },
+    "facing=west,color=cyan": {
+      "model": "wwmc:block/settlement_banner_cyan",
+      "y": 270
+    },
+    "facing=north,color=purple": {
+      "model": "wwmc:block/settlement_banner_purple"
+    },
+    "facing=east,color=purple": {
+      "model": "wwmc:block/settlement_banner_purple",
+      "y": 90
+    },
+    "facing=south,color=purple": {
+      "model": "wwmc:block/settlement_banner_purple",
+      "y": 180
+    },
+    "facing=west,color=purple": {
+      "model": "wwmc:block/settlement_banner_purple",
+      "y": 270
+    },
+    "facing=north,color=blue": {
       "model": "wwmc:block/settlement_banner"
     },
-    "facing=east": {
+    "facing=east,color=blue": {
       "model": "wwmc:block/settlement_banner",
       "y": 90
     },
-    "facing=south": {
+    "facing=south,color=blue": {
       "model": "wwmc:block/settlement_banner",
       "y": 180
     },
-    "facing=west": {
+    "facing=west,color=blue": {
       "model": "wwmc:block/settlement_banner",
+      "y": 270
+    },
+    "facing=north,color=brown": {
+      "model": "wwmc:block/settlement_banner_brown"
+    },
+    "facing=east,color=brown": {
+      "model": "wwmc:block/settlement_banner_brown",
+      "y": 90
+    },
+    "facing=south,color=brown": {
+      "model": "wwmc:block/settlement_banner_brown",
+      "y": 180
+    },
+    "facing=west,color=brown": {
+      "model": "wwmc:block/settlement_banner_brown",
+      "y": 270
+    },
+    "facing=north,color=green": {
+      "model": "wwmc:block/settlement_banner_green"
+    },
+    "facing=east,color=green": {
+      "model": "wwmc:block/settlement_banner_green",
+      "y": 90
+    },
+    "facing=south,color=green": {
+      "model": "wwmc:block/settlement_banner_green",
+      "y": 180
+    },
+    "facing=west,color=green": {
+      "model": "wwmc:block/settlement_banner_green",
+      "y": 270
+    },
+    "facing=north,color=red": {
+      "model": "wwmc:block/settlement_banner_red"
+    },
+    "facing=east,color=red": {
+      "model": "wwmc:block/settlement_banner_red",
+      "y": 90
+    },
+    "facing=south,color=red": {
+      "model": "wwmc:block/settlement_banner_red",
+      "y": 180
+    },
+    "facing=west,color=red": {
+      "model": "wwmc:block/settlement_banner_red",
+      "y": 270
+    },
+    "facing=north,color=black": {
+      "model": "wwmc:block/settlement_banner_black"
+    },
+    "facing=east,color=black": {
+      "model": "wwmc:block/settlement_banner_black",
+      "y": 90
+    },
+    "facing=south,color=black": {
+      "model": "wwmc:block/settlement_banner_black",
+      "y": 180
+    },
+    "facing=west,color=black": {
+      "model": "wwmc:block/settlement_banner_black",
       "y": 270
     }
   }

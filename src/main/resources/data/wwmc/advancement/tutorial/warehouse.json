@@ -1,0 +1,28 @@
+{
+  "display": {
+    "icon": {
+      "id": "wwmc:warehouse_station"
+    },
+    "title": {
+      "text": "Shared supplies"
+    },
+    "description": {
+      "text": "Place Warehouse beside real chests or barrels. Stock meals, tools and fuel."
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "done": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ],
+  "parent": "wwmc:tutorial/housing"
+}

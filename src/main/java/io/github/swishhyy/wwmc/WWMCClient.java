@@ -49,7 +49,7 @@ public final class WWMCClient {
         if(Upgrades.yields(block.role()) && !yieldLevel.equals("0")) event.getToolTip().add(Component.literal("Yield upgrade "+yieldLevel+" (+"+yieldLevel+"0%)").withStyle(ChatFormatting.GREEN));
     }
     private static void renderers(EntityRenderersEvent.RegisterRenderers event) { event.registerEntityRenderer(WWMC.CITIZEN.get(),CitizenRenderer::new); }
-    private static void layers(EntityRenderersEvent.RegisterLayerDefinitions event) { event.registerLayerDefinition(CitizenRenderer.LAYER,CitizenRenderer::createBodyLayer); }
+    private static void layers(EntityRenderersEvent.RegisterLayerDefinitions event) { event.registerLayerDefinition(CitizenRenderer.LAYER,CitizenRenderer::createBodyLayer); event.registerLayerDefinition(io.github.swishhyy.wwmc.client.CitizenOutfitLayer.LAYER,io.github.swishhyy.wwmc.client.CitizenOutfitLayer::createBodyLayer); }
     private static void screens(RegisterMenuScreensEvent event) {
         event.register(WwmcMenus.PANEL.get(),PanelScreen::new);
         event.register(WwmcMenus.CRAFTSMAN.get(),CraftsmanScreen::new);
@@ -59,6 +59,8 @@ public final class WWMCClient {
     }
     /** A refresh only applies to the screen it was built for. */
     private static void payloads(RegisterClientPayloadHandlersEvent event) {
+        event.register(WwmcNetwork.GuidePayload.TYPE,(payload,context) ->
+                io.github.swishhyy.wwmc.client.screen.GuideScreen.open(null,payload.topic()));
         event.register(WwmcNetwork.ViewPayload.TYPE,(payload,context) -> {
             if(context.player().containerMenu.containerId==payload.containerId() && context.player().containerMenu instanceof ViewMenu menu) menu.view(payload.view());
         });

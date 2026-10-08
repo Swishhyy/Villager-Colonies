@@ -27,7 +27,7 @@ import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
-import net.minecraft.world.item.WrittenBookItem;
+import io.github.swishhyy.wwmc.item.GuideItem;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
@@ -63,7 +63,7 @@ public final class WWMC {
     public static final Map<Carcasses.Kind,DeferredItem<Item>> CARCASSES=new EnumMap<>(Carcasses.Kind.class);
     static { for(var kind:Carcasses.Kind.values()) CARCASSES.put(kind,ITEMS.registerItem(kind.id+"_carcass",Item::new,p -> p.stacksTo(16))); }
     public static final DeferredItem<SurveyorItem> SURVEYOR=ITEMS.registerItem("surveyor",SurveyorItem::new,p -> p.stacksTo(1));
-    public static final DeferredItem<WrittenBookItem> GUIDE=ITEMS.registerItem("settlement_guide",WrittenBookItem::new,
+    public static final DeferredItem<GuideItem> GUIDE=ITEMS.registerItem("settlement_guide",GuideItem::new,
             p -> p.stacksTo(1).component(DataComponents.WRITTEN_BOOK_CONTENT,GuideBook.content()));
     public static final DeferredHolder<EntityType<?>,EntityType<CitizenEntity>> CITIZEN=ENTITIES.registerEntityType("citizen",CitizenEntity::new,MobCategory.CREATURE,b -> b.sized(0.6F,1.95F).clientTrackingRange(10));
     public static final DeferredHolder<CreativeModeTab,CreativeModeTab> TAB=TABS.register("settlement",() -> CreativeModeTab.builder()
@@ -96,6 +96,7 @@ public final class WWMC {
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.ExpeditionService());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CitizenCombat());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.SettlementMap());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.TutorialProgress());
         container.registerConfig(ModConfig.Type.SERVER,Config.SPEC);
     }
     private void attributes(EntityAttributeCreationEvent event) {

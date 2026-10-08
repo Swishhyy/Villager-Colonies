@@ -35,11 +35,17 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
                 menu.kind!=PanelMenu.Kind.TOWN && menu.kind!=PanelMenu.Kind.STATION ? Math.min(270,Minecraft.getInstance().getWindow().getGuiScaledHeight()-8) : HEIGHT);
     }
     private PanelView view() { return menu.view(); }
+    private void openHelp() {
+        if(menu.kind==PanelMenu.Kind.STATION && minecraft.level!=null && minecraft.level.getBlockState(menu.pos).getBlock() instanceof io.github.swishhyy.wwmc.block.StationBlock station) { GuideScreen.openStation(this,station.role()); return; }
+        GuideScreen.open(this,switch(menu.kind) { case RELATIONSHIPS -> "relationships"; case CAMPAIGN,ARMY -> "frontier"; default -> "start"; });
+    }
     @Override protected void init() {
         if(townName!=null) nameDraft=townName.getValue();
         townName=null;
         super.init();
         PanelView view=view();
+        Button help=Button.builder(Component.literal("?"),b -> openHelp()).bounds(leftPos+imageWidth-23,topPos+5,16,16).build();
+        help.setTooltip(Tooltip.create(Component.literal("Open illustrated help for this screen"))); addRenderableWidget(help);
         List<PanelView.Tab> tabs=view.tabs();
         tab=Math.min(tab,Math.max(0,tabs.size()-1));
         int tabWidth=Math.min(80,(imageWidth-14)/Math.max(1,tabs.size()));
@@ -80,6 +86,11 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
             PanelView.Row row=listed.get(scroll+i);
             if(!control(row)) continue;
             int index=scroll+i,rowY=top+2+i*ROW+3;
+            if(row.key().equals("color:town")) {
+                Button cycle=Button.builder(Component.literal("Next color"),b -> { b.active=false; send(index,(row.value()+1)%16,row.key()); }).bounds(right-77,rowY,76,15).build();
+                cycle.setTooltip(Tooltip.create(Component.literal("Choose the color of your town flag and its four corner banners")));
+                addRenderableWidget(cycle); continue;
+            }
             if(row.key().startsWith("permission:")) {
                 String label=row.value()==0 ? "Denied" : row.value()==1 ? "Builder" : "Steward";
                 Button cycle=Button.builder(Component.literal(label),b -> { b.active=false; send(index,(row.value()+1)%3,row.key()); }).bounds(right-77,rowY,60,15).build();
@@ -147,7 +158,7 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
     @Override public void extractBackground(GuiGraphicsExtractor g,int mouseX,int mouseY,float partialTick) {
         int x=leftPos,y=topPos;
         Ui.window(g,x,y,imageWidth,imageHeight);
-        g.text(font,Ui.fit(font,view().title().getString(),imageWidth-16),x+8,y+7,Ui.TEXT,false);
+        g.text(font,Ui.fit(font,view().title().getString(),imageWidth-36),x+8,y+7,Ui.TEXT,false);
         g.text(font,Ui.fit(font,view().subtitle().getString(),imageWidth-16),x+8,y+17,Ui.MUTED,false);
         int top=y+listTop(),bottom=listBottom();
         Ui.inset(g,x+7,top,imageWidth-14,bottom-top);

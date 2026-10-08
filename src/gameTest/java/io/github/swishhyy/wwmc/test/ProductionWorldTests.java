@@ -159,6 +159,8 @@ public final class ProductionWorldTests {
                 helper.assertTrue(remaining>0 && remaining<=OreVeins.interval(level.getBlockState(ore),Config.ORE_VEIN_SECONDS.get(),miner.getMainHandItem()),"Miner ignored equipped pickaxe replenishment");
                 helper.assertTrue(remaining<OreVeins.interval(level.getBlockState(ore),Config.ORE_VEIN_SECONDS.get()),"Diamond pickaxe did not improve stone baseline");
                 helper.assertTrue(level.getBlockState(ore).is(Blocks.COAL_ORE),"Endless vein was removed");
+                helper.assertTrue(f.town().progress.milestones.contains("mining"),"Completed mining was not recorded");
+                helper.assertTrue(miner.appearanceJob()==StructureRole.MINE,"Waiting miner lost its job appearance");
                 f.close();
             });
         });

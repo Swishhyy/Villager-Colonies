@@ -1,0 +1,39 @@
+{
+  "display": {
+    "icon": {
+      "id": "wwmc:settlement_banner"
+    },
+    "title": {
+      "text": "World War MC"
+    },
+    "description": {
+      "text": "Build a living town. Open the Settlement Guide for a six-step start."
+    },
+    "frame": "task",
+    "show_toast": false,
+    "announce_to_chat": false,
+    "hidden": false,
+    "background": "minecraft:gui/advancements/backgrounds/stone"
+  },
+  "criteria": {
+    "done": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "wwmc:settlement_banner",
+      "wwmc:housing_station",
+      "wwmc:warehouse_station",
+      "wwmc:farm_station",
+      "wwmc:courier_station",
+      "wwmc:settlement_guide",
+      "wwmc:surveyor"
+    ]
+  }
+}

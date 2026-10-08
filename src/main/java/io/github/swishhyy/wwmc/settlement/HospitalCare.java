@@ -24,6 +24,7 @@ public final class HospitalCare {
         boolean rested=citizen.hospitalBed()!=null;
         citizen.leaveHospitalBed(); citizen.recovering(false);
         if(rested) CampaignService.record(level,town,citizen.getName().getString()+" recovered at the hospital and returned to duty.");
+        if(rested) TutorialProgress.record(level,town,"recovery");
     }
     /** Called from the entity tick as well as its awake AI: sleeping villagers suspend their normal work goal. */
     public static boolean patient(ServerLevel level,Settlement town,CitizenEntity citizen) {
@@ -68,6 +69,7 @@ public final class HospitalCare {
         }
         FoodHealing.take(stock,medic.bag()::offer); InventoryOps.takeOne(stock,s -> s.is(Items.PAPER));
         patient.heal(1); medic.workActivity("Treated "+patient.getName().getString()+" with a meal and a dressing");
+        WorkFeedback.pulse(level,medic,patient.blockPosition(),WorkFeedback.TREATING);
         if(patient.getHealth()>=patient.getMaxHealth()) finish(level,town,patient);
     }
 }

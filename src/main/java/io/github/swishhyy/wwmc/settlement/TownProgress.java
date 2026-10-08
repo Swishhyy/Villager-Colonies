@@ -34,14 +34,22 @@ public final class TownProgress {
     public static final Codec<TownProgress> CODEC=RecordCodecBuilder.create(i -> i.group(
         Codec.STRING.listOf().optionalFieldOf("research",List.of()).forGetter(p -> List.copyOf(p.research)),
         Codec.STRING.listOf().optionalFieldOf("schematics",List.of()).forGetter(p -> List.copyOf(p.schematics)),
-        Ping.CODEC.listOf().optionalFieldOf("pings",List.of()).forGetter(p -> p.pings)
+        Ping.CODEC.listOf().optionalFieldOf("pings",List.of()).forGetter(p -> p.pings),
+        Codec.intRange(-1,15).optionalFieldOf("color",-1).forGetter(p -> p.color),
+        Codec.STRING.listOf().optionalFieldOf("milestones",List.of()).forGetter(p -> List.copyOf(p.milestones))
     ).apply(i,TownProgress::new));
     public final Set<String> research=new LinkedHashSet<>(),schematics=new LinkedHashSet<>();
     public final List<Ping> pings=new ArrayList<>();
+    /** Actual completed work, retained so offline managers can receive their town's tutorial progress later. */
+    public final Set<String> milestones=new LinkedHashSet<>();
+    /** -1 gives older towns a stable color based on their saved id. */
+    public int color=-1;
     public TownProgress() {}
-    private TownProgress(List<String> research,List<String> schematics,List<Ping> pings) {
+    private TownProgress(List<String> research,List<String> schematics,List<Ping> pings,int color,List<String> milestones) {
         this.research.addAll(research); this.schematics.addAll(schematics);
         this.pings.addAll(pings.subList(Math.max(0,pings.size()-MAX_PINGS),pings.size()));
+        this.color=color;
+        this.milestones.addAll(milestones);
     }
     /** Adds a ping, dropping the oldest beyond the limit. */
     public void ping(Ping ping) {

@@ -1,0 +1,28 @@
+{
+  "display": {
+    "icon": {
+      "id": "wwmc:farm_station"
+    },
+    "title": {
+      "text": "A working town"
+    },
+    "description": {
+      "text": "Assign a citizen to a job station. Add more stations for more workers."
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "done": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ],
+  "parent": "wwmc:tutorial/recruit"
+}
