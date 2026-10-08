@@ -11,6 +11,9 @@ import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -50,6 +53,24 @@ import net.neoforged.neoforge.common.Tags;
 
 /** Villager-styled citizen with visible equipment and an independent station-driven work routine. */
 public final class CitizenEntity extends Villager {
+    private static final EntityDataAccessor<Integer> JOB_LOOK=SynchedEntityData.defineId(CitizenEntity.class,EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> WORK_LOOK=SynchedEntityData.defineId(CitizenEntity.class,EntityDataSerializers.INT);
+    private long workingUntil,nextFeedbackPulse,nextFeedbackSound;
+    @Override protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder); builder.define(JOB_LOOK,-1); builder.define(WORK_LOOK,WorkFeedback.NONE);
+    }
+    /** The saved assignment, also visible to remote clients while the worker is idle or resting. */
+    public StructureRole appearanceJob() {
+        int job=entityData.get(JOB_LOOK);
+        return job>=0 && job<StructureRole.values().length ? StructureRole.values()[job] : null;
+    }
+    public int workAnimation() { return entityData.get(WORK_LOOK); }
+    public void working(int kind) {
+        if(!(level() instanceof ServerLevel) || isSleeping() || recovering) return;
+        workingUntil=level().getGameTime()+15; entityData.set(WORK_LOOK,kind);
+    }
+    public boolean feedbackPulse(long now) { if(now<nextFeedbackPulse) return false; nextFeedbackPulse=now+20; return true; }
+    public boolean feedbackSound(long now) { if(now<nextFeedbackSound) return false; nextFeedbackSound=now+80; return true; }
     private enum Action { HARVEST,FELL,PLANT,EXCAVATE,SUPPORT,CAVE,VEIN }
     private Action action=Action.HARVEST;
     private ForestryService.Task forestTask;
@@ -208,6 +229,12 @@ public final class CitizenEntity extends Villager {
         }
         super.tick();
         if(level() instanceof ServerLevel server) {
+            if(server.getGameTime()>=workingUntil || isSleeping() || recovering) entityData.set(WORK_LOOK,WorkFeedback.NONE);
+            if(WorkCadence.due(server.getGameTime(),getId(),20)) {
+                Settlement assignedTown=town(server);
+                Station assigned=assignedTown==null ? null : assignedTown.station(assignedTown.jobs.home(getUUID()));
+                entityData.set(JOB_LOOK,assigned==null ? -1 : assigned.role().ordinal());
+            }
             if(WorkCadence.due(server.getGameTime(),getId(),10) && isAlive()) {
                 Settlement town=town(server);
                 if(HospitalCare.needsCare(town,this)) {
@@ -373,6 +400,7 @@ public final class CitizenEntity extends Villager {
         experience.put(role.id(),after);
         int reached=CitizenSkill.level(after);
         Settlement town=town(server);
+        TutorialProgress.completed(server,town,role);
         if(reached>CitizenSkill.level(before) && town!=null) {
             String title=CitizenSkill.title(reached);
             CampaignService.record(server,town,getName().getString()+" is now "+("AEIOU".indexOf(title.charAt(0))>=0 ? "an " : "a ")+title+" "
@@ -1472,6 +1500,7 @@ public final class CitizenEntity extends Villager {
         getNavigation().stop(); pathTicks=0;
         getLookControl().setLookAt(bench.getX()+0.5,bench.getY()+0.5,bench.getZ()+0.5);
         activity="Crafting "+order.label();
+        WorkFeedback.pulse(level,this,bench,WorkFeedback.CRAFTING);
         workProgress+=workStep();
         if(workProgress>=CRAFT_TICKS) {
             workProgress=0; swing(InteractionHand.MAIN_HAND); cargo.offer(Crafting.craft(cargo,order)); gainExperience(station.role(),1);
@@ -1510,6 +1539,7 @@ public final class CitizenEntity extends Villager {
         getNavigation().stop(); pathTicks=0;
         getLookControl().setLookAt(bench.getX()+0.5,bench.getY()+0.5,bench.getZ()+0.5);
         activity="Crafting "+product;
+        WorkFeedback.pulse(level,this,bench,WorkFeedback.CRAFTING);
         workProgress+=workStep();
         if(workProgress>=CRAFT_TICKS) {
             workProgress=0;
@@ -1691,6 +1721,7 @@ public final class CitizenEntity extends Villager {
         if(!approachProcessor(level,town)) return;
         getNavigation().stop(); pathTicks=0;
         int collected=ProcessingService.service(level,station.role(),processor,cargo,this);
+        if(collected>0 || ProcessingService.busy(level,processor)) WorkFeedback.pulse(level,this,processor,WorkFeedback.PROCESSING);
         swing(InteractionHand.MAIN_HAND);
         activity=station.role()==StructureRole.COOK ? "Supplying the kitchen and collecting cooked food" : "Supplying furnaces and collecting smelted ores";
         if(collected==0 && !ProcessingService.busy(level,processor) && !ProcessingService.hasInputs(level,station.role(),processor,List.of(cargo))) {
@@ -1857,7 +1888,8 @@ public final class CitizenEntity extends Villager {
             if(!BlacksmithRepair.supplied(repairItem,List.of(cargo))) { activity="Waiting for this item's matching repair material"; nextSmithAt=level.getGameTime()+100; return; }
         }
         if(!canUse(level,repairAnvil)) { activity="Carrying equipment to the anvil"; walk(repairAnvil); return; }
-        getNavigation().stop(); activity="Repairing equipment at the anvil"; workProgress+=workStep();
+        getNavigation().stop(); activity="Repairing equipment at the anvil";
+        WorkFeedback.pulse(level,this,repairAnvil,WorkFeedback.SMITHING); workProgress+=workStep();
         if(workProgress>=BlacksmithRepair.WORK_TICKS) {
             if(BlacksmithRepair.repair(repairItem,cargo)) { swing(InteractionHand.MAIN_HAND); playSound(SoundEvents.ANVIL_USE,0.4F,1.0F); gainExperience(StructureRole.BLACKSMITH,2); }
             workProgress=0;
@@ -1925,7 +1957,7 @@ public final class CitizenEntity extends Villager {
         }
         int duration=effort(Enchanting.ticks(enchantItem,Config.ENCHANT_MINUTES.get()));
         enchantTicks=Math.min(duration,enchantTicks+10);
-        if(enchantTicks%40==0) level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,enchantTable.getX()+0.5,enchantTable.getY()+1.3,enchantTable.getZ()+0.5,6,0.5,0.3,0.5,0.6);
+        WorkFeedback.pulse(level,this,enchantTable,WorkFeedback.ENCHANTING);
         if(enchantTicks<duration) {
             int minutes=(duration-enchantTicks+Enchanting.TICKS_PER_MINUTE-1)/Enchanting.TICKS_PER_MINUTE;
             activity="Enchanting "+name+" at level "+enchantLevel+": "+enchantTicks*100/duration+"% done, about "+minutes+" min left";
@@ -2248,6 +2280,7 @@ public final class CitizenEntity extends Villager {
                 getNavigation().stop(); activity="Clearing natural leaves to reach the trunk";
                 if(!leaf.equals(clearingLeaf)) { clearingLeaf=leaf; workProgress=0; }
                 workProgress+=10;
+                WorkFeedback.pulse(level,this,leaf,WorkFeedback.CHOPPING);
                 if(workProgress>=20) {
                     swing(InteractionHand.MAIN_HAND);
                     var drops=ForestryService.clearLeaf(level,town,station,forestTask.tree(),leaf,this);
@@ -2294,6 +2327,12 @@ public final class CitizenEntity extends Villager {
                     +(OreVeins.readyAt(level,target)-level.getGameTime()+19)/20+"s)";
             return;
         }
+        WorkFeedback.pulse(level,this,visibleAt,switch(action) {
+            case FELL -> WorkFeedback.CHOPPING;
+            case HARVEST,PLANT -> WorkFeedback.FARMING;
+            case SUPPORT -> WorkFeedback.CRAFTING;
+            default -> WorkFeedback.MINING;
+        });
         workProgress+=workStep();
         // Stone yields to a pickaxe in about a second; harder blocks and weaker tools take longer.
         int required=action==Action.EXCAVATE || action==Action.CAVE || action==Action.VEIN ? ExcavationService.breakTicks(level,target,getMainHandItem())

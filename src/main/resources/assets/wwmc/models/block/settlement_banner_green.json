@@ -1,0 +1,7 @@
+{
+  "parent": "wwmc:block/settlement_banner",
+  "textures": {
+    "flag": "minecraft:block/green_wool",
+    "particle": "minecraft:block/green_wool"
+  }
+}

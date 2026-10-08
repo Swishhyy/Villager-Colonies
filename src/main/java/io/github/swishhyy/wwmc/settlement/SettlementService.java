@@ -335,19 +335,7 @@ public final class SettlementService {
         return settlement.center.equals(pos) || settlement.borderBanners.contains(pos) || settlement.stations.stream().anyMatch(s -> s.position().equals(pos) ||
                 ((!s.role().providesWork() || s.role()==StructureRole.HOSPITAL) && s.contains(pos)));
     }
-    private static void placeBorders(ServerLevel level,Settlement town) {
-        var banner=BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath("minecraft","red_banner")).defaultBlockState();
-        for(int x:new int[]{-town.radius,town.radius}) for(int z:new int[]{-town.radius,town.radius}) {
-            int cornerX=town.center.getX()+x,cornerZ=town.center.getZ()+z;
-            if(town.borderBanners.stream().anyMatch(p -> p.getX()==cornerX && p.getZ()==cornerZ)) continue;
-            BlockPos chunkCheck=new BlockPos(cornerX,town.center.getY(),cornerZ);
-            if(!level.hasChunkAt(chunkCheck)) continue;
-            int y=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,cornerX,cornerZ);
-            BlockPos pos=new BlockPos(cornerX,y,cornerZ);
-            if(y>=level.getMaxY() || !level.getBlockState(pos).isAir() || !level.getFluidState(pos).isEmpty() || !banner.canSurvive(level,pos)) continue;
-            if(level.setBlock(pos,banner,3)) { town.borderBanners.add(pos); SettlementData.get(level).setDirty(); }
-        }
-    }
+    private static void placeBorders(ServerLevel level,Settlement town) { TownBorders.update(level,town); }
     // ---------- Emerald upgrades ----------
     /** Population level, counting a town from before upgrades as having bought enough for the citizens it already has. */
     public static int populationLevel(Settlement town) {

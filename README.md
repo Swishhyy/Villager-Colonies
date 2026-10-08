@@ -6,7 +6,14 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.13.0-alpha
+## Current build: 0.14.0-alpha
+
+0.14.0 makes the town easier to read in play. **Working citizens** use small swings, hand poses, particles and quiet nearby sounds while mining, chopping, farming, enchanting, crafting, cooking, smithing, fishing, butchering or treating patients. **Job clothes** combine profession outfits with distinct colored sashes, cuffs and hats; the saved job determines the look even while a citizen waits or rests. Real equipment still renders over the outfit.
+
+**Town colors** now match the main flag and four physical corner banners. The owner chooses a color under **Relationships → Town → Next color**. Existing towns receive a stable color; missing corner flags are repaired on safe loaded terrain without replacing buildings or loading distant chunks.
+
+The **Settlement Guide** opens a custom handbook with **nine short topics**, item icons, supply-chain diagrams, search and visual 3×3 station recipes. Right-click an existing guide, craft one, or use `/wwmc guide`. Press **?** on a town or station screen for relevant help. Press **L** for the new **WWMC advancement tree**: 24 milestones introduce housing, storage, couriers, production, recovery and the campaign. Work milestones require real completed jobs. Existing town saves and guide items remain compatible; use matching **0.14.0-alpha** builds on server and clients.
+
 
 0.13.0 adds seven systems for running a larger realm. The flag's new **Needs** tab lists what the town lacks, such as a cook with no coal, injured citizens without hospital beds, or a full warehouse, most urgent first. Its **Show** button outlines the station in the world, visible through walls. Citizens earn **experience** at their jobs, with modest bonuses. **Varied, hearty meals** keep them full longer and working a little faster. Guard Stations get **roles**: swordsman, shield guard or archer. Owners can mark **patrol routes**, and raised **watchtowers** give earlier warnings. Expeditions gain **objectives**: rescue captives, recover stolen supplies, defeat a fortified Bandit Captain, or defend a raided neighbor. Outposts mine their **region's ore**, and the new **Research** tab spends those regional goods on lasting improvements. A shared **settlement map** shows claims, routes, sites and pings for you and your allies. See [Needs, experience and morale](#needs-experience-and-morale), [Guard stations and posts](#guard-stations-and-posts) and [Multiplayer campaign](docs/multiplayer-campaign.md).
 
@@ -147,7 +154,7 @@ When miners encounter caves near the selected depth, they scan a bounded nearby 
 
 | Command | Purpose |
 | --- | --- |
-| `/wwmc guide` | Receive a readable Settlement Guide with crafting recipes and instructions. |
+| `/wwmc guide` | Receive the visual handbook with short topics, search and station recipes. |
 | `/wwmc status` | Inspect your town's population, loaded beds, stations, and priority. |
 | `/wwmc recruit [1-8]` | Recruit citizens up to the housing/population limit. Defaults to one. |
 | `/wwmc name <name>` | Rename your town, up to 48 characters. |

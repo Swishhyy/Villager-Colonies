@@ -14,6 +14,12 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 /** Screen refreshes go to the client; button presses come back. The client registers its own handler for refreshes. */
 public final class WwmcNetwork {
     private WwmcNetwork() {}
+    /** Open the illustrated handbook at a named topic. It has no server inventory or mutable controls. */
+    public record GuidePayload(String topic) implements CustomPacketPayload {
+        public static final Type<GuidePayload> TYPE=new Type<>(Identifier.fromNamespaceAndPath(WWMC.MODID,"guide"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,GuidePayload> STREAM_CODEC=StreamCodec.composite(ByteBufCodecs.STRING_UTF8,GuidePayload::topic,GuidePayload::new);
+        @Override public Type<GuidePayload> type() { return TYPE; }
+    }
     /** A fresh view for the open screen with this container id. */
     public record ViewPayload(int containerId,PanelView view) implements CustomPacketPayload {
         public static final Type<ViewPayload> TYPE=new Type<>(Identifier.fromNamespaceAndPath(WWMC.MODID,"view"));
@@ -56,7 +62,8 @@ public final class WwmcNetwork {
         @Override public Type<MapActionPayload> type() { return TYPE; }
     }
     public static void register(RegisterPayloadHandlersEvent event) {
-        var registrar=event.registrar("4");
+        var registrar=event.registrar("5");
+        registrar.playToClient(GuidePayload.TYPE,GuidePayload.STREAM_CODEC);
         registrar.playToClient(ViewPayload.TYPE,ViewPayload.STREAM_CODEC);
         registrar.playToClient(HighlightPayload.TYPE,HighlightPayload.STREAM_CODEC);
         registrar.playToClient(MapPayload.TYPE,MapPayload.STREAM_CODEC);

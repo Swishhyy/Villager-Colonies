@@ -86,6 +86,7 @@ public final class AnimalWork {
         if(!worker.workAt(level,station.position())) { worker.workActivity("Walking to the cutting table"); worker.workWalk(station.position()); return; }
         worker.getNavigation().stop();
         worker.workActivity("Preparing carcasses into raw portions for the cook");
+        WorkFeedback.pulse(level,worker,station.position(),WorkFeedback.BUTCHERING);
         progress+=worker.workStep();
         if(progress>=Config.WORK_TICKS.get()) {
             progress=0; Carcasses.prepare(worker.bag()); worker.swing(InteractionHand.MAIN_HAND);
@@ -231,6 +232,7 @@ public final class AnimalWork {
         worker.getNavigation().stop();
         worker.getLookControl().setLookAt(fishing.water().getX()+0.5,fishing.water().getY()+0.9,fishing.water().getZ()+0.5);
         worker.workActivity("Fishing: "+progress/20+" / "+Config.FISHING_SECONDS.get()+" seconds");
+        WorkFeedback.pulse(level,worker,fishing.water(),WorkFeedback.FISHING);
         if(progress==0) worker.swing(InteractionHand.MAIN_HAND);
         progress+=worker.workStep();
         if(progress>=Specialization.ticks(town,StructureRole.FISHERMAN,Config.FISHING_SECONDS.get()*20)) {

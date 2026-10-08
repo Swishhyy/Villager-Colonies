@@ -170,6 +170,7 @@ public final class WaveService {
         if(alive==0) { STARTED.remove(town.id); HUNTED.remove(town.id); }
         else if(level.getGameTime()-STARTED.computeIfAbsent(town.id,id -> level.getGameTime())>=LINGER_TICKS) hunt(level,town,attackers);
         if(before!=null && before>0 && alive==0 && level.hasChunkAt(town.center)) {
+            TutorialProgress.record(level,town,"defense");
             ServerPlayer owner=level.getServer().getPlayerList().getPlayer(town.owner);
             if(owner!=null) SettlementService.notify(owner,town.name+" has repelled the wave.");
         }

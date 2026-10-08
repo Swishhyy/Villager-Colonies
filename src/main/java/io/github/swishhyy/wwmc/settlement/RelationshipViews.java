@@ -78,6 +78,7 @@ public final class RelationshipViews {
         }
         if(invitations.isEmpty()) invitations.add(row(Items.PAPER,"No invitations waiting","Owners invite friends on the Players tab. Friends accept here at the flag.","",-1));
         settings.add(row(WWMC.BANNER_ITEM.get(),"Town name",town.name,"town:name",-1));
+        settings.add(row(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.withDefaultNamespace(TownBorders.color(town).getName()+"_dye")),"Town color: "+TownBorders.title(town),"The town flag and four corner banners share this color",owner ? "color:town" : "",TownBorders.color(town).getId()));
         settings.add(row(Items.MAP,"Flag location",town.center.toShortString()+"; restore a missing flag here without creating a new town","",-1));
         settings.add(row(Items.COMPASS,"Claim borders","X "+(town.center.getX()-town.radius)+" to "+(town.center.getX()+town.radius)+", Z "+(town.center.getZ()-town.radius)+" to "+(town.center.getZ()+town.radius)+"; all heights","",-1));
         settings.add(row(Items.PAPER,"Entry notice","You are now entering "+town.name,"",-1));
@@ -104,7 +105,8 @@ public final class RelationshipViews {
         else if(action==RECOVER) message=SettlementService.recoverBanner(level,player,town);
         else if(action==ROW_ACTION && key.length()<=256) {
             try {
-                if(key.startsWith("permission:")) message=permission(level,town,player,UUID.fromString(key.substring(11)),value);
+                if(key.equals("color:town")) message=TownBorders.choose(level,town,player.getUUID(),value);
+                else if(key.startsWith("permission:")) message=permission(level,town,player,UUID.fromString(key.substring(11)),value);
                 else if(key.startsWith("act:")) {
                     String[] parts=key.substring(4).split(":",2); if(parts.length!=2) return;
                     Settlement other=SettlementData.get(level).byId(UUID.fromString(parts[1])); if(other==null) return;

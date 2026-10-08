@@ -1,0 +1,28 @@
+{
+  "display": {
+    "icon": {
+      "id": "wwmc:guard_station"
+    },
+    "title": {
+      "text": "Hold the town"
+    },
+    "description": {
+      "text": "Repel an enemy wave with equipped defenders. Keep food and hospital beds ready."
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "done": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ],
+  "parent": "wwmc:tutorial/first_job"
+}

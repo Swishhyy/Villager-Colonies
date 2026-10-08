@@ -210,7 +210,8 @@ public final class FoodWorldTests {
     @TestHolder(description="An idle hungry worker eats from a raised warehouse by walking to clear ground within hand reach, without needing to climb onto its solid station.")
     static void eatsAtRaisedWarehouse(DynamicTest test) {
         test.onGameTest(helper -> {
-            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-1460));
+            // The raised-table test uses Z=-1480; separate this meadow so it cannot erase our pantry.
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(5000,2,-1460));
             Station farm=new Station(start.east(4),StructureRole.FARM),warehouse=new Station(start.offset(40,2,-8),StructureRole.WAREHOUSE);
             var fixture=fixture(level,start,farm,warehouse);
             level.setBlockAndUpdate(warehouse.position().below(),Blocks.STONE.defaultBlockState());
@@ -222,7 +223,7 @@ public final class FoodWorldTests {
             catch(ReflectiveOperationException e) { throw new RuntimeException(e); }
             helper.succeedWhen(() -> {
                 helper.assertTrue(count(pantry,Items.BREAD)==0,"Worker has not reached the raised pantry: "+describe(citizen,level));
-                helper.assertTrue(citizen.getHealth()==1 && citizen.mealTicks()>0,"The real loaf must satisfy hunger without healing outside hospital");
+                helper.assertTrue(citizen.getHealth()==1 && citizen.mealTicks()>0,"The real loaf must satisfy hunger without healing outside hospital: health="+citizen.getHealth()+", hunger="+citizen.mealTicks()+", bread in bag="+citizen.bag().count(Items.BREAD)+", "+describe(citizen,level));
                 helper.assertTrue(citizen.bag().count(Items.BREAD)==0,"The worker stockpiled its meal");
                 helper.assertTrue(farm.position().equals(fixture.town.jobs.home(citizen.getUUID())),"The meal trip changed the worker's job");
                 fixture.close();

@@ -1,0 +1,28 @@
+{
+  "display": {
+    "icon": {
+      "id": "wwmc:craftsman_station"
+    },
+    "title": {
+      "text": "A town workshop"
+    },
+    "description": {
+      "text": "Have a craftsman complete an order. Teach an example item and supply its ingredients."
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "done": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ],
+  "parent": "wwmc:tutorial/smelting"
+}

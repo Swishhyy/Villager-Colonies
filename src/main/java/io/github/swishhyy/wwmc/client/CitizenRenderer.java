@@ -24,12 +24,18 @@ import net.minecraft.world.item.BowItem;
  * Villager head, robe and skin on a humanoid skeleton with free arms, so citizens visibly wear guard armor and hold
  * their weapons and tools. Armor uses Minecraft's zombie-villager armor shapes, which fit the taller villager head.
  */
-public final class CitizenRenderer extends HumanoidMobRenderer<CitizenEntity,HumanoidRenderState,HumanoidModel<HumanoidRenderState>> {
+public final class CitizenRenderer extends HumanoidMobRenderer<CitizenEntity,CitizenRenderer.State,CitizenModel> {
+    public static final class State extends HumanoidRenderState {
+        public io.github.swishhyy.wwmc.core.StructureRole job;
+        public int work;
+        public boolean resting;
+    }
     public static final ModelLayerLocation LAYER=new ModelLayerLocation(Identifier.fromNamespaceAndPath(WWMC.MODID,"citizen"),"main");
     private static final Identifier SKIN=Identifier.withDefaultNamespace("textures/entity/villager/villager.png");
     public CitizenRenderer(EntityRendererProvider.Context context) {
-        super(context,new HumanoidModel<>(context.bakeLayer(LAYER)),0.5F);
-        ArmorModelSet<HumanoidModel<HumanoidRenderState>> armor=ArmorModelSet.bake(ModelLayers.ZOMBIE_VILLAGER_ARMOR,context.getModelSet(),HumanoidModel::new);
+        super(context,new CitizenModel(context.bakeLayer(LAYER)),0.5F);
+        ArmorModelSet<HumanoidModel<State>> armor=ArmorModelSet.bake(ModelLayers.ZOMBIE_VILLAGER_ARMOR,context.getModelSet(),HumanoidModel::new);
+        addLayer(new CitizenOutfitLayer(this,context));
         addLayer(new HumanoidArmorLayer<>(this,armor,context.getEquipmentRenderer()));
     }
     /** Villager texture layout: the upper arm uses the sleeve and the hand uses the skin of the folded-arms block. */
@@ -49,10 +55,11 @@ public final class CitizenRenderer extends HumanoidMobRenderer<CitizenEntity,Hum
         root.addOrReplaceChild("left_leg",CubeListBuilder.create().texOffs(0,22).mirror().addBox(-2.0F,0.0F,-2.0F,4.0F,12.0F,4.0F),PartPose.offset(2.0F,12.0F,0.0F));
         return LayerDefinition.create(mesh,64,64);
     }
-    @Override public HumanoidRenderState createRenderState() { return new HumanoidRenderState(); }
-    @Override public Identifier getTextureLocation(HumanoidRenderState state) { return SKIN; }
-    @Override public void extractRenderState(CitizenEntity citizen,HumanoidRenderState state,float partialTick) {
+    @Override public State createRenderState() { return new State(); }
+    @Override public Identifier getTextureLocation(State state) { return SKIN; }
+    @Override public void extractRenderState(CitizenEntity citizen,State state,float partialTick) {
         super.extractRenderState(citizen,state,partialTick);
+        state.job=citizen.appearanceJob(); state.work=citizen.workAnimation(); state.resting=citizen.isSleeping() || citizen.recovering();
         HumanoidModel.ArmPose main=citizen.isUsingItem() && citizen.getUseItem().getItem() instanceof BowItem ? HumanoidModel.ArmPose.BOW_AND_ARROW
                 : citizen.getMainHandItem().isEmpty() ? HumanoidModel.ArmPose.EMPTY : HumanoidModel.ArmPose.ITEM;
         HumanoidModel.ArmPose off=citizen.getOffhandItem().isEmpty() ? HumanoidModel.ArmPose.EMPTY : HumanoidModel.ArmPose.ITEM;
