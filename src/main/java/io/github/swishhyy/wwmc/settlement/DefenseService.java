@@ -213,7 +213,7 @@ public final class DefenseService {
             boolean guard=citizen.isGuard();
             BlockPos post=guard ? town.jobs.home(citizen.getUUID()) : null;
             // A watchtower's guard sees much farther across the town.
-            int range=guard ? (post!=null && GuardRoles.watchtower(level,post) ? GuardRoles.TOWER_SIGHT : alert ? ALERT_SIGHT : GUARD_SIGHT) : CIVILIAN_SIGHT,scan=guard ? range : REPORT_SIGHT;
+            int range=guard ? (post!=null && GuardRoles.watchtower(level,post) ? GuardRoles.towerSight(town) : alert ? ALERT_SIGHT : GUARD_SIGHT) : CIVILIAN_SIGHT,scan=guard ? range : REPORT_SIGHT;
             for(Monster monster:level.getEntitiesOfClass(Monster.class,citizen.getBoundingBox().inflate(scan),
                     m -> m.isAlive() && town.contains(m.blockPosition()) && !(seen.contains(m) && (guard || reported.contains(m))))) {
                 double distance=citizen.distanceToSqr(monster);

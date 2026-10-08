@@ -64,10 +64,13 @@ public final class OreVeins {
         Map<BlockPos,Long> veins=READY.get(level);
         return veins==null ? 0 : veins.getOrDefault(vein,0L);
     }
-    public static void worked(ServerLevel level,BlockPos vein,BlockState ore,ItemStack pickaxe) {
+    public static void worked(ServerLevel level,BlockPos vein,BlockState ore,ItemStack pickaxe) { worked(level,vein,ore,pickaxe,false); }
+    /** Deep Mining research makes the vein ready a quarter sooner. */
+    public static void worked(ServerLevel level,BlockPos vein,BlockState ore,ItemStack pickaxe,boolean deep) {
         Map<BlockPos,Long> veins=READY.computeIfAbsent(level,l -> new HashMap<>());
         veins.values().removeIf(time -> time<=level.getGameTime());
-        veins.put(vein.immutable(),level.getGameTime()+interval(ore,Config.ORE_VEIN_SECONDS.get(),pickaxe));
+        int wait=interval(ore,Config.ORE_VEIN_SECONDS.get(),pickaxe);
+        veins.put(vein.immutable(),level.getGameTime()+(deep ? wait*3/4 : wait));
     }
     /** "Iron Ore" for a vein's block. */
     public static String name(BlockState ore) { return ore.getBlock().getName().getString(); }

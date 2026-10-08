@@ -20,7 +20,8 @@ public final class CitizenCombat {
             if(bonus>0) event.setAmount(event.getAmount()*(100+bonus)/100F);
         }
         if(event.getEntity() instanceof CitizenEntity defender && defender.skillRole()==StructureRole.GUARD) {
-            int protection=CitizenSkill.guardProtection(defender.skillLevel(StructureRole.GUARD))+GuardRoles.protection(defender);
+            int protection=CitizenSkill.guardProtection(defender.skillLevel(StructureRole.GUARD))+GuardRoles.protection(defender)
+                    +(defender.level() instanceof ServerLevel level && Research.has(defender.town(level),"reinforced_armor") ? 10 : 0);
             if(protection>0) event.setAmount(event.getAmount()*Math.max(0,100-protection)/100F);
         }
     }

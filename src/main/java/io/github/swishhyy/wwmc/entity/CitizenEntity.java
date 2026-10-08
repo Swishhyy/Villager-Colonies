@@ -384,14 +384,15 @@ public final class CitizenEntity extends Villager {
     /** Extra work speed, in percent, from experience at the current job and a varied diet. */
     public int speedBonus() {
         StructureRole role=skillRole();
-        return MealVariety.bonus(recentMeals)+CitizenSkill.speed(role,skillLevel(role));
+        int bonus=MealVariety.bonus(recentMeals)+CitizenSkill.speed(role,skillLevel(role));
+        return level() instanceof ServerLevel server ? bonus+Research.speed(town(server),role) : bonus;
     }
     /** Ticks that work taking {@code base} ticks for an ordinary newcomer takes this citizen. */
     public int effort(int base) { return Math.max(1,base*100/(100+speedBonus())); }
     /** Of {@code uses} uses of a tool, how many cost durability; experienced workers spare some. */
     public int toolWear(int uses) {
         StructureRole role=skillRole();
-        int saving=CitizenSkill.toolSaving(role,skillLevel(role)),cost=0;
+        int saving=CitizenSkill.toolSaving(role,skillLevel(role))+(level() instanceof ServerLevel server ? Research.toolSaving(town(server),role) : 0),cost=0;
         for(int n=0;n<uses;n++) if(saving<=0 || getRandom().nextInt(100)>=saving) cost++;
         return cost;
     }
@@ -1008,7 +1009,7 @@ public final class CitizenEntity extends Villager {
             // The ore yields its normal drops, then stays in place for the next yield.
             BlockState ore=level.getBlockState(target);
             List<ItemStack> drops=Block.getDrops(ore,level,target,null,this,getMainHandItem());
-            OreVeins.worked(level,target,ore,getMainHandItem());
+            OreVeins.worked(level,target,ore,getMainHandItem(),Research.has(town,"deep_mining"));
             wearTool();
             level.levelEvent(2001,target,Block.getId(ore));
             storeDrops(level,ProductionYield.apply(station,ore,drops,getRandom())); workProgress=0; gainExperience(station.role(),1); return;

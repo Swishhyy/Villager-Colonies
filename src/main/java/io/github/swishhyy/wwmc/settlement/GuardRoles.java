@@ -16,8 +16,8 @@ import net.minecraft.world.level.levelgen.Heightmap;
  * its guard sees hostiles from 48 blocks, and warns the town when they approach from outside the claim.
  */
 public final class GuardRoles {
-    public static final int TOWER_HEIGHT=6,TOWER_SIGHT=48;
-    private static final int WARNING_TICKS=2400;
+    public static final int TOWER_HEIGHT=6,TOWER_SIGHT=48,SIGNAL_SIGHT=64;
+    private static final int WARNING_TICKS=2400,SIGNAL_WARNING_TICKS=1200;
     private static final Map<UUID,Long> WARNED=new HashMap<>();
     private GuardRoles() {}
     public static String role(ServerLevel level,BlockPos station) { return GuardService.posts(level,new Station(station,StructureRole.GUARD)).role(); }
@@ -31,6 +31,8 @@ public final class GuardRoles {
         }
         return station.getY()-ground>=TOWER_HEIGHT;
     }
+    /** How far a watchtower of this town sees: farther with Signal Fires. */
+    public static int towerSight(Settlement town) { return Research.has(town,"signal_fires") ? SIGNAL_SIGHT : TOWER_SIGHT; }
     /** Damage, in percent, a guard's role turns aside. */
     public static int protection(CitizenEntity guard) {
         if(!(guard.level() instanceof ServerLevel level)) return 0;
@@ -47,13 +49,14 @@ public final class GuardRoles {
             if(!guard.isGuard()) continue;
             BlockPos station=town.jobs.home(guard.getUUID());
             if(station==null || !watchtower(level,station)) continue;
-            List<Monster> seen=level.getEntitiesOfClass(Monster.class,guard.getBoundingBox().inflate(TOWER_SIGHT),
-                    m -> m.isAlive() && !town.contains(m.blockPosition()) && guard.distanceToSqr(m)<=TOWER_SIGHT*TOWER_SIGHT && guard.hasLineOfSight(m));
+            int sight=towerSight(town);
+            List<Monster> seen=level.getEntitiesOfClass(Monster.class,guard.getBoundingBox().inflate(sight),
+                    m -> m.isAlive() && !town.contains(m.blockPosition()) && guard.distanceToSqr(m)<=sight*sight && guard.hasLineOfSight(m));
             if(seen.isEmpty()) continue;
             Monster first=seen.stream().min(Comparator.comparingDouble(guard::distanceToSqr)).get();
             String text="Watchtower lookout "+guard.getName().getString()+" spotted "+seen.size()+(seen.size()==1 ? " hostile" : " hostiles")
                     +" approaching "+town.name+": "+Panels.directions(station,first.blockPosition())+" of the tower.";
-            WARNED.put(town.id,now+WARNING_TICKS);
+            WARNED.put(town.id,now+(Research.has(town,"signal_fires") ? SIGNAL_WARNING_TICKS : WARNING_TICKS));
             CampaignService.record(level,town,text);
             for(ServerPlayer player:level.players()) if(TownAccess.manages(town,player.getUUID()) && town.contains(player.blockPosition()))
                 SettlementService.notify(player,text);

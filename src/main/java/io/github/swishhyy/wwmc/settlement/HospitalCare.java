@@ -42,7 +42,7 @@ public final class HospitalCare {
             if(!citizen.hospitalRestAt(level,town,bed)) { citizen.leaveHospitalBed(); continue; }
             if(inBed(citizen)) {
                 citizen.workActivity("Resting in hospital until fully healed ("+Math.round(citizen.getHealth())+"/"+Math.round(citizen.getMaxHealth())+")");
-                if(citizen.hospitalHealingPulse()) citizen.heal(1);
+                if(citizen.hospitalHealingPulse()) citizen.heal(Research.has(town,"field_medicine") ? 2 : 1);
                 if(citizen.getHealth()>=citizen.getMaxHealth()) finish(level,town,citizen);
             } else citizen.workActivity("Walking to a hospital bed for recovery");
             return true;

@@ -408,7 +408,7 @@ public final class Panels {
                 for(int n=0;n<plan.patrol().size();n++) rows.add(new Row(icon(Items.MAP),"Patrol point "+(n+1),plan.patrol().get(n).toShortString()));
                 boolean tower=GuardRoles.watchtower(level,station.position());
                 rows.add(new Row(icon(Items.SPYGLASS),tower ? "Watchtower" : "Not a watchtower",tower
-                        ? "Raised "+GuardRoles.TOWER_HEIGHT+"+ blocks above the ground: sees hostiles from "+GuardRoles.TOWER_SIGHT+" blocks and warns of approaching ones"
+                        ? "Raised "+GuardRoles.TOWER_HEIGHT+"+ blocks above the ground: sees hostiles from "+GuardRoles.towerSight(town)+" blocks and warns of approaching ones"
                         : "Build the station at least "+GuardRoles.TOWER_HEIGHT+" blocks above the surrounding ground for earlier warnings"));
             }
             case SMELTERY -> rows.add(new Row(icon(Items.FURNACE),"Furnaces",SettlementService.processingDevices(level,town,station).size()+" furnaces or blast furnaces in range"));

@@ -89,7 +89,7 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
                 addRenderableWidget(cycle); addRenderableWidget(revoke); continue;
             }
             if(row.key().startsWith("act:")) {
-                String label=row.key().startsWith("act:show:") ? "Show" : row.key().startsWith("act:project:") ? "Build" : row.key().startsWith("act:accept:") ? "Accept" : row.key().startsWith("act:decline:") ? "Decline"
+                String label=row.key().startsWith("act:show:") ? "Show" : row.key().startsWith("act:research:") ? "Study" : row.key().startsWith("act:project:") ? "Build" : row.key().startsWith("act:accept:") ? "Accept" : row.key().startsWith("act:decline:") ? "Decline"
                         : row.key().startsWith("act:unally:") ? "End / cancel" : row.key().startsWith("act:ally:") ? "Ally" : "Use";
                 int width=menu.kind==PanelMenu.Kind.RELATIONSHIPS ? 76 : 32;
                 Button use=Button.builder(Component.literal(label),b -> { b.active=false; send(index,1,row.key()); })
