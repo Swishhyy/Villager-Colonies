@@ -15,18 +15,18 @@ import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
  */
 public final class CitizenCombat {
     @SubscribeEvent public void damage(LivingIncomingDamageEvent event) {
-        if(event.getSource().getEntity() instanceof CitizenEntity attacker && attacker.jobRole()==StructureRole.GUARD) {
+        if(event.getSource().getEntity() instanceof CitizenEntity attacker && attacker.skillRole()==StructureRole.GUARD) {
             int bonus=CitizenSkill.guardDamage(attacker.skillLevel(StructureRole.GUARD));
             if(bonus>0) event.setAmount(event.getAmount()*(100+bonus)/100F);
         }
-        if(event.getEntity() instanceof CitizenEntity defender && defender.jobRole()==StructureRole.GUARD) {
+        if(event.getEntity() instanceof CitizenEntity defender && defender.skillRole()==StructureRole.GUARD) {
             int protection=CitizenSkill.guardProtection(defender.skillLevel(StructureRole.GUARD));
             if(protection>0) event.setAmount(event.getAmount()*Math.max(0,100-protection)/100F);
         }
     }
     @SubscribeEvent public void died(LivingDeathEvent event) {
         if(!(event.getEntity().level() instanceof ServerLevel level)) return;
-        if(event.getEntity() instanceof Enemy && event.getSource().getEntity() instanceof CitizenEntity killer && killer.jobRole()==StructureRole.GUARD)
+        if(event.getEntity() instanceof Enemy && event.getSource().getEntity() instanceof CitizenEntity killer && killer.skillRole()==StructureRole.GUARD)
             killer.gainExperience(StructureRole.GUARD,3);
         if(event.getEntity() instanceof CitizenEntity lost) {
             Settlement town=lost.town(level);

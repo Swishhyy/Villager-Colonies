@@ -507,7 +507,7 @@ public final class Panels {
         Settlement town=citizen.town(level);
         Station job=town==null ? null : home(town,citizen);
         List<Row> status=new ArrayList<>();
-        StructureRole role=citizen.jobRole();
+        StructureRole role=citizen.skillRole();
         int skill=citizen.skillLevel(role);
         status.add(new Row(job==null ? icon(Items.PAPER) : stationIcon(job.role()),job==null ? "No job"
                 : CitizenSkill.title(skill)+" "+job.role().title().toLowerCase(Locale.ROOT)+" at "+job.position().toShortString(),citizen.activity()));
@@ -525,9 +525,9 @@ public final class Panels {
         for(StructureRole known:StructureRole.values()) {
             int points=citizen.experience(known);
             if(points<=0 && known!=role) continue;
-            int level=CitizenSkill.level(points),next=CitizenSkill.next(level);
-            skills.add(new Row(stationIcon(known),known.title()+": "+CitizenSkill.title(level),points+(next<0 ? " experience, the top level" : " / "+next+" experience")+" · "+CitizenSkill.perk(known,level))
-                    .bar(next<0 ? 1F : points/(float)next,level>=CitizenSkill.MAX_LEVEL ? GREEN : AMBER));
+            int rank=CitizenSkill.level(points),next=CitizenSkill.next(rank);
+            skills.add(new Row(stationIcon(known),known.title()+": "+CitizenSkill.title(rank),points+(next<0 ? " experience, the top level" : " / "+next+" experience")+" · "+CitizenSkill.perk(known,rank))
+                    .bar(next<0 ? 1F : points/(float)next,rank>=CitizenSkill.MAX_LEVEL ? GREEN : AMBER));
         }
         skills.add(new Row(icon(Items.COOKED_BEEF),"Diet: "+MealVariety.mood(meals),meals.isEmpty() ? "No meals yet"
                 : MealVariety.distinct(meals)+" kinds in the last "+meals.size()+" meals: "+String.join(", ",meals.stream().map(id -> id.replace("minecraft:","").replace('_',' ')).toList())));

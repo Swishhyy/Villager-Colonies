@@ -359,8 +359,8 @@ public final class CitizenEntity extends Villager {
     }
     public int experience(StructureRole role) { return role==null ? 0 : experience.getOrDefault(role.id(),0); }
     public int skillLevel(StructureRole role) { return CitizenSkill.level(experience(role)); }
-    /** The job experience counts toward: the citizen's own station, or guard duty at a guard post. */
-    public StructureRole jobRole() {
+    /** The job experience counts toward: the citizen's own station, even while asleep or on an errand, or the guard post it covers. */
+    public StructureRole skillRole() {
         if(!(level() instanceof ServerLevel server)) return null;
         Settlement town=town(server);
         Station home=town==null ? null : homeStation(town);
@@ -379,18 +379,18 @@ public final class CitizenEntity extends Villager {
                     +role.title().toLowerCase(Locale.ROOT)+": "+CitizenSkill.perk(role,reached)+".");
         }
     }
-    public void gainExperience(int amount) { gainExperience(jobRole(),amount); }
+    public void gainExperience(int amount) { gainExperience(skillRole(),amount); }
     public List<String> recentMeals() { return List.copyOf(recentMeals); }
     /** Extra work speed, in percent, from experience at the current job and a varied diet. */
     public int speedBonus() {
-        StructureRole role=jobRole();
+        StructureRole role=skillRole();
         return MealVariety.bonus(recentMeals)+CitizenSkill.speed(role,skillLevel(role));
     }
     /** Ticks that work taking {@code base} ticks for an ordinary newcomer takes this citizen. */
     public int effort(int base) { return Math.max(1,base*100/(100+speedBonus())); }
     /** Of {@code uses} uses of a tool, how many cost durability; experienced workers spare some. */
     public int toolWear(int uses) {
-        StructureRole role=jobRole();
+        StructureRole role=skillRole();
         int saving=CitizenSkill.toolSaving(role,skillLevel(role)),cost=0;
         for(int n=0;n<uses;n++) if(saving<=0 || getRandom().nextInt(100)>=saving) cost++;
         return cost;

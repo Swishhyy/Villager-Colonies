@@ -66,13 +66,13 @@ public final class TownNeeds {
         // People.
         int beds=SettlementService.housingBeds(level,town).size();
         Station housing=first(town,StructureRole.HOUSING);
-        if(population>beds) needs.add(new Need(WARNING,icon(Items.RED_BED),(population-beds)+(population-beds==1 ? " citizen has" : " citizens have")+" no housing bed",
+        if(population>beds) needs.add(new Need(WARNING,icon(net.minecraft.world.level.block.Blocks.BED.red()),(population-beds)+(population-beds==1 ? " citizen has" : " citizens have")+" no housing bed",
                 "Place complete beds near a Housing or Barracks Station",housing==null ? town.center : housing.position()));
         int injured=0;
         for(CitizenEntity citizen:loaded) if(HospitalCare.needsCare(town,citizen) && citizen.hospitalBed()==null) injured++;
         if(injured>0) {
             Station hospital=first(town,StructureRole.HOSPITAL);
-            needs.add(new Need(injured>=3 ? URGENT : WARNING,icon(Items.WHITE_BED),injured+(injured==1 ? " citizen needs" : " citizens need")+" a hospital bed",
+            needs.add(new Need(injured>=3 ? URGENT : WARNING,station(StructureRole.HOSPITAL),injured+(injured==1 ? " citizen needs" : " citizens need")+" a hospital bed",
                     hospital==null ? "Build a Hospital Station with free, reachable beds; injured citizens rest there until fully healed"
                             : "Every hospital bed is taken or unreachable: add beds near the Hospital Station",hospital==null ? town.center : hospital.position()));
         }
@@ -108,7 +108,7 @@ public final class TownNeeds {
                 }
                 case BLACKSMITH -> { if(SettlementService.anvils(level,town,station).isEmpty()) needs.add(new Need(WARNING,icon(Items.ANVIL),name+" needs an anvil","Place an anvil within three blocks of the station",pos)); }
                 case ENCHANTER -> { if(SettlementService.enchantingTables(level,town,station).isEmpty()) needs.add(new Need(WARNING,icon(Items.ENCHANTING_TABLE),name+" needs an enchanting table","Place one within "+station.radius()+" blocks of the station",pos)); }
-                case HOSPITAL -> { if(SettlementService.beds(level,town,station).isEmpty()) needs.add(new Need(WARNING,icon(Items.WHITE_BED),name+" has no patient beds","Place complete beds near the Hospital Station",pos)); }
+                case HOSPITAL -> { if(SettlementService.beds(level,town,station).isEmpty()) needs.add(new Need(WARNING,station(StructureRole.HOSPITAL),name+" has no patient beds","Place complete beds near the Hospital Station",pos)); }
                 case GUARD -> { if(!WorldWorkData.get(level).guardPosts.containsKey(pos)) needs.add(new Need(ADVICE,icon(Items.IRON_SWORD),name+" has no chosen posts","Its guard stands at the station; open it and choose day and night posts",pos)); }
                 case TRADER -> {
                     String status=town.trading.status==null ? "" : town.trading.status;
