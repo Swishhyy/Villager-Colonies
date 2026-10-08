@@ -121,7 +121,7 @@ public final class ProductionWorldTests {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-3800));
             Station cook=new Station(start.east(24),StructureRole.COOK); var f=fixture(level,start,cook);
-            Container stock=barrel(level,cook.position().south(2),new ItemStack(Items.WHEAT,96),new ItemStack(Items.COAL,4));
+            Container stock=barrel(level,cook.position().south(2),new ItemStack(Items.WHEAT,64),new ItemStack(Items.WHEAT,32),new ItemStack(Items.COAL,4));
             level.setBlockAndUpdate(cook.position().west(2),Blocks.FURNACE.defaultBlockState());
             level.setBlockAndUpdate(cook.position().east(2),Blocks.SMOKER.defaultBlockState());
             var smoker=(AbstractFurnaceBlockEntity)level.getBlockEntity(cook.position().east(2));
