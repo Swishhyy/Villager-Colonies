@@ -14,7 +14,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Server-owned campaign and field-order panels. Row keys identify operations; every click is authorized afresh. */
 public final class CampaignViews {
-    public static final int OPEN=70,ROW_ACTION=71,BACK=72;
+    public static final int OPEN=70,ROW_ACTION=71,BACK=72,MAP=73;
     private CampaignViews() {}
     private static PanelView.Row row(net.minecraft.world.level.ItemLike icon,String title,String detail,String key,int value) {
         return new PanelView.Row(new ItemStack(icon),Component.literal(title),Component.literal(detail),0,-1,value,key);
@@ -81,7 +81,8 @@ public final class CampaignViews {
         return new PanelView(Component.literal(town.name+" · Campaign"),Component.literal("Shared management, supply goals, projects and expeditions"),
                 List.of(new PanelView.Tab("Supply",supply),new PanelView.Tab("Projects",projects),new PanelView.Tab("Research",research),
                         new PanelView.Tab("Army",army(level,town,viewer)),new PanelView.Tab("Sites",sites(level,town)),new PanelView.Tab("Journal",journal)),
-                List.of(new PanelView.Action(BACK,"Town overview",true),new PanelView.Action(RelationshipViews.OPEN,"Relationships",true)));
+                List.of(new PanelView.Action(BACK,"Town overview",true),new PanelView.Action(RelationshipViews.OPEN,"Relationships",true),
+                        new PanelView.Action(MAP,"Map",true,"Claims, trade routes, expedition sites and pings shared with your allies; also /wwmc map")));
     }
     private static List<PanelView.Row> army(ServerLevel level,Settlement town,ServerPlayer viewer) {
         List<PanelView.Row> rows=new ArrayList<>(); boolean led=town.campaign.squads.stream().anyMatch(s -> s.leader().equals(viewer.getUUID()));
@@ -138,6 +139,7 @@ public final class CampaignViews {
         if(!valid(player,pos,orders)) return; ServerLevel level=(ServerLevel)player.level(); Settlement town=SettlementData.get(level).at(pos);
         if(action==RelationshipViews.OPEN && !orders) { RelationshipViews.open(player,town); return; }
         if(action==BACK && !orders) { Panels.openTown(player,town); return; }
+        if(action==MAP) { player.closeContainer(); SettlementMap.open(player); return; }
         if(action!=ROW_ACTION || key.length()>256) return;
         String message="";
         try {

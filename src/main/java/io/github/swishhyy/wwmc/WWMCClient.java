@@ -62,5 +62,6 @@ public final class WWMCClient {
             if(context.player().containerMenu.containerId==payload.containerId() && context.player().containerMenu instanceof ViewMenu menu) menu.view(payload.view());
         });
         event.register(WwmcNetwork.HighlightPayload.TYPE,(payload,context) -> StationRangePreview.highlight(payload.pos(),payload.seconds()));
+        event.register(WwmcNetwork.MapPayload.TYPE,(payload,context) -> io.github.swishhyy.wwmc.client.screen.MapScreen.show(payload.map()));
     }
 }
