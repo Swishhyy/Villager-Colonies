@@ -35,6 +35,9 @@ jobs:
       - name: Test citizen work, logistics, food, and travel
         run: ./gradlew runGameTestServer --console=plain
 
+      - name: Start, save, and reload a dedicated server
+        run: python3 scripts/smoke_server.py
+
       - name: Upload mod JAR
         uses: actions/upload-artifact@v4
         with:

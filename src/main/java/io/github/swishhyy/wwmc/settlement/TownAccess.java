@@ -9,6 +9,7 @@ public final class TownAccess {
     public static boolean owner(Settlement town,UUID player) { return town!=null && town.owner.equals(player); }
     public static boolean manages(Settlement town,UUID player) { return owner(town,player) || town!=null && "steward".equals(town.campaign.members.get(player)); }
     public static boolean builds(Settlement town,UUID player) { return manages(town,player) || town!=null && "builder".equals(town.campaign.members.get(player)); }
+    public static boolean invited(Settlement town,UUID player) { return town!=null && town.campaign.invitations.containsKey(player); }
     public static boolean allied(Settlement a,Settlement b) {
         return a!=null && b!=null && (a.owner.equals(b.owner) || a.campaign.allies.contains(b.id) && b.campaign.allies.contains(a.id));
     }
@@ -19,8 +20,9 @@ public final class TownAccess {
         town.campaign.invitations.put(player,role); return "Invitation sent as "+role+". Your friend must accept it.";
     }
     public static boolean accept(Settlement town,UUID player) {
-        String role=town.campaign.invitations.remove(player);
-        if(role==null || town.campaign.members.size()>=32) return false;
+        String role=town.campaign.invitations.get(player);
+        if(role==null || !ROLES.contains(role) || town.campaign.members.size()>=32 && !town.campaign.members.containsKey(player)) return false;
+        town.campaign.invitations.remove(player);
         town.campaign.members.put(player,role); return true;
     }
     public static String alliance(Settlement a,Settlement b,UUID player) {

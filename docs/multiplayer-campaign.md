@@ -1,16 +1,28 @@
-# Multiplayer campaign — 0.12.0-alpha
+# Multiplayer campaign — 0.12.1-alpha
 
-The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same 0.12.0-alpha JAR on the server and every client. Existing towns keep their owners, stations, assignments and inventories; new campaign data starts empty.
+The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same 0.12.1-alpha JAR on the server and every client. Existing towns keep their owners, stations, assignments and inventories; new campaign data starts empty.
 
 ## Playing together
 
 1. Found a settlement and establish housing, food production, warehouses and courier-serviced job barrels as before.
-2. Open **Campaign** at its banner, then **People**. Invite your friend as a steward. They accept with `/wwmc town accept`.
+2. Open **Relationships** at its banner, then **Players**. Click a friend's permission button to invite them as a builder or steward. They right-click that town's flag, open **Invitations**, and click **Accept**.
 3. A **steward** can manage jobs, citizens, upgrades, supply goals, projects and squads. A **builder** can place and remove stations. The owner alone changes membership and approves alliances. Invitations grant no access before acceptance; revocation closes management/inventory access.
-4. Alternatively, each player founds a separate town. Both owners approve an alliance on their People boards. An alliance permits extra supply routes; it does not grant access to another town's controls or bags.
+4. Alternatively, each player founds a separate town. Both owners approve an alliance on **Relationships -> Settlements**. An alliance permits extra supply routes; it does not grant access to another town's controls or claim.
 5. Configure one town for meals and forestry, and the other for mining and equipment. On **Supply**, choose an industry and set stock targets.
 
 Industry choices improve only their matching work: farming harvests, fishing catches, forestry actions or mining actions. Matching jobs work 10% faster; a terrain match raises the speed bonus to 25%. Balanced uses normal production speed. Rivers help fishing, fertile surface helps farming, forest cover helps timber, and high/rocky ground helps mining. Other industries remain available. Bonuses never generate extra items per harvest.
+
+## Relationships, claims and flags
+
+Player towns deny interaction to everyone except their owner and accepted builders or stewards. This applies throughout the saved square claim, at every height, including existing towns. Visitors may walk through, but cannot mine or place blocks, open containers, use doors or other blocks, use buckets, trample crops, or interact with or attack entities there. Pistons cannot move blocks across a claim border. TNT ignited by an unauthorized player cannot destroy the claimed blocks. Natural hostiles still threaten ordinary buildings and citizens; flags survive explosions. NPC towns retain their existing neutral trading and combat rules.
+
+The Relationships **Players** tab shows online players plus accepted members and pending invitations, retaining saved names for offline members. Its permission button cycles Denied, Builder and Steward. New access waits for acceptance on **Invitations**; changing an accepted member's role applies immediately. The × button revokes access and cancels invitations. Revocation also closes that player's current container. The owner alone changes permissions and alliances. Pending invitees can use only the flag's invitation screen until acceptance.
+
+On **Settlements**, propose, accept, decline or cancel alliances. Mutual consent is required, and same-owner towns are already allied. NPC entries show existing goodwill. On **Town**, the owner types a name of up to 48 characters and clicks **Save name**. A small notice above the hotbar says **You are now entering <town name>** when a player crosses into the claim, including their first arrival after login. It appears once per entry and uses the current saved name. Red corner banners and the displayed X/Z limits identify the exact borders.
+
+Settlement flags have high blast resistance, are removed from explosion destruction lists, and cannot be pushed by pistons. Owners can still deliberately remove an empty town's flag. An occupied town's flag remains its fixed rally point.
+
+If a flag disappeared in an older build, its occupied town keeps the original identity and claim. Place a Settlement Banner at the saved flag coordinates and right-click it to reopen the same town. Alternatively, right-click another Settlement Banner inside that claim to open Relationships, read the original coordinates on **Town**, and use **Restore flag** while carrying one replacement in your inventory. Recovery consumes that item only after success, never overwrites another block, and preserves population, stations, assignments, memberships and routes. `/wwmc town recover` remains an optional shortcut while standing inside that claim.
 
 ## Stock targets and routes
 
@@ -82,6 +94,7 @@ For personal deliveries or remaining reward collection, bring goods to the reque
 | `/wwmc town remove <player>` | Owner revokes membership/invitation; offline members can be removed on the board |
 | `/wwmc town leave` | Leave a town you joined while standing inside it |
 | `/wwmc town list` | Town names and IDs for alliance/route commands |
+| `/wwmc town recover` | Optional shortcut to restore that claim's lost flag with one replacement item |
 | `/wwmc town ally <town UUID>` | Propose or accept a reciprocal alliance |
 | `/wwmc town unally <town UUID>` | End an alliance |
 | `/wwmc request <item ID> <0–4096>` | Set a stock target |

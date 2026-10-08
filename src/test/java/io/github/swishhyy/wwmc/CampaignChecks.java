@@ -92,6 +92,7 @@ public final class CampaignChecks {
     @Test void campaignStateAndOldSavesRoundTripWithoutChangingTownIdentity(MinecraftServer server) {
         var ops=server.registryAccess().createSerializationContext(JsonOps.INSTANCE); Settlement original=town(UUID.randomUUID(),0); UUID leader=UUID.randomUUID(),guard=UUID.randomUUID();
         original.campaign.members.put(leader,"steward"); original.campaign.invitations.put(UUID.randomUUID(),"builder"); original.campaign.allies.add(UUID.randomUUID());
+        original.campaign.playerNames.put(leader,"OfflineFriend");
         original.campaign.requests.put("minecraft:bread",32); original.campaign.projects.addAll(List.of("armory","depot")); original.campaign.specialty="mining";
         original.campaign.squads.add(new CampaignState.Squad(leader,List.of(guard),"escort",original.center,Optional.of(UUID.randomUUID())));
         original.citizenPlaces.put(guard,original.center.east(80));
@@ -100,6 +101,7 @@ public final class CampaignChecks {
         original.campaign.contracts.add(new SupplyContract(UUID.randomUUID(),"minecraft:bread",32,8,new ItemStack(Items.EMERALD,4),Optional.of(original.id),12000));
         var json=Settlement.CODEC.encodeStart(ops,original).getOrThrow(); Settlement copy=Settlement.CODEC.parse(ops,json).getOrThrow();
         assertEquals(original.id,copy.id); assertEquals(original.owner,copy.owner); assertEquals(original.campaign.members,copy.campaign.members);
+        assertEquals(original.campaign.playerNames,copy.campaign.playerNames);
         assertEquals(original.campaign.incoming,copy.campaign.incoming); assertEquals(original.campaign.squads,copy.campaign.squads);
         assertEquals(original.citizenPlaces,copy.citizenPlaces);
         assertEquals(original.campaign.requests,copy.campaign.requests); assertEquals(original.campaign.projects,copy.campaign.projects); assertEquals(original.campaign.parent,copy.campaign.parent);
@@ -107,6 +109,14 @@ public final class CampaignChecks {
         json.getAsJsonObject().remove("campaign"); Settlement old=Settlement.CODEC.parse(ops,json).getOrThrow();
         assertEquals(original.id,old.id); assertTrue(old.campaign.members.isEmpty()); assertTrue(old.campaign.squads.isEmpty()); assertTrue(old.campaign.projects.isEmpty());
         assertTrue(TownAccess.manages(old,old.owner));
+    }
+    @Test void aFullTownRetainsAnInvitationUntilThereIsRoom() {
+        Settlement town=town(UUID.randomUUID(),0); UUID friend=UUID.randomUUID();
+        for(int n=0;n<32;n++) town.campaign.members.put(UUID.randomUUID(),"builder");
+        town.campaign.invitations.put(friend,"steward");
+        assertFalse(TownAccess.accept(town,friend)); assertTrue(TownAccess.invited(town,friend)); assertFalse(TownAccess.builds(town,friend));
+        town.campaign.members.remove(town.campaign.members.keySet().iterator().next());
+        assertTrue(TownAccess.accept(town,friend)); assertTrue(TownAccess.manages(town,friend)); assertFalse(TownAccess.invited(town,friend));
     }
     @Test void journalAndSquadSizesAreBoundedAndIndustryDoesNotDisableOtherJobs() {
         var state=new CampaignState(); for(int n=0;n<100;n++) state.log(n,"Event "+n); assertEquals(64,state.journal.size()); assertEquals(36,state.journal.getFirst().time());

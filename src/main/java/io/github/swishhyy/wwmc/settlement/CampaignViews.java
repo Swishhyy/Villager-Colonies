@@ -46,21 +46,7 @@ public final class CampaignViews {
     public static PanelView build(ServerLevel level,Settlement town,ServerPlayer viewer,boolean orders) {
         if(orders) return new PanelView(Component.literal(town.name+" · Field Orders"),Component.literal("Lead your guards in person; troops use their own equipment and supplies"),
                 List.of(new PanelView.Tab("Army",army(level,town,viewer)),new PanelView.Tab("Sites",sites(level,town))),List.of());
-        List<PanelView.Row> people=new ArrayList<>(),supply=new ArrayList<>(),projects=new ArrayList<>(),journal=new ArrayList<>();
-        boolean owner=TownAccess.owner(town,viewer.getUUID());
-        people.add(row(Items.GOLDEN_HELMET,"Owner: "+name(level,town.owner),"Stewards manage workers and stock; builders place and remove stations","",-1));
-        for(var member:town.campaign.members.entrySet()) people.add(row(Items.PLAYER_HEAD,name(level,member.getKey()),member.getValue()+"; minus below builder revokes access",
-                owner ? "member:"+member.getKey() : "",member.getValue().equals("steward") ? 1 : 0));
-        for(ServerPlayer player:level.players()) if(!player.getUUID().equals(town.owner) && !town.campaign.members.containsKey(player.getUUID()))
-            people.add(action(Items.PAPER,"Invite "+player.getName().getString(),town.campaign.invitations.containsKey(player.getUUID()) ? "Invitation waiting; friend uses /wwmc town accept" : "Invite as steward; they must accept",
-                    "invite:"+player.getUUID(),owner && !town.campaign.invitations.containsKey(player.getUUID())));
-        for(var invite:town.campaign.invitations.entrySet()) people.add(action(Items.DYE.red(),"Cancel invitation: "+name(level,invite.getKey()),invite.getValue(),"cancel:"+invite.getKey(),owner));
-        for(Settlement other:SettlementData.get(level).settlements) if(other!=town && !other.trading.npc) {
-            boolean allied=TownAccess.allied(town,other);
-            people.add(action(Items.BANNER.blue(),other.name,allied ? "Allied; members do not gain management of the other town" : town.campaign.allianceOffers.contains(other.id) ? "Alliance offered: accept" : "Propose alliance; the other owner must accept",
-                    "ally:"+other.id,owner && !allied));
-            if(town.campaign.allies.contains(other.id)) people.add(action(Items.BANNER.red(),"End alliance: "+other.name,"Extra routes stop; their carrier keeps undelivered cargo","unally:"+other.id,owner));
-        }
+        List<PanelView.Row> supply=new ArrayList<>(),projects=new ArrayList<>(),journal=new ArrayList<>();
         SupplyRequests.snapshotLoaded(level,town);
         supply.add(row(Items.COMPASS,"Industry: "+town.campaign.specialty,"Click the industry rows to choose a focus; matching terrain adds a larger bonus","",-1));
         for(String name:Specialization.NAMES) supply.add(action(Items.COMPASS,"Industry: "+name,name.equals("balanced") ? "Normal production speed for all jobs" : Specialization.terrain(level,town,name) ? "Matching terrain: 25% faster matching work" : "10% faster matching work; all other jobs remain available",
@@ -93,9 +79,9 @@ public final class CampaignViews {
             var entry=town.campaign.journal.get(n); journal.add(row(Items.WRITABLE_BOOK,"Day "+(entry.time()/24000+1)+", "+Math.max(0,(level.getGameTime()-entry.time())/1200)+" min ago",entry.text(),"",-1));
         }
         return new PanelView(Component.literal(town.name+" · Campaign"),Component.literal("Shared management, supply goals, projects and expeditions"),
-                List.of(new PanelView.Tab("People",people),new PanelView.Tab("Supply",supply),new PanelView.Tab("Projects",projects),
+                List.of(new PanelView.Tab("Supply",supply),new PanelView.Tab("Projects",projects),
                         new PanelView.Tab("Army",army(level,town,viewer)),new PanelView.Tab("Sites",sites(level,town)),new PanelView.Tab("Journal",journal)),
-                List.of(new PanelView.Action(BACK,"Town overview",true)));
+                List.of(new PanelView.Action(BACK,"Town overview",true),new PanelView.Action(RelationshipViews.OPEN,"Relationships",true)));
     }
     private static List<PanelView.Row> army(ServerLevel level,Settlement town,ServerPlayer viewer) {
         List<PanelView.Row> rows=new ArrayList<>(); boolean led=town.campaign.squads.stream().anyMatch(s -> s.leader().equals(viewer.getUUID()));
@@ -124,6 +110,7 @@ public final class CampaignViews {
     }
     public static void act(ServerPlayer player,BlockPos pos,boolean orders,int action,int value,String key) {
         if(!valid(player,pos,orders)) return; ServerLevel level=(ServerLevel)player.level(); Settlement town=SettlementData.get(level).at(pos);
+        if(action==RelationshipViews.OPEN && !orders) { RelationshipViews.open(player,town); return; }
         if(action==BACK && !orders) { Panels.openTown(player,town); return; }
         if(action!=ROW_ACTION || key.length()>256) return;
         String message="";

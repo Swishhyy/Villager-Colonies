@@ -6,7 +6,9 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.12.0-alpha
+## Current build: 0.12.1-alpha
+
+0.12.1 adds a dedicated **Relationships** screen at the flag: player invitations and permissions, alliance controls, and editable town names. Player claims deny interactions until permission is accepted. Entry notices show the current town name. Flags survive explosions and cannot be moved by pistons, and lost flags can be restored without resetting a town. Install matching 0.12.1-alpha builds on the server and every client. For a server failing with **Overworld settings missing**, see [World metadata recovery](docs/server-startup.md).
 
 0.12.0 adds a **multiplayer campaign loop**: accepted town membership, reciprocal alliances, industry specialization, demand-driven shipments, guard squads, bandit camps and occupied mines, supplied outposts, material-funded projects, working hospital medics, NPC supply contracts and a persistent town journal. Open **Campaign** at a town banner; use `/wwmc squad` for field orders away from home. Existing town identities, ownership, job assignments and inventories are preserved. See [Multiplayer campaign](docs/multiplayer-campaign.md) for project costs and a two-player walkthrough.
 
@@ -151,7 +153,7 @@ When miners encounter caves near the selected depth, they scan a bounded nearby 
 | `/wwmc alarm` | Sound the alarm yourself, or call the all-clear early while it rings. |
 | `/wwmc wave` | Bring the next enemy wave forward to now, even in daylight. |
 
-Commands affect your own town at your current position. You can own several towns in the Overworld, each with its own population limit. If you own several and stand outside them, use a banner screen or enter the town you want to manage. Claims do not implement general-purpose land protection; station removal is owner-restricted. An occupied settlement's banner is its fixed rally point and cannot be mined normally.
+Commands affect your own town at your current position. You can own several towns in the Overworld, each with its own population limit. If you own several and stand outside them, use a banner screen or enter the town you want to manage. Player claims deny block placement/removal, block and container use, entity interactions and player attacks until the owner's invitation is accepted. Configure builders and stewards on the banner's Relationships screen; alliances alone grant no claim access. The owner can rename the town on Relationships -> Town. Entry notices display that name. An occupied settlement's banner is its fixed rally point and cannot be mined normally; all settlement banners resist explosions and piston movement. Lost flags can be restored at their original coordinates without changing the saved town.
 
 ### Job blocks define building purpose
 

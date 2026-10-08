@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import io.github.swishhyy.wwmc.Config;
 import io.github.swishhyy.wwmc.WWMC;
 import io.github.swishhyy.wwmc.block.StationBlock;
+import io.github.swishhyy.wwmc.block.SettlementBannerBlock;
 import io.github.swishhyy.wwmc.core.ReservationBook;
 import io.github.swishhyy.wwmc.core.WorkforceBook;
 import io.github.swishhyy.wwmc.core.MiningLayout;
@@ -111,7 +112,10 @@ public final class SettlementService {
         SettlementData data=SettlementData.get(level);
         Settlement present=data.at(pos);
         if(present!=null) {
-            if(owns(player,present) && present.center.equals(pos) && player instanceof ServerPlayer viewer) Panels.openTown(viewer,present);
+            if(player instanceof ServerPlayer viewer && (TownAccess.builds(present,player.getUUID()) || TownAccess.invited(present,player.getUUID()))) {
+                if(owns(player,present) && present.center.equals(pos)) Panels.openTown(viewer,present);
+                else RelationshipViews.open(viewer,present,pos);
+            }
             else notify(player,present.name+": "+present.citizens.size()+" citizens"+(owns(player,present) ? ". Open the town screen at its banner." : "."));
             return;
         }
@@ -120,10 +124,29 @@ public final class SettlementService {
         long previous=data.settlements.stream().filter(s -> s.owner.equals(player.getUUID())).count();
         Settlement settlement=new Settlement(UUID.randomUUID(),player.getUUID(),player.getName().getString()+"'s settlement"+(previous>0 ? " "+(previous+1) : ""),pos,radius,List.of(),List.of(),"balanced");
         settlement.populationLevel=0;
+        settlement.campaign.playerNames.put(player.getUUID(),player.getName().getString());
         data.settlements.add(settlement); data.setDirty();
         placeBorders(level,settlement);
         tell(player,"Founded "+settlement.name+". Place housing, warehouse, and work stations inside the "+radius+"-block claim. Up to "
                 +populationLimit(settlement)+" citizens may live here; buy room for more with emeralds on the town screen.");
+    }
+    /** Restore an old lost rally point without founding a replacement town or changing its claim. */
+    public static String recoverBanner(ServerLevel level,Player player,Settlement town) {
+        if(town==null || !town.contains(player.blockPosition()) || !TownAccess.builds(town,player.getUUID())) return "Stand inside a town where you have building permission.";
+        if(!level.hasChunkAt(town.center)) return "Move closer to the original flag at "+town.center.toShortString()+" so its chunk is loaded.";
+        BlockState state=level.getBlockState(town.center);
+        if(state.is(WWMC.BANNER.get())) return "The settlement flag is already in place at "+town.center.toShortString()+".";
+        if(!state.isAir()) return "Clear the original flag position at "+town.center.toShortString()+" first; recovery never replaces another block.";
+        ItemStack replacement=ItemStack.EMPTY;
+        for(int slot=0;slot<player.getInventory().getContainerSize();slot++) {
+            ItemStack item=player.getInventory().getItem(slot);
+            if(item.is(WWMC.BANNER_ITEM.get())) { replacement=item; break; }
+        }
+        if(replacement.isEmpty() && !player.getAbilities().instabuild) return "Carry one Settlement Banner in your inventory to restore the flag.";
+        if(!level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState().setValue(SettlementBannerBlock.FACING,player.getDirection()))) return "The flag could not be restored here.";
+        if(!player.getAbilities().instabuild) { replacement.shrink(1); player.getInventory().setChanged(); }
+        CampaignService.record(level,town,"Settlement flag restored at "+town.center.toShortString()+".");
+        return "Restored "+town.name+"'s flag. Its citizens, stations, claim and routes are unchanged.";
     }
     public static void registerStation(ServerLevel level,Player player,BlockPos pos,StructureRole role) {
         SettlementData data=SettlementData.get(level);
@@ -483,7 +506,7 @@ public final class SettlementService {
                 Settlement s=owned(c.getSource()); if(s==null) return 0;
                 String name=StringArgumentType.getString(c,"name").strip();
                 if(name.isEmpty() || name.length()>48) { c.getSource().sendFailure(Component.literal("Use a town name of 1 to 48 characters.")); return 0; }
-                s.name=name; SettlementData.get(c.getSource().getLevel()).setDirty(); return 1;
+                notify(c.getSource().getPlayerOrException(),RelationshipViews.rename(c.getSource().getLevel(),s,c.getSource().getPlayerOrException().getUUID(),name)); return 1;
             })))
             .then(Commands.literal("priority").then(Commands.argument("priority",StringArgumentType.word())
                 .suggests((c,b) -> { for(String p:JobBoard.PRESETS) b.suggest(p); return b.buildFuture(); })

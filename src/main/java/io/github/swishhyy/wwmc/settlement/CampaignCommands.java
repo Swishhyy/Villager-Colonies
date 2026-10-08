@@ -37,6 +37,7 @@ public final class CampaignCommands {
         ServerPlayer friend=EntityArgument.getPlayer(c,"player");
         String result=TownAccess.invite(t,player(c).getUUID(),friend.getUUID(),role);
         if(t.campaign.invitations.containsKey(friend.getUUID())) {
+            t.campaign.playerNames.put(friend.getUUID(),friend.getName().getString());
             SettlementData.get(level(c)).setDirty(); SettlementService.tell(friend,"You were invited to "+t.name+" as "+role+". Use /wwmc town accept to join.");
         }
         return say(c,result);
@@ -46,6 +47,7 @@ public final class CampaignCommands {
         Settlement t=id==null ? data.settlements.stream().filter(s -> s.campaign.invitations.containsKey(p.getUUID()))
                 .min(Comparator.comparingDouble(s -> s.center.distSqr(p.blockPosition()))).orElse(null) : data.byId(id);
         if(t==null || !TownAccess.accept(t,p.getUUID())) return say(c,"No invitation is waiting for you in that town.");
+        t.campaign.playerNames.put(p.getUUID(),p.getName().getString());
         CampaignService.record(level(c),t,p.getName().getString()+" joined as "+t.campaign.members.get(p.getUUID())+"."); return say(c,"Joined "+t.name+".");
     }
     @SubscribeEvent public void commands(RegisterCommandsEvent event) {
@@ -56,9 +58,10 @@ public final class CampaignCommands {
                 CampaignViews.open(player(c),t); return 1;
             }))
             .then(Commands.literal("town")
+                .then(Commands.literal("recover").executes(c -> say(c,SettlementService.recoverBanner(level(c),player(c),SettlementData.get(level(c)).at(player(c).blockPosition())))))
                 .then(Commands.literal("list").executes(c -> {
                     StringBuilder text=new StringBuilder("Towns (UUIDs can be used with alliance commands):");
-                    for(Settlement t:SettlementData.get(level(c)).settlements) text.append("\n").append(t.name).append(" · ").append(t.id);
+                    for(Settlement t:SettlementData.get(level(c)).settlements) text.append("\n").append(t.name).append(" · ").append(t.center.toShortString()).append(" · ").append(t.id);
                     return say(c,text.toString());
                 }))
                 .then(Commands.literal("invite").then(Commands.argument("player",EntityArgument.player()).executes(c -> invite(c,"steward"))
@@ -68,12 +71,13 @@ public final class CampaignCommands {
                 .then(Commands.literal("remove").then(Commands.argument("player",EntityArgument.player()).executes(c -> {
                     Settlement t=town(c); if(t==null) return missing(c); if(!TownAccess.owner(t,player(c).getUUID())) return say(c,"Only the owner may remove members.");
                     UUID friend=EntityArgument.getPlayer(c,"player").getUUID(); t.campaign.members.remove(friend); t.campaign.invitations.remove(friend);
+                    t.campaign.playerNames.remove(friend); EntityArgument.getPlayer(c,"player").closeContainer();
                     CampaignService.record(level(c),t,"Membership revoked for "+EntityArgument.getPlayer(c,"player").getName().getString()+"."); return 1;
                 })))
                 .then(Commands.literal("leave").executes(c -> {
                     ServerPlayer p=player(c); Settlement t=SettlementData.get(level(c)).at(p.blockPosition());
                     if(t==null || TownAccess.owner(t,p.getUUID())) return say(c,"Stand inside the town you want to leave. The owner keeps ownership.");
-                    t.campaign.members.remove(p.getUUID()); SettlementData.get(level(c)).setDirty(); return say(c,"Left "+t.name+".");
+                    t.campaign.members.remove(p.getUUID()); t.campaign.playerNames.remove(p.getUUID()); p.closeContainer(); SettlementData.get(level(c)).setDirty(); return say(c,"Left "+t.name+".");
                 }))
                 .then(Commands.literal("ally").then(Commands.argument("town",UuidArgument.uuid()).executes(c -> {
                     Settlement t=town(c),other=SettlementData.get(level(c)).byId(UuidArgument.getUuid(c,"town")); if(t==null) return missing(c);

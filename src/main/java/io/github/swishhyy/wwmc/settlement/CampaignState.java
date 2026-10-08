@@ -1,7 +1,9 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.mojang.datafixers.util.Pair;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 
@@ -22,7 +24,7 @@ public final class CampaignState {
         }
         public Squad command(String command,BlockPos point) { return new Squad(leader,guards,command,point,Optional.empty()); }
     }
-    public static final Codec<CampaignState> CODEC=RecordCodecBuilder.create(i -> i.group(
+    private static final MapCodec<CampaignState> CORE=RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.unboundedMap(Settlement.UUID_CODEC,Codec.STRING).optionalFieldOf("members",Map.of()).forGetter(s -> s.members),
             Codec.unboundedMap(Settlement.UUID_CODEC,Codec.STRING).optionalFieldOf("invitations",Map.of()).forGetter(s -> s.invitations),
             Settlement.UUID_CODEC.listOf().optionalFieldOf("allies",List.of()).forGetter(s -> new ArrayList<>(s.allies)),
@@ -40,7 +42,15 @@ public final class CampaignState {
             Codec.INT.optionalFieldOf("route_cursor",0).forGetter(s -> s.routeCursor),
             Codec.unboundedMap(Settlement.UUID_CODEC,Codec.unboundedMap(Codec.STRING,Codec.INT)).optionalFieldOf("incoming",Map.of()).forGetter(s -> s.incoming)
     ).apply(i,CampaignState::new));
+    public static final Codec<CampaignState> CODEC=Codec.mapPair(CORE,
+            Codec.unboundedMap(Settlement.UUID_CODEC,Codec.STRING).optionalFieldOf("player_names",Map.of())).xmap(pair -> {
+                CampaignState state=pair.getFirst();
+                pair.getSecond().entrySet().stream().limit(65).forEach(e -> state.playerNames.put(e.getKey(),e.getValue()));
+                return state;
+            },state -> Pair.of(state,state.playerNames)).codec();
     public final Map<UUID,String> members=new LinkedHashMap<>(),invitations=new LinkedHashMap<>();
+    /** Names remain readable on the Relationships screen when a member disconnects. */
+    public final Map<UUID,String> playerNames=new LinkedHashMap<>();
     public final Set<UUID> allies=new LinkedHashSet<>(),allianceOffers=new LinkedHashSet<>(),extraRoutes=new LinkedHashSet<>();
     public final Map<String,Integer> requests=new LinkedHashMap<>(),stock=new HashMap<>();
     public final Map<UUID,Map<String,Integer>> incoming=new HashMap<>();

@@ -45,7 +45,7 @@ public final class Panels {
     }
     /** Cheap check the open screen runs every tick. */
     public static boolean valid(ServerPlayer player,BlockPos pos,boolean banner) {
-        if(banner) { Settlement town=owned(player,pos); return town!=null && town.center.equals(pos); }
+        if(banner) { Settlement town=owned(player,pos); return town!=null && town.center.equals(pos) && level(player).hasChunkAt(pos) && level(player).getBlockState(pos).is(WWMC.BANNER.get()); }
         return stationAt(player,pos)!=null;
     }
     private static void dirty(ServerPlayer player) { SettlementData.get(level(player)).setDirty(); }
@@ -127,7 +127,8 @@ public final class Panels {
             new Action(ALARM,DefenseService.alarmed(town) ? "Sound the all-clear" : "Sound the alarm",true,
                     "Sends civilians to cover and every guard on duty, or ends the alarm"),
             new Action(RECRUIT,recruit,free>0,"A citizen needs a free housing bed and room under the population limit of "+limit),
-            grow(town,viewer),new Action(CampaignViews.OPEN,"Campaign",true,"Members, alliances, warehouse requests, projects, squads, expedition sites and the town journal"));
+            grow(town,viewer),new Action(CampaignViews.OPEN,"Campaign",true,"Warehouse requests, projects, squads, expedition sites and the town journal"),
+            new Action(RelationshipViews.OPEN,"Relationships",true,"Player permissions, invitations, alliances and town naming"));
         return new PanelView(Component.literal(town.name),Component.literal(town.citizens.size()+" citizens · "+town.stations.size()+" stations · claim "+town.radius),
                 List.of(new Tab("Overview",overview),new Tab("Jobs",jobRows(town)),new Tab("Citizens",people),new Tab("Stations",stations)),actions);
     }
@@ -169,6 +170,7 @@ public final class Panels {
         if(town==null) return;
         ServerLevel level=level(player);
         switch(action) {
+            case RelationshipViews.OPEN -> RelationshipViews.open(player,town);
             case CampaignViews.OPEN -> CampaignViews.open(player,town);
             case PRIORITY -> SettlementService.applyPreset(level,town,JobBoard.PRESETS.get((JobBoard.PRESETS.indexOf(town.priority)+1)%JobBoard.PRESETS.size()));
             case JOB -> {

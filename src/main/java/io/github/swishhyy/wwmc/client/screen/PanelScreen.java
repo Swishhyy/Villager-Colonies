@@ -6,11 +6,14 @@ import io.github.swishhyy.wwmc.menu.Panels;
 import io.github.swishhyy.wwmc.menu.WwmcNetwork;
 import io.github.swishhyy.wwmc.settlement.JobBoard;
 import io.github.swishhyy.wwmc.settlement.CampaignViews;
+import io.github.swishhyy.wwmc.settlement.RelationshipViews;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -25,12 +28,16 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
     private int tab,scroll;
     private PanelView shown;
     private String layout="";
+    private EditBox townName;
+    private String nameDraft;
     public PanelScreen(PanelMenu menu,Inventory inventory,Component title) {
-        super(menu,inventory,title,menu.kind==PanelMenu.Kind.CAMPAIGN || menu.kind==PanelMenu.Kind.ARMY ? Math.min(360,Minecraft.getInstance().getWindow().getGuiScaledWidth()-8) : WIDTH,
-                menu.kind==PanelMenu.Kind.CAMPAIGN || menu.kind==PanelMenu.Kind.ARMY ? Math.min(270,Minecraft.getInstance().getWindow().getGuiScaledHeight()-8) : HEIGHT);
+        super(menu,inventory,title,menu.kind!=PanelMenu.Kind.TOWN && menu.kind!=PanelMenu.Kind.STATION ? Math.min(360,Minecraft.getInstance().getWindow().getGuiScaledWidth()-8) : WIDTH,
+                menu.kind!=PanelMenu.Kind.TOWN && menu.kind!=PanelMenu.Kind.STATION ? Math.min(270,Minecraft.getInstance().getWindow().getGuiScaledHeight()-8) : HEIGHT);
     }
     private PanelView view() { return menu.view(); }
     @Override protected void init() {
+        if(townName!=null) nameDraft=townName.getValue();
+        townName=null;
         super.init();
         PanelView view=view();
         List<PanelView.Tab> tabs=view.tabs();
@@ -43,7 +50,17 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
             button.active=i!=tab;
             addRenderableWidget(button);
         }
-        List<PanelView.Action> actions=view.actions();
+        if(naming()) {
+            boolean allowed=view.actions().stream().anyMatch(a -> a.id()==RelationshipViews.RENAME && a.enabled());
+            String saved=view.tabs().get(3).rows().stream().filter(r -> r.key().equals("town:name")).map(r -> r.detail().getString()).findFirst().orElse("");
+            townName=new EditBox(font,imageWidth-90,18,Component.literal("Town name"));
+            townName.setPosition(leftPos+8,topPos+LIST_TOP);
+            townName.setMaxLength(48); townName.setValue(nameDraft==null ? saved : nameDraft); townName.setEditable(allowed);
+            addRenderableWidget(townName);
+            Button save=Button.builder(Component.literal("Save name"),b -> rename()).bounds(leftPos+imageWidth-78,topPos+LIST_TOP,70,18).build();
+            save.active=allowed; addRenderableWidget(save);
+        }
+        List<PanelView.Action> actions=footerActions();
         int rows=actionRows(),half=(imageWidth-14)/2;
         for(int i=0;i<actions.size();i++) {
             PanelView.Action action=actions.get(i);
@@ -57,15 +74,26 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
             addRenderableWidget(button);
         }
         List<PanelView.Row> listed=rows();
-        int visible=visibleRows(),top=topPos+LIST_TOP,right=leftPos+imageWidth-13;
+        int visible=visibleRows(),top=topPos+listTop(),right=leftPos+imageWidth-13;
         scroll=Math.clamp(scroll,0,Math.max(0,listed.size()-visible));
         for(int i=0;i<visible && scroll+i<listed.size();i++) {
             PanelView.Row row=listed.get(scroll+i);
             if(!control(row)) continue;
             int index=scroll+i,rowY=top+2+i*ROW+3;
+            if(row.key().startsWith("permission:")) {
+                String label=row.value()==0 ? "Denied" : row.value()==1 ? "Builder" : "Steward";
+                Button cycle=Button.builder(Component.literal(label),b -> { b.active=false; send(index,(row.value()+1)%3,row.key()); }).bounds(right-77,rowY,60,15).build();
+                cycle.setTooltip(Tooltip.create(Component.literal("Next: "+(row.value()==0 ? "invite Builder" : row.value()==1 ? "Steward" : "revoke access")+". New invitations must be accepted on the Invitations tab.")));
+                Button revoke=Button.builder(Component.literal("×"),b -> { b.active=false; send(index,0,row.key()); }).bounds(right-15,rowY,14,15).build();
+                revoke.active=row.value()>0; revoke.setTooltip(Tooltip.create(Component.literal("Revoke access and cancel any pending invitation")));
+                addRenderableWidget(cycle); addRenderableWidget(revoke); continue;
+            }
             if(row.key().startsWith("act:")) {
-                Button use=Button.builder(Component.literal(row.key().startsWith("act:project:") ? "Build" : "Use"),b -> { b.active=false; send(index,1,row.key()); })
-                        .bounds(right-33,rowY,32,15).build();
+                String label=row.key().startsWith("act:project:") ? "Build" : row.key().startsWith("act:accept:") ? "Accept" : row.key().startsWith("act:decline:") ? "Decline"
+                        : row.key().startsWith("act:unally:") ? "End / cancel" : row.key().startsWith("act:ally:") ? "Ally" : "Use";
+                int width=menu.kind==PanelMenu.Kind.RELATIONSHIPS ? 76 : 32;
+                Button use=Button.builder(Component.literal(label),b -> { b.active=false; send(index,1,row.key()); })
+                        .bounds(right-width-1,rowY,width,15).build();
                 use.active=row.value()==0; use.setTooltip(Tooltip.create(row.detail())); addRenderableWidget(use); continue;
             }
             boolean request=row.key().startsWith("request:"),member=row.key().startsWith("member:");
@@ -85,7 +113,19 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
     private static boolean control(PanelView.Row row) { return !row.key().isEmpty() && row.value()>=0; }
     private void send(int index,int value,String key) {
         ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,
-                menu.kind==PanelMenu.Kind.CAMPAIGN || menu.kind==PanelMenu.Kind.ARMY ? CampaignViews.ROW_ACTION : Panels.JOB,index,value,key));
+                menu.kind==PanelMenu.Kind.RELATIONSHIPS ? RelationshipViews.ROW_ACTION : menu.kind==PanelMenu.Kind.CAMPAIGN || menu.kind==PanelMenu.Kind.ARMY ? CampaignViews.ROW_ACTION : Panels.JOB,index,value,key));
+    }
+    private boolean naming() { return menu.kind==PanelMenu.Kind.RELATIONSHIPS && tab==3; }
+    private int listTop() { return naming() ? LIST_TOP+24 : LIST_TOP; }
+    private List<PanelView.Action> footerActions() { return view().actions().stream().filter(a -> a.id()!=RelationshipViews.RENAME).toList(); }
+    private int controlWidth(PanelView.Row row) { return !control(row) ? 0 : menu.kind==PanelMenu.Kind.RELATIONSHIPS ? 80 : 34; }
+    private void rename() { if(townName!=null) ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,RelationshipViews.RENAME,0,0,townName.getValue())); }
+    @Override public boolean keyPressed(KeyEvent event) {
+        if(townName!=null && townName.isFocused() && event.key()!=256) {
+            if(event.key()==257 || event.key()==335) { rename(); return true; }
+            return townName.keyPressed(event);
+        }
+        return super.keyPressed(event);
     }
     /** Buttons are rebuilt only when their labels or the rows' priorities change, not for every refresh. */
     private static String layout(PanelView view) {
@@ -101,15 +141,15 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
         List<PanelView.Tab> tabs=view().tabs();
         return tabs.isEmpty() ? List.of() : tabs.get(Math.min(tab,tabs.size()-1)).rows();
     }
-    private int actionRows() { return (view().actions().size()+1)/2; }
+    private int actionRows() { return (footerActions().size()+1)/2; }
     private int listBottom() { return topPos+imageHeight-8-actionRows()*22; }
-    private int visibleRows() { return (listBottom()-(topPos+LIST_TOP)-2)/ROW; }
+    private int visibleRows() { return Math.max(1,(listBottom()-(topPos+listTop())-2)/ROW); }
     @Override public void extractBackground(GuiGraphicsExtractor g,int mouseX,int mouseY,float partialTick) {
         int x=leftPos,y=topPos;
         Ui.window(g,x,y,imageWidth,imageHeight);
         g.text(font,Ui.fit(font,view().title().getString(),imageWidth-16),x+8,y+7,Ui.TEXT,false);
         g.text(font,Ui.fit(font,view().subtitle().getString(),imageWidth-16),x+8,y+17,Ui.MUTED,false);
-        int top=y+LIST_TOP,bottom=listBottom();
+        int top=y+listTop(),bottom=listBottom();
         Ui.inset(g,x+7,top,imageWidth-14,bottom-top);
         List<PanelView.Row> rows=rows();
         int visible=visibleRows();
@@ -120,7 +160,7 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
             boolean hover=mouseX>=left && mouseX<left+width && mouseY>=rowY && mouseY<rowY+ROW-1;
             g.fill(left,rowY,left+width,rowY+ROW-1,hover ? Ui.ROW_HOVER : Ui.ROW);
             if(!row.icon().isEmpty()) g.item(row.icon(),left+2,rowY+2);
-            int textX=left+22,textWidth=width-26-(control(row) ? 34 : 0);
+            int textX=left+22,textWidth=width-26-controlWidth(row);
             g.text(font,Ui.fit(font,row.text().getString(),textWidth),textX,rowY+2,row.color()!=0 ? row.color() : Ui.TEXT,false);
             g.text(font,Ui.fit(font,row.detail().getString(),textWidth),textX,rowY+11,Ui.MUTED,false);
             if(row.bar()>=0) Ui.bar(g,textX,rowY+ROW-4,textWidth,row.bar(),row.color());
@@ -140,7 +180,7 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
         if(view()!=shown) { if(!layout(view()).equals(layout)) rebuildWidgets(); shown=view(); }
         super.extractRenderState(g,mouseX,mouseY,partialTick);
         List<PanelView.Row> rows=rows();
-        int top=topPos+LIST_TOP,left=leftPos+9;
+        int top=topPos+listTop(),left=leftPos+9;
         for(int i=0;i<visibleRows() && scroll+i<rows.size();i++) {
             int rowY=top+2+i*ROW;
             if(mouseY<rowY || mouseY>=rowY+ROW-1 || mouseX<left || mouseX>=left+imageWidth-22) continue;
