@@ -201,6 +201,31 @@ public final class FoodWorldTests {
         });
     }
 
+    @GameTest(timeoutTicks=1200)
+    @EmptyTemplate
+    @TestHolder(description="An idle hungry worker eats from a raised warehouse by walking to clear ground within hand reach, without needing to climb onto its solid station.")
+    static void eatsAtRaisedWarehouse(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-1460));
+            Station farm=new Station(start.east(4),StructureRole.FARM),warehouse=new Station(start.offset(40,2,-8),StructureRole.WAREHOUSE);
+            var fixture=fixture(level,start,farm,warehouse);
+            level.setBlockAndUpdate(warehouse.position().below(),Blocks.STONE.defaultBlockState());
+            level.setBlockAndUpdate(warehouse.position().below(2),Blocks.STONE.defaultBlockState());
+            Container pantry=barrel(level,warehouse.position().south(2),new ItemStack(Items.BREAD));
+            var citizen=fixture.worker(farm,warehouse.position().offset(-7,-2,0));
+            citizen.setHealth(1);
+            try { var hunger=CitizenEntity.class.getDeclaredField("mealTicks"); hunger.setAccessible(true); hunger.setInt(citizen,0); }
+            catch(ReflectiveOperationException e) { throw new RuntimeException(e); }
+            helper.succeedWhen(() -> {
+                helper.assertTrue(count(pantry,Items.BREAD)==0,"Worker has not reached the raised pantry: "+describe(citizen,level));
+                helper.assertTrue(citizen.getHealth()==6,"The real loaf did not heal the worker exactly once");
+                helper.assertTrue(citizen.bag().count(Items.BREAD)==0,"The worker stockpiled its meal");
+                helper.assertTrue(farm.position().equals(fixture.town.jobs.home(citizen.getUUID())),"The meal trip changed the worker's job");
+                fixture.close();
+            });
+        });
+    }
+
     private static String describe(CitizenEntity citizen,ServerLevel level) {
         return citizen.activity()+" ("+citizen.jobRole()+", at "+citizen.blockPosition()+", ticks="+citizen.tickCount
                 +", alive="+citizen.isAlive()+", ticking="+level.isPositionEntityTicking(citizen.blockPosition())
