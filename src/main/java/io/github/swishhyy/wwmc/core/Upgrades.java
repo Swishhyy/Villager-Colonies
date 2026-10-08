@@ -6,8 +6,17 @@ package io.github.swishhyy.wwmc.core;
  * server and the client's range preview.
  */
 public final class Upgrades {
-    /** Highest range or crew level a station can buy. */
+    /** Highest range, crew or yield level a station can buy. */
     public static final int MAX_STATION_LEVEL=3;
+    public enum Kind {
+        RANGE("Range"),CREW("Crew"),YIELD("Yield");
+        private final String title;
+        Kind(String title) { this.title=title; }
+        public String title() { return title; }
+        public boolean supports(StructureRole role) {
+            return switch(this) { case RANGE -> widens(role); case CREW -> hires(role); case YIELD -> yields(role); };
+        }
+    }
     /** An enchanter looks for its table farther out than other stations reach. */
     public static final int ENCHANTER_RADIUS=5;
     private Upgrades() {}
@@ -22,6 +31,8 @@ public final class Upgrades {
     public static boolean soloCrew(StructureRole role) { return role.providesWork() && role!=StructureRole.QUARRY; }
     /** Quarries alone can buy additional worker slots. */
     public static boolean hires(StructureRole role) { return role==StructureRole.QUARRY; }
+    public static boolean yields(StructureRole role) { return role==StructureRole.FARM || role==StructureRole.MINE; }
+    public static int yieldPercent(int level) { return 10*Math.clamp(level,0,MAX_STATION_LEVEL); }
     /** The next station level costs the base for the first, then twice the previous price. */
     public static int stationCost(int base,int level) { return Math.max(0,base)<<Math.clamp(level,0,MAX_STATION_LEVEL); }
     /** Each population level costs the base more than the one before: base, 2 × base, 3 × base... */

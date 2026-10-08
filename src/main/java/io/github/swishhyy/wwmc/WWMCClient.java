@@ -45,6 +45,8 @@ public final class WWMCClient {
         String range=state.properties().getOrDefault(StationBlock.RANGE.getName(),"0"),crew=state.properties().getOrDefault(StationBlock.CREW.getName(),"0");
         if(!range.equals("0")) event.getToolTip().add(Component.literal("Range upgrade "+range).withStyle(ChatFormatting.GREEN));
         if(Upgrades.hires(block.role()) && !crew.equals("0")) event.getToolTip().add(Component.literal("Crew upgrade "+crew).withStyle(ChatFormatting.GREEN));
+        String yieldLevel=state.properties().getOrDefault(StationBlock.YIELD.getName(),"0");
+        if(Upgrades.yields(block.role()) && !yieldLevel.equals("0")) event.getToolTip().add(Component.literal("Yield upgrade "+yieldLevel+" (+"+yieldLevel+"0%)").withStyle(ChatFormatting.GREEN));
     }
     private static void renderers(EntityRenderersEvent.RegisterRenderers event) { event.registerEntityRenderer(WWMC.CITIZEN.get(),CitizenRenderer::new); }
     private static void layers(EntityRenderersEvent.RegisterLayerDefinitions event) { event.registerLayerDefinition(CitizenRenderer.LAYER,CitizenRenderer::createBodyLayer); }

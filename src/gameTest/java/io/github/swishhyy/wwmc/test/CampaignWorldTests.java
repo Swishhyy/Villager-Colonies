@@ -55,7 +55,7 @@ public final class CampaignWorldTests {
             CitizenEntity medic=citizen(level,town,station.west(2)),patient=citizen(level,town,start.east(2)); patient.setHealth(4);
             town.jobs.assign(medic.getUUID(),station);
             helper.succeedWhen(() -> {
-                helper.assertTrue(patient.getHealth()>=patient.getMaxHealth()*0.95F,"Patient untreated: "+patient.activity()+"; medic: "+medic.activity());
+                helper.assertTrue(patient.getHealth()==patient.getMaxHealth(),"Patient untreated: "+patient.activity()+"; medic: "+medic.activity());
                 helper.assertTrue(patient.blockPosition().distSqr(bed)<36,"Patient never reached a hospital bed");
                 int dressings=InventoryOps.count(List.of(supplies),s -> s.is(Items.PAPER)); int meals=InventoryOps.count(List.of(supplies),FoodHealing::food);
                 helper.assertTrue(dressings<16 && dressings==meals,"Treatment did not spend equal real dressings and meals: "+dressings+" / "+meals);
@@ -65,6 +65,65 @@ public final class CampaignWorldTests {
             });
         });
     }
+    @GameTest(timeoutTicks=1800)
+    @EmptyTemplate
+    @TestHolder(description="Two injured citizens queue for one actual hospital bed, ignore nearer housing beds, heal gradually without a medic, and stay asleep through alarm wake requests until exactly full health.")
+    static void injuredCitizensUseOnlyHospitalBedsUntilFull(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-3560));
+            var chunks=CitizenNavigationTests.pinArea(level,start,-8,32,-12,12); CitizenNavigationTests.meadow(level,start,-8,32,-12,12);
+            Station hospital=new Station(start.east(14),StructureRole.HOSPITAL),housing=new Station(start.east(4),StructureRole.HOUSING),farm=new Station(start.east(24),StructureRole.FARM);
+            var beds=Blocks.BED.red().defaultBlockState().setValue(BedBlock.FACING,Direction.NORTH);
+            BlockPos foot=hospital.position().north(2),head=foot.north(),homeFoot=housing.position().north(2),homeHead=homeFoot.north();
+            for(BlockPos bed:List.of(foot,homeFoot)) {
+                level.setBlockAndUpdate(bed,beds.setValue(BedBlock.PART,BedPart.FOOT)); level.setBlockAndUpdate(bed.north(),beds.setValue(BedBlock.PART,BedPart.HEAD));
+            }
+            Settlement town=town(level,start.west(4),hospital,housing,farm);
+            CitizenEntity a=citizen(level,town,start),b=citizen(level,town,start.south(2));
+            a.setHealth(a.getMaxHealth()-3); b.setHealth(b.getMaxHealth()-2); town.jobs.assign(a.getUUID(),farm.position());
+            Set<UUID> slept=new HashSet<>(); boolean[] violation={false};
+            helper.succeedWhen(() -> {
+                int occupied=0;
+                for(var patient:List.of(a,b)) {
+                    if(HospitalCare.inBed(patient)) { slept.add(patient.getUUID()); occupied++; patient.wakeForAlarm(); if(!patient.isSleeping()) violation[0]=true; }
+                    if(patient.getSleepingPos().filter(homeHead::equals).isPresent()) violation[0]=true;
+                    if(slept.contains(patient.getUUID()) && patient.getHealth()<patient.getMaxHealth() && !HospitalCare.inBed(patient)) violation[0]=true;
+                }
+                if(occupied>1) violation[0]=true;
+                helper.assertTrue(a.getHealth()==a.getMaxHealth() && b.getHealth()==b.getMaxHealth(),"Patients have not finished full bed recovery: "+a.activity()+" / "+b.activity());
+                helper.assertTrue(slept.size()==2 && !violation[0],"A patient healed outside a bed, shared an occupied bed, used housing or left while still injured");
+                helper.assertTrue(!a.isSleeping() && !b.isSleeping() && !a.recovering() && !b.recovering(),"Full patients did not release the bed");
+                helper.assertTrue(farm.position().equals(town.jobs.home(a.getUUID())),"Recovery discarded the original job");
+                leave(level,town,a,b); CitizenNavigationTests.release(level,start,chunks);
+            });
+        });
+    }
+    @GameTest(timeoutTicks=2000)
+    @EmptyTemplate
+    @TestHolder(description="Breaking a reserved hospital bed stops passive healing and releases its patient; rebuilding the bed lets the injured citizen resume recovery without using nearby housing.")
+    static void brokenHospitalBedStopsHealingUntilRebuilt(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-3680));
+            var chunks=CitizenNavigationTests.pinArea(level,start,-8,32,-12,12); CitizenNavigationTests.meadow(level,start,-8,32,-12,12);
+            Station hospital=new Station(start.east(12),StructureRole.HOSPITAL); BlockPos foot=hospital.position().north(2),head=foot.north();
+            var beds=Blocks.BED.red().defaultBlockState().setValue(BedBlock.FACING,Direction.NORTH);
+            level.setBlockAndUpdate(foot,beds.setValue(BedBlock.PART,BedPart.FOOT)); level.setBlockAndUpdate(head,beds.setValue(BedBlock.PART,BedPart.HEAD));
+            Settlement town=town(level,start.west(4),hospital); CitizenEntity patient=citizen(level,town,start); patient.setHealth(patient.getMaxHealth()-6);
+            helper.runAtTickTime(230,() -> {
+                helper.assertTrue(HospitalCare.inBed(patient),"Patient never slept in the hospital bed: "+patient.activity()); float health=patient.getHealth();
+                level.setBlockAndUpdate(foot,Blocks.AIR.defaultBlockState()); level.setBlockAndUpdate(head,Blocks.AIR.defaultBlockState());
+                helper.runAtTickTime(420,() -> {
+                    helper.assertTrue(patient.getHealth()==health && !patient.isSleeping() && patient.hospitalBed()==null,"A removed bed continued healing or retained its patient");
+                    level.setBlockAndUpdate(foot,beds.setValue(BedBlock.PART,BedPart.FOOT)); level.setBlockAndUpdate(head,beds.setValue(BedBlock.PART,BedPart.HEAD));
+                    helper.succeedWhen(() -> {
+                        helper.assertTrue(patient.getHealth()==patient.getMaxHealth() && !patient.recovering(),"Rebuilt hospital never resumed recovery: "+patient.activity());
+                        leave(level,town,patient); CitizenNavigationTests.release(level,start,chunks);
+                    });
+                });
+            });
+        });
+    }
+
     @GameTest(timeoutTicks=5000)
     @EmptyTemplate
     @TestHolder(description="A deployed guard whose leader disconnects physically returns from beyond the town claim and resumes normal duty.")

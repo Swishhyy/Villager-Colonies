@@ -18,7 +18,7 @@ public final class ConfigSections {
         }
     }
     public static final List<Section> SECTIONS=List.of(
-        new Section("settlements",List.of("settlementRadius","maxCitizens","basePopulation","populationPerUpgrade","populationUpgradeCost","stationUpgradeCost")),
+        new Section("settlements",List.of("settlementRadius","maxCitizens","basePopulation","populationPerUpgrade","populationUpgradeCost","stationUpgradeCost","yieldUpgradeCost")),
         new Section("workers",List.of("quarryWorkers")),
         new Section("mining",List.of("oreVeinSeconds","mineMinY","mineMaxY","quarryTargetY","mineBranchLength","mineBranchPairs")),
         new Section("food",List.of("workTicks","rationTicks","mealIntervalMultiplier","fishingSeconds","animalBreeders")),

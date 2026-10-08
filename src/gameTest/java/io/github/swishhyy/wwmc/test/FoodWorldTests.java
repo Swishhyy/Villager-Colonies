@@ -174,7 +174,7 @@ public final class FoodWorldTests {
 
     @GameTest(timeoutTicks=1600)
     @EmptyTemplate
-    @TestHolder(description="Ten hungry injured citizens share ten loaves: each eats one, none stockpiles spares or eats somebody else's share for healing.")
+    @TestHolder(description="Ten hungry injured citizens share ten loaves while awaiting hospital beds: each eats one and meals do not heal outside hospital.")
     static void tenCitizensShareTenLoaves(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-1360));
@@ -197,7 +197,7 @@ public final class FoodWorldTests {
                 helper.assertTrue(count(pantry,Items.BREAD)==0,"Some hungry citizens never reached the communal pantry; loaves="+count(pantry,Items.BREAD)
                         +", citizens="+citizens.stream().map(c -> c.getHealth()+" hp, "+c.activity()+" at "+c.blockPosition()).toList());
                 for(CitizenEntity citizen:citizens) {
-                    helper.assertTrue(citizen.getHealth()==6,"A citizen did not get exactly one loaf: health="+citizen.getHealth()+", "+citizen.activity());
+                    helper.assertTrue(citizen.getHealth()==1 && citizen.mealTicks()>0,"Meals must satisfy hunger without healing outside hospital: health="+citizen.getHealth()+", "+citizen.activity());
                     helper.assertTrue(citizen.bag().count(Items.BREAD)==0,"A citizen stockpiled scarce bread");
                 }
                 fixture.close(); helper.succeed();
@@ -222,7 +222,7 @@ public final class FoodWorldTests {
             catch(ReflectiveOperationException e) { throw new RuntimeException(e); }
             helper.succeedWhen(() -> {
                 helper.assertTrue(count(pantry,Items.BREAD)==0,"Worker has not reached the raised pantry: "+describe(citizen,level));
-                helper.assertTrue(citizen.getHealth()==6,"The real loaf did not heal the worker exactly once");
+                helper.assertTrue(citizen.getHealth()==1 && citizen.mealTicks()>0,"The real loaf must satisfy hunger without healing outside hospital");
                 helper.assertTrue(citizen.bag().count(Items.BREAD)==0,"The worker stockpiled its meal");
                 helper.assertTrue(farm.position().equals(fixture.town.jobs.home(citizen.getUUID())),"The meal trip changed the worker's job");
                 fixture.close();

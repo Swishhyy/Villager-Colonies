@@ -112,7 +112,8 @@ public final class GuardProcessingChecks {
         assertTrue(StationDetection.processingBlock(StructureRole.SMELTERY,Blocks.BLAST_FURNACE.defaultBlockState()));
         assertFalse(StationDetection.processingBlock(StructureRole.SMELTERY,Blocks.SMOKER.defaultBlockState()));
         assertTrue(StationDetection.processingBlock(StructureRole.COOK,Blocks.SMOKER.defaultBlockState()));
-        assertFalse(StationDetection.processingBlock(StructureRole.COOK,Blocks.FURNACE.defaultBlockState()));
+        assertTrue(StationDetection.processingBlock(StructureRole.COOK,Blocks.FURNACE.defaultBlockState()));
+        assertFalse(StationDetection.processingBlock(StructureRole.COOK,Blocks.BLAST_FURNACE.defaultBlockState()));
         assertTrue(StationDetection.processingBlock(StructureRole.COOK,Blocks.CAMPFIRE.defaultBlockState().setValue(CampfireBlock.LIT,true)));
         assertTrue(StationDetection.processingBlock(StructureRole.COOK,Blocks.SOUL_CAMPFIRE.defaultBlockState().setValue(CampfireBlock.LIT,true)));
         assertFalse(StationDetection.processingBlock(StructureRole.COOK,Blocks.CAMPFIRE.defaultBlockState().setValue(CampfireBlock.LIT,false)));

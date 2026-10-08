@@ -6,9 +6,11 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.12.2-alpha
+## Current build: 0.12.3-alpha
 
-0.12.2 gives **every job block one citizen, except quarries**. This includes cooks, smelters, butchers, lumberjacks, couriers, blacksmiths and guards. Quarries keep eight workers by default, their server setting, and crew upgrades. Add more stations to expand production, hauling or defense. Older extra workers take open jobs without losing their names or inventories; valid range upgrades and quarry progress remain. Crew upgrades and configurable crew sizes now apply only to quarries. Install matching 0.12.2-alpha builds on the server and every client.
+0.12.3 fixes appliance loading for cooks and smelters, adds farm and mine yield upgrades and pickaxe-scaled vein replenishment, and makes actual hospital beds the only place injured citizens rest until full health. See [Production and recovery](docs/production-recovery.md) for setup and balance.
+
+This build also gives **every job block one citizen, except quarries**. This includes cooks, smelters, butchers, lumberjacks, couriers, blacksmiths and guards. Quarries keep eight workers by default, their server setting, and crew upgrades. Add more stations to expand production, hauling or defense. Older extra workers take open jobs without losing their names or inventories; valid range upgrades and quarry progress remain. Crew upgrades and configurable crew sizes now apply only to quarries. Install matching 0.12.3-alpha builds on the server and every client.
 
 0.12.1 adds a dedicated **Relationships** screen at the flag: player invitations and permissions, alliance controls, and editable town names. Player claims deny interactions until permission is accepted. Entry notices show the current town name. Flags survive explosions and cannot be moved by pistons, and lost flags can be restored without resetting a town. For a server failing with **Overworld settings missing**, see [World metadata recovery](docs/server-startup.md).
 
@@ -20,7 +22,7 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 0.11.1 fixes enchanters reporting usable tables as unreachable without walking. They choose reachable, clear standing ground within four-block work reach instead of trying to path into the table block. Blocked views remain blocked; opening an entrance or changing the furniture lets them try a new approach without blacklisting the table itself. Existing enchanting progress and local courier supplies are preserved.
 
-0.11.0 adds **hunters, fishermen, animal keepers and butchers**, with a whole-carcass → raw-portions → cooked-meals food chain. **Couriers are now the only haulers within a town**: production workers use their own job barrels, and wait for deliveries or free storage. Every mine has exactly **one miner**, including older upgraded mines. Regular meals are three times less frequent by default (six loaded minutes), healing meals have a 30-second cooldown, and scarce food is shared with priority for hungry citizens who were fed least recently. Hire couriers and add local barrels when updating an existing town.
+0.11.0 adds **hunters, fishermen, animal keepers and butchers**, with a whole-carcass → raw-portions → cooked-meals food chain. **Couriers are now the only haulers within a town**: production workers use their own job barrels, and wait for deliveries or free storage. Every mine has exactly **one miner**, including older upgraded mines. Regular meals are three times less frequent by default (six loaded minutes), and scarce food is shared with priority for hungry citizens who were fed least recently. Hire couriers and add local barrels when updating an existing town.
 
 0.10.0 makes citizens **keep their jobs** and adds **job priorities**. Each citizen has its own station and goes back to it every morning and after errands, instead of taking whichever station had the smallest crew at that moment. The banner's new **Jobs** tab sets each job to Off, Low, Normal or High: open places in higher-priority jobs fill first and draw citizens from lower ones, and Off frees a job's crew. See [Jobs and priorities](#jobs-and-priorities). Pathfinding is fixed: citizens find ordinary routes across a town and around buildings again, which they often gave up on in 0.9.2, while still preferring nearby roads and keeping to bridges over water. A Mine Station now works an exposed ore up to two blocks away as a vein, and its miner walks over and mines an ore touching the station instead of reporting it out of reach.
 
@@ -80,7 +82,7 @@ Implemented:
 - Shared station crews, exclusive resource reservations, civilian nighttime rest, and guard duty through the night.
 - Save/reload support for settlement data, player block protection, replanting sites, excavation progress, cargo, tools, and meal timers.
 
-Further plans include automatic housing construction, wars between rival settlements, distant simulation, larger technology trees, and countries. Barracks identify troop housing and support military projects. Fund a Field Hospital for a medic who treats wounded citizens with meals and paper dressings. Citizens also heal by eating food.
+Further plans include automatic housing construction, wars between rival settlements, distant simulation, larger technology trees, and countries. Barracks identify troop housing and support military projects. Fund a Field Hospital for a medic who treats wounded citizens with meals and paper dressings. Injured citizens rest in hospital beds until full health; ordinary meals satisfy hunger.
 
 ## Try the first build
 
@@ -262,7 +264,7 @@ The generated WWMC server config controls these defaults:
 | `populationPerUpgrade` | 5 | Extra citizens each population upgrade allows. |
 | `populationUpgradeCost` | 8 | Emeralds for the first population upgrade; each later one costs this much more than the last. |
 | `stationUpgradeCost` | 8 | Emeralds for a station's first range or crew upgrade; each further level costs twice the last. |
-| `oreVeinSeconds` | 15 | Seconds between yields of a common ore vein; gold ×2, diamond and emerald ×6, ancient debris ×8. |
+Veins replenish in about 15 seconds with a stone pickaxe (`oreVeinSeconds`). Wood takes 20s, iron about 12.3s, diamond about 10.6s, and netherite 10s for common ores. Tool speed uses square-root scaling, capped at 1.5 times stone speed; gold ore multiplies the wait by two, diamond and emerald by six, and ancient debris by eight. The station screen shows the assigned miner's equipped pickaxe and estimated delay. Miners still need a suitable tool, use its durability, and spend time physically breaking the ore.
 | `quarryWorkers` | 8 | Crew slots per quarry before crew upgrades. |
 | `rationTicks` | 2400 | Base loaded ticks between regular meals, multiplied by `mealIntervalMultiplier`. |
 | `mealIntervalMultiplier` | 3 | Regular meal interval multiplier; the default gives six loaded minutes between meals. |
@@ -402,7 +404,7 @@ Every job block has **one worker**, including older stations with crew upgrades.
 
 A **Mine Station placed within two blocks of an exposed ore**, on every axis, works that ore as an **endless vein**. The ore needs at least one open side, such as air, a torch or a ladder; ore buried on every side does not count, so older mines beside hidden ore keep digging their tunnels. Its miner walks to the station first, then to a standing spot with a clear view of the ore, mines it with a pickaxe able to harvest it, and collects the ore's normal drops, including Fortune, while the block stays in place. Only citizens get endless drops; a player who mines the ore breaks it normally. Each Mine Station has one miner, including old upgraded stations; excess crew members take other jobs.
 
-A vein replenishes every 15 seconds (`oreVeinSeconds`). Gold takes twice as long, diamond and emerald six times, and ancient debris eight times. Any block in the `c:ores` tag counts, including other mods' ores. The nearest exposed ore comes first. If the ore is removed, the station looks for another one within two blocks, and a station with no exposed ore that close digs tunnels as described above. The miner needs open standing room within reach of the ore and a clear view of it; the station's screen says when it has none.
+Veins replenish in about 15 seconds with a stone pickaxe (`oreVeinSeconds`). Wood takes 20s, iron about 12.3s, diamond about 10.6s, and netherite 10s for common ores. Tool speed uses square-root scaling, capped at 1.5 times stone speed; gold ore multiplies the wait by two, diamond and emerald by six, and ancient debris by eight. The station screen shows the assigned miner's equipped pickaxe and estimated delay. Miners still need a suitable tool, use its durability, and spend time physically breaking the ore.
 
 ### Enchanters
 
@@ -416,8 +418,9 @@ Every station that can use them sells upgrades on its screen, paid in **emeralds
 
 - **Range**, up to three levels: each level widens the station's cube by a block in every direction, from 7×7×7 to 9×9×9, 11×11×11 and 13×13×13 (an enchanter goes from 11 up to 17). Wider ranges reach more beds, chests, crops, trees, furnaces, anvils, armor stands and barrels. Quarries, mines, couriers and craftsmen have no range upgrades.
 - **Crew**, for **quarries only**, up to three levels: each adds one worker slot to the configured quarry crew. Every other job block has one worker, including older upgraded stations.
+- **Yield**, for **farms and mines**, up to three levels: +10%, +20%, then +30% average extra produce or mineral drops. Each harvested unit has that bonus chance. Seeds and Silk Touch ore blocks do not multiply; crop replanting reserves its real planting item first. Prices are 16, 32, and 64 emeralds by default (`yieldUpgradeCost`).
 
-Each level costs twice the one before: 8, 16, then 32 emeralds by default (`stationUpgradeCost`). A broken station's item keeps its upgrades and shows them in its tooltip, so you can move an upgraded station without paying again; plain stations still stack with freshly crafted ones. The range preview shows the upgraded range.
+Each range or crew level costs twice the one before: 8, 16, then 32 emeralds by default (`stationUpgradeCost`). A broken station's item keeps its upgrades and shows them in its tooltip, so you can move an upgraded station without paying again; plain stations still stack with freshly crafted ones. The range preview shows the upgraded range.
 
 ### Population
 

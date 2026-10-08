@@ -56,7 +56,7 @@
   "wwmc.configuration.enchanterMaxLevel": "Enchant level cap",
   "wwmc.configuration.enchanterMaxLevel.tooltip": "Highest enchanting-table level an enchanter can reach, regardless of bookshelves. This is the table level, not the enchantment numeral on an item. Default: 25; level 30 remains for players.",
   "wwmc.configuration.oreVeinSeconds": "Ore vein delay (sec)",
-  "wwmc.configuration.oreVeinSeconds.tooltip": "Seconds between yields of a common ore vein beside a Mine Station. Gold takes twice as long; diamond and emerald six times; ancient debris eight times. Default: 15 seconds.",
+  "wwmc.configuration.oreVeinSeconds.tooltip": "Vein replenishment with a stone pickaxe. Better pickaxes shorten the delay, capped at 1.5 times stone speed. Gold ore takes twice as long, diamond and emerald six times, ancient debris eight.",
   "wwmc.configuration.mineMinY": "Minimum mine Y",
   "wwmc.configuration.mineMinY.tooltip": "Lowest floor Y a new tunnel mine can randomly choose. Default: -30. Existing mine plans keep their saved depth.",
   "wwmc.configuration.mineMaxY": "Maximum mine Y",
@@ -124,5 +124,7 @@
   "wwmc.configuration.maxExpeditionBandits": "Maximum bandits",
   "wwmc.configuration.maxExpeditionBandits.tooltip": "Cap living expedition defenders and convoy raiders, including unloaded defenders.",
   "wwmc.configuration.convoyRaids": "Convoy raids",
-  "wwmc.configuration.convoyRaids.tooltip": "Nearby occupied camps can warn of and launch raids while players are nearby."
+  "wwmc.configuration.convoyRaids.tooltip": "Nearby occupied camps can warn of and launch raids while players are nearby.",
+  "wwmc.configuration.yieldUpgradeCost": "Yield upgrade cost",
+  "wwmc.configuration.yieldUpgradeCost.tooltip": "First farm or mine yield upgrade price. Each level doubles it: 16, 32 and 64 emeralds by default, for 10%, 20% and 30% average extra produce or mineral drops."
 }

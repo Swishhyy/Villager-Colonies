@@ -22,19 +22,20 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
 /**
- * A station block. Its range and crew upgrade levels are also kept in the block state, so the client can draw the
+ * A station block. Its range, crew and yield upgrade levels are also kept in the block state, so the client can draw the
  * upgraded range and a broken station's item keeps the upgrades for wherever it is placed next.
  */
 public final class StationBlock extends Block {
     public static final EnumProperty<Direction> FACING=BlockStateProperties.HORIZONTAL_FACING;
     public static final IntegerProperty RANGE=IntegerProperty.create("range",0,Upgrades.MAX_STATION_LEVEL);
     public static final IntegerProperty CREW=IntegerProperty.create("crew",0,Upgrades.MAX_STATION_LEVEL);
+    public static final IntegerProperty YIELD=IntegerProperty.create("yield",0,Upgrades.MAX_STATION_LEVEL);
     private final StructureRole role;
     public StationBlock(StructureRole role, Properties properties) {
         super(properties); this.role=role;
-        registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH).setValue(RANGE,0).setValue(CREW,0));
+        registerDefaultState(stateDefinition.any().setValue(FACING,Direction.NORTH).setValue(RANGE,0).setValue(CREW,0).setValue(YIELD,0));
     }
-    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> builder) { builder.add(FACING,RANGE,CREW); }
+    @Override protected void createBlockStateDefinition(StateDefinition.Builder<Block,BlockState> builder) { builder.add(FACING,RANGE,CREW,YIELD); }
     @Override public BlockState getStateForPlacement(BlockPlaceContext context) {
         if(role==StructureRole.TRADER && context.getLevel() instanceof ServerLevel server && context.getPlayer()!=null) {
             var town=io.github.swishhyy.wwmc.settlement.SettlementData.get(server).at(context.getClickedPos());
