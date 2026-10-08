@@ -27,7 +27,7 @@ public final class StationDetection {
     public static boolean processingBlock(StructureRole role,BlockState state) {
         return switch(role) {
             case SMELTERY -> state.is(Blocks.FURNACE) || state.is(Blocks.BLAST_FURNACE);
-            case COOK -> state.is(Blocks.SMOKER) || state.getBlock() instanceof CampfireBlock && state.getValue(CampfireBlock.LIT);
+            case COOK -> state.is(Blocks.FURNACE) || state.is(Blocks.SMOKER) || state.getBlock() instanceof CampfireBlock && state.getValue(CampfireBlock.LIT);
             default -> false;
         };
     }

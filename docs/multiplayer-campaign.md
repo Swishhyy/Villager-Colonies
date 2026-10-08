@@ -1,6 +1,6 @@
-# Multiplayer campaign — 0.12.1-alpha
+# Multiplayer campaign — 0.12.2-alpha
 
-The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same 0.12.1-alpha JAR on the server and every client. Existing towns keep their owners, stations, assignments and inventories; new campaign data starts empty.
+The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same 0.12.2-alpha JAR on the server and every client. Existing towns keep their owners, stations and inventories; new campaign data starts empty. Every job block has one citizen except quarries, which keep their configured crew and upgrades. Surplus workers from old crews take other open jobs.
 
 ## Playing together
 
@@ -46,7 +46,7 @@ All costs come from loaded warehouse containers. Materials are checked before an
 
 ## Squads and expeditions
 
-Supply and equip your normal guards first. The squad system borrows them; it does not create extra population, equipment or supplies. Their original station assignments are retained, and remaining guards cover shifts. Taking an entire station's crew away leaves its post unstaffed.
+Supply and equip your normal guards first. The squad system borrows them; it does not create extra population, equipment or supplies. Each Guard Station has one guard, active through both shifts. Original assignments are retained during deployment, so each guard you take leaves its post unstaffed. Build additional Guard Stations and leave some equipped guards home.
 
 Open **Army** on Campaign or run `/wwmc squad` anywhere for field controls. Muster one, two or four nearby healthy, armed guards; Officer School also allows six. `/wwmc squad muster 2` works directly. One player can lead one squad per town, with up to eight deployed squads in a town.
 
@@ -71,7 +71,7 @@ After a Frontier Charter, walk to a cleared, unclaimed site and use `/wwmc outpo
 
 A reciprocal extra route connects the outpost to its parent without replacing the parent's main trading partner. Requests start at 32 bread, two stone pickaxes and 16 oak planks; raw iron exports keep four at the outpost. Couriers remain the only internal haulers. Mining and other production wait when both local food stock and the worker's food bag are empty. Traders and couriers continue so a shortage can recover through deliveries. Players can expand or change the outpost like another town.
 
-Complete Field Hospital and supply its barrel through couriers with **edible meals and paper dressings**. The project sets the hospital job to high priority. One medic works there. Citizens below 60% health seek and reserve patient beds, then remain in treatment until at least 95% health. A present medic spends one meal and one paper to restore four health per treatment. Medics can treat their own wounds and keep the bowl or bottle left by a meal. Hospital beds never count toward recruitment. Paper shortages, occupied beds or a missing medic are visible in citizen activity; scarce meals reduce hospital courier demand so other citizens still get food.
+Every injured citizen now rests in a reserved Hospital Station bed until full health. Beds heal 1 health every 5 loaded seconds without supplies. Fund the Field Hospital to unlock a medic, who spends one real meal and one paper dressing for 1 additional health per treatment. See [Production and recovery](production-recovery.md).
 
 Hungry workers also visit the communal pantry while their station is idle. They approach from clear ground within four-block hand reach, including raised warehouses and stations beside storage barrels. Scarce meals remain shared one at a time; an empty pantry lets food producers continue working.
 

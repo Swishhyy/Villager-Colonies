@@ -26,7 +26,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Builds every settlement screen on the server and applies its buttons. Only the town's owner sees these screens. */
 public final class Panels {
-    public static final int PRIORITY=1,ALARM=2,RECRUIT=3,BREAD=4,POSTS=5,RANGE_UP=6,CREW_UP=7,GROW=8,TARGET=10,RAISE=11,FORGET=12,JOB=13,JOB_STEP=14;
+    public static final int PRIORITY=1,ALARM=2,RECRUIT=3,BREAD=4,POSTS=5,RANGE_UP=6,CREW_UP=7,GROW=8,YIELD_UP=9,TARGET=10,RAISE=11,FORGET=12,JOB=13,JOB_STEP=14;
     public static final int GREEN=0xFF3FA34D,RED=0xFFC0392B,AMBER=0xFFD39B1E,GRAY=0xFF707070;
     private Panels() {}
     private static ServerLevel level(ServerPlayer player) { return (ServerLevel)player.level(); }
@@ -243,12 +243,11 @@ public final class Panels {
         if(role.providesWork()) tabs.add(new Tab("Crew",crewRows(level,town,station)));
         if(role==StructureRole.WAREHOUSE) tabs.add(new Tab("Contents",contents(SettlementService.storageAt(level,town,station.position()))));
         else if(role.keepsJobStorage()) tabs.add(new Tab("Barrels",contents(SettlementService.jobStorage(level,town,station))));
-        if(Upgrades.widens(role) || Upgrades.hires(role)) tabs.add(new Tab("Upgrades",upgradeRows(station,viewer)));
+        if(Upgrades.widens(role) || Upgrades.hires(role) || Upgrades.yields(role)) tabs.add(new Tab("Upgrades",upgradeRows(station,viewer)));
         List<Action> actions=new ArrayList<>();
         if(role==StructureRole.COOK) actions.add(new Action(BREAD,town.disabledRecipes.contains("bread") ? "Bread: off" : "Bread: on",true,"Cooks bake bread from 3 wheat, up to 32 loaves"));
         if(role==StructureRole.GUARD) actions.add(new Action(POSTS,"Choose guard posts",true,"Then right-click the ground for the day post and the night post"));
-        if(Upgrades.widens(role)) actions.add(upgrade(station,true,viewer));
-        if(Upgrades.hires(role)) actions.add(upgrade(station,false,viewer));
+        for(Upgrades.Kind kind:Upgrades.Kind.values()) if(kind.supports(role)) actions.add(upgrade(station,kind,viewer));
         if(role.providesWork()) {
             int priority=town.jobs.level(role);
             actions.add(new Action(JOB_STEP,role.title()+" priority: "+JobBoard.levelName(priority),true,"Sets the priority of every "+role.id()
@@ -258,15 +257,18 @@ public final class Panels {
                 +(role.excavates() ? "facing "+station.facing().getName() : "range "+station.size())),tabs,actions);
     }
     /** A range or crew upgrade button with its price; greyed out when maxed or unaffordable. */
-    private static Action upgrade(Station station,boolean range,ServerPlayer viewer) {
-        int level=range ? station.range() : station.crew();
-        String kind=range ? "Range" : "Crew";
-        if(level>=Upgrades.MAX_STATION_LEVEL) return new Action(range ? RANGE_UP : CREW_UP,kind+": maxed",false,"Fully upgraded");
-        int cost=SettlementService.stationCost(station,range);
-        Station next=range ? station.withRange(level+1) : station.withCrew(level+1);
-        String effect=range ? "Widen the range from "+station.size()+" to "+next.size()
-                : "Raise the crew from "+SettlementService.workerLimit(station)+" to "+SettlementService.workerLimit(next)+" workers";
-        return new Action(range ? RANGE_UP : CREW_UP,kind+": "+cost+" emeralds",affords(viewer,cost),
+    private static Action upgrade(Station station,Upgrades.Kind kind,ServerPlayer viewer) {
+        int level=station.upgradeLevel(kind);
+        int action=switch(kind) { case RANGE -> RANGE_UP; case CREW -> CREW_UP; case YIELD -> YIELD_UP; };
+        if(level>=Upgrades.MAX_STATION_LEVEL) return new Action(action,kind.title()+": maxed",false,"Fully upgraded");
+        int cost=SettlementService.stationCost(station,kind);
+        Station next=station.upgraded(kind,level+1);
+        String effect=switch(kind) {
+            case RANGE -> "Widen the range from "+station.size()+" to "+next.size();
+            case CREW -> "Raise the crew from "+SettlementService.workerLimit(station)+" to "+SettlementService.workerLimit(next)+" workers";
+            case YIELD -> "Average "+Upgrades.yieldPercent(next.yieldLevel())+"% extra produce or mineral drops; replanting seeds and Silk Touch blocks do not multiply";
+        };
+        return new Action(action,kind.title()+": "+cost+" emeralds",affords(viewer,cost),
                 effect+" for "+cost+" emeralds (level "+(level+1)+" of "+Upgrades.MAX_STATION_LEVEL+"). Emerald blocks count as nine.");
     }
     private static List<Row> upgradeRows(Station station,ServerPlayer viewer) {
@@ -278,6 +280,10 @@ public final class Panels {
         if(Upgrades.hires(role)) rows.add(new Row(icon(Items.IRON_HELMET),"Crew of "+SettlementService.workerLimit(station),"Level "+station.crew()+" of "+Upgrades.MAX_STATION_LEVEL
                 +(station.crew()<Upgrades.MAX_STATION_LEVEL ? "; next adds a worker for "+SettlementService.stationCost(station,false)+" emeralds" : "; fully upgraded"))
                 .bar(station.crew()/(float)Upgrades.MAX_STATION_LEVEL,GREEN));
+        if(Upgrades.yields(role)) rows.add(new Row(icon(role==StructureRole.FARM ? Items.WHEAT : Items.RAW_IRON),"Yield +"+Upgrades.yieldPercent(station.yieldLevel())+"%",
+                "Level "+station.yieldLevel()+" of "+Upgrades.MAX_STATION_LEVEL+"; bonus chance per harvested unit"
+                +(station.yieldLevel()<Upgrades.MAX_STATION_LEVEL ? "; next costs "+SettlementService.stationCost(station,Upgrades.Kind.YIELD)+" emeralds" : "; fully upgraded"))
+                .bar(station.yieldLevel()/(float)Upgrades.MAX_STATION_LEVEL,GREEN));
         if(viewer!=null) rows.add(new Row(icon(Items.EMERALD),"Your emeralds",viewer.getAbilities().instabuild ? "Creative: upgrades are free"
                 : SettlementService.emeralds(viewer)+" carried, emerald blocks counted as nine"));
         rows.add(new Row(stationIcon(role),"Kept when moved","A broken station's item keeps its upgrades"));
@@ -316,7 +322,8 @@ public final class Panels {
         List<Row> rows=new ArrayList<>();
         switch(station.role()) {
             case HOUSING,BARRACKS -> rows.add(new Row(stationIcon(station.role()),"Beds",SettlementService.beds(level,town,station).size()+" complete beds in range house citizens"));
-            case HOSPITAL -> rows.add(new Row(stationIcon(StructureRole.HOSPITAL),"Patient beds",SettlementService.beds(level,town,station).size()+" beds; treatment is planned"));
+            case HOSPITAL -> rows.add(new Row(stationIcon(StructureRole.HOSPITAL),"Patient beds",SettlementService.beds(level,town,station).size()
+                    +" beds; injured citizens stay until full health; +1 health every 5s. A funded medic can assist with meals and paper."));
             case WAREHOUSE -> rows.add(storage(icon(Items.CHEST),"Storage",SettlementService.storageAt(level,town,station.position()),"Put chests or barrels within "+station.radius()+" blocks"));
             case FARM -> rows.add(new Row(icon(Items.WHEAT),"Crops",SettlementService.workBlocks(level,town,station)+" ripe crops in range"));
             case HUNTER -> rows.add(new Row(icon(Items.IRON_SWORD),"Hunting","Hunts unprotected adults within "+AnimalWork.huntingRadius(station)+" blocks; needs a sword or axe in its barrel"));
@@ -331,14 +338,19 @@ public final class Panels {
                     long wait=Math.max(0,OreVeins.readyAt(level,vein)-level.getGameTime());
                     rows.add(new Row(new ItemStack(ore.getBlock()),ore.getBlock().getName(),Component.literal("Endless vein at "+vein.toShortString()
                             +(wait>0 ? ", replenishes in "+(wait+19)/20+"s" : ", ready")),0,PanelView.NO_BAR,PanelView.NO_VALUE));
-                    rows.add(new Row(icon(Items.IRON_PICKAXE),"Yield","One harvest every "+OreVeins.interval(ore,Config.ORE_VEIN_SECONDS.get())/20+"s with a pickaxe that can mine it"));
+                    CitizenEntity miner=SettlementService.workers(level).members(station.position(),level.getGameTime()).stream().map(level::getEntity)
+                            .filter(CitizenEntity.class::isInstance).map(CitizenEntity.class::cast).findFirst().orElse(null);
+                    ItemStack pickaxe=miner==null ? ItemStack.EMPTY : miner.getMainHandItem();
+                    rows.add(new Row(pickaxe.isEmpty() ? icon(Items.IRON_PICKAXE) : pickaxe.copyWithCount(1),"Replenishment",
+                            "About "+(OreVeins.interval(ore,Config.ORE_VEIN_SECONDS.get(),pickaxe)+19)/20+"s with "
+                            +(pickaxe.isEmpty() ? "a stone pickaxe (baseline)" : pickaxe.getHoverName().getString())+"; needs a pickaxe that can mine this ore"));
                 } else rows.add(new Row(icon(Items.STONE_PICKAXE),"Tunnels",ExcavationService.status(level,town,station)));
                 if(vein==null) rows.add(new Row(icon(Items.RAW_IRON),"Ore vein","Place the station within "+OreVeins.REACH+" blocks of an exposed ore to mine it forever instead"));
             }
             case QUARRY -> rows.add(new Row(icon(Items.IRON_PICKAXE),"Excavation",ExcavationService.status(level,town,station)));
             case GUARD -> rows.add(new Row(icon(Items.IRON_SWORD),"Posts",GuardService.status(level,station)));
             case SMELTERY -> rows.add(new Row(icon(Items.FURNACE),"Furnaces",SettlementService.processingDevices(level,town,station).size()+" furnaces or blast furnaces in range"));
-            case COOK -> rows.add(new Row(icon(Items.SMOKER),"Kitchen",SettlementService.processingDevices(level,town,station).size()+" smokers or lit campfires; bread "+(town.disabledRecipes.contains("bread") ? "off" : "on")));
+            case COOK -> rows.add(new Row(icon(Items.SMOKER),"Kitchen",SettlementService.processingDevices(level,town,station).size()+" furnaces, smokers or lit campfires; bread "+(town.disabledRecipes.contains("bread") ? "off" : "on")));
             case BLACKSMITH -> rows.add(new Row(icon(Items.ANVIL),"Anvils",SettlementService.anvils(level,town,station).size()+" anvils; repairs warehouse gear and worn stand armor"));
             case CRAFTSMAN -> rows.add(new Row(icon(Items.CRAFTING_TABLE),"Orders",town.craftOrders.size()+" learned recipes"));
             case COURIER -> rows.add(new Row(icon(Items.BUNDLE),"Deliveries","The only town haulers: collect job goods and deliver tools, materials, carcasses and feed through the warehouse"));
@@ -383,7 +395,8 @@ public final class Panels {
         Station station=stationAt(player,pos);
         if(station==null) return;
         Settlement town=owned(player,pos);
-        if(action==RANGE_UP || action==CREW_UP) SettlementService.upgradeStation(level(player),player,town,station,action==RANGE_UP);
+        if(action==RANGE_UP || action==CREW_UP || action==YIELD_UP) SettlementService.upgradeStation(level(player),player,town,station,
+                action==RANGE_UP ? Upgrades.Kind.RANGE : action==CREW_UP ? Upgrades.Kind.CREW : Upgrades.Kind.YIELD);
         else if(action==BREAD && station.role()==StructureRole.COOK) {
             if(!town.disabledRecipes.remove("bread")) town.disabledRecipes.add("bread");
             dirty(player);

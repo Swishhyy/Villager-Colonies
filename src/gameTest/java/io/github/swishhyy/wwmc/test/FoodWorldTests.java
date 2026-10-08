@@ -1,12 +1,15 @@
 package io.github.swishhyy.wwmc.test;
 
 import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
+import io.github.swishhyy.wwmc.menu.Panels;
 import io.github.swishhyy.wwmc.settlement.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -73,8 +76,9 @@ public final class FoodWorldTests {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-960));
             Station hunter=new Station(start.east(4),StructureRole.HUNTER),butcher=new Station(start.east(24),StructureRole.BUTCHER),
                     cook=new Station(start.east(40),StructureRole.COOK),courier=new Station(start.east(14),StructureRole.COURIER),
+                    secondCourier=new Station(start.offset(14,0,4),StructureRole.COURIER),
                     warehouse=new Station(start.east(60),StructureRole.WAREHOUSE);
-            var fixture=fixture(level,start,hunter,butcher,cook,courier,warehouse);
+            var fixture=fixture(level,start,hunter,butcher,cook,courier,secondCourier,warehouse);
             // Starter rations keep this production-chain test independent of the separate hunger-sharing test.
             Container pantry=barrel(level,warehouse.position().north(2),new ItemStack(Items.IRON_SWORD,1),new ItemStack(Items.IRON_AXE,1),new ItemStack(Items.COAL,8),new ItemStack(Items.BREAD,16));
             Container huntBarrel=barrel(level,hunter.position().south(2)),butcherBarrel=barrel(level,butcher.position().south(2)),cookBarrel=barrel(level,cook.position().south(2));
@@ -83,7 +87,7 @@ public final class FoodWorldTests {
             var prepare=fixture.worker(butcher,butcher.position().west());
             var chef=fixture.worker(cook,cook.position().west());
             var haulA=fixture.worker(courier,courier.position().west());
-            var haulB=fixture.worker(courier,courier.position().south());
+            var haulB=fixture.worker(secondCourier,secondCourier.position().south());
             Animal game=fixture.cow(start.east(8),false,true),named=fixture.cow(start.offset(10,0,2),false,true);
             named.setCustomName(Component.literal("Protected cow"));
             helper.succeedWhen(() -> {
@@ -170,7 +174,7 @@ public final class FoodWorldTests {
 
     @GameTest(timeoutTicks=1600)
     @EmptyTemplate
-    @TestHolder(description="Ten hungry injured citizens share ten loaves: each eats one, none stockpiles spares or eats somebody else's share for healing.")
+    @TestHolder(description="Ten hungry injured citizens share ten loaves while awaiting hospital beds: each eats one and meals do not heal outside hospital.")
     static void tenCitizensShareTenLoaves(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-1360));
@@ -193,7 +197,7 @@ public final class FoodWorldTests {
                 helper.assertTrue(count(pantry,Items.BREAD)==0,"Some hungry citizens never reached the communal pantry; loaves="+count(pantry,Items.BREAD)
                         +", citizens="+citizens.stream().map(c -> c.getHealth()+" hp, "+c.activity()+" at "+c.blockPosition()).toList());
                 for(CitizenEntity citizen:citizens) {
-                    helper.assertTrue(citizen.getHealth()==6,"A citizen did not get exactly one loaf: health="+citizen.getHealth()+", "+citizen.activity());
+                    helper.assertTrue(citizen.getHealth()==1 && citizen.mealTicks()>0,"Meals must satisfy hunger without healing outside hospital: health="+citizen.getHealth()+", "+citizen.activity());
                     helper.assertTrue(citizen.bag().count(Items.BREAD)==0,"A citizen stockpiled scarce bread");
                 }
                 fixture.close(); helper.succeed();
@@ -218,7 +222,7 @@ public final class FoodWorldTests {
             catch(ReflectiveOperationException e) { throw new RuntimeException(e); }
             helper.succeedWhen(() -> {
                 helper.assertTrue(count(pantry,Items.BREAD)==0,"Worker has not reached the raised pantry: "+describe(citizen,level));
-                helper.assertTrue(citizen.getHealth()==6,"The real loaf did not heal the worker exactly once");
+                helper.assertTrue(citizen.getHealth()==1 && citizen.mealTicks()>0,"The real loaf must satisfy hunger without healing outside hospital");
                 helper.assertTrue(citizen.bag().count(Items.BREAD)==0,"The worker stockpiled its meal");
                 helper.assertTrue(farm.position().equals(fixture.town.jobs.home(citizen.getUUID())),"The meal trip changed the worker's job");
                 fixture.close();
@@ -246,6 +250,61 @@ public final class FoodWorldTests {
                 helper.assertTrue(prepare.getMainHandItem().is(Items.IRON_AXE),"The butcher did not receive its axe: "+describe(prepare,level)+", courier="+describe(haul,level));
                 helper.assertTrue(count(pantry,Items.IRON_AXE)==1,"An equipped worker drew another job's spare axe out of shared stock");
                 helper.assertTrue(count(hunting,Items.IRON_AXE)==0 && hunt.bag().count(Items.IRON_AXE)==0,"The hunter hoarded axes beside its equipped sword");
+                fixture.close(); helper.succeed();
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=1200)
+    @EmptyTemplate
+    @TestHolder(description="Legacy two-person cook, smelter and butcher crews fill separate stations without losing citizens or their bags; retired block upgrades clear while ranges and quarry crews survive.")
+    static void legacyCrewsMoveToSeparateJobBlocks(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(6000,2,-3900));
+            List<Station> oldJobs=new ArrayList<>(),newJobs=new ArrayList<>(),stations=new ArrayList<>();
+            var roles=List.of(StructureRole.COOK,StructureRole.SMELTERY,StructureRole.BUTCHER);
+            for(int n=0;n<roles.size();n++) {
+                Station old=new Station(start.east(4+n*20),roles.get(n),Direction.NORTH,2,3);
+                Station next=new Station(old.position().east(8),old.role());
+                oldJobs.add(old); newJobs.add(next); stations.add(old); stations.add(next);
+            }
+            Station quarry=new Station(start.east(76),StructureRole.QUARRY,Direction.NORTH,0,2); stations.add(quarry);
+            var fixture=fixture(level,start,stations.toArray(Station[]::new));
+            for(StructureRole role:roles) fixture.town.jobs.setLevel(role,JobBoard.HIGH);
+            fixture.town.jobs.setLevel(StructureRole.QUARRY,JobBoard.HIGH);
+            List<CitizenEntity> citizens=new ArrayList<>();
+            for(Station old:oldJobs) {
+                level.setBlockAndUpdate(old.position(),level.getBlockState(old.position()).setValue(StationBlock.RANGE,2).setValue(StationBlock.CREW,3));
+                citizens.add(fixture.worker(old,old.position().west()));
+                citizens.add(fixture.worker(old,old.position().south()));
+            }
+            level.setBlockAndUpdate(quarry.position(),level.getBlockState(quarry.position()).setValue(StationBlock.CREW,2));
+            citizens.add(fixture.worker(quarry,quarry.position().west()));
+            citizens.add(fixture.worker(quarry,quarry.position().south()));
+            for(int n=0;n<citizens.size();n++) {
+                citizens.get(n).setCustomName(Component.literal("Migration worker "+n));
+                citizens.get(n).bag().setItem(0,new ItemStack(Items.EMERALD,n+1));
+            }
+            helper.runAtTickTime(600,() -> {
+                helper.assertTrue(fixture.town.citizens.size()==citizens.size(),"Shrinking crews removed citizens from the town");
+                for(Station station:stations) {
+                    var screen=Panels.station(level,fixture.town,station);
+                    helper.assertTrue(screen.actions().stream().anyMatch(action -> action.id()==Panels.CREW_UP)==(station.role()==StructureRole.QUARRY),"Only the quarry screen should sell crew upgrades");
+                }
+                for(int n=0;n<roles.size();n++) {
+                    Station old=oldJobs.get(n),next=newJobs.get(n);
+                    helper.assertTrue(fixture.town.jobs.assigned(old.position())==1 && fixture.town.jobs.assigned(next.position())==1,
+                            "Surplus "+old.role()+" worker did not take its separate job block: "+fixture.town.jobs.crew(old.position())+" / "+fixture.town.jobs.crew(next.position()));
+                    helper.assertTrue(level.getBlockState(old.position()).getValue(StationBlock.CREW)==0,"A retired crew upgrade remained in the old block state");
+                    helper.assertTrue(level.getBlockState(old.position()).getValue(StationBlock.RANGE)==2 && fixture.town.station(old.position()).range()==2,"Migration erased a valid range upgrade");
+                }
+                helper.assertTrue(fixture.town.jobs.assigned(quarry.position())==2 && level.getBlockState(quarry.position()).getValue(StationBlock.CREW)==2,"Migration reduced the quarry crew or removed its upgrades");
+                for(int n=0;n<citizens.size();n++) {
+                    CitizenEntity citizen=citizens.get(n);
+                    helper.assertTrue(citizen.isAlive() && fixture.town.citizens.contains(citizen.getUUID()),"Migration lost a citizen");
+                    helper.assertTrue(citizen.bag().count(Items.EMERALD)==n+1,"Reassignment lost or duplicated a citizen's inventory");
+                    helper.assertTrue(citizen.getName().getString().equals("Migration worker "+n),"Reassignment reset a citizen's name");
+                }
                 fixture.close(); helper.succeed();
             });
         });

@@ -10,6 +10,7 @@ import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.common.Tags;
@@ -53,14 +54,20 @@ public final class OreVeins {
         return ore.is(Tags.Blocks.ORES_GOLD) ? 2 : 1;
     }
     public static int interval(BlockState ore,int seconds) { return seconds*20*rarity(ore); }
+    /** Stone is the baseline. Square-root scaling and a cap keep rare ores and faster modded tools bounded. */
+    public static int interval(BlockState ore,int seconds,ItemStack pickaxe) {
+        double speed=pickaxe.isEmpty() ? 4 : Math.max(1,pickaxe.getDestroySpeed(ore));
+        double boost=Math.clamp(Math.sqrt(speed/4.0),0.75,1.5);
+        return (int)Math.ceil(interval(ore,seconds)/boost);
+    }
     public static long readyAt(ServerLevel level,BlockPos vein) {
         Map<BlockPos,Long> veins=READY.get(level);
         return veins==null ? 0 : veins.getOrDefault(vein,0L);
     }
-    public static void worked(ServerLevel level,BlockPos vein,BlockState ore) {
+    public static void worked(ServerLevel level,BlockPos vein,BlockState ore,ItemStack pickaxe) {
         Map<BlockPos,Long> veins=READY.computeIfAbsent(level,l -> new HashMap<>());
         veins.values().removeIf(time -> time<=level.getGameTime());
-        veins.put(vein.immutable(),level.getGameTime()+interval(ore,Config.ORE_VEIN_SECONDS.get()));
+        veins.put(vein.immutable(),level.getGameTime()+interval(ore,Config.ORE_VEIN_SECONDS.get(),pickaxe));
     }
     /** "Iron Ore" for a vein's block. */
     public static String name(BlockState ore) { return ore.getBlock().getName().getString(); }

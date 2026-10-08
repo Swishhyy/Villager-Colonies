@@ -85,7 +85,9 @@ public final class ProcessingService {
     }
     /** Haul a bounded load of ingredients and fuel, preserving any bag overflow. */
     public static void fetch(ServerLevel level,StructureRole role,BlockPos pos,List<Container> storage,CitizenInventory bag) {
-        Predicate<ItemStack> ingredients=s -> input(level,role,pos,s);
+        ItemStack loaded=level.getBlockEntity(pos) instanceof AbstractFurnaceBlockEntity furnace ? furnace.getItem(0) : ItemStack.EMPTY;
+        Predicate<ItemStack> ingredients=s -> input(level,role,pos,s)
+                && (loaded.isEmpty() || ItemStack.isSameItemSameComponents(loaded,s));
         carry(storage,bag,ingredients,INPUT_LOAD-InventoryOps.count(List.of(bag),ingredients));
         if(level.getBlockEntity(pos) instanceof AbstractFurnaceBlockEntity)
             carry(storage,bag,s -> fuel(level,s),FUEL_LOAD-InventoryOps.count(List.of(bag),s -> fuel(level,s)));

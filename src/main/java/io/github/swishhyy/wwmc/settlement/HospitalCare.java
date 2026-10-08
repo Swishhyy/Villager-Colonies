@@ -7,51 +7,67 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.phys.Vec3;
 
-/** Patients reserve actual hospital beds; a present medic spends one meal and one paper dressing per treatment. */
+/** Every injured citizen rests in a reserved hospital bed until full health. Medics can assist with real supplies. */
 public final class HospitalCare {
+    public static final int HEAL_TICKS=100;
     private HospitalCare() {}
     public static boolean needsCare(Settlement town,CitizenEntity citizen) {
-        if(town!=null) { BlockPos job=town.jobs.home(citizen.getUUID()); Station station=job==null ? null : town.station(job);
-            if(station!=null && station.role()==StructureRole.HOSPITAL) return false; }
-        return town!=null && town.campaign.projects.contains("hospital") && (citizen.recovering() || citizen.getHealth()<citizen.getMaxHealth()*0.6F)
-                && town.stations.stream().anyMatch(s -> s.role()==StructureRole.HOSPITAL);
+        return town!=null && (citizen.recovering() || citizen.hospitalBed()!=null || citizen.getHealth()<citizen.getMaxHealth());
     }
+    public static boolean inBed(CitizenEntity citizen) {
+        return citizen.hospitalBed()!=null && citizen.isSleeping() && citizen.getSleepingPos().filter(citizen.hospitalBed()::equals).isPresent();
+    }
+    private static void finish(ServerLevel level,Settlement town,CitizenEntity citizen) {
+        boolean rested=citizen.hospitalBed()!=null;
+        citizen.leaveHospitalBed(); citizen.recovering(false);
+        if(rested) CampaignService.record(level,town,citizen.getName().getString()+" recovered at the hospital and returned to duty.");
+    }
+    /** Called from the entity tick as well as its awake AI: sleeping villagers suspend their normal work goal. */
     public static boolean patient(ServerLevel level,Settlement town,CitizenEntity citizen) {
         if(!needsCare(town,citizen)) return false;
-        if(citizen.getHealth()>=citizen.getMaxHealth()*0.95F) { citizen.recovering(false); return false; }
-        if(SquadService.assigned(town,citizen.getUUID())) return false;
+        if(citizen.getHealth()>=citizen.getMaxHealth()) { finish(level,town,citizen); return false; }
+        if(!citizen.recovering()) { citizen.pauseForHospital(level); citizen.recovering(true); }
         List<BlockPos> beds=new ArrayList<>();
-        for(Station station:town.stations) if(station.role()==StructureRole.HOSPITAL && SettlementService.active(level,station)) beds.addAll(SettlementService.beds(level,town,station));
-        beds.sort(Comparator.comparingDouble(p -> citizen.distanceToSqr(Vec3.atCenterOf(p))));
-        for(BlockPos bed:beds) if(SettlementService.reservations(level).claim(bed,citizen.getUUID(),level.getGameTime(),200)) {
-            citizen.recovering(true); citizen.wakeForAlarm();
-            if(citizen.workAt(level,bed)) { citizen.getNavigation().stop(); citizen.workActivity("At a hospital bed, awaiting the medic and supplies"); }
-            else { citizen.workWalk(bed); citizen.workActivity("Walking to a hospital bed for treatment"); }
+        for(Station station:town.stations) if(station.role()==StructureRole.HOSPITAL && SettlementService.active(level,station))
+            beds.addAll(SettlementService.beds(level,town,station));
+        if(citizen.hospitalBed()!=null && !beds.contains(citizen.hospitalBed())) citizen.leaveHospitalBed();
+        beds.sort(Comparator.comparingDouble(p -> p.equals(citizen.hospitalBed()) ? -1 : citizen.distanceToSqr(Vec3.atCenterOf(p))));
+        for(BlockPos bed:beds) {
+            if(!citizen.hospitalCanTry(bed) || level.getBlockState(bed).getValue(BedBlock.OCCUPIED) && !bed.equals(citizen.hospitalBed())) continue;
+            if(!SettlementService.reservations(level).claim(bed,citizen.getUUID(),level.getGameTime(),200)) continue;
+            citizen.hospitalBed(bed);
+            if(!citizen.hospitalRestAt(level,town,bed)) { citizen.leaveHospitalBed(); continue; }
+            if(inBed(citizen)) {
+                citizen.workActivity("Resting in hospital until fully healed ("+Math.round(citizen.getHealth())+"/"+Math.round(citizen.getMaxHealth())+")");
+                if(citizen.hospitalHealingPulse()) citizen.heal(1);
+                if(citizen.getHealth()>=citizen.getMaxHealth()) finish(level,town,citizen);
+            } else citizen.workActivity("Walking to a hospital bed for recovery");
             return true;
         }
-        citizen.workActivity("Hospital patient beds are occupied or unloaded"); return false;
+        citizen.hospitalMeal(level,town);
+        citizen.workActivity("Needs a free, reachable hospital bed to recover");
+        return true;
     }
     public static void medic(ServerLevel level,Settlement town,Station station,CitizenEntity medic) {
-        if(!town.campaign.projects.contains("hospital")) { medic.workActivity("Complete the Field Hospital project at the banner"); return; }
+        if(!town.campaign.projects.contains("hospital")) { medic.workActivity("Complete the Field Hospital project for assisted treatment"); return; }
         List<BlockPos> beds=SettlementService.beds(level,town,station);
-        CitizenEntity patient=medic.getHealth()<medic.getMaxHealth()*0.6F ? medic : DefenseService.loadedCitizens(level,town).stream().filter(c -> c!=medic && c.isAlive() && c.recovering()
-                && c.getHealth()<c.getMaxHealth()*0.95F && beds.stream().anyMatch(b -> c.workAt(level,b)))
+        CitizenEntity patient=DefenseService.loadedCitizens(level,town).stream().filter(c -> c!=medic && c.isAlive() && inBed(c)
+                && c.getHealth()<c.getMaxHealth() && beds.contains(c.hospitalBed()))
                 .min(Comparator.comparingDouble(CitizenEntity::getHealth)).orElse(null);
         if(patient==null) { medic.workActivity("Hospital ready; no patient awaiting treatment"); return; }
-        if(patient!=medic && (medic.distanceToSqr(patient)>CitizenReach.BLOCKS*CitizenReach.BLOCKS || !medic.hasLineOfSight(patient))) {
+        if(medic.distanceToSqr(patient)>CitizenReach.BLOCKS*CitizenReach.BLOCKS || !medic.hasLineOfSight(patient)) {
             medic.workWalk(patient.blockPosition()); medic.workActivity("Walking to treat "+patient.getName().getString()); return;
         }
-        if(Math.floorMod(level.getGameTime()/10,10)!=Math.floorMod(medic.getId(),10)) return;
+        if(Math.floorMod(level.getGameTime()/10,HEAL_TICKS/10)!=Math.floorMod(medic.getId(),HEAL_TICKS/10)) return;
         List<Container> stock=SettlementService.jobStorage(level,town,station);
         if(InventoryOps.count(stock,FoodHealing::food)==0 || InventoryOps.count(stock,s -> s.is(Items.PAPER))==0) {
-            medic.workActivity("Needs meals and paper dressings in the hospital barrel; couriers deliver them"); return;
+            medic.workActivity("Beds heal slowly; meals and paper dressings let the medic help"); return;
         }
         FoodHealing.take(stock,medic.bag()::offer); InventoryOps.takeOne(stock,s -> s.is(Items.PAPER));
-        patient.heal(4); medic.workActivity("Treated "+patient.getName().getString()+" with a meal and a dressing");
-        if(patient.getHealth()>=patient.getMaxHealth()*0.95F) {
-            patient.recovering(false); CampaignService.record(level,town,patient.getName().getString()+" recovered at the hospital and returned to duty.");
-        }
+        patient.heal(1); medic.workActivity("Treated "+patient.getName().getString()+" with a meal and a dressing");
+        if(patient.getHealth()>=patient.getMaxHealth()) finish(level,town,patient);
     }
 }

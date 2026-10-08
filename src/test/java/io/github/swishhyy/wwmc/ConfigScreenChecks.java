@@ -46,17 +46,25 @@ public final class ConfigScreenChecks {
         assertTrue(ConfigSections.other(source).isEmpty());
     }
     @Test @ExtendWith(EphemeralTestServerProvider.class)
-    void previousServerOverridesStillPassTheUnchangedConfigSpec(MinecraftServer server) {
+    void previousServerOverridesSurviveExceptRetiredCrewSettings(MinecraftServer server) {
         CommentedConfig existing=CommentedConfig.inMemory();
         for(var entry:Config.SPEC.getSpec().entrySet())
             existing.set(entry.getKey(),((ModConfigSpec.ValueSpec)entry.getRawValue()).getDefault());
         existing.set("guardWorkers",4);
+        existing.set("stationWorkers",4);
+        existing.set("courierWorkers",2);
+        existing.set("processingWorkers",2);
+        existing.set("animalWorkers",2);
+        existing.set("blacksmithWorkers",2);
+        existing.set("quarryWorkers",12);
         existing.set("basePopulation",25);
         existing.set("mineMinY",-44);
         existing.set("rationTicks",1800);
         existing.set("enemyWaves",false);
         Config.SPEC.correct(existing);
-        assertEquals(Integer.valueOf(4),existing.get("guardWorkers"));
+        for(String retired:List.of("guardWorkers","stationWorkers","courierWorkers","processingWorkers","animalWorkers","blacksmithWorkers"))
+            assertFalse(existing.contains(retired),"A retired crew setting should not re-enable extra workers: "+retired);
+        assertEquals(Integer.valueOf(12),existing.get("quarryWorkers"));
         assertEquals(Integer.valueOf(25),existing.get("basePopulation"));
         assertEquals(Integer.valueOf(-44),existing.get("mineMinY"));
         assertEquals(Integer.valueOf(1800),existing.get("rationTicks"));

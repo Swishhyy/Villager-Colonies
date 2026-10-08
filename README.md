@@ -6,9 +6,13 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.12.1-alpha
+## Current build: 0.12.3-alpha
 
-0.12.1 adds a dedicated **Relationships** screen at the flag: player invitations and permissions, alliance controls, and editable town names. Player claims deny interactions until permission is accepted. Entry notices show the current town name. Flags survive explosions and cannot be moved by pistons, and lost flags can be restored without resetting a town. Install matching 0.12.1-alpha builds on the server and every client. For a server failing with **Overworld settings missing**, see [World metadata recovery](docs/server-startup.md).
+0.12.3 fixes appliance loading for cooks and smelters, adds farm and mine yield upgrades and pickaxe-scaled vein replenishment, and makes actual hospital beds the only place injured citizens rest until full health. See [Production and recovery](docs/production-recovery.md) for setup and balance.
+
+This build also gives **every job block one citizen, except quarries**. This includes cooks, smelters, butchers, lumberjacks, couriers, blacksmiths and guards. Quarries keep eight workers by default, their server setting, and crew upgrades. Add more stations to expand production, hauling or defense. Older extra workers take open jobs without losing their names or inventories; valid range upgrades and quarry progress remain. Crew upgrades and configurable crew sizes now apply only to quarries. Install matching 0.12.3-alpha builds on the server and every client.
+
+0.12.1 adds a dedicated **Relationships** screen at the flag: player invitations and permissions, alliance controls, and editable town names. Player claims deny interactions until permission is accepted. Entry notices show the current town name. Flags survive explosions and cannot be moved by pistons, and lost flags can be restored without resetting a town. For a server failing with **Overworld settings missing**, see [World metadata recovery](docs/server-startup.md).
 
 0.12.0 adds a **multiplayer campaign loop**: accepted town membership, reciprocal alliances, industry specialization, demand-driven shipments, guard squads, bandit camps and occupied mines, supplied outposts, material-funded projects, working hospital medics, NPC supply contracts and a persistent town journal. Open **Campaign** at a town banner; use `/wwmc squad` for field orders away from home. Existing town identities, ownership, job assignments and inventories are preserved. See [Multiplayer campaign](docs/multiplayer-campaign.md) for project costs and a two-player walkthrough.
 
@@ -18,7 +22,7 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 0.11.1 fixes enchanters reporting usable tables as unreachable without walking. They choose reachable, clear standing ground within four-block work reach instead of trying to path into the table block. Blocked views remain blocked; opening an entrance or changing the furniture lets them try a new approach without blacklisting the table itself. Existing enchanting progress and local courier supplies are preserved.
 
-0.11.0 adds **hunters, fishermen, animal keepers and butchers**, with a whole-carcass → raw-portions → cooked-meals food chain. **Couriers are now the only haulers within a town**: production workers use their own job barrels, and wait for deliveries or free storage. Every mine has exactly **one miner**, including older upgraded mines. Regular meals are three times less frequent by default (six loaded minutes), healing meals have a 30-second cooldown, and scarce food is shared with priority for hungry citizens who were fed least recently. Hire couriers and add local barrels when updating an existing town.
+0.11.0 adds **hunters, fishermen, animal keepers and butchers**, with a whole-carcass → raw-portions → cooked-meals food chain. **Couriers are now the only haulers within a town**: production workers use their own job barrels, and wait for deliveries or free storage. Every mine has exactly **one miner**, including older upgraded mines. Regular meals are three times less frequent by default (six loaded minutes), and scarce food is shared with priority for hungry citizens who were fed least recently. Hire couriers and add local barrels when updating an existing town.
 
 0.10.0 makes citizens **keep their jobs** and adds **job priorities**. Each citizen has its own station and goes back to it every morning and after errands, instead of taking whichever station had the smallest crew at that moment. The banner's new **Jobs** tab sets each job to Off, Low, Normal or High: open places in higher-priority jobs fill first and draw citizens from lower ones, and Off frees a job's crew. See [Jobs and priorities](#jobs-and-priorities). Pathfinding is fixed: citizens find ordinary routes across a town and around buildings again, which they often gave up on in 0.9.2, while still preferring nearby roads and keeping to bridges over water. A Mine Station now works an exposed ore up to two blocks away as a vein, and its miner walks over and mines an ore touching the station instead of reporting it out of reach.
 
@@ -78,7 +82,7 @@ Implemented:
 - Shared station crews, exclusive resource reservations, civilian nighttime rest, and guard duty through the night.
 - Save/reload support for settlement data, player block protection, replanting sites, excavation progress, cargo, tools, and meal timers.
 
-Further plans include automatic housing construction, wars between rival settlements, distant simulation, larger technology trees, and countries. Barracks identify troop housing and support military projects. Fund a Field Hospital for a medic who treats wounded citizens with meals and paper dressings. Citizens also heal by eating food.
+Further plans include automatic housing construction, wars between rival settlements, distant simulation, larger technology trees, and countries. Barracks identify troop housing and support military projects. Fund a Field Hospital for a medic who treats wounded citizens with meals and paper dressings. Injured citizens rest in hospital beds until full health; ordinary meals satisfy hunger.
 
 ## Try the first build
 
@@ -88,13 +92,13 @@ Install the same mod JAR on the NeoForge 26.2 client and server. Use a new test 
 2. Build a small camp with beds. Place a **Housing Station** or **Barracks Station** inside it.
 3. Beds are detected automatically within **three blocks of the station on every axis**: a **7×7×7 cube**, including the station block. Both halves of each bed must fit inside the cube and your claim. No corner selection is required.
 4. Place a **Warehouse Station** within that same range of your chests or barrels. It detects multiple containers, including trapped and double chests. Stock food, axes, appropriate pickaxes, saplings, and cobblestone or other tunnel floor supplies. You can add or remove storage later without registering it again.
-5. Place **Farm** and **Lumber Stations** with crops or tree roots inside their **7×7×7** ranges. Put barrels in their ranges and add a **Courier Station** to deliver tools and collect goods. A farm always takes **one farmer**; a lumber station supports **four workers**, each mine **one miner**, and a quarry **eight**. Crew upgrades add more where supported, but mines stay solo (see [Station upgrades](#station-upgrades)). Citizens reserve individual trees or excavation positions so a shared crew cannot harvest the same target twice. Housing, hospital, barracks, and warehouse ranges protect their structures from harvesting.
+5. Place **Farm** and **Lumber Stations** with crops or tree roots inside their **7×7×7** ranges. Put barrels in their ranges and add a **Courier Station** to deliver tools and collect goods. Every job block takes **one worker**, except a quarry, which supports **eight** by default. Only quarries can buy more crew slots (see [Station upgrades](#station-upgrades)). Citizens reserve individual trees or excavation positions so a shared crew cannot harvest the same target twice. Housing, hospital, barracks, and warehouse ranges protect their structures from harvesting.
 6. Prepare farmland and plant crops yourself. Carrots or potatoes supply both food and replanting stock; wheat is collected, and a cook makes it into bread. Put a lumber station by natural trees or accessible clear soil. It fells the connected tree, collects real leaf drops, and replants when storage has enough saplings. If no tree is accessible, it can plant a new one instead. Trees grow at Minecraft's normal rate.
 7. For mining, the simplest choice is a **Mine Station placed within two blocks of an exposed ore** (an ore with at least one open side): its miner works that ore as an endless vein. See [Ore veins](#ore-veins). A Mine Station with no ore beside it digs tunnels instead: place it facing into the intended descent, with open walking space in front. It chooses and saves a random depth between **Y −30 and 10**, then digs a staircase and eight 24-block side branches. Near that depth, workers also walk to accessible exposed cave ores they can reach. Alternatively, place a **Quarry Station** facing the neighboring chunk you want excavated. The quarry removes that complete 16×16 chunk from the surface down to Y −64, preserving bedrock. Keep the station and level, walkable ground outside the target chunk, in line with the station, where the crew's staircase begins. The whole plan must fit inside the town claim.
 8. Run `/wwmc recruit 3`. Recruitment is limited by loaded housing beds and the town's population limit: 10 citizens at first, raised with emeralds on the town screen (see [Population](#population)). Each citizen takes the open job of highest priority and keeps it (see [Jobs and priorities](#jobs-and-priorities)), obtains supplies, works, and delivers cargo in batches.
 9. Right-click your citizen with an empty hand to open their screen: job, current activity, health, next meal and equipment above their **36-slot bag**. Add food, spare tools, saplings, or guard gear directly. Sneak-right-click releases their job, and they take another open place; holding an item while interacting shows their status above the hotbar. Right-click the banner for the town screen. Mine depths are automatic.
-10. Place a **Guard Station**, supply armor stands in its local range, and configure its day/night posts as described below. Up to two citizens become guards automatically; defense slots fill before production jobs.
-11. Place a **Craftsman Station** near your warehouse and teach it what to make (see [Craftsmen](#craftsmen)). Add a **Smeltery Station** with a furnace or blast furnace in range, and a **Cook Station** with a smoker or lit campfire in range. Stock raw ores, raw food, wheat, and fuel in the warehouse. See [Smelters and cooks](#smelters-and-cooks).
+10. Place a **Guard Station**, supply armor stands in its local range, and configure its day/night posts as described below. One citizen becomes its guard automatically; defense slots fill before production jobs. Add more Guard Stations for more defenders or expedition soldiers.
+11. Place a **Craftsman Station** near your warehouse and teach it what to make (see [Craftsmen](#craftsmen)). Add a **Smeltery Station** with a furnace or blast furnace in range, and a **Cook Station** with a furnace, smoker or lit campfire in range. Stock raw ores, raw food, wheat, and fuel in the warehouse. See [Smelters and cooks](#smelters-and-cooks).
 12. Add a **Blacksmith Station** with an anvil and job barrel within three blocks on each axis. Stock repair materials in the warehouse for couriers to deliver. Blacksmiths repair damaged tools/weapons and worn guard armor, retaining names and enchantments.
 13. Hang a **bell** inside the town so guards can raise the alarm, and prepare for the first enemy wave once the town has three citizens. See [Alarms and enemy waves](#alarms-and-enemy-waves).
 14. Every production station needs **barrels** in range and **couriers** to move goods and supplies. Add hunters or keepers, a butcher, and a cook for meat, or a fisherman beside suitable water. See [Animal food jobs](#animal-food-jobs) and [Job barrels and couriers](#job-barrels-and-couriers).
@@ -119,7 +123,7 @@ Replanting uses one real sapling for a small tree or four in a 2×2 plot for a l
 
 ### Tunnel mines and quarries
 
-A mine creates a three-block-high descending staircase, followed by two-block-high tunnels at its target Y. By default the spine has four junctions three blocks apart, each with one 24-block branch on either side. Workers approach each cut from the previous cleared step and use actual building stock to fill missing tunnel floor support. The descent has a single working front; more of the crew can work in parallel once the branches are accessible.
+A mine creates a three-block-high descending staircase, followed by two-block-high tunnels at its target Y. By default the spine has four junctions three blocks apart, each with one 24-block branch on either side. Workers approach each cut from the previous cleared step and use actual building stock to fill missing tunnel floor support. One miner works the staircase and branches; add separate Mine Stations for more miners.
 
 A quarry targets the **adjacent chunk in the direction you faced when placing it**, rather than the chunk containing its station. Crews walk into the pit and dig the blocks around them, one horizontal layer at a time, with actual pickaxe durability and drops. Mining speed follows the block's hardness and the pickaxe, as for a player: about a second per stone block with a stone pickaxe, longer for harder blocks or weaker tools. Tunnel and cave mining use the same timing.
 
@@ -175,7 +179,7 @@ Only loaded blocks inside the settlement claim count. Scanning never loads chunk
 | Quarry | Full neighboring chunk excavation, layer by layer, entered by a spiral staircase. | Machinery, dedicated haulage, liquid management. |
 | Craftsman | Learned crafting-table recipes kept at chosen stock levels from real materials. | Stonecutter and smithing orders. |
 | Smeltery | Warehouse ores/raw metals smelted in nearby furnaces or blast furnaces. | Specialized metallurgy and technology. |
-| Cook | Raw food cooked in smokers or lit campfires; three wheat become bread. | More meals and food orders. |
+| Cook | Raw food cooked in furnaces, smokers or lit campfires; three wheat become bread. | More meals and food orders. |
 | Blacksmith | Repairs courier-delivered equipment at nearby anvils, leaving it in the job barrel. | Repair orders and specialized smithing. |
 | Guard | Day/night posts, shared gear, bell alarms, player-led squads and convoy escorts. | Larger armies and siege tactics. |
 | Courier | The only town hauler: moves job outputs, tools and inputs through the warehouse. | Convoys between towns. |
@@ -248,7 +252,7 @@ NPC towns start neutral with a house, 12 beds, warehouse, trader checkpoint, gua
 
 ### Server configuration
 
-Open **Mods → WWMC → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Worker Crews**, **Mining & Quarries**, **Work & Food**, **Enchanting**, **Defense & Waves**, and **Trade & Other Towns**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Existing TOML keys stay in their original locations, so earlier settings carry over. Multiplayer server configuration remains controlled by the server.
+Open **Mods → WWMC → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Quarry Crew**, **Mining & Quarries**, **Work & Food**, **Enchanting**, **Defense & Waves**, and **Trade & Other Towns**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Active TOML keys stay in their original locations. The six retired non-quarry crew settings are removed on config reload; quarry and other server overrides carry over. Multiplayer server configuration remains controlled by the server.
 
 The generated WWMC server config controls these defaults:
 
@@ -260,18 +264,12 @@ The generated WWMC server config controls these defaults:
 | `populationPerUpgrade` | 5 | Extra citizens each population upgrade allows. |
 | `populationUpgradeCost` | 8 | Emeralds for the first population upgrade; each later one costs this much more than the last. |
 | `stationUpgradeCost` | 8 | Emeralds for a station's first range or crew upgrade; each further level costs twice the last. |
-| `stationWorkers` | 4 | Crew slots per lumber station before crew upgrades. Farms, mines, craftsmen and enchanters always have one. |
-| `courierWorkers` | 2 | Couriers per Courier Station before crew upgrades. |
-| `oreVeinSeconds` | 15 | Seconds between yields of a common ore vein; gold ×2, diamond and emerald ×6, ancient debris ×8. |
+Veins replenish in about 15 seconds with a stone pickaxe (`oreVeinSeconds`). Wood takes 20s, iron about 12.3s, diamond about 10.6s, and netherite 10s for common ores. Tool speed uses square-root scaling, capped at 1.5 times stone speed; gold ore multiplies the wait by two, diamond and emerald by six, and ancient debris by eight. The station screen shows the assigned miner's equipped pickaxe and estimated delay. Miners still need a suitable tool, use its durability, and spend time physically breaking the ore.
 | `quarryWorkers` | 8 | Crew slots per quarry before crew upgrades. |
-| `processingWorkers` | 2 | Crew slots per Smeltery or Cook Station before crew upgrades. |
-| `animalWorkers` | 2 | Workers per hunter, fisherman, animal keeper or butcher station before crew upgrades. |
 | `rationTicks` | 2400 | Base loaded ticks between regular meals, multiplied by `mealIntervalMultiplier`. |
 | `mealIntervalMultiplier` | 3 | Regular meal interval multiplier; the default gives six loaded minutes between meals. |
 | `fishingSeconds` | 30 | Working seconds on a dry bank per whole-fish catch. |
 | `animalBreeders` | 4 | Adult animals of each species a keeper preserves before harvesting surplus. |
-| `blacksmithWorkers` | 2 | Crew slots per Blacksmith Station before crew upgrades. |
-| `guardWorkers` | 2 | Guard crew slots per Guard Station before crew upgrades. |
 | `enchantMinutes` | 5 | Minutes an enchanter spends on a book or common item; iron and gold ×1.3, diamond ×1.6, netherite ×2, plus more for uncommon, rare and epic items. |
 | `enchanterMaxLevel` | 25 | Highest enchanting level enchanters reach (at most 29); level 30 is the player's alone. |
 | `alarmThreshold` | 10 | Hostiles citizens must sight at once before a guard runs to ring the bell. |
@@ -308,13 +306,13 @@ Regular meals default to **7,200 loaded ticks / six minutes**, three times farth
 
 Injured citizens can eat a safe meal for healing at most once every **600 ticks / 30 seconds**. Each real meal heals by nutrition (bread up to five health points, steak eight), capped at maximum health. Bowls and bottles are retained. The owner can right-click an injured citizen with food under the same cooldown.
 
-When storage holds fewer than two meals per town citizen, nobody takes spare food. Among loaded hungry citizens with no carried meal, those fed least recently get priority. Every healthy citizen waits until its next meal; an injured citizen cannot keep taking healing meals while other hungry citizens wait. With ten hungry citizens and ten loaves, each can eat one loaf. With abundant stock a citizen may carry **one** spare. Farmers and cooks return their food outputs instead of keeping reserves.
+When storage holds fewer than two meals per town citizen, nobody takes spare food. Among loaded hungry citizens with no carried meal, those fed least recently get priority. Every healthy citizen waits until its next meal; injured citizens eat for hunger and recover in hospital beds. With ten hungry citizens and ten loaves, each can eat one loaf. With abundant stock a citizen may carry **one** spare. Farmers and cooks return their food outputs instead of keeping reserves.
 
 Citizens may walk to the communal pantry to eat; this does not transfer production goods or tools. Couriers deliver food loads intact, including a single meal, and eat from communal stock instead of claiming meals from their cargo. Raw meat, raw fish and whole carcasses are not meals. Rotten flesh, spider eyes and poisonous food are rejected.
 
 ### Animal food jobs
 
-Craft each station from the center item listed above surrounded by eight planks. Add a job barrel and couriers; each new animal job starts with two crew slots (`animalWorkers`). The food priority preset includes all four roles.
+Craft each station from the center item listed above surrounded by eight planks. Add a job barrel and couriers; each job block employs one citizen. The food priority preset includes all four roles.
 
 | Job | Setup and behavior | Output |
 | --- | --- | --- |
@@ -329,12 +327,12 @@ The chain is **producer barrel → courier → warehouse → courier → butcher
 
 ### Guard stations and posts
 
-1. Craft a **Guard Station** from eight planks around an iron helmet and place it in your claim. Two citizens take its guard slots by default; `guardWorkers` changes that capacity. **Each staffed station keeps one guard on duty**, with its own day/night rotation. The other guard rests, keeps their station assignment, and wakes for their shift. A station with one guard keeps that guard on duty through both shifts. Empty stations receive a guard before existing crews receive extra members; spare guards can transfer to a newly placed empty station. An unstaffed station still needs citizens to recruit.
+1. Craft a **Guard Station** from eight planks around an iron helmet and place it in your claim. **Each Guard Station employs one guard**, on duty through both day and night. Add more stations for more guards; empty posts draw available citizens before lower-priority production jobs. A guard deployed in a squad still holds their station assignment, so leave additional staffed posts for home defense. An unstaffed station needs an available citizen or a recruit.
 2. Put equipped **armor stands within three blocks of the station on each axis**. On duty, guards take usable protective armor for empty slots and upgrade to pieces with higher armor/toughness attributes. An upgrade exchanges the real old and new pieces on the stand. Guards also check their bags and local job barrels, preserving durability, names and enchantments. Gear below 25% durability is never taken back into service. Equipped armor is visible.
 3. Guards **look for weapons** themselves: one melee weapon (a **sword** or **spear**), one **bow**, and up to 32 **arrows** for it. They check their own bag, items held in the hands of armor stands in the station range (stands double as weapon racks), their job barrels, and loose weapons or arrows that have lain on the ground in town for five seconds, such as a fallen skeleton's bow. They take the strongest melee weapon available and swap up when they find a better one, returning the weaker weapon to storage. Loose items they cannot reach are skipped for a minute.
 4. In combat, a guard with a bow and arrows shoots enemies 5–24 blocks away when no citizen or player stands in the line of fire; each shot uses one real arrow and bow durability, and arrows are not recoverable. Closer in, they switch to their sword or spear; melee attacks with swords, spears, or fists reach up to four blocks from the guard’s eyes to the target hitbox, with line of sight required. A guard without a melee weapon puts the bow away and fights unarmed. Weapons lose durability in use. Guards defend against nearby visible hostile monsters inside the town claim and prioritize combat over supply trips.
 5. **Sneak-right-click the Guard Station with the Station Inspector.** Then right-click clear ground for the **day post**, followed by clear ground for the **night post**. Both positions need dry footing, headroom, and a location inside the same claim. The pair is saved together. Sneak-click ground during selection cancels it. Until configured, both posts default to the station.
-6. At a shift change the outgoing guard returns armor to empty matching slots on accessible stands before sleeping. The incoming guard wakes, checks for better gear, and gives the outgoing guard up to 20 seconds to return a shared set before beginning an ordinary patrol. Enemies and alarms take priority over this wait. Day/night partners can share one set: six stations normally need six sets, rather than twelve. A full or unreachable rack sends armor to the local guard barrel; if no storage accepts it, the citizen keeps it in their bag and sleeps without wearing it. During an alarm all twelve guards may be active, so six sets will equip only six of them. On-duty guards roam among reachable town stations and nearby paths, and revisit the post periodically. Day duty runs from tick 23000 through 12999; night duty from 13000 through 22999. Post inspection reports both positions and crew size. Unloaded posts/terrain are never force-loaded.
+6. One set of armor equips the station's guard through both shifts. Worn armor returns to empty matching stand slots for the repair chain; a full or unreachable rack sends it to the local guard barrel, or the guard's bag if storage is full. Alarms call all assigned guards. On-duty guards roam among reachable town stations and nearby paths, and revisit the post periodically. Day duty runs from tick 23000 through 12999; night duty from 13000 through 22999. Post inspection reports both positions and crew size. Unloaded posts/terrain are never force-loaded.
 
 Citizens are drawn with the villager head, robe, and skin on a humanoid body with free arms, so armor, weapons, and tools are visible. Biome and profession clothing overlays are not drawn. Patrolling does not yet include formation orders or player/faction warfare.
 
@@ -352,7 +350,7 @@ Smelters supply actual furnaces or blast furnaces in range, using raw metals, or
 
 Cooks turn prepared raw meat or fish into cooked meals and make one bread from **three wheat**. The Cook Station screen controls the bread order, which aims for 32 bread in town stock. A whole carcass must first pass through a butcher. Player-harvested vanilla raw meat can still be cooked normally.
 
-Workers collect finished items into their bags and leave them in local job barrels; couriers bring them to the warehouse. Two workers share each processing station by default. Missing appliances, ingredients or fuel pauses work locally; a full barrel keeps products in the worker's saved inventory.
+Workers collect finished items into their bags and leave them in local job barrels; couriers bring them to the warehouse. One worker operates each Smeltery or Cook Station. Missing appliances, ingredients or fuel pauses work locally; a full barrel keeps products in the worker's saved inventory.
 
 ### Craftsmen
 
@@ -371,7 +369,7 @@ New towns, and towns from earlier builds, start with these orders: stone pickaxe
 Right-click with an empty hand to open:
 
 - **Settlement banner:** the town overview (population, limit and beds, population upgrades, food, warehouse fill, job barrels, claim, job priorities, alarm and waves), every job with its priority and who holds its places, every loaded citizen with their job, activity and health, and every station with its crew and status. Buttons apply a priority preset, sound the alarm or the all-clear, recruit a citizen when housing beds are free, and grow the population limit; the Jobs tab's - and + buttons change one job's priority.
-- **Any station:** its detected resources and job status, the citizens assigned to it and what each is doing, the contents of its barrels (or the warehouse's containers), and its upgrades. Work stations have a button for their job's priority, the Cook Station a bread switch, the Guard Station a button to choose its posts, and stations that can be upgraded buttons for range and crew upgrades. Hover a button to see exactly what it does and costs.
+- **Any station:** its detected resources and job status, the citizens assigned to it and what each is doing, the contents of its barrels (or the warehouse's containers), and its upgrades. Work stations have a button for their job's priority, the Cook Station a bread switch, the Guard Station a button to choose its posts, and stations that can be upgraded buttons for range upgrades or quarry crew upgrades. Hover a button to see exactly what it does and costs.
 - **Craftsman Station:** the order screen described above.
 - **Citizen:** their job, activity, health, next meal and equipment above their bag.
 
@@ -379,7 +377,7 @@ Screens refresh every second and close when you move more than eight blocks away
 
 ### Jobs and priorities
 
-Every citizen has its **own station**. It goes back there each morning, after deliveries, meals and alarms, and waits beside it when there is no work, rather than taking another station. Crews stay the same from day to day; a station's Crew tab lists the citizens assigned to it, including those asleep or out of range.
+Every citizen has its **own station**. It goes back there each morning, after deliveries, meals and alarms, and waits beside it when there is no work, rather than taking another station. Assignments stay the same from day to day; a station's Crew tab lists its worker, or a quarry's crew, including those asleep or out of range. When updating an older town, places above the new limit are released automatically, and those citizens take other open jobs without losing their inventories.
 
 Each job has a **priority**: Off, Low, Normal or High. Set it with the - and + buttons in the banner's **Jobs** tab, the priority button on a station's screen, or `/wwmc job`.
 
@@ -398,15 +396,15 @@ Every production station needs a **barrel within its range**, normally three blo
 
 **Only couriers haul within a town.** Workers collect their own tools and ingredients, work locally, and leave goods in their barrels. They do not fetch production inputs from a warehouse or deliver their output there. Missing, unreachable, empty or full barrels stop the affected part of production until supplied or cleared. Citizens can visit the pantry for a meal, and traders keep their routes between towns.
 
-A Courier Station employs **two couriers** by default, with crew upgrades available. Couriers move finished goods to the warehouse and restock job barrels with tools, saplings, floor blocks, smelting and cooking inputs, fuel, animal feed, carcasses, repair inputs, learned crafting materials, books and lapis. They preserve the supplies each job uses. Retired armor from guard racks goes through the same repair chain. Small food-chain loads take priority while the pantry is low; other small loads are collected when larger errands are finished. Only one courier serves a particular job's barrels at a time.
+A Courier Station employs **one courier**. Place more Courier Stations to increase hauling capacity. Couriers move finished goods to the warehouse and restock job barrels with tools, saplings, floor blocks, smelting and cooking inputs, fuel, animal feed, carcasses, repair inputs, learned crafting materials, books and lapis. They preserve the supplies each job uses. Retired armor from guard racks goes through the same repair chain. Small food-chain loads take priority while the pantry is low; other small loads are collected when larger errands are finished. Only one courier serves a particular job's barrels at a time.
 
-A mine always has **one miner**, including an older mine with crew upgrades. Build more Mine Stations for more miners; quarries keep their separate crew setting. Start with barrels and couriers before expanding production, then balance supply and pickup rates against workers and storage.
+Every job block has **one worker**, including older stations with crew upgrades. Build more stations for more workers; quarries keep their separate crew setting and upgrades. Start with barrels and couriers before expanding production, then balance supply and pickup rates against workers and storage.
 
 ### Ore veins
 
 A **Mine Station placed within two blocks of an exposed ore**, on every axis, works that ore as an **endless vein**. The ore needs at least one open side, such as air, a torch or a ladder; ore buried on every side does not count, so older mines beside hidden ore keep digging their tunnels. Its miner walks to the station first, then to a standing spot with a clear view of the ore, mines it with a pickaxe able to harvest it, and collects the ore's normal drops, including Fortune, while the block stays in place. Only citizens get endless drops; a player who mines the ore breaks it normally. Each Mine Station has one miner, including old upgraded stations; excess crew members take other jobs.
 
-A vein replenishes every 15 seconds (`oreVeinSeconds`). Gold takes twice as long, diamond and emerald six times, and ancient debris eight times. Any block in the `c:ores` tag counts, including other mods' ores. The nearest exposed ore comes first. If the ore is removed, the station looks for another one within two blocks, and a station with no exposed ore that close digs tunnels as described above. The miner needs open standing room within reach of the ore and a clear view of it; the station's screen says when it has none.
+Veins replenish in about 15 seconds with a stone pickaxe (`oreVeinSeconds`). Wood takes 20s, iron about 12.3s, diamond about 10.6s, and netherite 10s for common ores. Tool speed uses square-root scaling, capped at 1.5 times stone speed; gold ore multiplies the wait by two, diamond and emerald by six, and ancient debris by eight. The station screen shows the assigned miner's equipped pickaxe and estimated delay. Miners still need a suitable tool, use its durability, and spend time physically breaking the ore.
 
 ### Enchanters
 
@@ -419,9 +417,10 @@ Stock **lapis lazuli** and **unenchanted gear or books** in the warehouse for co
 Every station that can use them sells upgrades on its screen, paid in **emeralds from your inventory**; emerald blocks count as nine, with change given back. Creative players pay nothing.
 
 - **Range**, up to three levels: each level widens the station's cube by a block in every direction, from 7×7×7 to 9×9×9, 11×11×11 and 13×13×13 (an enchanter goes from 11 up to 17). Wider ranges reach more beds, chests, crops, trees, furnaces, anvils, armor stands and barrels. Quarries, mines, couriers and craftsmen have no range upgrades.
-- **Crew**, up to three levels: each adds a worker slot. Farms, craftsmen and enchanters always have exactly one worker.
+- **Crew**, for **quarries only**, up to three levels: each adds one worker slot to the configured quarry crew. Every other job block has one worker, including older upgraded stations.
+- **Yield**, for **farms and mines**, up to three levels: +10%, +20%, then +30% average extra produce or mineral drops. Each harvested unit has that bonus chance. Seeds and Silk Touch ore blocks do not multiply; crop replanting reserves its real planting item first. Prices are 16, 32, and 64 emeralds by default (`yieldUpgradeCost`).
 
-Each level costs twice the one before: 8, 16, then 32 emeralds by default (`stationUpgradeCost`). A broken station's item keeps its upgrades and shows them in its tooltip, so you can move an upgraded station without paying again; plain stations still stack with freshly crafted ones. The range preview shows the upgraded range.
+Each range or crew level costs twice the one before: 8, 16, then 32 emeralds by default (`stationUpgradeCost`). A broken station's item keeps its upgrades and shows them in its tooltip, so you can move an upgraded station without paying again; plain stations still stack with freshly crafted ones. The range preview shows the upgraded range.
 
 ### Population
 
