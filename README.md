@@ -375,7 +375,7 @@ Right-click with an empty hand to open:
 - **Craftsman Station:** the order screen described above.
 - **Citizen:** their job, activity, health, next meal and equipment above their bag.
 
-Screens refresh every second and close when you move more than eight blocks away. Owners and accepted stewards can open them. Use Campaign -> People to invite members; builders can place and remove stations. The field-order screen (`/wwmc squad`) remains usable away from the banner. Short notices, including alarms and waves, appear above the hotbar instead of in chat.
+Screens refresh every second and close when you move more than eight blocks away. Owners and accepted stewards can open them. Use Relationships -> Players to invite members or revoke access; invitees accept on Relationships -> Invitations. Builders can build and interact inside the claim. The Relationships -> Town tab saves a custom town name. The field-order screen (`/wwmc squad`) remains usable away from the banner. Short notices, including alarms and waves, appear above the hotbar instead of in chat.
 
 ### Jobs and priorities
 
