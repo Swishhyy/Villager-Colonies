@@ -1458,7 +1458,7 @@ public final class CitizenEntity extends Villager {
         if(haulSupply && InventoryOps.count(List.of(cargo),this::haulingInput)==0) {
             // Pick up the supplies first.
             if(!visitWarehouse(level,town,StructureRole.COURIER)) return;
-            if(JobStorage.load(JobStorage.Supplies.of(level),town,job.role(),local,SettlementService.storageAt(level,town,warehouse),cargo)==0) {
+            if(JobStorage.load(JobStorage.Supplies.of(level),town,job,local,SettlementService.storageAt(level,town,warehouse),cargo)==0) {
                 book.release(claim,getUUID()); haulStation=null; haulSupply=false;
             } else activity="Carrying supplies to the "+job.role().id()+" station";
             return;
@@ -1516,7 +1516,7 @@ public final class CitizenEntity extends Villager {
                 for(EquipmentSlot slot:EquipmentSlot.values()) if(GuardEquipment.worn(rack.getItemBySlot(slot))) goods+=rack.getItemBySlot(slot).getCount();
             if(goods>most && JobStorage.worthCollecting(pickups,JobStorage.freeSlots(local),pantry)) { worthwhile=candidate; most=goods; }
             else if(goods>fewest) { small=candidate; fewest=goods; }
-            if(supply==null && JobStorage.needsSupplies(supplies,town,candidate.role(),local,stored)) supply=candidate;
+            if(supply==null && JobStorage.needsSupplies(supplies,town,candidate,local,stored)) supply=candidate;
         }
         Station chosen=worthwhile!=null ? worthwhile : supply!=null ? supply : small;
         if(chosen!=null) { haulStation=chosen.position(); haulSupply=worthwhile==null && chosen==supply; haulTicks=0; }

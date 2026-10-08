@@ -63,6 +63,8 @@ Complete Field Hospital and supply its barrel through couriers with **edible mea
 
 Hungry workers also visit the communal pantry while their station is idle. They approach from clear ground within four-block hand reach, including raised warehouses and stations beside storage barrels. Scarce meals remain shared one at a time; an empty pantry lets food producers continue working.
 
+Couriers supply one usable tool per assigned worker and count tools already in workers' hands or bags. An equipped hunter therefore leaves the butcher's axe and other spare tools in shared stock; worn tools still trigger a replacement delivery.
+
 ## Neighbor opportunities and journal
 
 Loaded NPC towns continue their existing real production and food-funded growth. They occasionally offer shortages as **supply contracts**, or report a free trade checkpoint. Offers escrow existing goods from their warehouse as payment. Accept on your Supply board, then deliver by a normal trader route. Only accepted goods physically inserted into the destination warehouse count; only the accepting town receives credit. Rewards return with the carrier and remain on the board if its return compartment cannot accept them. Accepted contracts have no offline deadline.

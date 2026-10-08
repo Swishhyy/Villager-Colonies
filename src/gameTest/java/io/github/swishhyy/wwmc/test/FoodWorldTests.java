@@ -226,6 +226,31 @@ public final class FoodWorldTests {
         });
     }
 
+    @GameTest(timeoutTicks=1200)
+    @EmptyTemplate
+    @TestHolder(description="Couriers equip a hunter and butcher from shared stock without giving the hunter the butcher's axe or hoarding another tool after both workers are equipped.")
+    static void couriersShareToolsAcrossJobs(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-1560));
+            Station hunter=new Station(start.east(4),StructureRole.HUNTER),butcher=new Station(start.east(24),StructureRole.BUTCHER),
+                    courier=new Station(start.east(14),StructureRole.COURIER),warehouse=new Station(start.east(60),StructureRole.WAREHOUSE);
+            var fixture=fixture(level,start,hunter,butcher,courier,warehouse);
+            Container pantry=barrel(level,warehouse.position().north(2),new ItemStack(Items.IRON_SWORD),new ItemStack(Items.IRON_AXE),new ItemStack(Items.IRON_AXE));
+            Container hunting=barrel(level,hunter.position().south(2));
+            barrel(level,butcher.position().south(2));
+            var hunt=fixture.worker(hunter,hunter.position().west());
+            var prepare=fixture.worker(butcher,butcher.position().west());
+            var haul=fixture.worker(courier,courier.position().west());
+            helper.runAtTickTime(900,() -> {
+                helper.assertTrue(hunt.getMainHandItem().is(Items.IRON_SWORD),"The hunter did not receive its sword: "+describe(hunt,level));
+                helper.assertTrue(prepare.getMainHandItem().is(Items.IRON_AXE),"The butcher did not receive its axe: "+describe(prepare,level)+", courier="+describe(haul,level));
+                helper.assertTrue(count(pantry,Items.IRON_AXE)==1,"An equipped worker drew another job's spare axe out of shared stock");
+                helper.assertTrue(count(hunting,Items.IRON_AXE)==0 && hunt.bag().count(Items.IRON_AXE)==0,"The hunter hoarded axes beside its equipped sword");
+                fixture.close(); helper.succeed();
+            });
+        });
+    }
+
     private static String describe(CitizenEntity citizen,ServerLevel level) {
         return citizen.activity()+" ("+citizen.jobRole()+", at "+citizen.blockPosition()+", ticks="+citizen.tickCount
                 +", alive="+citizen.isAlive()+", ticking="+level.isPositionEntityTicking(citizen.blockPosition())
