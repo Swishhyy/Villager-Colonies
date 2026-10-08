@@ -150,6 +150,10 @@ public final class CitizenEntity extends Villager {
     private int hospitalRestTicks,hospitalPathTicks;
     private long nextTradeAt;
     private int lastNpcHurt=-1;
+    /** Experience earned at each job, by job id; it stays with the citizen when it changes job. */
+    private final Map<String,Integer> experience=new HashMap<>();
+    /** The last few meals eaten, oldest first, for a varied diet. */
+    private List<String> recentMeals=new ArrayList<>();
     public CitizenEntity(EntityType<? extends Villager> type,Level level) {
         super(type,level); setPersistenceRequired(); setCanPickUpLoot(false);
         for(EquipmentSlot slot:EquipmentSlot.values()) setDropChance(slot,0);
@@ -352,6 +356,49 @@ public final class CitizenEntity extends Villager {
     private Station homeStation(Settlement town) {
         BlockPos home=town.jobs.home(getUUID());
         return home==null ? null : town.station(home);
+    }
+    public int experience(StructureRole role) { return role==null ? 0 : experience.getOrDefault(role.id(),0); }
+    public int skillLevel(StructureRole role) { return CitizenSkill.level(experience(role)); }
+    /** The job experience counts toward: the citizen's own station, or guard duty at a guard post. */
+    public StructureRole jobRole() {
+        if(!(level() instanceof ServerLevel server)) return null;
+        Settlement town=town(server);
+        Station home=town==null ? null : homeStation(town);
+        return home!=null ? home.role() : isGuard() ? StructureRole.GUARD : null;
+    }
+    /** Finished work at a job; reaching a new level is written in the town journal. */
+    public void gainExperience(StructureRole role,int amount) {
+        if(role==null || amount<=0 || !(level() instanceof ServerLevel server)) return;
+        int before=experience(role),after=Math.min(CitizenSkill.CAP,before+amount);
+        experience.put(role.id(),after);
+        int reached=CitizenSkill.level(after);
+        Settlement town=town(server);
+        if(reached>CitizenSkill.level(before) && town!=null) {
+            String title=CitizenSkill.title(reached);
+            CampaignService.record(server,town,getName().getString()+" is now "+("AEIOU".indexOf(title.charAt(0))>=0 ? "an " : "a ")+title+" "
+                    +role.title().toLowerCase(Locale.ROOT)+": "+CitizenSkill.perk(role,reached)+".");
+        }
+    }
+    public void gainExperience(int amount) { gainExperience(jobRole(),amount); }
+    public List<String> recentMeals() { return List.copyOf(recentMeals); }
+    /** Extra work speed, in percent, from experience at the current job and a varied diet. */
+    public int speedBonus() {
+        StructureRole role=jobRole();
+        return MealVariety.bonus(recentMeals)+CitizenSkill.speed(role,skillLevel(role));
+    }
+    /** Ticks that work taking {@code base} ticks for an ordinary newcomer takes this citizen. */
+    public int effort(int base) { return Math.max(1,base*100/(100+speedBonus())); }
+    /** Of {@code uses} uses of a tool, how many cost durability; experienced workers spare some. */
+    public int toolWear(int uses) {
+        StructureRole role=jobRole();
+        int saving=CitizenSkill.toolSaving(role,skillLevel(role)),cost=0;
+        for(int n=0;n<uses;n++) if(saving<=0 || getRandom().nextInt(100)>=saving) cost++;
+        return cost;
+    }
+    /** One use of the held tool. */
+    public void wearTool() {
+        int cost=toolWear(1);
+        if(cost>0) getMainHandItem().hurtAndBreak(cost,this,EquipmentSlot.MAINHAND);
     }
     private boolean night(ServerLevel level) { return SettlementService.night(level); }
     private boolean alarmed() {
@@ -559,7 +606,8 @@ public final class CitizenEntity extends Villager {
     }
     private boolean wantsMeal() { return mealTicks<=0; }
     private void consumeMeal(ItemStack meal) {
-        mealTicks=Config.mealIntervalTicks(); healingTicks=FoodHealing.COOLDOWN; lastMealAt=level().getGameTime();
+        mealTicks=MealVariety.fullTicks(meal,Config.mealIntervalTicks()); healingTicks=FoodHealing.COOLDOWN; lastMealAt=level().getGameTime();
+        recentMeals=MealVariety.remember(recentMeals,MealVariety.id(meal));
         playSound(SoundEvents.GENERIC_EAT.value(),0.5F,1.0F);
     }
     private boolean eatFrom(List<Container> supplies) {
@@ -944,6 +992,7 @@ public final class CitizenEntity extends Villager {
         swing(InteractionHand.MAIN_HAND);
         if(action==Action.PLANT) {
             boolean planted=ForestryService.plant(level,town,station,forestTask.planting(),getOffhandItem());
+            if(planted) gainExperience(station.role(),1);
             cancelTarget(level,!planted); return;
         }
         if(action==Action.SUPPORT) {
@@ -952,7 +1001,7 @@ public final class CitizenEntity extends Villager {
         }
         if(action==Action.FELL) {
             List<ItemStack> drops=ForestryService.fell(level,town,station,target,this);
-            if(drops!=null) storeDrops(level,drops);
+            if(drops!=null) { storeDrops(level,drops); gainExperience(station.role(),2); }
             cancelTarget(level,drops==null); return;
         }
         if(action==Action.VEIN) {
@@ -960,9 +1009,9 @@ public final class CitizenEntity extends Villager {
             BlockState ore=level.getBlockState(target);
             List<ItemStack> drops=Block.getDrops(ore,level,target,null,this,getMainHandItem());
             OreVeins.worked(level,target,ore,getMainHandItem());
-            getMainHandItem().hurtAndBreak(1,this,EquipmentSlot.MAINHAND);
+            wearTool();
             level.levelEvent(2001,target,Block.getId(ore));
-            storeDrops(level,ProductionYield.apply(station,ore,drops,getRandom())); workProgress=0; return;
+            storeDrops(level,ProductionYield.apply(station,ore,drops,getRandom())); workProgress=0; gainExperience(station.role(),1); return;
         }
         BlockState state=level.getBlockState(target);
         List<ItemStack> drops=new ArrayList<>(Block.getDrops(state,level,target,null,this,getMainHandItem()));
@@ -974,11 +1023,12 @@ public final class CitizenEntity extends Villager {
             if(!level.setBlock(target,((CropBlock)state.getBlock()).getStateForAge(0),3)) { cancelTarget(level,true); return; }
         } else {
             if(!level.destroyBlock(target,false,this)) { cancelTarget(level,true); return; }
-            getMainHandItem().hurtAndBreak(1,this,EquipmentSlot.MAINHAND);
+            wearTool();
             if(action==Action.EXCAVATE) ExcavationService.completed(level,station,excavation);
         }
         level.levelEvent(2001,target,Block.getId(state));
         storeDrops(level,ProductionYield.apply(station,state,drops,getRandom())); cancelTarget(level,false);
+        gainExperience(station.role(),1);
     }
     private static GuardEquipment.Equipment equipment(LivingEntity entity) {
         return new GuardEquipment.Equipment() {
@@ -1219,7 +1269,7 @@ public final class CitizenEntity extends Villager {
                 && carries(GuardWeapons::bow) && clearShot(level,enemy) && hold(GuardWeapons::bow)) {
             getNavigation().stop(); activity="Shooting at an attacker";
             if(!isUsingItem()) { if(guardAttackTicks==0) startUsingItem(InteractionHand.MAIN_HAND); }
-            else if(getTicksUsingItem()>=20) { stopUsingItem(); shoot(level,enemy); guardAttackTicks=20; }
+            else if(getTicksUsingItem()>=20) { stopUsingItem(); shoot(level,enemy); guardAttackTicks=CitizenSkill.guardCooldown(skillLevel(StructureRole.GUARD)); }
             return;
         }
         if(isUsingItem()) stopUsingItem();
@@ -1230,7 +1280,7 @@ public final class CitizenEntity extends Villager {
             if(guardAttackTicks==0) {
                 swing(InteractionHand.MAIN_HAND);
                 if(doHurtTarget(level,enemy) && GuardWeapons.melee(getMainHandItem())) getMainHandItem().hurtAndBreak(1,this,EquipmentSlot.MAINHAND);
-                guardAttackTicks=20;
+                guardAttackTicks=CitizenSkill.guardCooldown(skillLevel(StructureRole.GUARD));
             }
         } else walk(enemy.blockPosition(),0.8);
     }
@@ -1393,8 +1443,8 @@ public final class CitizenEntity extends Villager {
         getLookControl().setLookAt(bench.getX()+0.5,bench.getY()+0.5,bench.getZ()+0.5);
         activity="Crafting "+order.label();
         workProgress+=10;
-        if(workProgress>=CRAFT_TICKS) {
-            workProgress=0; swing(InteractionHand.MAIN_HAND); cargo.offer(Crafting.craft(cargo,order));
+        if(workProgress>=effort(CRAFT_TICKS)) {
+            workProgress=0; swing(InteractionHand.MAIN_HAND); cargo.offer(Crafting.craft(cargo,order)); gainExperience(station.role(),1);
             order=null; processingDelivery=true; processingSupplied=false;
         }
     }
@@ -1431,9 +1481,9 @@ public final class CitizenEntity extends Villager {
         getLookControl().setLookAt(bench.getX()+0.5,bench.getY()+0.5,bench.getZ()+0.5);
         activity="Crafting "+product;
         workProgress+=10;
-        if(workProgress>=CRAFT_TICKS) {
+        if(workProgress>=effort(CRAFT_TICKS)) {
             workProgress=0;
-            if(Workshop.craft(level,cargo,craftJob.plan(),cargo::offer)) swing(InteractionHand.MAIN_HAND);
+            if(Workshop.craft(level,cargo,craftJob.plan(),cargo::offer)) { swing(InteractionHand.MAIN_HAND); gainExperience(station.role(),1); }
             else craftJob=null;
         }
     }
@@ -1493,6 +1543,7 @@ public final class CitizenEntity extends Villager {
             JobStorage.Supplies supplies=JobStorage.Supplies.of(level);
             cargo.deposit(local,stack -> JobStorage.input(supplies,town,role,stack) ? 0 : stack.getCount());
             activity="Stocked the "+role.id()+" station's barrels";
+            gainExperience(StructureRole.COURIER,1);
         } else {
             if(job.role()==StructureRole.GUARD) {
                 ArmorStand rack=GuardService.stands(level,town,job).stream()
@@ -1507,6 +1558,7 @@ public final class CitizenEntity extends Villager {
             }
             int moved=JobStorage.collect(JobStorage.Supplies.of(level),town,job.role(),local,cargo);
             activity="Collected "+moved+" goods from the "+job.role().id()+" station";
+            if(moved>0) gainExperience(StructureRole.COURIER,1);
         }
         book.release(claim,getUUID());
         haulStation=null; haulSupply=false;
@@ -1628,7 +1680,8 @@ public final class CitizenEntity extends Villager {
         if(ProcessingService.needsFuel(level,processor)) activity="Waiting for couriers to deliver furnace/smoker fuel";
         processingDelivery=collected>0 || cargo.needsDelivery();
         processingSupplied=false;
-        nextProcessingAt=processingDelivery ? 0 : level.getGameTime()+40;
+        if(collected>0) gainExperience(station.role(),1);
+        nextProcessingAt=processingDelivery ? 0 : level.getGameTime()+effort(40);
         // Rotate through the station's appliances; progress stays in their block entities.
         processor=devices.get((devices.indexOf(processor)+1)%devices.size());
         processorStand=null;
@@ -1775,8 +1828,8 @@ public final class CitizenEntity extends Villager {
         }
         if(!canUse(level,repairAnvil)) { activity="Carrying equipment to the anvil"; walk(repairAnvil); return; }
         getNavigation().stop(); activity="Repairing equipment at the anvil"; workProgress+=10;
-        if(workProgress>=BlacksmithRepair.WORK_TICKS) {
-            if(BlacksmithRepair.repair(repairItem,cargo)) { swing(InteractionHand.MAIN_HAND); playSound(SoundEvents.ANVIL_USE,0.4F,1.0F); }
+        if(workProgress>=effort(BlacksmithRepair.WORK_TICKS)) {
+            if(BlacksmithRepair.repair(repairItem,cargo)) { swing(InteractionHand.MAIN_HAND); playSound(SoundEvents.ANVIL_USE,0.4F,1.0F); gainExperience(StructureRole.BLACKSMITH,2); }
             workProgress=0;
         }
         if(!BlacksmithRepair.damaged(repairItem)
@@ -1840,7 +1893,7 @@ public final class CitizenEntity extends Villager {
             unenchantable.put(enchantItem.getItem(),level.getGameTime()+12000);
             enchantDone=true; activity="Nothing can enchant "+name; return;
         }
-        int duration=Enchanting.ticks(enchantItem,Config.ENCHANT_MINUTES.get());
+        int duration=effort(Enchanting.ticks(enchantItem,Config.ENCHANT_MINUTES.get()));
         enchantTicks=Math.min(duration,enchantTicks+10);
         if(enchantTicks%40==0) level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,enchantTable.getX()+0.5,enchantTable.getY()+1.3,enchantTable.getZ()+0.5,6,0.5,0.3,0.5,0.6);
         if(enchantTicks<duration) {
@@ -1860,6 +1913,7 @@ public final class CitizenEntity extends Villager {
         swing(InteractionHand.MAIN_HAND);
         playSound(SoundEvents.ENCHANTMENT_TABLE_USE,1.0F,1.0F);
         activity="Enchanted "+result.getHoverName().getString();
+        gainExperience(StructureRole.ENCHANTER,3);
     }
     /** Collect an item and lapis from this station's courier-supplied barrels. */
     private boolean gatherForEnchanting(ServerLevel level,Settlement town,Station station,int cap) {
@@ -2009,6 +2063,7 @@ public final class CitizenEntity extends Villager {
                     SupplyRequests.snapshotLoaded(level,destination);
                 }
                 home.trading.delivered+=moved;
+                if(moved>0) gainExperience(StructureRole.TRADER,3);
                 if(moved>0 && destination.trading.npc) destination.trading.relations.merge(home.owner,moved,(a,b) -> Math.min(1000,a+b));
                 if(moved>0) SettlementData.get(level).setDirty();
                 if(tradeShipment.isEmpty()) { tradeShipment.stage="return"; tradeNavigation.reset(); }
@@ -2213,7 +2268,7 @@ public final class CitizenEntity extends Villager {
         // Stone yields to a pickaxe in about a second; harder blocks and weaker tools take longer.
         int required=action==Action.EXCAVATE || action==Action.CAVE || action==Action.VEIN ? ExcavationService.breakTicks(level,target,getMainHandItem())
                 : action==Action.SUPPORT ? 20 : Config.WORK_TICKS.get();
-        if(workProgress>=Specialization.ticks(town,station.role(),required)) harvest(level,town,station);
+        if(workProgress>=effort(Specialization.ticks(town,station.role(),required))) harvest(level,town,station);
     }
     private final class WorkGoal extends Goal {
         WorkGoal() { setFlags(EnumSet.of(Flag.MOVE,Flag.LOOK)); }
@@ -2307,6 +2362,8 @@ public final class CitizenEntity extends Villager {
         output.store("wwmc_cargo",ItemStack.OPTIONAL_CODEC.listOf(),cargo.contents());
         output.store("wwmc_pending_cargo",ItemStack.OPTIONAL_CODEC.listOf(),cargo.pendingItems());
         output.store("wwmc_trade_shipment",TradeShipment.CODEC,tradeShipment);
+        output.store("wwmc_experience",com.mojang.serialization.Codec.unboundedMap(com.mojang.serialization.Codec.STRING,com.mojang.serialization.Codec.INT),experience);
+        output.store("wwmc_recent_meals",com.mojang.serialization.Codec.STRING.listOf(),recentMeals);
     }
     @Override protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
@@ -2331,6 +2388,11 @@ public final class CitizenEntity extends Villager {
         var stacks=input.read("wwmc_cargo",ItemStack.OPTIONAL_CODEC.listOf()).orElse(List.of());
         cargo.restore(stacks,input.read("wwmc_pending_cargo",ItemStack.OPTIONAL_CODEC.listOf()).orElse(List.of()));
         tradeShipment=input.read("wwmc_trade_shipment",TradeShipment.CODEC).orElseGet(TradeShipment::new);
+        experience.clear();
+        input.read("wwmc_experience",com.mojang.serialization.Codec.unboundedMap(com.mojang.serialization.Codec.STRING,com.mojang.serialization.Codec.INT))
+                .orElse(Map.of()).forEach((job,points) -> experience.put(job,Math.clamp(points,0,CitizenSkill.CAP)));
+        recentMeals=new ArrayList<>(input.read("wwmc_recent_meals",com.mojang.serialization.Codec.STRING.listOf()).orElse(List.of()));
+        while(recentMeals.size()>MealVariety.REMEMBERED) recentMeals.removeFirst();
     }
     @Override public void die(DamageSource source) {
         if(level() instanceof ServerLevel level) {

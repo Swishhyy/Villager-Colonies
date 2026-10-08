@@ -546,6 +546,15 @@ public final class SettlementService {
                         setJobLevel(c.getSource().getLevel(),s,role,level);
                         c.getSource().sendSuccess(() -> Component.literal(role.title()+" priority set to "+JobBoard.levelName(level)+"."),false); return 1;
                     }))))
+            .then(Commands.literal("needs").executes(c -> {
+                Settlement s=owned(c.getSource());
+                if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }
+                var needs=TownNeeds.assess(c.getSource().getLevel(),s);
+                StringBuilder text=new StringBuilder(s.name+": "+(needs.isEmpty() ? "nothing needed." : needs.size()+" needs."));
+                for(TownNeeds.Need need:needs) text.append("\n").append(need.severity()==TownNeeds.URGENT ? "! " : "- ").append(need.title())
+                        .append(need.at()==null ? "" : " ("+need.at().toShortString()+")").append(": ").append(need.detail());
+                c.getSource().sendSuccess(() -> Component.literal(text.toString()),false); return needs.size();
+            }))
             .then(Commands.literal("citizens").executes(c -> {
                 Settlement s=owned(c.getSource());
                 if(s==null) { c.getSource().sendFailure(Component.literal("You do not own a settlement here.")); return 0; }

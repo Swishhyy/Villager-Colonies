@@ -1,6 +1,7 @@
 package io.github.swishhyy.wwmc.menu;
 
 import io.github.swishhyy.wwmc.WWMC;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -32,9 +33,17 @@ public final class WwmcNetwork {
             ByteBufCodecs.STRING_UTF8,ActionPayload::key,ActionPayload::new);
         @Override public Type<ActionPayload> type() { return TYPE; }
     }
+    /** Points out a block in the world for a few seconds, such as a station named on the town's Needs tab. */
+    public record HighlightPayload(BlockPos pos,int seconds) implements CustomPacketPayload {
+        public static final Type<HighlightPayload> TYPE=new Type<>(Identifier.fromNamespaceAndPath(WWMC.MODID,"highlight"));
+        public static final StreamCodec<RegistryFriendlyByteBuf,HighlightPayload> STREAM_CODEC=StreamCodec.composite(
+            BlockPos.STREAM_CODEC,HighlightPayload::pos,ByteBufCodecs.VAR_INT,HighlightPayload::seconds,HighlightPayload::new);
+        @Override public Type<HighlightPayload> type() { return TYPE; }
+    }
     public static void register(RegisterPayloadHandlersEvent event) {
-        var registrar=event.registrar("3");
+        var registrar=event.registrar("4");
         registrar.playToClient(ViewPayload.TYPE,ViewPayload.STREAM_CODEC);
+        registrar.playToClient(HighlightPayload.TYPE,HighlightPayload.STREAM_CODEC);
         registrar.playToServer(ActionPayload.TYPE,ActionPayload.STREAM_CODEC,WwmcNetwork::action);
     }
     /** Only the screen the player actually has open, while it is still valid, receives the action. */
