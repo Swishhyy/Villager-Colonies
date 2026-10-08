@@ -73,6 +73,7 @@ public final class CitizenEntity extends Villager {
     private BlockPos repairAnvil;
     private boolean repairDelivery;
     private long nextFoodTripAt,lastMealAt;
+    private BlockPos pantryTarget,pantryStand;
     private final AnimalWork animalWork=new AnimalWork();
     /** Ticks a craftsman works one batch at the bench. */
     private static final int CRAFT_TICKS=40;
@@ -584,9 +585,32 @@ public final class CitizenEntity extends Villager {
     private boolean visitPantry(ServerLevel level,Settlement town) {
         BlockPos pantry=SettlementService.warehouse(level,town,blockPosition());
         if(pantry==null) return true;
-        if(!canUse(level,pantry)) { activity="Walking to the communal pantry for a meal"; return walk(pantry) ? false : true; }
+        var stock=SettlementService.storageAt(level,town,pantry);
+        if(InventoryOps.count(stock,this::food)==0) {
+            pantryTarget=null; pantryStand=null; nextFoodTripAt=level.getGameTime()+200;
+            return true;
+        }
+        // The solid warehouse is an interaction target. Walk to clear ground with a view of it,
+        // rather than requiring a path onto the station or stopping behind a storage barrel.
+        if(!canUse(level,pantry)) {
+            if(!pantry.equals(pantryTarget) || !standingSpotUsable(level,town,pantryStand,pantry)) {
+                pantryTarget=pantry; pantryStand=null;
+                for(BlockPos stand:CitizenReach.stands(standingView(level,town),pantry,position(),getEyeHeight())) {
+                    if(!standingSpotUsable(level,town,stand,pantry)) continue;
+                    if(reachableStand(stand)) { pantryStand=stand; break; }
+                    if(reachBudget.deferred()) { activity="Looking for accessible ground beside the pantry"; return false; }
+                }
+            }
+            if(pantryStand!=null && walk(pantryStand,0.65,0)) {
+                activity="Walking to the communal pantry for a meal";
+                return false;
+            }
+            pantryTarget=null; pantryStand=null; nextFoodTripAt=level.getGameTime()+200;
+            return true;
+        }
         getNavigation().stop();
-        eatFrom(SettlementService.storageAt(level,town,pantry));
+        eatFrom(stock);
+        pantryTarget=null; pantryStand=null;
         nextFoodTripAt=level.getGameTime()+200;
         return true;
     }
@@ -1670,7 +1694,7 @@ public final class CitizenEntity extends Villager {
         }
     }
     private int lapisCarried() { return InventoryOps.count(List.of(cargo),Enchanting::lapis); }
-    private boolean enchantStandUsable(ServerLevel level,Settlement town,BlockPos stand,BlockPos table) {
+    private boolean standingSpotUsable(ServerLevel level,Settlement town,BlockPos stand,BlockPos table) {
         return stand!=null && CitizenReach.standing(standingView(level,town),stand)
                 && CitizenReach.canUse(level,Vec3.atBottomCenterOf(stand).add(0,getEyeHeight(),0),table);
     }
@@ -1698,7 +1722,7 @@ public final class CitizenEntity extends Villager {
         unenchantable.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
         List<BlockPos> tables=SettlementService.enchantingTables(level,town,station);
         if(enchantTable==null || !tables.contains(enchantTable)
-                || !canUse(level,enchantTable) && !enchantStandUsable(level,town,enchantStand,enchantTable)) {
+                || !canUse(level,enchantTable) && !standingSpotUsable(level,town,enchantStand,enchantTable)) {
             if(!chooseEnchantingApproach(level,town,tables)) {
                 if(reachBudget.deferred()) { activity="Looking for a reachable enchanting table"; return; }
                 activity=tables.isEmpty() ? "Needs an enchanting table within "+station.radius()+" blocks of the Enchanter Station" : "Cannot reach the enchanting table";
@@ -1963,9 +1987,7 @@ public final class CitizenEntity extends Villager {
             Station assigned=homeStation(town);
             if((assigned==null || assigned.role()!=StructureRole.GUARD) && wantsMeal()
                     && InventoryOps.count(List.of(cargo),this::food)==0 && level.getGameTime()>=nextFoodTripAt) {
-                BlockPos pantry=SettlementService.warehouse(level,town,blockPosition());
-                if(pantry!=null && (handNear(pantry) || canReach(pantry))
-                        && !visitPantry(level,town) && !canUse(level,pantry)) return;
+                if(!visitPantry(level,town)) return;
                 nextFoodTripAt=level.getGameTime()+200;
             }
             if(searchDelay>0) { searchDelay-=10; return; }
@@ -2004,8 +2026,7 @@ public final class CitizenEntity extends Villager {
         useLocalSupplies(station.role());
         if(wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0
                 && level.getGameTime()>=nextFoodTripAt) {
-            BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
-            if(warehouse!=null && (handNear(warehouse) || canReach(warehouse)) && !visitPantry(level,town) && !canUse(level,warehouse)) return;
+            if(!visitPantry(level,town)) return;
             nextFoodTripAt=level.getGameTime()+200;
         }
         // Deliver only full loads; use personal supplies before returning for replacements.

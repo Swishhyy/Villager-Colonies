@@ -61,6 +61,8 @@ A reciprocal extra route connects the outpost to its parent without replacing th
 
 Complete Field Hospital and supply its barrel through couriers with **edible meals and paper dressings**. The project sets the hospital job to high priority. One medic works there. Citizens below 60% health seek and reserve patient beds, then remain in treatment until at least 95% health. A present medic spends one meal and one paper to restore four health per treatment. Medics can treat their own wounds and keep the bowl or bottle left by a meal. Hospital beds never count toward recruitment. Paper shortages, occupied beds or a missing medic are visible in citizen activity; scarce meals reduce hospital courier demand so other citizens still get food.
 
+Hungry workers also visit the communal pantry while their station is idle. They approach from clear ground within four-block hand reach, including raised warehouses and stations beside storage barrels. Scarce meals remain shared one at a time; an empty pantry lets food producers continue working.
+
 ## Neighbor opportunities and journal
 
 Loaded NPC towns continue their existing real production and food-funded growth. They occasionally offer shortages as **supply contracts**, or report a free trade checkpoint. Offers escrow existing goods from their warehouse as payment. Accept on your Supply board, then deliver by a normal trader route. Only accepted goods physically inserted into the destination warehouse count; only the accepting town receives credit. Rewards return with the carrier and remain on the board if its return compartment cannot accept them. Accepted contracts have no offline deadline.
