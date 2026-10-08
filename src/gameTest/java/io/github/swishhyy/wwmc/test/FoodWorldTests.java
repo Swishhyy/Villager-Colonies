@@ -4,6 +4,7 @@ import io.github.swishhyy.wwmc.WWMC;
 import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
+import io.github.swishhyy.wwmc.menu.Panels;
 import io.github.swishhyy.wwmc.settlement.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -286,6 +287,10 @@ public final class FoodWorldTests {
             }
             helper.runAtTickTime(600,() -> {
                 helper.assertTrue(fixture.town.citizens.size()==citizens.size(),"Shrinking crews removed citizens from the town");
+                for(Station station:stations) {
+                    var screen=Panels.station(level,fixture.town,station);
+                    helper.assertTrue(screen.actions().stream().anyMatch(action -> action.id()==Panels.CREW_UP)==(station.role()==StructureRole.QUARRY),"Only the quarry screen should sell crew upgrades");
+                }
                 for(int n=0;n<roles.size();n++) {
                     Station old=oldJobs.get(n),next=newJobs.get(n);
                     helper.assertTrue(fixture.town.jobs.assigned(old.position())==1 && fixture.town.jobs.assigned(next.position())==1,

@@ -100,9 +100,6 @@ public final class UpgradeChecks {
                 check(station.crew()==0 && !Upgrades.hires(role),"Old "+role+" crew upgrades cannot add workers");
                 check(SettlementService.workerLimit(town,station)==(role.providesWork() ? 1 : 0),role+" has one job place, or none for a building without a job");
             }
-            town.stations.clear(); town.stations.add(station);
-            var screen=Panels.station(server.overworld(),town,station);
-            check(screen.actions().stream().anyMatch(action -> action.id()==Panels.CREW_UP)==(role==StructureRole.QUARRY),"Only the quarry screen sells crew upgrades");
             Station saved=Station.CODEC.parse(JsonOps.INSTANCE,Station.CODEC.encodeStart(JsonOps.INSTANCE,station).getOrThrow()).getOrThrow();
             check(saved.equals(station),"Normalized "+role+" upgrades survive another restart");
         }
