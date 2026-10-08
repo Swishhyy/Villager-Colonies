@@ -16,15 +16,24 @@ public final class TradeRoutes {
         return town.stations.stream().noneMatch(s -> s.role()==StructureRole.TRADER && !s.position().equals(pos));
     }
     public static boolean agreed(Settlement a,Settlement b) {
-        return a!=null && b!=null && a!=b && b.id.equals(a.trading.partner) && a.id.equals(b.trading.partner);
+        return a!=null && b!=null && a!=b && (b.id.equals(a.trading.partner) && a.id.equals(b.trading.partner)
+                || TownAccess.allied(a,b) && a.campaign.extraRoutes.contains(b.id) && b.campaign.extraRoutes.contains(a.id));
     }
     public static Settlement partner(ServerLevel level,Settlement town) {
-        Settlement other=town.trading.partner==null ? null : SettlementData.get(level).byId(town.trading.partner);
-        return agreed(town,other) ? other : null;
+        List<Settlement> partners=partners(level,town);
+        return partners.isEmpty() ? null : partners.get(Math.floorMod(town.campaign.routeCursor,partners.size()));
+    }
+    public static List<Settlement> partners(ServerLevel level,Settlement town) {
+        var data=SettlementData.get(level); java.util.Set<UUID> ids=new java.util.LinkedHashSet<>();
+        if(town.trading.partner!=null) ids.add(town.trading.partner); ids.addAll(town.campaign.extraRoutes);
+        return ids.stream().map(data::byId).filter(other -> agreed(town,other)).toList();
     }
     public static boolean canDepart(ServerLevel level,Settlement town) {
         Settlement other=partner(level,town);
-        return other!=null && !town.trading.paused && !other.trading.paused
+        return canDepart(level,town,other);
+    }
+    public static boolean canDepart(ServerLevel level,Settlement town,Settlement other) {
+        return agreed(town,other) && !town.trading.paused && !other.trading.paused
                 && usable(level,checkpoint(town)) && usable(level,checkpoint(other));
     }
     private static boolean usable(ServerLevel level,Station station) { return station!=null && (!level.hasChunkAt(station.position()) || SettlementService.active(level,station)); }

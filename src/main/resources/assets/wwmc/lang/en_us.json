@@ -105,7 +105,7 @@
   "wwmc.configuration.randomSettlements": "Generate neutral towns",
   "wwmc.configuration.randomSettlements.tooltip": "Discover small working NPC towns in suitable loaded Overworld terrain. Existing NPC towns remain when this is disabled. They begin neutral, produce real goods, and can accept supply routes.",
   "wwmc.configuration.npcTownSpacing": "NPC town spacing (blocks)",
-  "wwmc.configuration.npcTownSpacing.tooltip": "Region size used to space candidate towns. Default: 1408 blocks, usually about 1000–2000 blocks between nearby candidates. Terrain and player claims can leave larger gaps. Changing this affects future discoveries.",
+  "wwmc.configuration.npcTownSpacing.tooltip": "Region size used to space candidate towns. Default: 1408 blocks, usually about 1000\u20132000 blocks between nearby candidates. Terrain and player claims can leave larger gaps. Changing this affects future discoveries.",
   "wwmc.configuration.maxNpcTowns": "Generated town limit",
   "wwmc.configuration.maxNpcTowns.tooltip": "Maximum automatically generated NPC towns in the Overworld. Default: 48; zero prevents new discoveries. This does not remove existing towns.",
   "wwmc.configuration.category.world": "Trade & Other Towns",
@@ -128,5 +128,13 @@
   "wwmc.configuration.fishingSeconds": "Seconds per fish",
   "wwmc.configuration.fishingSeconds.tooltip": "Time fishing at a dry bank beside open, two-block-deep water. Default: 30 seconds per whole fish. Butchers prepare catches before cooks can use them.",
   "wwmc.configuration.animalBreeders": "Breeders per species",
-  "wwmc.configuration.animalBreeders.tooltip": "Adult animals preserved in each keeper pen per species. Default: 4. Keepers use real feed and harvest surplus adults. Babies, named animals and mating animals are preserved."
+  "wwmc.configuration.animalBreeders.tooltip": "Adult animals preserved in each keeper pen per species. Default: 4. Keepers use real feed and harvest surplus adults. Babies, named animals and mating animals are preserved.",
+  "wwmc.configuration.expeditionSites": "Expedition sites",
+  "wwmc.configuration.expeditionSites.tooltip": "Discover finite camps, occupied mines and ruined forts in unclaimed natural terrain.",
+  "wwmc.configuration.maxExpeditionSites": "Maximum expedition sites",
+  "wwmc.configuration.maxExpeditionSites.tooltip": "Keep this many discovered sites, including cleared sites and outposts.",
+  "wwmc.configuration.maxExpeditionBandits": "Maximum bandits",
+  "wwmc.configuration.maxExpeditionBandits.tooltip": "Cap living expedition defenders and convoy raiders, including unloaded defenders.",
+  "wwmc.configuration.convoyRaids": "Convoy raids",
+  "wwmc.configuration.convoyRaids.tooltip": "Nearby occupied camps can warn of and launch raids while players are nearby."
 }

@@ -1,6 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.core.StructureRole;
+import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.util.*;
 import java.util.function.Predicate;
 import net.minecraft.server.level.ServerLevel;
@@ -37,6 +38,7 @@ public final class JobStorage {
                 || role==StructureRole.BUTCHER && stack.is(ItemTags.AXES);
     }
     private static boolean supply(Supplies supplies,Settlement town,StructureRole role,ItemStack stack) {
+        if(role==StructureRole.HOSPITAL) return stack.is(Items.PAPER) || FoodHealing.food(stack);
         if(role.processes()) return ProcessingService.supply(supplies.fuels(),role,stack);
         if(role.animalJob()) return AnimalWork.supply(role,stack);
         if(role==StructureRole.ENCHANTER) return Enchanting.lapis(stack) || Enchanting.candidate(stack);
@@ -89,6 +91,7 @@ public final class JobStorage {
     public static boolean input(Supplies supplies,StructureRole role,ItemStack stack) { return input(supplies,null,role,stack); }
     public static boolean input(Supplies supplies,Settlement town,StructureRole role,ItemStack stack) {
         if(stack.isEmpty()) return false;
+        if(role==StructureRole.HOSPITAL) return stack.is(Items.PAPER) || FoodHealing.food(stack);
         if(tool(role,stack)) return !GuardEquipment.worn(stack);
         if(role.animalJob()) return AnimalWork.supply(role,stack);
         if(role==StructureRole.ENCHANTER) return Enchanting.lapis(stack) || Enchanting.candidate(stack);
@@ -99,10 +102,24 @@ public final class JobStorage {
         if(role.excavates() && ExcavationService.supportMaterial(stack) || role==StructureRole.LUMBER && stack.is(ItemTags.SAPLINGS)) return true;
         return role.processes() && (supplies.fuel(stack) || role==StructureRole.COOK && stack.is(Items.WHEAT) || supplies.ingredient(role,stack));
     }
-    private static List<Demand> demands(Supplies supplies,Settlement town,StructureRole role,List<Container> barrels,List<Container> warehouse) {
+    /** Supply one usable tool per assigned worker, counting tools already in their hands or bags. */
+    private static int toolTarget(Supplies supplies,Settlement town,Station station,StructureRole role) {
+        if(town==null || station==null) return role==StructureRole.MINE ? 1 : 2;
+        int target=Math.max(1,Math.min(town.jobs.assigned(station.position()),SettlementService.workerLimit(town,station)));
+        if(supplies.level() instanceof ServerLevel level) for(UUID id:town.citizens) {
+            if(!station.position().equals(town.jobs.home(id)) || !(level.getEntity(id) instanceof CitizenEntity worker) || !worker.isAlive()) continue;
+            if(tool(role,worker.getMainHandItem()) && !GuardEquipment.worn(worker.getMainHandItem())) target--;
+            target-=InventoryOps.count(List.of(worker.bag()),s -> tool(role,s) && !GuardEquipment.worn(s));
+        }
+        return Math.max(0,target);
+    }
+    private static List<Demand> demands(Supplies supplies,Settlement town,StructureRole role,Station station,List<Container> barrels,List<Container> warehouse) {
         List<Demand> result=new ArrayList<>();
         Predicate<ItemStack> tools=s -> tool(role,s) && !GuardEquipment.worn(s);
-        if(role.excavates() || role==StructureRole.LUMBER || role.animalJob()) result.add(new Demand(tools,role==StructureRole.MINE ? 1 : 2));
+        if(role.excavates() || role==StructureRole.LUMBER || role.animalJob()) {
+            int target=toolTarget(supplies,town,station,role);
+            if(target>0) result.add(new Demand(tools,target));
+        }
         if(role.processes()) {
             result.add(new Demand(s -> !supplies.fuel(s) && !s.is(Items.WHEAT) && supplies.ingredient(role,s),ProcessingService.INPUT_LOAD*2));
             result.add(new Demand(supplies::fuel,FUEL_RESERVE*2));
@@ -117,6 +134,10 @@ public final class JobStorage {
         }
         if(role==StructureRole.ENCHANTER) {
             result.add(new Demand(Enchanting::lapis,LAPIS_RESERVE*2)); result.add(new Demand(Enchanting::candidate,2));
+        }
+        if(role==StructureRole.HOSPITAL) {
+            boolean scarce=town!=null && FoodSharing.scarce(InventoryOps.count(warehouse,FoodHealing::food),town.citizens.size());
+            result.add(new Demand(FoodHealing::food,scarce ? 2 : 16)); result.add(new Demand(s -> s.is(Items.PAPER),16));
         }
         if(role==StructureRole.GUARD) {
             result.add(new Demand(s -> GuardWeapons.melee(s) && !GuardEquipment.worn(s),2));
@@ -141,14 +162,26 @@ public final class JobStorage {
     }
     public static boolean needsSupplies(Supplies supplies,StructureRole role,List<Container> barrels,List<Container> warehouse) { return needsSupplies(supplies,null,role,barrels,warehouse); }
     public static boolean needsSupplies(Supplies supplies,Settlement town,StructureRole role,List<Container> barrels,List<Container> warehouse) {
+        return needsSupplies(supplies,town,role,null,barrels,warehouse);
+    }
+    public static boolean needsSupplies(Supplies supplies,Settlement town,Station station,List<Container> barrels,List<Container> warehouse) {
+        return needsSupplies(supplies,town,station.role(),station,barrels,warehouse);
+    }
+    private static boolean needsSupplies(Supplies supplies,Settlement town,StructureRole role,Station station,List<Container> barrels,List<Container> warehouse) {
         if(freeSlots(barrels)<2) return false;
-        return demands(supplies,town,role,barrels,warehouse).stream()
+        return demands(supplies,town,role,station,barrels,warehouse).stream()
                 .anyMatch(d -> InventoryOps.count(barrels,d.accepts())<d.target()/2+1 && InventoryOps.count(warehouse,d.accepts())>0);
     }
     public static int load(Supplies supplies,StructureRole role,List<Container> barrels,List<Container> warehouse,CitizenInventory bag) { return load(supplies,null,role,barrels,warehouse,bag); }
     public static int load(Supplies supplies,Settlement town,StructureRole role,List<Container> barrels,List<Container> warehouse,CitizenInventory bag) {
+        return load(supplies,town,role,null,barrels,warehouse,bag);
+    }
+    public static int load(Supplies supplies,Settlement town,Station station,List<Container> barrels,List<Container> warehouse,CitizenInventory bag) {
+        return load(supplies,town,station.role(),station,barrels,warehouse,bag);
+    }
+    private static int load(Supplies supplies,Settlement town,StructureRole role,Station station,List<Container> barrels,List<Container> warehouse,CitizenInventory bag) {
         int moved=0;
-        for(Demand demand:demands(supplies,town,role,barrels,warehouse)) {
+        for(Demand demand:demands(supplies,town,role,station,barrels,warehouse)) {
             int remaining=demand.target()-InventoryOps.count(barrels,demand.accepts())-InventoryOps.count(List.of(bag),demand.accepts());
             while(remaining-->0 && !bag.needsDelivery()) {
                 ItemStack next=InventoryOps.takeOne(warehouse,demand.accepts());

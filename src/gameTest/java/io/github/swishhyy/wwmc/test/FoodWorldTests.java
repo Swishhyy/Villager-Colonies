@@ -75,7 +75,8 @@ public final class FoodWorldTests {
                     cook=new Station(start.east(40),StructureRole.COOK),courier=new Station(start.east(14),StructureRole.COURIER),
                     warehouse=new Station(start.east(60),StructureRole.WAREHOUSE);
             var fixture=fixture(level,start,hunter,butcher,cook,courier,warehouse);
-            Container pantry=barrel(level,warehouse.position().north(2),new ItemStack(Items.IRON_SWORD,1),new ItemStack(Items.IRON_AXE,1),new ItemStack(Items.COAL,8));
+            // Starter rations keep this production-chain test independent of the separate hunger-sharing test.
+            Container pantry=barrel(level,warehouse.position().north(2),new ItemStack(Items.IRON_SWORD,1),new ItemStack(Items.IRON_AXE,1),new ItemStack(Items.COAL,8),new ItemStack(Items.BREAD,16));
             Container huntBarrel=barrel(level,hunter.position().south(2)),butcherBarrel=barrel(level,butcher.position().south(2)),cookBarrel=barrel(level,cook.position().south(2));
             level.setBlockAndUpdate(cook.position().east(),Blocks.SMOKER.defaultBlockState());
             var hunt=fixture.worker(hunter,hunter.position().west());
@@ -195,6 +196,56 @@ public final class FoodWorldTests {
                     helper.assertTrue(citizen.getHealth()==6,"A citizen did not get exactly one loaf: health="+citizen.getHealth()+", "+citizen.activity());
                     helper.assertTrue(citizen.bag().count(Items.BREAD)==0,"A citizen stockpiled scarce bread");
                 }
+                fixture.close(); helper.succeed();
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=1200)
+    @EmptyTemplate
+    @TestHolder(description="An idle hungry worker eats from a raised warehouse by walking to clear ground within hand reach, without needing to climb onto its solid station.")
+    static void eatsAtRaisedWarehouse(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-1460));
+            Station farm=new Station(start.east(4),StructureRole.FARM),warehouse=new Station(start.offset(40,2,-8),StructureRole.WAREHOUSE);
+            var fixture=fixture(level,start,farm,warehouse);
+            level.setBlockAndUpdate(warehouse.position().below(),Blocks.STONE.defaultBlockState());
+            level.setBlockAndUpdate(warehouse.position().below(2),Blocks.STONE.defaultBlockState());
+            Container pantry=barrel(level,warehouse.position().south(2),new ItemStack(Items.BREAD));
+            var citizen=fixture.worker(farm,warehouse.position().offset(-7,-2,0));
+            citizen.setHealth(1);
+            try { var hunger=CitizenEntity.class.getDeclaredField("mealTicks"); hunger.setAccessible(true); hunger.setInt(citizen,0); }
+            catch(ReflectiveOperationException e) { throw new RuntimeException(e); }
+            helper.succeedWhen(() -> {
+                helper.assertTrue(count(pantry,Items.BREAD)==0,"Worker has not reached the raised pantry: "+describe(citizen,level));
+                helper.assertTrue(citizen.getHealth()==6,"The real loaf did not heal the worker exactly once");
+                helper.assertTrue(citizen.bag().count(Items.BREAD)==0,"The worker stockpiled its meal");
+                helper.assertTrue(farm.position().equals(fixture.town.jobs.home(citizen.getUUID())),"The meal trip changed the worker's job");
+                fixture.close();
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=1200)
+    @EmptyTemplate
+    @TestHolder(description="Couriers equip a hunter and butcher from shared stock without giving the hunter the butcher's axe or hoarding another tool after both workers are equipped.")
+    static void couriersShareToolsAcrossJobs(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-1560));
+            Station hunter=new Station(start.east(4),StructureRole.HUNTER),butcher=new Station(start.east(24),StructureRole.BUTCHER),
+                    courier=new Station(start.east(14),StructureRole.COURIER),warehouse=new Station(start.east(60),StructureRole.WAREHOUSE);
+            var fixture=fixture(level,start,hunter,butcher,courier,warehouse);
+            Container pantry=barrel(level,warehouse.position().north(2),new ItemStack(Items.IRON_SWORD),new ItemStack(Items.IRON_AXE),new ItemStack(Items.IRON_AXE));
+            Container hunting=barrel(level,hunter.position().south(2));
+            barrel(level,butcher.position().south(2));
+            var hunt=fixture.worker(hunter,hunter.position().west());
+            var prepare=fixture.worker(butcher,butcher.position().west());
+            var haul=fixture.worker(courier,courier.position().west());
+            helper.runAtTickTime(900,() -> {
+                helper.assertTrue(hunt.getMainHandItem().is(Items.IRON_SWORD),"The hunter did not receive its sword: "+describe(hunt,level));
+                helper.assertTrue(prepare.getMainHandItem().is(Items.IRON_AXE),"The butcher did not receive its axe: "+describe(prepare,level)+", courier="+describe(haul,level));
+                helper.assertTrue(count(pantry,Items.IRON_AXE)==1,"An equipped worker drew another job's spare axe out of shared stock");
+                helper.assertTrue(count(hunting,Items.IRON_AXE)==0 && hunt.bag().count(Items.IRON_AXE)==0,"The hunter hoarded axes beside its equipped sword");
                 fixture.close(); helper.succeed();
             });
         });

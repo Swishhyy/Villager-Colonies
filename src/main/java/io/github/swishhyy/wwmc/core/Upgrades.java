@@ -19,7 +19,7 @@ public final class Upgrades {
         return role!=StructureRole.QUARRY && role!=StructureRole.MINE && role!=StructureRole.COURIER && role!=StructureRole.CRAFTSMAN && role!=StructureRole.TRADER;
     }
     /** Farms, craftsmen and enchanters always take exactly one worker. */
-    public static boolean soloCrew(StructureRole role) { return role==StructureRole.MINE || role==StructureRole.FARM || role==StructureRole.CRAFTSMAN || role==StructureRole.ENCHANTER || role==StructureRole.TRADER; }
+    public static boolean soloCrew(StructureRole role) { return role==StructureRole.HOSPITAL || role==StructureRole.MINE || role==StructureRole.FARM || role==StructureRole.CRAFTSMAN || role==StructureRole.ENCHANTER || role==StructureRole.TRADER; }
     /** Stations whose crew can grow. */
     public static boolean hires(StructureRole role) { return role.providesWork() && !soloCrew(role); }
     /** The next station level costs the base for the first, then twice the previous price. */

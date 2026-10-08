@@ -66,6 +66,7 @@ public final class CitizenRecall {
     }
     /** Where a citizen belongs: its station, or the banner without one; null when that is not ticking, as when nobody is near. */
     public static BlockPos home(ServerLevel level,Settlement town,UUID id) {
+        if(SquadService.assigned(town,id)) return null;
         BlockPos station=town.jobs.home(id);
         BlockPos home=station!=null && town.station(station)!=null ? station : town.center;
         return level.hasChunkAt(home) && level.isPositionEntityTicking(home) ? home : null;
@@ -73,6 +74,7 @@ public final class CitizenRecall {
     /** What the town knows about a citizen that is not loaded, for its screens. */
     public static String whereabouts(ServerLevel level,Settlement town,UUID id) {
         BlockPos place=town.citizenPlaces.get(id);
+        if(SquadService.assigned(town,id)) return "On a squad expedition"+(place==null ? "" : "; last seen at "+place.getX()+", "+place.getZ());
         Missing state=MISSING.getOrDefault(level,Map.of()).get(id);
         if(place==null) {
             long left=state==null ? UNKNOWN : Math.max(0,UNKNOWN-(level.getGameTime()-state.since));
@@ -101,7 +103,7 @@ public final class CitizenRecall {
             if(town.citizenPlaces.keySet().retainAll(new HashSet<>(town.citizens))) data.setDirty();
             for(UUID id:List.copyOf(town.citizens)) {
                 // A trader on a trip keeps its own window of loaded chunks and is never fetched home mid-route.
-                if(id.equals(town.trading.runner)) continue;
+                if(id.equals(town.trading.runner) || SquadService.assigned(town,id)) continue;
                 BlockPos home=home(level,town,id);
                 if(home==null) continue;
                 Missing state=missing.get(id);

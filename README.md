@@ -6,7 +6,11 @@ Inspired by the first-person colony management of [Colony Survival](https://stor
 
 **Target:** Minecraft Java 26.2 · NeoForge 26.2.0.88 · Java 25 · MIT license.
 
-## Current build: 0.11.3-alpha
+## Current build: 0.12.1-alpha
+
+0.12.1 adds a dedicated **Relationships** screen at the flag: player invitations and permissions, alliance controls, and editable town names. Player claims deny interactions until permission is accepted. Entry notices show the current town name. Flags survive explosions and cannot be moved by pistons, and lost flags can be restored without resetting a town. Install matching 0.12.1-alpha builds on the server and every client. For a server failing with **Overworld settings missing**, see [World metadata recovery](docs/server-startup.md).
+
+0.12.0 adds a **multiplayer campaign loop**: accepted town membership, reciprocal alliances, industry specialization, demand-driven shipments, guard squads, bandit camps and occupied mines, supplied outposts, material-funded projects, working hospital medics, NPC supply contracts and a persistent town journal. Open **Campaign** at a town banner; use `/wwmc squad` for field orders away from home. Existing town identities, ownership, job assignments and inventories are preserved. See [Multiplayer campaign](docs/multiplayer-campaign.md) for project costs and a two-player walkthrough.
 
 0.11.3 **brings stranded citizens back**. A citizen could freeze at the edge of the area players keep loaded, or be left behind in a chunk that unloaded during an errand. Its station then sat idle, with the citizen listed as out of range. Each town now remembers where its citizens were last seen. When a citizen's station is loaded but the citizen is not, the town loads a 3×3 chunk window around its last place for a few seconds. The citizen is then moved beside its station and keeps its job. A citizen without a job is brought to the banner instead. A citizen that is not found after two searches leaves the roster, so its job and population place open up, and it rejoins if it turns up later. Citizens who went missing before this update have no recorded place: they leave the roster after five minutes with their station loaded, and also rejoin if found. A station's Crew tab and `/wwmc citizens` show where each missing citizen was last seen. See [Personal inventories](#personal-inventories).
 
@@ -74,7 +78,7 @@ Implemented:
 - Shared station crews, exclusive resource reservations, civilian nighttime rest, and guard duty through the night.
 - Save/reload support for settlement data, player block protection, replanting sites, excavation progress, cargo, tools, and meal timers.
 
-Planned: automatic housing construction, medical treatment, military squads, raids by rival settlements, independent AI settlements, distant simulation, technology progression, convoys, and countries. A barracks station identifies troop housing in this build; it does not train soldiers yet. A hospital station identifies patient beds; it does not provide medical treatment yet. Citizens can heal by eating food.
+Further plans include automatic housing construction, wars between rival settlements, distant simulation, larger technology trees, and countries. Barracks identify troop housing and support military projects. Fund a Field Hospital for a medic who treats wounded citizens with meals and paper dressings. Citizens also heal by eating food.
 
 ## Try the first build
 
@@ -149,7 +153,7 @@ When miners encounter caves near the selected depth, they scan a bounded nearby 
 | `/wwmc alarm` | Sound the alarm yourself, or call the all-clear early while it rings. |
 | `/wwmc wave` | Bring the next enemy wave forward to now, even in daylight. |
 
-Commands affect your own town at your current position. You can own several towns in the Overworld, each with its own population limit. If you own several and stand outside them, use a banner screen or enter the town you want to manage. Claims do not implement general-purpose land protection; station removal is owner-restricted. An occupied settlement's banner is its fixed rally point and cannot be mined normally.
+Commands affect your own town at your current position. You can own several towns in the Overworld, each with its own population limit. If you own several and stand outside them, use a banner screen or enter the town you want to manage. Player claims deny block placement/removal, block and container use, entity interactions and player attacks until the owner's invitation is accepted. Configure builders and stewards on the banner's Relationships screen; alliances alone grant no claim access. The owner can rename the town on Relationships -> Town. Entry notices display that name. An occupied settlement's banner is its fixed rally point and cannot be mined normally; all settlement banners resist explosions and piston movement. Lost flags can be restored at their original coordinates without changing the saved town.
 
 ### Job blocks define building purpose
 
@@ -163,7 +167,7 @@ Only loaded blocks inside the settlement claim count. Scanning never loads chunk
 | --- | --- | --- |
 | Housing | Residential beds, recruiting capacity, and rest. | Families, migration, approved housing expansion. |
 | Barracks | Camp/troop beds, currently usable as housing. | Recruiting, training, and organizing military units. |
-| Hospital | Patient beds excluded from housing capacity. | Treatment, medical supplies, casualty evacuation. |
+| Hospital | Patient beds excluded from housing capacity; a funded medic uses meals and paper dressings to treat wounded citizens. | Casualty evacuation. |
 | Warehouse | Chests, trapped chests, and barrels within its 7×7×7 range. | Reserves, convoy loading. |
 | Farm | Mature supported crops within its 7×7×7 range. | Planting expansions, varied crops, food processing. |
 | Lumber | Whole trees rooted in range, real sapling planting, and replanting. | Larger forestry areas and better species/terrain handling. |
@@ -173,7 +177,7 @@ Only loaded blocks inside the settlement claim count. Scanning never loads chunk
 | Smeltery | Warehouse ores/raw metals smelted in nearby furnaces or blast furnaces. | Specialized metallurgy and technology. |
 | Cook | Raw food cooked in smokers or lit campfires; three wheat become bread. | More meals and food orders. |
 | Blacksmith | Repairs courier-delivered equipment at nearby anvils, leaving it in the job barrel. | Repair orders and specialized smithing. |
-| Guard | Day/night posts, patrols, armor and weapons from stands or storage, melee and archery, bell alarms. | Squad orders, training. |
+| Guard | Day/night posts, shared gear, bell alarms, player-led squads and convoy escorts. | Larger armies and siege tactics. |
 | Courier | The only town hauler: moves job outputs, tools and inputs through the warehouse. | Convoys between towns. |
 | Enchanter | Enchants unenchanted gear and books with lapis at an enchanting table within 5 blocks, up to level 25. | Enchanting orders and libraries. |
 
@@ -371,7 +375,7 @@ Right-click with an empty hand to open:
 - **Craftsman Station:** the order screen described above.
 - **Citizen:** their job, activity, health, next meal and equipment above their bag.
 
-Screens refresh every second and close when you move more than eight blocks away. Only the town's owner can open them; other players see a one-line notice. Short notices, including alarms and waves, appear above the hotbar instead of in chat.
+Screens refresh every second and close when you move more than eight blocks away. Owners and accepted stewards can open them. Use Relationships -> Players to invite members or revoke access; invitees accept on Relationships -> Invitations. Builders can build and interact inside the claim. The Relationships -> Town tab saves a custom town name. The field-order screen (`/wwmc squad`) remains usable away from the banner. Short notices, including alarms and waves, appear above the hotbar instead of in chat.
 
 ### Jobs and priorities
 

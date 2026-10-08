@@ -230,7 +230,7 @@ public final class AnimalWork {
         worker.workActivity("Fishing: "+progress/20+" / "+Config.FISHING_SECONDS.get()+" seconds");
         if(progress==0) worker.swing(InteractionHand.MAIN_HAND);
         progress+=10;
-        if(progress>=Config.FISHING_SECONDS.get()*20) {
+        if(progress>=Specialization.ticks(town,StructureRole.FISHERMAN,Config.FISHING_SECONDS.get()*20)) {
             progress=0; worker.bag().offer((worker.getRandom().nextBoolean() ? Carcasses.Kind.COD : Carcasses.Kind.SALMON).stack());
             worker.getMainHandItem().hurtAndBreak(1,worker,EquipmentSlot.MAINHAND); worker.swing(InteractionHand.MAIN_HAND);
             level.sendParticles(ParticleTypes.SPLASH,fishing.water().getX()+0.5,fishing.water().getY()+0.9,fishing.water().getZ()+0.5,5,0.3,0.1,0.3,0);

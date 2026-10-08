@@ -30,6 +30,7 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.WrittenBookItem;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -48,7 +49,8 @@ public final class WWMC {
     public static final DeferredRegister.Entities ENTITIES=DeferredRegister.createEntities(MODID);
     public static final DeferredRegister<CreativeModeTab> TABS=DeferredRegister.create(Registries.CREATIVE_MODE_TAB,MODID);
     // Both models are detailed rather than full cubes, so they must not hide their neighbours' faces.
-    public static final DeferredBlock<SettlementBannerBlock> BANNER=BLOCKS.registerBlock("settlement_banner",SettlementBannerBlock::new,p -> p.mapColor(MapColor.COLOR_BLUE).strength(2).noOcclusion());
+    public static final DeferredBlock<SettlementBannerBlock> BANNER=BLOCKS.registerBlock("settlement_banner",SettlementBannerBlock::new,
+            p -> p.mapColor(MapColor.COLOR_BLUE).strength(2,3_600_000).pushReaction(PushReaction.BLOCK).noOcclusion());
     public static final DeferredItem<BlockItem> BANNER_ITEM=ITEMS.registerSimpleBlockItem(BANNER);
     public static final Map<StructureRole,DeferredBlock<StationBlock>> STATIONS=new EnumMap<>(StructureRole.class);
     public static final Map<StructureRole,DeferredItem<BlockItem>> STATION_ITEMS=new EnumMap<>(StructureRole.class);
@@ -79,6 +81,7 @@ public final class WWMC {
         bus.addListener(TradeChunks::register);
         bus.addListener(io.github.swishhyy.wwmc.settlement.CitizenRecall::register);
         NeoForge.EVENT_BUS.register(new SettlementService());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.ClaimProtection());
         NeoForge.EVENT_BUS.register(new Carcasses());
         NeoForge.EVENT_BUS.register(new WorkProtection());
         NeoForge.EVENT_BUS.register(new GuardService());
@@ -88,6 +91,9 @@ public final class WWMC {
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CitizenRecall());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.TradeAtlas.Survey());
         NeoForge.EVENT_BUS.register(new NpcSettlements());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CampaignService());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CampaignCommands());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.ExpeditionService());
         container.registerConfig(ModConfig.Type.SERVER,Config.SPEC);
     }
     private void attributes(EntityAttributeCreationEvent event) {

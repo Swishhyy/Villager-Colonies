@@ -6,10 +6,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import io.github.swishhyy.wwmc.settlement.CampaignViews;
+import io.github.swishhyy.wwmc.settlement.RelationshipViews;
 
 /** The town overview (opened at the banner) or a station's panel. */
 public final class PanelMenu extends SettlementMenu {
-    public enum Kind { TOWN, STATION }
+    public enum Kind { TOWN, STATION, CAMPAIGN, ARMY, RELATIONSHIPS }
     public final Kind kind;
     public final BlockPos pos;
     public PanelMenu(int id,Kind kind,BlockPos pos,ServerPlayer viewer,PanelView view) {
@@ -23,12 +25,21 @@ public final class PanelMenu extends SettlementMenu {
     public static void write(RegistryFriendlyByteBuf buf,Kind kind,BlockPos pos,PanelView view) {
         buf.writeEnum(kind); buf.writeBlockPos(pos); PanelView.STREAM_CODEC.encode(buf,view);
     }
-    @Override protected PanelView build() { return kind==Kind.TOWN ? Panels.town(viewer,pos) : Panels.station(viewer,pos); }
+    @Override protected PanelView build() {
+        return switch(kind) { case TOWN -> Panels.town(viewer,pos); case STATION -> Panels.station(viewer,pos);
+            case CAMPAIGN,ARMY -> CampaignViews.view(viewer,pos,kind==Kind.ARMY); case RELATIONSHIPS -> RelationshipViews.view(viewer,pos); };
+    }
     @Override public ItemStack quickMoveStack(Player player,int index) { return ItemStack.EMPTY; }
-    @Override public boolean stillValid(Player player) { return viewer==null || Panels.valid(viewer,pos,kind==Kind.TOWN); }
+    @Override public boolean stillValid(Player player) { return viewer==null || switch(kind) {
+        case CAMPAIGN,ARMY -> CampaignViews.valid(viewer,pos,kind==Kind.ARMY);
+        case RELATIONSHIPS -> RelationshipViews.valid(viewer,pos);
+        default -> Panels.valid(viewer,pos,kind==Kind.TOWN);
+    }; }
     @Override public void act(ServerPlayer player,int action,int index,int value,String key) {
         if(kind==Kind.TOWN) Panels.townAction(player,pos,action,value,key);
-        else Panels.stationAction(player,pos,action);
+        else if(kind==Kind.STATION) Panels.stationAction(player,pos,action);
+        else if(kind==Kind.RELATIONSHIPS) RelationshipViews.act(player,pos,action,value,key);
+        else CampaignViews.act(player,pos,kind==Kind.ARMY,action,value,key);
         refresh();
     }
 }

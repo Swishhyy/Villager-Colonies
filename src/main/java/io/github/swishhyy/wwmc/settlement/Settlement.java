@@ -39,20 +39,22 @@ public final class Settlement {
         Codec.INT.optionalFieldOf("population_level",UNSET).forGetter(s -> s.populationLevel),
         TradeSettings.CODEC.optionalFieldOf("trading").forGetter(s -> Optional.of(s.trading))
     ).apply(i, Settlement::new));
-    /** Each job's priority and holder, and where each citizen was last seen ticking. */
-    private record Extra(Optional<JobBoard> jobs,Map<UUID,BlockPos> places) {}
+    /** Additional optional fields preserve both prior recall saves and campaign data alongside the sixteen-field core. */
+    private record Extra(Optional<JobBoard> jobs,Map<UUID,BlockPos> places,Optional<CampaignState> campaign) {}
     private static final MapCodec<Extra> EXTRA = RecordCodecBuilder.mapCodec(i -> i.group(
         JobBoard.CODEC.optionalFieldOf("jobs").forGetter(Extra::jobs),
-        Codec.unboundedMap(UUID_CODEC,BlockPos.CODEC).optionalFieldOf("citizen_places",Map.of()).forGetter(Extra::places)
+        Codec.unboundedMap(UUID_CODEC,BlockPos.CODEC).optionalFieldOf("citizen_places",Map.of()).forGetter(Extra::places),
+        CampaignState.CODEC.optionalFieldOf("campaign").forGetter(Extra::campaign)
     ).apply(i, Extra::new));
     public static final Codec<Settlement> CODEC = Codec.mapPair(CORE,EXTRA).xmap(
         pair -> {
             Settlement s=pair.getFirst();
             s.jobs.load(pair.getSecond().jobs());
             pair.getSecond().places().forEach((citizen,place) -> s.citizenPlaces.put(citizen,place.immutable()));
+            s.campaign=pair.getSecond().campaign().orElseGet(CampaignState::new);
             return s;
         },
-        s -> Pair.of(s,new Extra(Optional.of(s.jobs),s.citizenPlaces))).codec();
+        s -> Pair.of(s,new Extra(Optional.of(s.jobs),s.citizenPlaces,Optional.of(s.campaign)))).codec();
     public final UUID id, owner;
     public String name, priority;
     public final BlockPos center;
@@ -70,6 +72,7 @@ public final class Settlement {
     public final TradeSettings trading;
     /** Each job's priority and each citizen's own station; towns from before keep their preset's priorities. */
     public final JobBoard jobs;
+    public CampaignState campaign=new CampaignState();
     public final List<UUID> citizens;
     public final List<Station> stations;
     public final List<BlockPos> borderBanners;
