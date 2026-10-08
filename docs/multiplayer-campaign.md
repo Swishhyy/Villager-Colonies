@@ -1,6 +1,6 @@
-# Multiplayer campaign — 0.12.1-alpha
+# Multiplayer campaign — 0.12.2-alpha
 
-The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same 0.12.1-alpha JAR on the server and every client. Existing towns keep their owners, stations, assignments and inventories; new campaign data starts empty.
+The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same 0.12.2-alpha JAR on the server and every client. Existing towns keep their owners, stations and inventories; new campaign data starts empty. Every job block has one citizen except quarries, which keep their configured crew and upgrades. Surplus workers from old crews take other open jobs.
 
 ## Playing together
 
@@ -46,7 +46,7 @@ All costs come from loaded warehouse containers. Materials are checked before an
 
 ## Squads and expeditions
 
-Supply and equip your normal guards first. The squad system borrows them; it does not create extra population, equipment or supplies. Their original station assignments are retained, and remaining guards cover shifts. Taking an entire station's crew away leaves its post unstaffed.
+Supply and equip your normal guards first. The squad system borrows them; it does not create extra population, equipment or supplies. Each Guard Station has one guard, active through both shifts. Original assignments are retained during deployment, so each guard you take leaves its post unstaffed. Build additional Guard Stations and leave some equipped guards home.
 
 Open **Army** on Campaign or run `/wwmc squad` anywhere for field controls. Muster one, two or four nearby healthy, armed guards; Officer School also allows six. `/wwmc squad muster 2` works directly. One player can lead one squad per town, with up to eight deployed squads in a town.
 

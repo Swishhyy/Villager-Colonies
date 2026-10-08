@@ -61,9 +61,10 @@ public final class UpgradeChecks {
         check(new Station(pos,StructureRole.FARM,Direction.NORTH,1,3).crew()==0 && new Station(pos,StructureRole.CRAFTSMAN,Direction.NORTH,0,2).crew()==0
                 && new Station(pos,StructureRole.ENCHANTER,Direction.NORTH,0,1).crew()==0,"Farms, craftsmen and enchanters never gain crew");
         check(Upgrades.soloCrew(StructureRole.FARM) && Upgrades.soloCrew(StructureRole.CRAFTSMAN) && Upgrades.soloCrew(StructureRole.ENCHANTER)
-                && !Upgrades.hires(StructureRole.FARM) && Upgrades.hires(StructureRole.LUMBER) && !Upgrades.hires(StructureRole.HOUSING),"Only shared jobs can hire more crew");
+                && !Upgrades.hires(StructureRole.FARM) && !Upgrades.hires(StructureRole.LUMBER) && Upgrades.hires(StructureRole.QUARRY)
+                && !Upgrades.hires(StructureRole.HOUSING),"Only quarries can hire more crew");
         check(new Station(pos,StructureRole.LUMBER,Direction.NORTH,9,-2).range()==Upgrades.MAX_STATION_LEVEL && new Station(pos,StructureRole.LUMBER,Direction.NORTH,9,-2).crew()==0,"Levels stay within bounds");
-        Station upgraded=new Station(pos,StructureRole.GUARD,Direction.WEST,1,2);
+        Station upgraded=new Station(pos,StructureRole.QUARRY,Direction.WEST,0,2);
         Station saved=Station.CODEC.parse(JsonOps.INSTANCE,Station.CODEC.encodeStart(JsonOps.INSTANCE,upgraded).getOrThrow()).getOrThrow();
         check(saved.equals(upgraded),"Upgrades survive a restart");
         var legacy=Station.CODEC.encodeStart(JsonOps.INSTANCE,new Station(pos,StructureRole.GUARD)).getOrThrow().getAsJsonObject();
@@ -81,6 +82,35 @@ public final class UpgradeChecks {
         old.remove("population_level");
         check(Settlement.CODEC.parse(JsonOps.INSTANCE,old).getOrThrow().populationLevel==Settlement.UNSET,"An older town's population level is worked out from its citizens");
         System.out.println("Passed "+checks+" station upgrade checks.");
+    }
+
+    @Test @ExtendWith(EphemeralTestServerProvider.class)
+    void oneWorkerPerJobBlockAndLegacyCrewMigration(MinecraftServer server) {
+        BlockPos pos=new BlockPos(0,64,0);
+        Settlement town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Crew migration",pos,240,List.of(),List.of(),"balanced");
+        town.campaign.projects.add("hospital");
+        for(StructureRole role:StructureRole.values()) {
+            var legacy=Station.CODEC.encodeStart(JsonOps.INSTANCE,new Station(pos,role,Direction.WEST,2,0)).getOrThrow().getAsJsonObject();
+            legacy.addProperty("crew",3);
+            Station station=Station.CODEC.parse(JsonOps.INSTANCE,legacy).getOrThrow();
+            check(station.range()==(Upgrades.widens(role) ? 2 : 0),"Migration keeps valid range levels for "+role);
+            if(role==StructureRole.QUARRY) {
+                check(station.crew()==3 && SettlementService.workerLimit(town,station)==Config.QUARRY_WORKERS.get()+3,"Quarry crew levels and configured capacity survive migration");
+            } else {
+                check(station.crew()==0 && !Upgrades.hires(role),"Old "+role+" crew upgrades cannot add workers");
+                check(SettlementService.workerLimit(town,station)==(role.providesWork() ? 1 : 0),role+" has one job place, or none for a building without a job");
+            }
+            town.stations.clear(); town.stations.add(station);
+            var screen=Panels.station(server.overworld(),town,station);
+            check(screen.actions().stream().anyMatch(action -> action.id()==Panels.CREW_UP)==(role==StructureRole.QUARRY),"Only the quarry screen sells crew upgrades");
+            Station saved=Station.CODEC.parse(JsonOps.INSTANCE,Station.CODEC.encodeStart(JsonOps.INSTANCE,station).getOrThrow()).getOrThrow();
+            check(saved.equals(station),"Normalized "+role+" upgrades survive another restart");
+        }
+        town.campaign.projects.clear();
+        check(SettlementService.workerLimit(town,new Station(pos,StructureRole.HOSPITAL))==0,"A hospital still needs its funded project");
+        town.trading.npc=true;
+        check(SettlementService.workerLimit(town,new Station(pos,StructureRole.QUARRY,Direction.NORTH,0,3))==1,"NPC towns still spread their small population across jobs");
+        check(SettlementService.workerLimit(town,new Station(pos,StructureRole.WAREHOUSE))==0,"An NPC warehouse never receives a worker");
     }
 
     @Test void threat() {

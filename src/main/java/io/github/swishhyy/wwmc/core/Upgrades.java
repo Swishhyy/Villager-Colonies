@@ -18,10 +18,10 @@ public final class Upgrades {
     public static boolean widens(StructureRole role) {
         return role!=StructureRole.QUARRY && role!=StructureRole.MINE && role!=StructureRole.COURIER && role!=StructureRole.CRAFTSMAN && role!=StructureRole.TRADER;
     }
-    /** Farms, craftsmen and enchanters always take exactly one worker. */
-    public static boolean soloCrew(StructureRole role) { return role==StructureRole.HOSPITAL || role==StructureRole.MINE || role==StructureRole.FARM || role==StructureRole.CRAFTSMAN || role==StructureRole.ENCHANTER || role==StructureRole.TRADER; }
-    /** Stations whose crew can grow. */
-    public static boolean hires(StructureRole role) { return role.providesWork() && !soloCrew(role); }
+    /** Every job block except a quarry takes exactly one worker. */
+    public static boolean soloCrew(StructureRole role) { return role.providesWork() && role!=StructureRole.QUARRY; }
+    /** Quarries alone can buy additional worker slots. */
+    public static boolean hires(StructureRole role) { return role==StructureRole.QUARRY; }
     /** The next station level costs the base for the first, then twice the previous price. */
     public static int stationCost(int base,int level) { return Math.max(0,base)<<Math.clamp(level,0,MAX_STATION_LEVEL); }
     /** Each population level costs the base more than the one before: base, 2 × base, 3 × base... */

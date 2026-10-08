@@ -62,23 +62,15 @@ public final class SettlementService {
         if(scans!=null) scans.refresh(town.id);
     }
     public static WorkforceBook<BlockPos> workers(ServerLevel level) { return WORKFORCE.computeIfAbsent(level,l -> new WorkforceBook<>()); }
-    /** Crew slots: the configured crew plus upgrades, except solo jobs such as mines, farms and craftsmen. */
+    /** One worker per job block; only quarries use a configured crew and crew upgrades. */
     public static int workerLimit(Station station) {
-        if(Upgrades.soloCrew(station.role())) return 1;
-        return station.crew()+switch(station.role()) {
-            case COURIER -> Config.COURIER_WORKERS.get();
-            case QUARRY -> Config.QUARRY_WORKERS.get();
-            case GUARD -> Config.GUARD_WORKERS.get();
-            case SMELTERY,COOK -> Config.PROCESSING_WORKERS.get();
-            case HUNTER,FISHERMAN,ANIMAL_KEEPER,BUTCHER -> Config.ANIMAL_WORKERS.get();
-            case BLACKSMITH -> Config.BLACKSMITH_WORKERS.get();
-            default -> Config.STATION_WORKERS.get();
-        };
+        if(!station.role().providesWork()) return 0;
+        return station.role()==StructureRole.QUARRY ? Config.QUARRY_WORKERS.get()+station.crew() : 1;
     }
     /** NPC crews spread their small population across all essential jobs. */
     public static int workerLimit(Settlement town,Station station) {
         if(station.role()==StructureRole.HOSPITAL && !town.campaign.projects.contains("hospital")) return 0;
-        return town.trading.npc ? 1 : workerLimit(station);
+        return town.trading.npc && station.role().providesWork() ? 1 : workerLimit(station);
     }
     /** Sets every job's priority from a preset. Citizens keep their jobs unless a job of higher priority has an open place. */
     public static void applyPreset(ServerLevel level,Settlement town,String preset) {
@@ -163,12 +155,19 @@ public final class SettlementService {
                     notify(player,"The full chunk in front of this quarry must fit inside your town claim. Move or turn the station."); return;
                 }
             }
-            settlement.stations.add(station); data.setDirty();
+            settlement.stations.add(station); synchronizeUpgrades(level,station); data.setDirty();
             notify(player,"Registered the "+role.title()+" Station"+(station.range()+station.crew()>0 ? " with its upgrades" : "")+". Right-click it to open its screen.");
         }
     }
     public static boolean active(ServerLevel level,Station station) {
         return level.hasChunkAt(station.position()) && level.getBlockState(station.position()).getBlock() instanceof StationBlock block && block.role()==station.role();
+    }
+    /** Retired crew levels in old blocks/items cannot restore extra slots; valid range and quarry upgrades stay intact. */
+    private static boolean synchronizeUpgrades(ServerLevel level,Station station) {
+        if(!active(level,station)) return false;
+        BlockState state=level.getBlockState(station.position());
+        BlockState normalized=state.setValue(StationBlock.RANGE,station.range()).setValue(StationBlock.CREW,station.crew());
+        return state!=normalized && level.setBlock(station.position(),normalized,3);
     }
     private static boolean availableCell(ServerLevel level,Settlement town,BlockPos pos) {
         return pos.getY()>=level.getMinY() && pos.getY()<level.getMaxY() && town.contains(pos) && level.hasChunkAt(pos);
@@ -598,6 +597,7 @@ public final class SettlementService {
             placeBorders(level,s);
             if(s.populationLevel<0) { s.populationLevel=populationLevel(s); data.setDirty(); }
             if(s.stations.removeIf(station -> level.hasChunkAt(station.position()) && !active(level,station))) data.setDirty();
+            for(Station station:s.stations) if(synchronizeUpgrades(level,station)) data.setDirty();
             if(s.jobs.prune(s,station -> workerLimit(s,station))) data.setDirty();
         }
     }
