@@ -1220,6 +1220,16 @@ public final class CitizenEntity extends Villager {
         if(stack.isEmpty()) loot.discard(); else loot.setItem(stack);
         readyMelee(); return false;
     }
+    /** The next stop on the owner's marked route: the post, then each point in order, skipping any not loaded. */
+    private BlockPos routePoint(ServerLevel level,Settlement town,GuardPosts plan,BlockPos post) {
+        List<BlockPos> stops=new ArrayList<>();
+        stops.add(post); stops.addAll(plan.patrol());
+        for(int tries=0;tries<stops.size();tries++) {
+            BlockPos next=stops.get(Math.floorMod(patrolVisits++,stops.size()));
+            if(town.contains(next) && level.hasChunkAt(next)) return next;
+        }
+        return post;
+    }
     private BlockPos patrolPoint(ServerLevel level,Settlement town,BlockPos post) {
         // Visit furnished work sites around town, returning to the active shift post every third leg.
         if(++patrolVisits%3==0) return post;
@@ -1363,12 +1373,18 @@ public final class CitizenEntity extends Villager {
                     .stream().min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
             if(attacker!=null) { fight(level,attacker); activity="Defending the town against an attacker"; return; }
         }
-        Monster enemy=level.getEntitiesOfClass(Monster.class,getBoundingBox().inflate(alarm ? 32 : 16),
-                m -> m.isAlive() && town.contains(m.blockPosition()) && hasLineOfSight(m)).stream()
+        GuardPosts plan=GuardService.posts(level,station);
+        boolean shield=GuardPosts.SHIELD.equals(plan.role()),archer=GuardPosts.ARCHER.equals(plan.role());
+        BlockPos held=plan.active(night(level));
+        // A shield guard keeps its gate; an archer watches the approaches from farther away.
+        int sight=archer ? (alarm ? 40 : 28) : alarm ? 32 : 16;
+        Monster enemy=level.getEntitiesOfClass(Monster.class,getBoundingBox().inflate(sight),
+                m -> m.isAlive() && town.contains(m.blockPosition()) && hasLineOfSight(m)
+                        && (!shield || m.blockPosition().distSqr(held)<=100 || m.getTarget()==this)).stream()
                 .min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
         if(enemy!=null) { fight(level,enemy); return; }
         ignoredThreats.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
-        DefenseService.Call call=DefenseService.assignment(level,town,this,ignoredThreats::containsKey);
+        DefenseService.Call call=shield ? null : DefenseService.assignment(level,town,this,ignoredThreats::containsKey);
         if(call!=null && respond(level,town,call)) return;
         respondTarget=null; respondTicks=0;
         setTarget(null);
@@ -1405,11 +1421,16 @@ public final class CitizenEntity extends Villager {
         BlockPos post=GuardService.posts(level,station).active(night(level));
         if(!Objects.equals(activePost,post)) { activePost=post; patrolTarget=post; patrolTicks=0; pathTicks=0; getNavigation().stop(); }
         if(!town.contains(post) || !level.hasChunkAt(post)) { activity="Waiting for the shift post to be loaded"; return; }
+        if(shield) {
+            if(near(post)) { getNavigation().stop(); activity="Holding the "+shift+" post"+(getOffhandItem().is(Items.SHIELD) ? " behind a shield" : ""); }
+            else { activity="Returning to hold the "+shift+" post"; walk(post,alarm ? 0.8 : 0.65); }
+            return;
+        }
         if(patrolTicks>0) { patrolTicks-=10; activity="Guarding the "+shift+" post"; return; }
-        if(patrolTarget==null) { patrolTarget=patrolPoint(level,town,post); pathTicks=0; }
+        if(patrolTarget==null) { patrolTarget=plan.patrol().isEmpty() ? patrolPoint(level,town,post) : routePoint(level,town,plan,post); pathTicks=0; }
         if(near(patrolTarget)) {
-            getNavigation().stop(); patrolTarget=null; patrolTicks=alarm ? 20 : 40; pathTicks=0;
-            activity="Patrolling the "+shift+" route"; return;
+            getNavigation().stop(); patrolTarget=null; patrolTicks=(alarm ? 20 : 40)*(archer ? 2 : 1); pathTicks=0;
+            activity=(plan.patrol().isEmpty() ? "Patrolling the " : "Walking the marked ")+shift+" route"; return;
         }
         activity="Walking the "+shift+" patrol"; pathTicks+=10;
         if(!walk(patrolTarget,alarm ? 0.8 : 0.65) || pathTicks>600) { patrolTarget=null; patrolTicks=60; pathTicks=0; }

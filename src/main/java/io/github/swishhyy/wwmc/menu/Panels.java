@@ -26,7 +26,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** Builds every settlement screen on the server and applies its buttons. Only the town's owner sees these screens. */
 public final class Panels {
-    public static final int PRIORITY=1,ALARM=2,RECRUIT=3,BREAD=4,POSTS=5,RANGE_UP=6,CREW_UP=7,GROW=8,YIELD_UP=9,TARGET=10,RAISE=11,FORGET=12,JOB=13,JOB_STEP=14;
+    public static final int PRIORITY=1,ALARM=2,RECRUIT=3,BREAD=4,POSTS=5,RANGE_UP=6,CREW_UP=7,GROW=8,YIELD_UP=9,TARGET=10,RAISE=11,FORGET=12,JOB=13,JOB_STEP=14,GUARD_ROLE=15,PATROL=16,PATROL_CLEAR=17;
     public static final int GREEN=0xFF3FA34D,RED=0xFFC0392B,AMBER=0xFFD39B1E,GRAY=0xFF707070;
     private Panels() {}
     private static ServerLevel level(ServerPlayer player) { return (ServerLevel)player.level(); }
@@ -289,7 +289,15 @@ public final class Panels {
         if(Upgrades.widens(role) || Upgrades.hires(role) || Upgrades.yields(role)) tabs.add(new Tab("Upgrades",upgradeRows(station,viewer)));
         List<Action> actions=new ArrayList<>();
         if(role==StructureRole.COOK) actions.add(new Action(BREAD,town.disabledRecipes.contains("bread") ? "Bread: off" : "Bread: on",true,"Cooks bake bread from 3 wheat, up to 32 loaves"));
-        if(role==StructureRole.GUARD) actions.add(new Action(POSTS,"Choose guard posts",true,"Then right-click the ground for the day post and the night post"));
+        if(role==StructureRole.GUARD) {
+            GuardPosts plan=GuardService.posts(level,station);
+            actions.add(new Action(POSTS,"Choose guard posts",true,"Then use the Station Inspector on the ground for the day post and the night post"));
+            actions.add(new Action(GUARD_ROLE,"Role: "+GuardPosts.title(plan.role()),true,GuardPosts.describe(plan.role())+". Click for the next role."));
+            actions.add(new Action(PATROL,"Mark patrol route",true,"Then use the Station Inspector on the ground for up to "+GuardPosts.MAX_PATROL
+                    +" points in order, and sneak-use it to save. The guard walks from its post through each point and back."));
+            actions.add(new Action(PATROL_CLEAR,plan.patrol().isEmpty() ? "No marked route" : "Clear route ("+plan.patrol().size()+")",!plan.patrol().isEmpty(),
+                    "The guard picks its own rounds around the town's stations again"));
+        }
         for(Upgrades.Kind kind:Upgrades.Kind.values()) if(kind.supports(role)) actions.add(upgrade(station,kind,viewer));
         if(role.providesWork()) {
             int priority=town.jobs.level(role);
@@ -391,7 +399,18 @@ public final class Panels {
                 if(vein==null) rows.add(new Row(icon(Items.RAW_IRON),"Ore vein","Place the station within "+OreVeins.REACH+" blocks of an exposed ore to mine it forever instead"));
             }
             case QUARRY -> rows.add(new Row(icon(Items.IRON_PICKAXE),"Excavation",ExcavationService.status(level,town,station)));
-            case GUARD -> rows.add(new Row(icon(Items.IRON_SWORD),"Posts",GuardService.status(level,station)));
+            case GUARD -> {
+                GuardPosts plan=GuardService.posts(level,station);
+                rows.add(new Row(icon(plan.role().equals(GuardPosts.ARCHER) ? Items.BOW : plan.role().equals(GuardPosts.SHIELD) ? Items.SHIELD : Items.IRON_SWORD),
+                        GuardPosts.title(plan.role()),GuardPosts.describe(plan.role())));
+                rows.add(new Row(icon(Items.COMPASS),"Posts",GuardService.status(level,station)));
+                if(plan.patrol().isEmpty()) rows.add(new Row(icon(Items.MAP),"Patrol","No marked route: the guard walks rounds past the town's stations"));
+                for(int n=0;n<plan.patrol().size();n++) rows.add(new Row(icon(Items.MAP),"Patrol point "+(n+1),plan.patrol().get(n).toShortString()));
+                boolean tower=GuardRoles.watchtower(level,station.position());
+                rows.add(new Row(icon(Items.SPYGLASS),tower ? "Watchtower" : "Not a watchtower",tower
+                        ? "Raised "+GuardRoles.TOWER_HEIGHT+"+ blocks above the ground: sees hostiles from "+GuardRoles.TOWER_SIGHT+" blocks and warns of approaching ones"
+                        : "Build the station at least "+GuardRoles.TOWER_HEIGHT+" blocks above the surrounding ground for earlier warnings"));
+            }
             case SMELTERY -> rows.add(new Row(icon(Items.FURNACE),"Furnaces",SettlementService.processingDevices(level,town,station).size()+" furnaces or blast furnaces in range"));
             case COOK -> rows.add(new Row(icon(Items.SMOKER),"Kitchen",SettlementService.processingDevices(level,town,station).size()+" furnaces, smokers or lit campfires; bread "+(town.disabledRecipes.contains("bread") ? "off" : "on")));
             case BLACKSMITH -> rows.add(new Row(icon(Items.ANVIL),"Anvils",SettlementService.anvils(level,town,station).size()+" anvils; repairs warehouse gear and worn stand armor"));
@@ -446,6 +465,15 @@ public final class Panels {
         } else if(action==POSTS && station.role()==StructureRole.GUARD) {
             player.closeContainer();
             GuardService.begin(level(player),player,pos);
+        } else if((action==GUARD_ROLE || action==PATROL_CLEAR) && station.role()==StructureRole.GUARD) {
+            WorldWorkData data=WorldWorkData.get(level(player));
+            GuardPosts plan=GuardService.posts(level(player),station);
+            data.guardPosts.put(pos,action==PATROL_CLEAR ? plan.withPatrol(List.of())
+                    : plan.withRole(GuardPosts.ROLES.get((GuardPosts.ROLES.indexOf(plan.role())+1)%GuardPosts.ROLES.size())));
+            data.setDirty();
+        } else if(action==PATROL && station.role()==StructureRole.GUARD) {
+            player.closeContainer();
+            GuardService.beginPatrol(level(player),player,pos);
         } else if(action==JOB_STEP && station.role().providesWork()) {
             SettlementService.setJobLevel(level(player),town,station.role(),(town.jobs.level(station.role())+1)%(JobBoard.HIGH+1));
         }

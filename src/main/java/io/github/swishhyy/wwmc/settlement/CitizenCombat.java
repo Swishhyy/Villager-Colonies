@@ -10,7 +10,7 @@ import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 
 /**
- * Experienced guards hit harder and shrug off a little damage. Hostiles a citizen
+ * Experienced guards hit harder and shrug off a little damage, and shield guards more. Hostiles a citizen
  * kills give it guard experience, and the loss of a seasoned citizen is written in the town journal.
  */
 public final class CitizenCombat {
@@ -20,7 +20,7 @@ public final class CitizenCombat {
             if(bonus>0) event.setAmount(event.getAmount()*(100+bonus)/100F);
         }
         if(event.getEntity() instanceof CitizenEntity defender && defender.skillRole()==StructureRole.GUARD) {
-            int protection=CitizenSkill.guardProtection(defender.skillLevel(StructureRole.GUARD));
+            int protection=CitizenSkill.guardProtection(defender.skillLevel(StructureRole.GUARD))+GuardRoles.protection(defender);
             if(protection>0) event.setAmount(event.getAmount()*Math.max(0,100-protection)/100F);
         }
     }

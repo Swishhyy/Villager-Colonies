@@ -109,7 +109,7 @@ public final class TownNeeds {
                 case BLACKSMITH -> { if(SettlementService.anvils(level,town,station).isEmpty()) needs.add(new Need(WARNING,icon(Items.ANVIL),name+" needs an anvil","Place an anvil within three blocks of the station",pos)); }
                 case ENCHANTER -> { if(SettlementService.enchantingTables(level,town,station).isEmpty()) needs.add(new Need(WARNING,icon(Items.ENCHANTING_TABLE),name+" needs an enchanting table","Place one within "+station.radius()+" blocks of the station",pos)); }
                 case HOSPITAL -> { if(SettlementService.beds(level,town,station).isEmpty()) needs.add(new Need(WARNING,station(StructureRole.HOSPITAL),name+" has no patient beds","Place complete beds near the Hospital Station",pos)); }
-                case GUARD -> { if(!WorldWorkData.get(level).guardPosts.containsKey(pos)) needs.add(new Need(ADVICE,icon(Items.IRON_SWORD),name+" has no chosen posts","Its guard stands at the station; open it and choose day and night posts",pos)); }
+                case GUARD -> { if(!GuardService.posts(level,station).chosen()) needs.add(new Need(ADVICE,icon(Items.IRON_SWORD),name+" has no chosen posts","Its guard stands at the station; open it and choose day and night posts",pos)); }
                 case TRADER -> {
                     String status=town.trading.status==null ? "" : town.trading.status;
                     if(status.toLowerCase(Locale.ROOT).contains("blocked")) needs.add(new Need(WARNING,icon(Items.COMPASS),"The trade route is blocked",status,pos));
