@@ -1,6 +1,7 @@
 package io.github.swishhyy.wwmc.client.screen;
 
 import io.github.swishhyy.wwmc.menu.MapData;
+import io.github.swishhyy.wwmc.menu.MapMenu;
 import io.github.swishhyy.wwmc.menu.WwmcNetwork;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,29 +9,26 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
  * The shared settlement map, drawn from plain rectangles: claims coloured by relation, trade routes as dotted lines,
  * expedition sites, pings and the player. Click to place the chosen ping; right-click one of yours to remove it.
  */
-public final class MapScreen extends Screen {
+public final class MapScreen extends AbstractContainerScreen<MapMenu> {
     private static final int[] SPANS={256,512,1024,2048,4096,8192,16384};
     private static final List<String> KINDS=List.of("meet","bridge","build","danger","resource");
-    private MapData map;
     private int span=2,kind,viewX,viewZ;
-    public MapScreen(MapData map) {
-        super(Component.literal("Settlement map"));
-        this.map=map; viewX=map.centerX(); viewZ=map.centerZ();
+    private List<Component> hover=List.of();
+    public MapScreen(MapMenu menu,Inventory inventory,Component title) {
+        super(menu,inventory,title,Minecraft.getInstance().getWindow().getGuiScaledWidth(),Minecraft.getInstance().getWindow().getGuiScaledHeight());
+        viewX=menu.map.centerX(); viewZ=menu.map.centerZ();
     }
-    /** Opens the map, or refreshes it in place after a ping changes. */
-    public static void show(MapData map) {
-        Minecraft mc=Minecraft.getInstance();
-        if(mc.screen instanceof MapScreen open) open.map=map; else mc.setScreen(new MapScreen(map));
-    }
+    private MapData map() { return menu.map; }
     private int size() { return Math.max(64,Math.min(width-20,height-64)); }
     private int left() { return (width-size())/2; }
     private int top() { return 22; }
@@ -51,6 +49,7 @@ public final class MapScreen extends Screen {
         return switch(state) { case MapData.CLEARED -> 0xFF8A8A8A; case MapData.CLAIMED -> 0xFFE0B03A; case MapData.RAID -> 0xFFFF7A00; default -> 0xFF8E1B1B; };
     }
     @Override protected void init() {
+        super.init();
         int y=height-38,x=left(),w=size();
         int small=Math.max(16,(w-150)/8);
         Button ping=Button.builder(Component.literal("Ping: "+kindTitle(KINDS.get(kind))),b -> { kind=(kind+1)%KINDS.size(); rebuildWidgets(); })
@@ -88,8 +87,9 @@ public final class MapScreen extends Screen {
             if(inside(x,y)) g.fill(x,y,x+2,y+2,color);
         }
     }
-    @Override public void extractRenderState(GuiGraphicsExtractor g,int mouseX,int mouseY,float partialTick) {
-        super.extractRenderState(g,mouseX,mouseY,partialTick);
+    /** The map is the background; the buttons draw over it, and hover text after everything. */
+    @Override public void extractBackground(GuiGraphicsExtractor g,int mouseX,int mouseY,float partialTick) {
+        MapData map=map();
         int left=left(),top=top(),size=size();
         g.fill(left-2,top-2,left+size+2,top+size+2,0xFF1E1E1E);
         g.fill(left,top,left+size,top+size,0xFF33402E);
@@ -149,14 +149,18 @@ public final class MapScreen extends Screen {
             g.fill(lx,ly+2,lx+6,ly+8,relationColor(relation)); g.text(font,label,lx+8,ly+1,0xFFDDDDDD,false); lx+=14+font.width(label);
         }
         g.fill(lx,ly+2,lx+6,ly+8,0xFF8E1B1B); g.text(font,"Sites",lx+8,ly+1,0xFFDDDDDD,false);
-        if(!top0.isEmpty()) g.setComponentTooltipForNextFrame(font,top0,mouseX,mouseY);
-        else if(!hover.isEmpty()) g.setComponentTooltipForNextFrame(font,hover,mouseX,mouseY);
+        this.hover=!top0.isEmpty() ? top0 : hover;
+    }
+    @Override protected void extractLabels(GuiGraphicsExtractor g,int mouseX,int mouseY) {}
+    @Override public void extractRenderState(GuiGraphicsExtractor g,int mouseX,int mouseY,float partialTick) {
+        super.extractRenderState(g,mouseX,mouseY,partialTick);
+        if(!hover.isEmpty() && inside(mouseX,mouseY)) g.setComponentTooltipForNextFrame(font,hover,mouseX,mouseY);
     }
     @Override public boolean mouseClicked(MouseButtonEvent event,boolean doubleClick) {
         int x=(int)event.x(),y=(int)event.y();
         if(inside(x,y)) {
             if(event.button()==1) {
-                for(MapData.Mark ping:map.pings()) if(ping.removable() && Math.abs(sx(ping.x())-x)<=4 && Math.abs(sz(ping.z())-y)<=4) {
+                for(MapData.Mark ping:map().pings()) if(ping.removable() && Math.abs(sx(ping.x())-x)<=4 && Math.abs(sz(ping.z())-y)<=4) {
                     ClientPacketDistributor.sendToServer(new WwmcNetwork.MapActionPayload(2,0,0,"",ping.id()));
                     return true;
                 }

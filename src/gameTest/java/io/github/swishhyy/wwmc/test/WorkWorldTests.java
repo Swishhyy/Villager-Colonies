@@ -142,6 +142,7 @@ public final class WorkWorldTests {
             helper.succeedWhen(() -> {
                 helper.assertTrue(OreVeins.readyAt(level,ore)>0,"Vein not worked: "+town.citizen().activity()+" at "+town.citizen().blockPosition());
                 helper.assertTrue(level.getBlockState(ore).is(Blocks.IRON_ORE),"The vein's ore was removed");
+                helper.assertTrue(town.citizen().experience(StructureRole.MINE)>0,"Mining the vein earns the miner experience");
                 leave(level,town); CitizenNavigationTests.release(level,start,chunks);
             });
         });

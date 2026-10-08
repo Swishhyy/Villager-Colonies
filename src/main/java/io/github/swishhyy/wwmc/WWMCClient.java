@@ -55,6 +55,7 @@ public final class WWMCClient {
         event.register(WwmcMenus.CRAFTSMAN.get(),CraftsmanScreen::new);
         event.register(WwmcMenus.CITIZEN.get(),CitizenScreen::new);
         event.register(WwmcMenus.TRADER.get(),TraderScreen::new);
+        event.register(WwmcMenus.MAP.get(),io.github.swishhyy.wwmc.client.screen.MapScreen::new);
     }
     /** A refresh only applies to the screen it was built for. */
     private static void payloads(RegisterClientPayloadHandlersEvent event) {
@@ -62,6 +63,8 @@ public final class WWMCClient {
             if(context.player().containerMenu.containerId==payload.containerId() && context.player().containerMenu instanceof ViewMenu menu) menu.view(payload.view());
         });
         event.register(WwmcNetwork.HighlightPayload.TYPE,(payload,context) -> StationRangePreview.highlight(payload.pos(),payload.seconds()));
-        event.register(WwmcNetwork.MapPayload.TYPE,(payload,context) -> io.github.swishhyy.wwmc.client.screen.MapScreen.show(payload.map()));
+        event.register(WwmcNetwork.MapPayload.TYPE,(payload,context) -> {
+            if(context.player().containerMenu.containerId==payload.containerId() && context.player().containerMenu instanceof io.github.swishhyy.wwmc.menu.MapMenu menu) menu.map=payload.map();
+        });
     }
 }

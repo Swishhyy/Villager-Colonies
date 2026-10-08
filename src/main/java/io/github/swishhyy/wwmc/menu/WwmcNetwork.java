@@ -40,10 +40,11 @@ public final class WwmcNetwork {
             BlockPos.STREAM_CODEC,HighlightPayload::pos,ByteBufCodecs.VAR_INT,HighlightPayload::seconds,HighlightPayload::new);
         @Override public Type<HighlightPayload> type() { return TYPE; }
     }
-    /** The shared settlement map for this player; the client opens or refreshes its map screen. */
-    public record MapPayload(MapData map) implements CustomPacketPayload {
+    /** A fresh map for the open map screen with this container id. */
+    public record MapPayload(int containerId,MapData map) implements CustomPacketPayload {
         public static final Type<MapPayload> TYPE=new Type<>(Identifier.fromNamespaceAndPath(WWMC.MODID,"map"));
-        public static final StreamCodec<RegistryFriendlyByteBuf,MapPayload> STREAM_CODEC=MapData.STREAM_CODEC.map(MapPayload::new,MapPayload::map);
+        public static final StreamCodec<RegistryFriendlyByteBuf,MapPayload> STREAM_CODEC=StreamCodec.composite(
+            ByteBufCodecs.VAR_INT,MapPayload::containerId,MapData.STREAM_CODEC,MapPayload::map,MapPayload::new);
         @Override public Type<MapPayload> type() { return TYPE; }
     }
     /** A click on the map: refresh it, place a ping of a kind at a column, or remove a ping by id. */

@@ -2,6 +2,8 @@ package io.github.swishhyy.wwmc.settlement;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.github.swishhyy.wwmc.menu.MapData;
+import io.github.swishhyy.wwmc.menu.MapMenu;
+import net.minecraft.world.SimpleMenuProvider;
 import io.github.swishhyy.wwmc.menu.WwmcNetwork;
 import java.util.*;
 import net.minecraft.commands.Commands;
@@ -22,7 +24,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public final class SettlementMap {
     public static final int REFRESH=0,PLACE=1,REMOVE=2;
     private static final int LIMIT=29_999_000;
-    private SettlementMap() {}
     private static List<Settlement> managed(ServerLevel level,UUID player) {
         return SettlementData.get(level).settlements.stream().filter(t -> !t.trading.npc && TownAccess.manages(t,player)).toList();
     }
@@ -73,8 +74,13 @@ public final class SettlementMap {
                     (ping.name().isEmpty() ? "A player" : ping.name())+" of "+town.name,ping.author().equals(id) || TownAccess.manages(town,id)));
         return new MapData(viewer.getBlockX(),viewer.getBlockZ(),towns,routes,sites,pings);
     }
+    /** Opens the map, or refreshes it in place when it is already open. */
     public static void open(ServerPlayer player) {
-        PacketDistributor.sendToPlayer(player,new WwmcNetwork.MapPayload(build((ServerLevel)player.level(),player)));
+        MapData map=build((ServerLevel)player.level(),player);
+        if(player.containerMenu instanceof MapMenu menu) {
+            menu.map=map; PacketDistributor.sendToPlayer(player,new WwmcNetwork.MapPayload(menu.containerId,map)); return;
+        }
+        player.openMenu(new SimpleMenuProvider((id,inventory,p) -> new MapMenu(id,map),Component.literal("Settlement map")),buf -> MapData.STREAM_CODEC.encode(buf,map));
     }
     /** The town a player's pings belong to: the managed town they stand in, or their nearest. */
     private static Settlement home(ServerLevel level,ServerPlayer player) {

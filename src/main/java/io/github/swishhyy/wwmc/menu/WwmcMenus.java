@@ -14,4 +14,5 @@ public final class WwmcMenus {
     public static final DeferredHolder<MenuType<?>,MenuType<CraftsmanMenu>> CRAFTSMAN=MENUS.register("craftsman",() -> IMenuTypeExtension.create(CraftsmanMenu::read));
     public static final DeferredHolder<MenuType<?>,MenuType<CitizenMenu>> CITIZEN=MENUS.register("citizen",() -> IMenuTypeExtension.create(CitizenMenu::read));
     public static final DeferredHolder<MenuType<?>,MenuType<TraderMenu>> TRADER=MENUS.register("trader",() -> IMenuTypeExtension.create(TraderMenu::read));
+    public static final DeferredHolder<MenuType<?>,MenuType<MapMenu>> MAP=MENUS.register("map",() -> IMenuTypeExtension.create(MapMenu::read));
 }
