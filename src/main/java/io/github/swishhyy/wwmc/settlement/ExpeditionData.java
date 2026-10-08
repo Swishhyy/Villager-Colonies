@@ -49,9 +49,11 @@ public final class ExpeditionData extends SavedData {
             this.objective=objective; this.resource=resource; this.captives=new ArrayList<>(captives); this.leader=leader.orElse(null); this.rewarded=rewarded;
         }
         public String title() { return switch(kind) { case "mine" -> "Occupied Mine"; case "fort" -> "Ruined Fort"; case "raid" -> "Bandit Raid"; default -> "Bandit Camp"; }; }
+        /** The objective in force: forts found before objectives still hold a captain and a schematic. */
+        public String task() { return objective.isEmpty() && kind.equals("fort") ? LEADER : objective; }
         /** What the expedition must do here, for the Sites list. */
         public String goal() {
-            return switch(objective) {
+            return switch(task()) {
                 case RESCUE -> captives.isEmpty() && spawned ? "Captives freed" : "Rescue the captive villagers held in its pen";
                 case RECOVER -> "Recover the stolen supplies in its second barrel";
                 case LEADER -> "Defeat its Bandit Captain, who carries a research schematic";

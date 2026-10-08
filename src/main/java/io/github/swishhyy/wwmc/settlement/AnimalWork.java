@@ -86,8 +86,8 @@ public final class AnimalWork {
         if(!worker.workAt(level,station.position())) { worker.workActivity("Walking to the cutting table"); worker.workWalk(station.position()); return; }
         worker.getNavigation().stop();
         worker.workActivity("Preparing carcasses into raw portions for the cook");
-        progress+=10;
-        if(progress>=worker.effort(Config.WORK_TICKS.get())) {
+        progress+=worker.workStep();
+        if(progress>=Config.WORK_TICKS.get()) {
             progress=0; Carcasses.prepare(worker.bag()); worker.swing(InteractionHand.MAIN_HAND);
             worker.wearTool(); worker.gainExperience(StructureRole.BUTCHER,1);
         }
@@ -232,8 +232,8 @@ public final class AnimalWork {
         worker.getLookControl().setLookAt(fishing.water().getX()+0.5,fishing.water().getY()+0.9,fishing.water().getZ()+0.5);
         worker.workActivity("Fishing: "+progress/20+" / "+Config.FISHING_SECONDS.get()+" seconds");
         if(progress==0) worker.swing(InteractionHand.MAIN_HAND);
-        progress+=10;
-        if(progress>=worker.effort(Specialization.ticks(town,StructureRole.FISHERMAN,Config.FISHING_SECONDS.get()*20))) {
+        progress+=worker.workStep();
+        if(progress>=Specialization.ticks(town,StructureRole.FISHERMAN,Config.FISHING_SECONDS.get()*20)) {
             progress=0; worker.bag().offer((worker.getRandom().nextBoolean() ? Carcasses.Kind.COD : Carcasses.Kind.SALMON).stack());
             worker.wearTool(); worker.swing(InteractionHand.MAIN_HAND); worker.gainExperience(StructureRole.FISHERMAN,1);
             level.sendParticles(ParticleTypes.SPLASH,fishing.water().getX()+0.5,fishing.water().getY()+0.9,fishing.water().getZ()+0.5,5,0.3,0.1,0.3,0);

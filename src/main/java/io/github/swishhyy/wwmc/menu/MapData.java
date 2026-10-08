@@ -33,13 +33,15 @@ public record MapData(int centerX,int centerZ,List<Town> towns,List<Route> route
         for(int n=0;n<count;n++) items.add(one.apply(buf));
         return items;
     }
+    /** Long town and player names are clipped, so no name can exceed what the packet allows. */
+    private static String cut(String text,int max) { return text.length()<=max ? text : text.substring(0,max-1)+"…"; }
     private static void write(RegistryFriendlyByteBuf buf,MapData map) {
         buf.writeInt(map.centerX()); buf.writeInt(map.centerZ());
-        list(buf,map.towns(),(b,t) -> { b.writeUtf(t.name(),64); b.writeInt(t.x()); b.writeInt(t.z()); b.writeVarInt(t.radius()); b.writeVarInt(t.relation()); });
+        list(buf,map.towns(),(b,t) -> { b.writeUtf(cut(t.name(),64),64); b.writeInt(t.x()); b.writeInt(t.z()); b.writeVarInt(t.radius()); b.writeVarInt(t.relation()); });
         list(buf,map.routes(),(b,r) -> { b.writeInt(r.x1()); b.writeInt(r.z1()); b.writeInt(r.x2()); b.writeInt(r.z2()); b.writeBoolean(r.extra()); });
-        list(buf,map.sites(),(b,s) -> { b.writeInt(s.x()); b.writeInt(s.z()); b.writeUtf(s.title(),64); b.writeUtf(s.detail(),256); b.writeVarInt(s.state()); });
-        list(buf,map.pings(),(b,m) -> { b.writeUtf(m.id(),64); b.writeInt(m.x()); b.writeInt(m.z()); b.writeUtf(m.kind(),16); b.writeUtf(m.label(),128);
-            b.writeUtf(m.author(),64); b.writeBoolean(m.removable()); });
+        list(buf,map.sites(),(b,s) -> { b.writeInt(s.x()); b.writeInt(s.z()); b.writeUtf(cut(s.title(),64),64); b.writeUtf(cut(s.detail(),256),256); b.writeVarInt(s.state()); });
+        list(buf,map.pings(),(b,m) -> { b.writeUtf(cut(m.id(),64),64); b.writeInt(m.x()); b.writeInt(m.z()); b.writeUtf(cut(m.kind(),16),16); b.writeUtf(cut(m.label(),128),128);
+            b.writeUtf(cut(m.author(),64),64); b.writeBoolean(m.removable()); });
     }
     private static MapData read(RegistryFriendlyByteBuf buf) {
         int x=buf.readInt(),z=buf.readInt();

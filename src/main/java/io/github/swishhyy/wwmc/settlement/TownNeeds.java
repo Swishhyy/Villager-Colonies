@@ -36,7 +36,7 @@ public final class TownNeeds {
         String text=activity.toLowerCase(Locale.ROOT);
         if(text.startsWith("off duty") || text.contains("hospital bed")) return false;
         // Growing crops, saplings and an idle smith are ordinary waits, not needs.
-        return text.startsWith("needs ") || text.contains(": needs ") || text.startsWith("cannot reach") || text.startsWith("holding ")
+        return text.startsWith("needs ") || text.contains(": needs ") || text.startsWith("cannot reach")
                 || text.startsWith("waiting for couriers to deliver") || text.startsWith("waiting for courier-delivered") || text.contains("is full");
     }
     public static List<Need> assess(ServerLevel level,Settlement town) {
@@ -92,8 +92,8 @@ public final class TownNeeds {
             StructureRole role=station.role();
             String name=role.title()+" Station";
             // A trader with no route to run, and a hospital before its medic is funded, are idle by design.
-            boolean idle=role==StructureRole.TRADER && !TradeRoutes.canDepart(level,town) || role==StructureRole.HOSPITAL && !town.campaign.projects.contains("hospital");
-            if(role.providesWork() && !idle && town.jobs.level(role)!=JobBoard.OFF && town.jobs.assigned(pos)==0)
+            boolean byDesign=role==StructureRole.TRADER && !TradeRoutes.canDepart(level,town) || role==StructureRole.HOSPITAL && !town.campaign.projects.contains("hospital");
+            if(role.providesWork() && !byDesign && town.jobs.level(role)!=JobBoard.OFF && town.jobs.assigned(pos)==0)
                 needs.add(new Need(WARNING,station(role),name+" has no worker","Recruit citizens, or raise this job's priority on the Jobs tab so a citizen moves here",pos));
             if(role.keepsJobStorage()) {
                 if(SettlementService.jobStorage(level,town,station).isEmpty())

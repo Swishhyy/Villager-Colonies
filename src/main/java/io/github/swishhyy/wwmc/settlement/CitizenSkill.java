@@ -39,8 +39,11 @@ public final class CitizenSkill {
     public static int toolSaving(StructureRole role,int level) { return role!=null && wearsTools(role) ? 5*Math.clamp(level,0,MAX_LEVEL) : 0; }
     public static int guardDamage(int level) { return 5*Math.clamp(level,0,MAX_LEVEL); }
     public static int guardProtection(int level) { return 3*Math.clamp(level,0,MAX_LEVEL); }
-    /** Ticks between a guard's swings or shots. */
-    public static int guardCooldown(int level) { return 20-Math.clamp(level,0,MAX_LEVEL); }
+    /**
+     * Ticks before a guard's next swing or shot, given a roll from 0 to 99. Guards act every ten ticks, so experience
+     * is a chance of the quick ten-tick recovery: 10% per level.
+     */
+    public static int guardCooldown(int level,int roll) { return roll<10*Math.clamp(level,0,MAX_LEVEL) ? 10 : 20; }
     /** What the level brings at this job, for the citizen screen. */
     public static String perk(StructureRole role,int level) {
         if(level<=0) return "No bonus yet: finished work earns experience";

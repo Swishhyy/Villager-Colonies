@@ -19,6 +19,8 @@ public final class GuardRoles {
     public static final int TOWER_HEIGHT=6,TOWER_SIGHT=48,SIGNAL_SIGHT=64;
     private static final int WARNING_TICKS=2400,SIGNAL_WARNING_TICKS=1200;
     private static final Map<UUID,Long> WARNED=new HashMap<>();
+    /** Hostiles each town's lookouts already reported, remembered while they stay in view and ten minutes after. */
+    private static final Map<UUID,Map<UUID,Long>> REPORTED=new HashMap<>();
     private GuardRoles() {}
     public static String role(ServerLevel level,BlockPos station) { return GuardService.posts(level,new Station(station,StructureRole.GUARD)).role(); }
     /** A station at least six blocks above the lowest ground eight blocks to each side. */
@@ -41,9 +43,15 @@ public final class GuardRoles {
         if(station==null || !GuardPosts.SHIELD.equals(role(level,station))) return 0;
         return guard.getOffhandItem().is(Items.SHIELD) ? 25 : 15;
     }
-    /** Guards in watchtowers report hostiles closing on the claim from outside it, at most every two minutes. */
+    /**
+     * Guards in watchtowers report newly sighted hostiles outside the claim, at most every two minutes. A hostile
+     * already reported is not reported again while it lingers in view, and only a band of three or more is written
+     * in the journal, so a quiet night does not fill it.
+     */
     public static void lookout(ServerLevel level,Settlement town,List<CitizenEntity> citizens) {
         long now=level.getGameTime();
+        Map<UUID,Long> known=REPORTED.computeIfAbsent(town.id,id -> new HashMap<>());
+        known.values().removeIf(until -> until<=now);
         if(WARNED.getOrDefault(town.id,Long.MIN_VALUE)>now) return;
         for(CitizenEntity guard:citizens) {
             if(!guard.isGuard()) continue;
@@ -52,16 +60,18 @@ public final class GuardRoles {
             int sight=towerSight(town);
             List<Monster> seen=level.getEntitiesOfClass(Monster.class,guard.getBoundingBox().inflate(sight),
                     m -> m.isAlive() && !town.contains(m.blockPosition()) && guard.distanceToSqr(m)<=sight*sight && guard.hasLineOfSight(m));
-            if(seen.isEmpty()) continue;
-            Monster first=seen.stream().min(Comparator.comparingDouble(guard::distanceToSqr)).get();
-            String text="Watchtower lookout "+guard.getName().getString()+" spotted "+seen.size()+(seen.size()==1 ? " hostile" : " hostiles")
-                    +" approaching "+town.name+": "+Panels.directions(station,first.blockPosition())+" of the tower.";
+            List<Monster> fresh=seen.stream().filter(m -> !known.containsKey(m.getUUID())).toList();
+            for(Monster monster:seen) known.put(monster.getUUID(),now+12000);
+            if(fresh.isEmpty()) continue;
+            Monster first=fresh.stream().min(Comparator.comparingDouble(guard::distanceToSqr)).get();
+            String text="Watchtower lookout "+guard.getName().getString()+" spotted "+fresh.size()+(fresh.size()==1 ? " hostile" : " hostiles")
+                    +" outside "+town.name+": "+Panels.directions(station,first.blockPosition())+" of the tower.";
             WARNED.put(town.id,now+(Research.has(town,"signal_fires") ? SIGNAL_WARNING_TICKS : WARNING_TICKS));
-            CampaignService.record(level,town,text);
+            if(fresh.size()>=3) CampaignService.record(level,town,text);
             for(ServerPlayer player:level.players()) if(TownAccess.manages(town,player.getUUID()) && town.contains(player.blockPosition()))
                 SettlementService.notify(player,text);
             return;
         }
     }
-    public static void forget() { WARNED.clear(); }
+    public static void forget() { WARNED.clear(); REPORTED.clear(); }
 }

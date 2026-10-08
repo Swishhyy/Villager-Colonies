@@ -60,7 +60,10 @@ public final class CampaignProgressChecks {
         JsonObject legacy=json.getAsJsonObject();
         for(String key:List.of("objective","resource","captives","leader","rewarded")) legacy.remove(key);
         var old=ExpeditionData.Site.CODEC.parse(JsonOps.INSTANCE,legacy).getOrThrow();
-        check(old.objective.isEmpty() && old.captives.isEmpty() && old.leader==null && old.goal().startsWith("Drive out"),"Sites found before objectives keep their plain goal");
+        check(old.objective.isEmpty() && old.captives.isEmpty() && old.leader==null && old.task().equals(ExpeditionData.Site.LEADER),
+                "Forts found before objectives still hold a captain and a schematic");
+        var camp=new ExpeditionData.Site(UUID.randomUUID(),BlockPos.ZERO,"camp","0:0");
+        check(camp.task().isEmpty() && camp.goal().startsWith("Drive out"),"Other sites found before objectives keep their plain goal");
         check(Regions.ALL.stream().map(Regions.Region::id).distinct().count()==Regions.ALL.size() && Regions.byId("coast")==Regions.COAST && Regions.byId("moon")==null,
                 "Regions have distinct ids");
         for(Research.Tech tech:Research.ALL) {

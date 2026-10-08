@@ -69,13 +69,13 @@ Every site found from 0.13.0 has an objective. Sites found earlier keep their pl
 
 | Site | Objective | Reward |
 | --- | --- | --- |
-| Bandit Camp | **Rescue**: two or three captive villagers wait unharmed in a fenced pen | They join your town once you stand among them after the fight. When you leave, the recall service brings them home. |
+| Bandit Camp | **Rescue**: two captive villagers wait unharmed in a fenced pen | They join your town once you stand among them after the fight. When you leave, the recall service brings them home. |
 | Bandit Camp | **Recover**: a second barrel holds stolen iron, gold, leather, bread, emeralds and a pickaxe | The goods themselves; carry them home or claim the site |
 | Ruined Fort | **Defeat the Bandit Captain**: a vindicator in iron armor with 60 health | Its armor and axe drop; your town gains a research schematic |
 | Occupied Mine | **Drive out the occupiers** | An ore vein for an outpost |
-| Neighbor raid | **Defend a neutral town** raided while a friendly player visits, at most once every two days per town | Goodwill (+150) and a volunteer citizen, if your town has room |
+| Neighbor raid | **Defend a neutral town** raided while a friendly player visits, at most once every two days per town | If a player or a player town's citizen killed a raider: goodwill (+150) and a volunteer citizen, if your town has room. A raid the neutral guards repel alone earns nothing. |
 
-Rewards go to the town of the nearest player who manages one when the site is cleared. That player must be within 24 blocks of a site, or 96 blocks of a raided town. Campaign -> Sites and the settlement map show each site's objective and its region.
+Rewards go to a town managed by the nearest player when the site is cleared. That player must be within 24 blocks of a site, or 96 blocks of a raided town. A main town is credited before an outpost, so schematics reach the town that does the research. Forts found before 0.13.0 also hold a captain if not yet entered; a fort cleared before the update gives its schematic the next time a manager visits it. Campaign -> Sites and the settlement map show each site's objective and its region.
 
 Occupied sites close to a trader can issue a 30-second ambush warning. Small convoy attacks launch only with a nearby player and respect the configured bandit cap. Clearing the camp stops that site's ambushes. Existing population-scaled settlement waves continue, now recognizing a present steward as well as the owner. Absent or distant towns retain their major-wave protection.
 

@@ -113,6 +113,7 @@ public final class SettlementMap {
     }
     /** A click on the map screen, checked here as if it were a command. */
     public static void act(ServerPlayer player,int action,int x,int z,String kind,String id) {
+        if(!(player.containerMenu instanceof MapMenu)) return;
         String message=switch(action) {
             case PLACE -> ping(player,x,z,kind,"");
             case REMOVE -> remove(player,id);

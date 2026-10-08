@@ -20,8 +20,9 @@ public final class ProgressChecks {
                 "Work speed rises modestly; cooks and smelters a little more; guards fight better instead");
         check(CitizenSkill.toolSaving(StructureRole.MINE,4)==20 && CitizenSkill.toolSaving(StructureRole.LUMBER,2)==10 && CitizenSkill.toolSaving(StructureRole.FARM,4)==0,
                 "Miners and lumberjacks spare their tools; farmers have no tool to spare");
-        check(CitizenSkill.guardDamage(4)==20 && CitizenSkill.guardProtection(4)==12 && CitizenSkill.guardCooldown(4)==16 && CitizenSkill.guardCooldown(0)==20,
-                "A master guard hits a fifth harder, takes 12% less damage and swings a little faster");
+        check(CitizenSkill.guardDamage(4)==20 && CitizenSkill.guardProtection(4)==12,"A master guard hits a fifth harder and takes 12% less damage");
+        check(CitizenSkill.guardCooldown(4,39)==10 && CitizenSkill.guardCooldown(4,40)==20 && CitizenSkill.guardCooldown(0,0)==20,
+                "A master guard recovers early from four swings in ten; a novice never does");
         check(CitizenSkill.perk(StructureRole.MINE,0).startsWith("No bonus") && CitizenSkill.perk(StructureRole.MINE,2).contains("10% less tool wear"),"The citizen screen explains each level");
         System.out.println("Passed "+checks+" experience checks.");
     }

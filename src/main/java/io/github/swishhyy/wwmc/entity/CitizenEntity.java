@@ -389,6 +389,14 @@ public final class CitizenEntity extends Villager {
     }
     /** Ticks that work taking {@code base} ticks for an ordinary newcomer takes this citizen. */
     public int effort(int base) { return Math.max(1,base*100/(100+speedBonus())); }
+    /**
+     * Progress from one ten-tick work step. Work advances in whole steps, so a small speed bonus would round away;
+     * instead it is the chance of a double step, which gives the same speed on average.
+     */
+    public int workStep() {
+        int bonus=speedBonus();
+        return bonus>0 && getRandom().nextInt(100)<bonus ? 20 : 10;
+    }
     /** Of {@code uses} uses of a tool, how many cost durability; experienced workers spare some. */
     public int toolWear(int uses) {
         StructureRole role=skillRole();
@@ -1280,7 +1288,7 @@ public final class CitizenEntity extends Villager {
                 && carries(GuardWeapons::bow) && clearShot(level,enemy) && hold(GuardWeapons::bow)) {
             getNavigation().stop(); activity="Shooting at an attacker";
             if(!isUsingItem()) { if(guardAttackTicks==0) startUsingItem(InteractionHand.MAIN_HAND); }
-            else if(getTicksUsingItem()>=20) { stopUsingItem(); shoot(level,enemy); guardAttackTicks=CitizenSkill.guardCooldown(skillLevel(StructureRole.GUARD)); }
+            else if(getTicksUsingItem()>=20) { stopUsingItem(); shoot(level,enemy); guardAttackTicks=CitizenSkill.guardCooldown(skillLevel(StructureRole.GUARD),getRandom().nextInt(100)); }
             return;
         }
         if(isUsingItem()) stopUsingItem();
@@ -1291,7 +1299,7 @@ public final class CitizenEntity extends Villager {
             if(guardAttackTicks==0) {
                 swing(InteractionHand.MAIN_HAND);
                 if(doHurtTarget(level,enemy) && GuardWeapons.melee(getMainHandItem())) getMainHandItem().hurtAndBreak(1,this,EquipmentSlot.MAINHAND);
-                guardAttackTicks=CitizenSkill.guardCooldown(skillLevel(StructureRole.GUARD));
+                guardAttackTicks=CitizenSkill.guardCooldown(skillLevel(StructureRole.GUARD),getRandom().nextInt(100));
             }
         } else walk(enemy.blockPosition(),0.8);
     }
@@ -1464,8 +1472,8 @@ public final class CitizenEntity extends Villager {
         getNavigation().stop(); pathTicks=0;
         getLookControl().setLookAt(bench.getX()+0.5,bench.getY()+0.5,bench.getZ()+0.5);
         activity="Crafting "+order.label();
-        workProgress+=10;
-        if(workProgress>=effort(CRAFT_TICKS)) {
+        workProgress+=workStep();
+        if(workProgress>=CRAFT_TICKS) {
             workProgress=0; swing(InteractionHand.MAIN_HAND); cargo.offer(Crafting.craft(cargo,order)); gainExperience(station.role(),1);
             order=null; processingDelivery=true; processingSupplied=false;
         }
@@ -1502,8 +1510,8 @@ public final class CitizenEntity extends Villager {
         getNavigation().stop(); pathTicks=0;
         getLookControl().setLookAt(bench.getX()+0.5,bench.getY()+0.5,bench.getZ()+0.5);
         activity="Crafting "+product;
-        workProgress+=10;
-        if(workProgress>=effort(CRAFT_TICKS)) {
+        workProgress+=workStep();
+        if(workProgress>=CRAFT_TICKS) {
             workProgress=0;
             if(Workshop.craft(level,cargo,craftJob.plan(),cargo::offer)) { swing(InteractionHand.MAIN_HAND); gainExperience(station.role(),1); }
             else craftJob=null;
@@ -1703,7 +1711,7 @@ public final class CitizenEntity extends Villager {
         processingDelivery=collected>0 || cargo.needsDelivery();
         processingSupplied=false;
         if(collected>0) gainExperience(station.role(),1);
-        nextProcessingAt=processingDelivery ? 0 : level.getGameTime()+effort(40);
+        nextProcessingAt=processingDelivery ? 0 : level.getGameTime()+(workStep()>10 ? 20 : 40);
         // Rotate through the station's appliances; progress stays in their block entities.
         processor=devices.get((devices.indexOf(processor)+1)%devices.size());
         processorStand=null;
@@ -1849,8 +1857,8 @@ public final class CitizenEntity extends Villager {
             if(!BlacksmithRepair.supplied(repairItem,List.of(cargo))) { activity="Waiting for this item's matching repair material"; nextSmithAt=level.getGameTime()+100; return; }
         }
         if(!canUse(level,repairAnvil)) { activity="Carrying equipment to the anvil"; walk(repairAnvil); return; }
-        getNavigation().stop(); activity="Repairing equipment at the anvil"; workProgress+=10;
-        if(workProgress>=effort(BlacksmithRepair.WORK_TICKS)) {
+        getNavigation().stop(); activity="Repairing equipment at the anvil"; workProgress+=workStep();
+        if(workProgress>=BlacksmithRepair.WORK_TICKS) {
             if(BlacksmithRepair.repair(repairItem,cargo)) { swing(InteractionHand.MAIN_HAND); playSound(SoundEvents.ANVIL_USE,0.4F,1.0F); gainExperience(StructureRole.BLACKSMITH,2); }
             workProgress=0;
         }
@@ -2286,11 +2294,11 @@ public final class CitizenEntity extends Villager {
                     +(OreVeins.readyAt(level,target)-level.getGameTime()+19)/20+"s)";
             return;
         }
-        workProgress+=10;
+        workProgress+=workStep();
         // Stone yields to a pickaxe in about a second; harder blocks and weaker tools take longer.
         int required=action==Action.EXCAVATE || action==Action.CAVE || action==Action.VEIN ? ExcavationService.breakTicks(level,target,getMainHandItem())
                 : action==Action.SUPPORT ? 20 : Config.WORK_TICKS.get();
-        if(workProgress>=effort(Specialization.ticks(town,station.role(),required))) harvest(level,town,station);
+        if(workProgress>=Specialization.ticks(town,station.role(),required)) harvest(level,town,station);
     }
     private final class WorkGoal extends Goal {
         WorkGoal() { setFlags(EnumSet.of(Flag.MOVE,Flag.LOOK)); }
