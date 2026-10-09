@@ -15,9 +15,12 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.SlabType;
+import net.minecraft.world.clock.WorldClocks;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.testframework.DynamicTest;
 import net.neoforged.testframework.annotation.TestHolder;
 import net.neoforged.testframework.conf.Feature;
@@ -31,6 +34,15 @@ public final class TradeWorldTests {
         bus.addListener(CitizenNavigationTests::registerTickets);
         FrameworkConfiguration.builder(Identifier.fromNamespaceAndPath("wwmc_tests","travel"))
                 .enable(Feature.GAMETEST).build().create().init(bus,container);
+        NeoForge.EVENT_BUS.addListener((ServerStartedEvent event) -> {
+            var server=event.getServer();
+            // These fixtures exercise daytime jobs. Long earlier batches must not turn later checks into sleep tests.
+            // Pause only the daylight clock: normal game ticks, AI, food and research cadence still advance.
+            server.getCommands().performPrefixedCommand(server.createCommandSourceStack(),"time set 1000");
+            server.clockManager().setPaused(server.registryAccess().getOrThrow(WorldClocks.OVERWORLD),true);
+            if(SettlementService.night(server.overworld())) throw new IllegalStateException("Daytime work fixtures started at night");
+            WWMC.LOGGER.info("[WWMC tests] Daylight clock fixed for daytime job fixtures");
+        });
     }
 
     @GameTest(timeoutTicks=18000)
