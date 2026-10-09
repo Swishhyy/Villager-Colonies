@@ -114,7 +114,7 @@ jobs:
             gh release upload "$tag" "$jar" "$jar.sha256" --clobber
           else
             gh release create "$tag" "$jar" "$jar.sha256" \
-              --target "$GITHUB_SHA" --title "World War MC $WWMC_VERSION" \
+              --target "$GITHUB_SHA" --title "Villager Colonies $WWMC_VERSION" \
               --notes-file release-artifact/release-notes.md --draft --prerelease=false
           fi
           gh release edit "$tag" --draft=false --prerelease=false --latest \

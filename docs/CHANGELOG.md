@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Rename the public project to **Villager Colonies**, with matching mod-list, creative-tab, settings and handbook branding.
+- Add the 400 × 400 project logo for CurseForge, the GitHub README and the in-game mod list.
+- Keep the `wwmc` namespace, commands, configuration files, saved data and JAR naming compatible with existing installations.
+
 [Project overview](../README.md) · [All guides](README.md) · [Versioning rules](curseforge.md#public-version-format)
 
 ## Unreleased

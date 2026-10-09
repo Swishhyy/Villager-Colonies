@@ -40,7 +40,7 @@ def prepare_release(artifact_dir: Path) -> None:
     requirements = (
         f"Requires Minecraft Java **{properties['minecraft_version']}**, "
         f"NeoForge **{properties['neo_version']} or newer for that Minecraft version**, "
-        "and **Java 25**. Download the JAR below and replace the old WWMC JAR in `mods`. "
+        "and **Java 25**. Download the JAR below and replace the previous mod JAR in `mods`. "
         "Use matching versions on the server and every client.\n\n"
     )
     (artifact_dir / "release-notes.md").write_text(requirements + section.group(1).strip() + "\n")

@@ -22,7 +22,7 @@ public final class GuideBook {
             new Card("minecraft:bell","4. Recruit citizens","Open the town flag and press Recruit. Each citizen needs a housing bed.","people"),
             new Card("wwmc:farm_station","5. Give them work","Build a Farm and a Courier. Put a separate job barrel beside the farm.","food"),
             new Card("minecraft:writable_book","6. Check the town","Open Needs at the flag. Press Show to find a station with a problem.","help")
-        ),List.of("Flag","Beds","Warehouse","Recruit","Jobs"),"Press L for Advancements. The WWMC branch tracks your real progress."),
+        ),List.of("Flag","Beds","Warehouse","Recruit","Jobs"),"Press L for Advancements. The Villager Colonies branch tracks your real progress."),
         new Topic("stations","Stations & recipes","Pick a station to see its recipe and setup",List.of(),List.of(),"Any kind of planks works. Most stations start with a 7 x 7 x 7 range."),
         new Topic("people","Citizens","Recognize their job at a glance",List.of(
             new Card("minecraft:leather_chestplate","Job outfits","Each job has its own outfit. Clothes stay on while resting; armor and real tools remain visible."),
@@ -91,9 +91,9 @@ public final class GuideBook {
     );
     public static Topic topic(String id) { return TOPICS.stream().filter(t -> t.id().equals(id)).findFirst().orElse(TOPICS.getFirst()); }
     /** A single fallback page preserves existing book components; normal use opens the illustrated guide. */
-    public static List<String> pages() { return List.of("WWMC Guide\n\nRight-click this\nguide to open\nvisual topics,\nstation recipes\nand quick help.\n\nPress L to see\nWWMC progress."); }
+    public static List<String> pages() { return List.of("Villager Colonies\nGuide\n\nRight-click this\nguide to open\nvisual topics,\nstation recipes\nand quick help.\n\nPress L to see\ntown progress."); }
     public static WrittenBookContent content() {
-        return new WrittenBookContent(Filterable.passThrough("Settlement Guide"),"World War MC",0,
+        return new WrittenBookContent(Filterable.passThrough("Settlement Guide"),"Villager Colonies",0,
                 pages().stream().map(s -> Filterable.<Component>passThrough(Component.literal(s))).toList(),true);
     }
 }

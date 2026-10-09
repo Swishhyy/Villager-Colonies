@@ -2,7 +2,7 @@
 
 [Project overview](../README.md) · [All guides](README.md)
 
-The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same WWMC version on the server and every client. Existing towns keep their owners, stations and inventories; new campaign data starts empty. Every job block has one citizen except quarries, which keep their configured crew and upgrades. Surplus workers from old crews take other open jobs.
+The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same Villager Colonies version on the server and every client. Existing towns keep their owners, stations and inventories; new campaign data starts empty. Every job block has one citizen except quarries, which keep their configured crew and upgrades. Surplus workers from old crews take other open jobs.
 
 ## Playing together
 

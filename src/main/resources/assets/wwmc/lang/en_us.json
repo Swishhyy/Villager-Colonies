@@ -1,5 +1,5 @@
 {
-  "itemGroup.wwmc": "World War MC",
+  "itemGroup.wwmc": "Villager Colonies",
   "item.wwmc.surveyor": "Station Inspector",
   "entity.wwmc.citizen": "Citizen",
   "block.wwmc.settlement_banner": "Settlement Banner",
@@ -19,9 +19,9 @@
   "block.wwmc.blacksmith_station": "Blacksmith Station",
   "block.wwmc.courier_station": "Courier Station",
   "block.wwmc.enchanter_station": "Enchanter Station",
-  "wwmc.configuration.title": "World War MC Settings",
+  "wwmc.configuration.title": "Villager Colonies Settings",
   "wwmc.configuration.section.wwmc.server.toml": "Server settings",
-  "wwmc.configuration.section.wwmc.server.toml.title": "World War MC Settings",
+  "wwmc.configuration.section.wwmc.server.toml.title": "Villager Colonies Settings",
   "wwmc.configuration.category.open": "Edit %s settings",
   "wwmc.configuration.category.settlements": "Settlements & Upgrades",
   "wwmc.configuration.category.settlements.tooltip": "Claim size, citizen limits and emerald prices for town and station upgrades.",

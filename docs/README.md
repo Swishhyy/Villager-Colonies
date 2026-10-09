@@ -1,6 +1,6 @@
-# WWMC guides
+# Villager Colonies guides
 
-[Project overview](../README.md) · [CurseForge project](https://www.curseforge.com/minecraft/mc-mods/world-war-mc) · [Report a bug](https://github.com/Swishhyy/World-War-MC/issues)
+[Project overview](../README.md) · [CurseForge project](https://www.curseforge.com/minecraft/mc-mods/world-war-mc) · [Report a bug](https://github.com/Swishhyy/Villager-Colonies/issues)
 
 ## New players
 
@@ -28,4 +28,4 @@ Start with [installing WWMC](../README.md#install) and [building your first town
 - **My friend can't use my town:** see [claim permissions and invitations](multiplayer-campaign.md#relationships-claims-and-flags).
 - **I want recipes or commands:** open the [crafting table](settlement-guide.md#crafting) or [command reference](settlement-guide.md#commands).
 
-For bug reports, include your WWMC, Minecraft, and NeoForge versions, the relevant `latest.log`, and the steps that caused the problem.
+For bug reports, include your Villager Colonies, Minecraft, and NeoForge versions, the relevant `latest.log`, and the steps that caused the problem.

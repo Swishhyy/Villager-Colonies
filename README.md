@@ -1,12 +1,16 @@
-# World War MC (WWMC)
+# Villager Colonies
+
+<img src="src/main/resources/villager-colonies.png" alt="Villager Colonies project logo" width="200" height="200">
 
 Build a settlement, recruit villagers, and give them jobs like farming, mining, cooking, and crafting. Keep your people fed, organize supplies, and decide how your town grows.
 
 Trade with other settlements, play alongside friends, and equip guards to defend against raids. When you're ready, lead your guards out to clear bandit camps and establish outposts.
 
-**WWMC is playable and still in development.** The current public version is **0.1.0.1**, a bugfix update for citizen jobs and recovery.
+**Villager Colonies is playable and still in development.** The current public version is **0.1.0.1**, a bugfix update for citizen jobs and recovery.
 
-[CurseForge project](https://www.curseforge.com/minecraft/mc-mods/world-war-mc) · [All guides](docs/README.md) · [Changelog](docs/CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Report a bug](https://github.com/Swishhyy/World-War-MC/issues)
+Formerly **World War MC**. The internal mod ID and JAR prefix remain **`wwmc`** so existing worlds, commands and configuration files stay compatible.
+
+[CurseForge project](https://www.curseforge.com/minecraft/mc-mods/world-war-mc) · [All guides](docs/README.md) · [Changelog](docs/CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Report a bug](https://github.com/Swishhyy/Villager-Colonies/issues)
 
 **On this page:** [Features](#features) · [Install](#install) · [Get started](#get-started) · [Guides](#guides) · [Build from source](#build-from-source)
 
@@ -27,14 +31,14 @@ Larger warfare systems, countries, automatic building, and distant settlement si
 | Minecraft Java Edition | **26.2** |
 | Mod loader | **NeoForge 26.2.0.88 or newer for Minecraft 26.2** |
 | Java | **25** |
-| WWMC | **0.1.0.1** |
+| Villager Colonies | **0.1.0.1** |
 
 1. Install NeoForge for Minecraft **26.2**.
-2. Download the WWMC JAR from [GitHub Releases](https://github.com/Swishhyy/World-War-MC/releases/latest), [CurseForge](https://www.curseforge.com/minecraft/mc-mods/world-war-mc), or a successful [GitHub Actions build](https://github.com/Swishhyy/World-War-MC/actions/workflows/build.yml).
+2. Download the Villager Colonies JAR from [GitHub Releases](https://github.com/Swishhyy/Villager-Colonies/releases/latest), [CurseForge](https://www.curseforge.com/minecraft/mc-mods/world-war-mc), or a successful [GitHub Actions build](https://github.com/Swishhyy/Villager-Colonies/actions/workflows/build.yml).
 3. Place **`wwmc-0.1.0.1.jar`** in the instance's **`mods`** folder. If you downloaded an Actions artifact, extract its ZIP first.
-4. For multiplayer, install the **same WWMC version on the server and every client**.
+4. For multiplayer, install the **same Villager Colonies version on the server and every client**.
 
-Keep only one WWMC JAR in the folder. Use a test world or back up an existing world before updating.
+Keep only one Villager Colonies JAR in the folder. Use a test world or back up an existing world before updating.
 
 ## Get started
 
@@ -74,4 +78,4 @@ On Windows, use `gradlew.bat build` and `gradlew.bat runClient`. The mod JAR is 
 
 Original mod code is [MIT licensed](LICENSE). The NeoForge starter notice is preserved in [TEMPLATE_LICENSE.txt](TEMPLATE_LICENSE.txt).
 
-Inspired by [Colony Survival](https://store.steampowered.com/app/366090/Colony_Survival/). WWMC uses original code and assets and does not include Colony Survival content.
+Inspired by [Colony Survival](https://store.steampowered.com/app/366090/Colony_Survival/). Villager Colonies uses original code and assets and does not include Colony Survival content.

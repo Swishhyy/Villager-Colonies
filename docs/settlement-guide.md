@@ -187,9 +187,9 @@ NPC towns start neutral with a house, 12 beds, warehouse, trader checkpoint, gua
 
 ### Server configuration
 
-Open **Mods → WWMC → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Quarry Crew**, **Mining & Quarries**, **Work & Food**, **Enchanting**, **Defense & Waves**, **Trade & Other Towns**, and **Diagnostics**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Active TOML keys stay in their original locations. The six retired non-quarry crew settings are removed on config reload; quarry and other server overrides carry over. Multiplayer server configuration remains controlled by the server.
+Open **Mods → Villager Colonies → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Quarry Crew**, **Mining & Quarries**, **Work & Food**, **Enchanting**, **Defense & Waves**, **Trade & Other Towns**, and **Diagnostics**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Active TOML keys stay in their original locations. The six retired non-quarry crew settings are removed on config reload; quarry and other server overrides carry over. Multiplayer server configuration remains controlled by the server.
 
-The generated WWMC server config controls these defaults:
+The generated Villager Colonies server config controls these defaults:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
