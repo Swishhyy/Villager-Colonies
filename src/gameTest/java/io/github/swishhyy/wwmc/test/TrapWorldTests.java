@@ -12,12 +12,13 @@ import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.CraftingMenu;
@@ -47,8 +48,10 @@ public final class TrapWorldTests {
         level.setBlockAndUpdate(pos,WWMC.TRAPS.get(kind).get().defaultBlockState());
         if(!TrapService.register(level,pos)) throw new AssertionError("Trap was not indexed");
     }
-    private static <T extends Mob> T mob(net.minecraft.server.level.ServerLevel level,BlockPos pos,EntityType<T> type) {
-        T mob=type.create(level,EntitySpawnReason.EVENT); mob.setNoAi(true); mob.setNoGravity(true);
+    private static Mob mob(net.minecraft.server.level.ServerLevel level,BlockPos pos,String id) {
+        var type=BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.withDefaultNamespace(id));
+        if(!(type.create(level,EntitySpawnReason.EVENT) instanceof Mob mob)) throw new AssertionError("Not a mob: "+id);
+        mob.setNoAi(true); mob.setNoGravity(true);
         mob.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5); level.addFreshEntity(mob); return mob;
     }
 
@@ -62,7 +65,7 @@ public final class TrapWorldTests {
             int x=4;
             for(TrapKind kind:TrapKind.values()) {
                 BlockPos pos=start.east(x); x+=6; place(level,pos,kind);
-                var zombie=mob(level,pos,EntityType.ZOMBIE); float health=zombie.getHealth();
+                var zombie=mob(level,pos,"zombie"); float health=zombie.getHealth();
                 TrapService.tickTown(level,town);
                 var state=level.getBlockState(pos);
                 helper.assertTrue(state.getValue(TrapBlock.WEAR)==1 && !state.getValue(TrapBlock.ARMED),kind+" did not spend one activation");
@@ -92,7 +95,7 @@ public final class TrapWorldTests {
             var town=town(level,start,UUID.randomUUID()); BlockPos pos=start.east(5); place(level,pos,TrapKind.WOODEN_SPIKES);
             var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level); citizen.join(town.id); citizen.setNoAi(true);
             citizen.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5); level.addFreshEntity(citizen);
-            var cow=mob(level,pos,EntityType.COW); var wolf=mob(level,pos,EntityType.WOLF); var neutral=mob(level,pos,EntityType.ENDERMAN);
+            var cow=mob(level,pos,"cow"); var wolf=mob(level,pos,"wolf"); var neutral=mob(level,pos,"enderman");
             var player=new FakePlayer(level,new GameProfile(UUID.randomUUID(),"TrapVisitor")); player.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);
             for(var entity:List.of(citizen,cow,wolf,neutral,player)) helper.assertTrue(!TrapService.target(entity),"Friendly or neutral entity classified as a trap target");
             TrapService.tickTown(level,town);
@@ -155,7 +158,7 @@ public final class TrapWorldTests {
             menu.clicked(0,0,ContainerInput.QUICK_MOVE,player);
             helper.assertTrue(!menu.getSlot(2).getItem().isEmpty() && player.getInventory().countItem(WWMC.TRAP_ITEMS.get(TrapKind.BRONZE_CALTROPS).get())==0,
                     "Locked trap recipe spent inputs or produced an item");
-            BlockPos pos=start.east(6); place(level,pos,TrapKind.BRONZE_SNARE); var zombie=mob(level,pos,EntityType.ZOMBIE);
+            BlockPos pos=start.east(6); place(level,pos,TrapKind.BRONZE_SNARE); var zombie=mob(level,pos,"zombie");
             TrapService.tickTown(level,town); helper.assertTrue(level.getBlockState(pos).getValue(TrapBlock.WEAR)==0,"Locked trap activated");
             town.progress.research.add("bronze_age"); TrapService.tickTown(level,town);
             helper.assertTrue(level.getBlockState(pos).getValue(TrapBlock.WEAR)==1,"Research did not enable the trap");
