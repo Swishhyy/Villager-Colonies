@@ -15,8 +15,8 @@ public final class HospitalCare {
     public static final int HEAL_TICKS=100;
     private HospitalCare() {}
     public static boolean needsCare(Settlement town,CitizenEntity citizen) {
-        return town!=null && !citizen.inCombat()
-                && (citizen.recovering() || citizen.hospitalBed()!=null || citizen.getHealth()<citizen.getMaxHealth());
+        return town!=null && (citizen.recovering() || citizen.hospitalBed()!=null || citizen.getHealth()<citizen.getMaxHealth())
+                && !citizen.inCombat();
     }
     public static boolean inBed(CitizenEntity citizen) {
         return citizen.hospitalBed()!=null && citizen.isSleeping() && citizen.getSleepingPos().filter(citizen.hospitalBed()::equals).isPresent();

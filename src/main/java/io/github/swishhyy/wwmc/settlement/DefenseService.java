@@ -27,7 +27,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
  * Citizens count the hostiles they can see. When the count reaches the alarm threshold, the guard nearest a bell
  * runs to ring it; civilians then take cover until no hostile has been sighted for {@link AlarmState#ALL_CLEAR_TICKS}.
  * Below the threshold, civilians report the hostiles they spot to the guards, who send up to two on-duty guards to
- * each; wave attackers that linger are reported the same way.
+ * each. Waves raise an alarm and report all attackers immediately, without waiting for a bell runner.
  */
 public final class DefenseService {
     private static final int INTERVAL=20,GUARD_SIGHT=24,ALERT_SIGHT=32,CIVILIAN_SIGHT=8,BELL_SEARCH=96,REVEAL_RANGE=48,WARNING_TICKS=2400;

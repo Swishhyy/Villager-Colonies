@@ -19,9 +19,10 @@ public final class CitizenNavigation extends GroundPathNavigation {
     public static final float OFF_ROAD=0.6F;
     /** Citizens plan routes up to this many blocks; longer trips are walked leg by leg. */
     public static final float ROUTE_LENGTH=64.0F;
-    public CitizenNavigation(Mob mob,Level level) { super(mob,level); setCanOpenDoors(true); setCanPassDoors(true); }
+    public CitizenNavigation(Mob mob,Level level) { super(mob,level); setCanOpenDoors(true); }
     @Override protected PathFinder createPathFinder(int maximumNodes) {
         RoadEvaluator roads=new RoadEvaluator();
+        roads.setCanPassDoors(true);
         nodeEvaluator=roads;
         return new RoadPathFinder(roads,maximumNodes);
     }

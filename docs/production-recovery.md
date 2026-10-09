@@ -42,6 +42,8 @@ Replenishment uses the square root of tool mining speed relative to stone, bound
 
 ## Hospital recovery
 
+Citizens defer recovery during combat. Guards keep defending after a hit, then seek hospital beds once their opponent is gone and ten quiet seconds have passed. Food still satisfies hunger without healing injuries.
+
 Any injured citizen, including guards and medics, pauses its normal work and seeks a free, reachable bed belonging to a **Hospital Station**. Ordinary housing beds do not provide injury recovery. A hospital bed heals **1 health point every 5 loaded seconds**, without requiring supplies or a funded project. Citizens actually lie in the bed, reserve it, and stay until exactly full health. They then release the bed and resume their saved job. Alarms do not pull patients out of bed.
 
 Patients queue when beds are occupied. If no suitable bed is loaded or reachable, they wait for hospital capacity and do not heal elsewhere. They can still obtain a meal when hungry. Breaking a patient bed releases its occupant and stops bed healing; rebuilding an accessible bed lets recovery resume. Hospital bed choice and partial healing progress are saved with the citizen.

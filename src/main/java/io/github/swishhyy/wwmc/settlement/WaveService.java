@@ -32,7 +32,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 /**
  * Hostile waves sized by population and by the town's population upgrades. They gather inside the claim at nightfall,
  * only while the owner is home, then march on the banner and attack citizens. Wave mobs glow so they are easy to find,
- * and any still alive a minute after the wave arrived are reported to the guards, who hunt them down. Wave mobs carry
+ * and guards are mobilized and given their targets immediately. A minute later the owner hears about stragglers. Wave mobs carry
  * entity tags so they keep marching after a reload.
  */
 public final class WaveService {

@@ -313,7 +313,7 @@ public final class CitizenEntity extends Villager {
     private void checkStuck(ServerLevel level,Settlement town) {
         Station home=homeStation(town);
         if(home==null || home.role()==StructureRole.TRADER || tradeShipment.travelling() || SquadService.assigned(town,getUUID())
-                || sheltering || recovering || inCombat() || isNoAi() || isSleeping() || isPassenger()
+                || sheltering || recovering || inCombat() || isNoAi() || cargo.isOpen() || isSleeping() || isPassenger()
                 || night(level) && home.role()!=StructureRole.GUARD) {
             clearBlockedJob(); stuckAnchor=null; stuckTicks=0; return;
         }
@@ -448,6 +448,9 @@ public final class CitizenEntity extends Villager {
     public void combatWith(LivingEntity enemy) {
         if(!(level() instanceof ServerLevel server) || !enemy.isAlive()) return;
         combatEnemy=enemy.getUUID(); combatUntil=server.getGameTime()+COMBAT_QUIET_TICKS;
+        Settlement town=town(server);
+        if(town!=null && enemy instanceof Monster monster && DefenseService.hostile(monster) && town.contains(monster.blockPosition()))
+            DefenseService.report(town,monster,getName().getString(),false,server.getGameTime());
         if(recovering || hospitalBed!=null) { leaveHospitalBed(); recovering=false; }
         if(isGuard()) leaveBed();
     }
@@ -2496,14 +2499,16 @@ public final class CitizenEntity extends Villager {
             if(bed==null && level.getGameTime()>=retryAt) {
                 retryAt=level.getGameTime()+200;
                 beds.sort(Comparator.comparingDouble(p -> p.equals(homeBed) ? -1 : distanceToSqr(Vec3.atCenterOf(p))));
-                for(BlockPos candidate:beds) {
+                for(BlockPos candidate:beds.stream().limit(8).toList()) {
                     if(level.getBlockState(candidate).getValue(BedBlock.OCCUPIED) && !candidate.equals(sleepingBed)
                             || !book.claim(candidate,getUUID(),level.getGameTime(),200)) continue;
                     BlockPos stand=null;
+                    int probes=0;
                     for(BlockPos spot:CitizenReach.stands(standingView(level,town),candidate,position(),getEyeHeight())) {
                         if(spot.distSqr(candidate)>4 || !CitizenReach.visible(level,Vec3.atBottomCenterOf(spot).add(0,getEyeHeight(),0),candidate)) continue;
+                        if(++probes>2) break;
                         var path=getNavigation().createPath(spot,0);
-                        if(spot.equals(blockPosition()) || path!=null && path.canReach()) { stand=spot; break; }
+                        if(spot.equals(blockPosition()) || path!=null && (path.canReach() || beyondOneRoute(spot))) { stand=spot; break; }
                     }
                     if(stand!=null) { bed=candidate; sleepingBed=candidate; homeBed=candidate; refuge=stand; break; }
                     book.release(candidate,getUUID());
