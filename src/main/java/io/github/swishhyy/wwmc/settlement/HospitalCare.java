@@ -56,7 +56,7 @@ public final class HospitalCare {
     public static void medic(ServerLevel level,Settlement town,Station station,CitizenEntity medic) {
         if(!town.campaign.projects.contains("hospital")) { medic.workActivity("Complete the Field Hospital project for assisted treatment"); return; }
         List<BlockPos> beds=SettlementService.beds(level,town,station);
-        CitizenEntity patient=DefenseService.loadedCitizens(level,town).stream().filter(c -> c!=medic && c.isAlive() && inBed(c)
+        CitizenEntity patient=DefenseService.loadedCitizens(level,town).stream().filter(c -> c!=medic && c.isAlive() && inBed(c) && !c.inCombat()
                 && c.getHealth()<c.getMaxHealth() && beds.contains(c.hospitalBed()))
                 .min(Comparator.comparingDouble(CitizenEntity::getHealth)).orElse(null);
         if(patient==null) { medic.workActivity("Hospital ready; no patient awaiting treatment"); return; }

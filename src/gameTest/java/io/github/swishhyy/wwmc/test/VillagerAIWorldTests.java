@@ -10,10 +10,11 @@ import io.github.swishhyy.wwmc.settlement.*;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Monster;
@@ -52,7 +53,7 @@ public final class VillagerAIWorldTests {
         return new Fixture(level,start,chunks,town,new ArrayList<>());
     }
     private static Monster zombie(ServerLevel level,BlockPos feet) {
-        var mob=EntityType.ZOMBIE.create(level,EntitySpawnReason.EVENT);
+        var mob=(Monster)BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.withDefaultNamespace("zombie")).create(level,EntitySpawnReason.EVENT);
         mob.setPos(feet.getX()+0.5,feet.getY(),feet.getZ()+0.5); mob.setNoAi(true); mob.setPersistenceRequired();
         mob.setItemSlot(EquipmentSlot.HEAD,new ItemStack(Items.IRON_HELMET)); level.addFreshEntity(mob); return mob;
     }
