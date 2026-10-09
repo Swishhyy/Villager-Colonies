@@ -55,6 +55,37 @@ public final class ProductionWorldTests {
     private static int count(Container box,net.minecraft.world.item.Item item) { return InventoryOps.count(List.of(box),s -> s.is(item)); }
     private static String describe(CitizenEntity c) { return c.activity()+" at "+c.blockPosition()+", bag "+c.bag().contents(); }
 
+    private static void takesRodAcrossFloor(DynamicTest test,int offset,Block floor) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,offset));
+            Station station=new Station(start.east(24),StructureRole.FISHERMAN);
+            var f=fixture(level,start,station);
+            for(int x=12;x<=32;x++) for(int z=-8;z<=8;z++) level.setBlockAndUpdate(start.offset(x,-1,z),floor.defaultBlockState());
+            BlockPos depot=station.position().west(2);
+            Container stock=barrel(level,depot,new ItemStack(Items.FISHING_ROD));
+            var fisher=f.worker(station,start);
+            helper.runAtTickTime(5,() -> {
+                var path=fisher.getNavigation().createPath(depot.west(2),0);
+                helper.assertTrue(path!=null && path.canReach(),"Fixture must have a walkable route to the barrel");
+            });
+            helper.succeedWhen(() -> {
+                helper.assertTrue(fisher.getMainHandItem().is(Items.FISHING_ROD),"Walkable barrel was rejected: "+describe(fisher));
+                helper.assertTrue(count(stock,Items.FISHING_ROD)==0,"Taking a tool must not duplicate it");
+                f.close();
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=1200)
+    @EmptyTemplate
+    @TestHolder(description="A fisherman walks over dirt paths to collect a real rod from its job barrel.")
+    static void reachesBarrelAcrossDirtPaths(DynamicTest test) { takesRodAcrossFloor(test,-3800,Blocks.DIRT_PATH); }
+
+    @GameTest(timeoutTicks=1200)
+    @EmptyTemplate
+    @TestHolder(description="A fisherman walks over bottom slabs to collect a real rod from its job barrel.")
+    static void reachesBarrelAcrossBottomSlabs(DynamicTest test) { takesRodAcrossFloor(test,-3960,Blocks.STONE_SLAB); }
+
     @GameTest(timeoutTicks=4000)
     @EmptyTemplate
     @TestHolder(description="One cook uses a raised ordinary furnace and one smelter uses a raised blast furnace, supplying real food, ore and fuel from raised job barrels without walking into either appliance.")
