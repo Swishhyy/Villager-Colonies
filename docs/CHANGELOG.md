@@ -2,6 +2,11 @@
 
 [Project overview](../README.md) · [All guides](README.md) · [Versioning rules](curseforge.md#public-version-format)
 
+## Unreleased
+
+- Let lumberjacks fell natural trees beside their own job barrels or Lumber Station. Keep player-placed logs, nearby building planks and unrelated storage protected.
+- Keep a worker's actual status visible during its retry pause instead of replacing it with "No work".
+
 ## 0.1.0.1
 
 A bugfix release for citizen jobs, movement and recovery, with clearer town status and server logs. WWMC remains playable and in development.

@@ -39,6 +39,29 @@ public final class ProductionWorldTests {
     @TestHolder(description="A player-placed Lumber Station beside a natural trunk does not misclassify the tree as a building.")
     static void fellsTreeBesideLumberStation(DynamicTest test) { lumberBesideFixture(test,-7800,true); }
 
+    @GameTest(timeoutTicks=400)
+    @EmptyTemplate
+    @TestHolder(description="A lumberjack leaves player-placed wood untouched and keeps the tree-search reason visible throughout its retry pause.")
+    static void keepsLumberIdleReasonAndProtectedLogs(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-8000));
+            Station lumber=new Station(start.east(24),StructureRole.LUMBER);
+            var f=fixture(level,start,lumber); BlockPos root=lumber.position().east(2),storage=root.south().above();
+            for(int y=0;y<4;y++) level.setBlockAndUpdate(root.above(y),Blocks.OAK_LOG.defaultBlockState());
+            for(int x=-1;x<=1;x++) for(int z=-1;z<=1;z++) if(x!=0 || z!=0)
+                level.setBlockAndUpdate(root.offset(x,3,z),Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,false));
+            barrel(level,storage,new ItemStack(Items.IRON_AXE));
+            WorldWorkData.get(level).protect(storage); WorldWorkData.get(level).protect(root.above());
+            var citizen=f.worker(lumber,lumber.position().west(2)); citizen.bag().offer(new ItemStack(Items.BREAD,2));
+            helper.runAtTickTime(80,() -> {
+                helper.assertTrue(ForestryService.tree(level,f.town(),root)==null,"A job barrel authorized felling placed wood");
+                for(int y=0;y<4;y++) helper.assertTrue(level.getBlockState(root.above(y)).is(Blocks.OAK_LOG),"Protected wood was felled");
+                helper.assertTrue(citizen.activity().contains("No accessible natural tree"),"Retry pause hid the tree-search reason: "+citizen.activity());
+                f.close(); helper.succeed();
+            });
+        });
+    }
+
     private static void lumberBesideFixture(DynamicTest test,int offset,boolean stationBesideTree) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,offset));

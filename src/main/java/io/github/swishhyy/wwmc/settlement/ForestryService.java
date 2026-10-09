@@ -3,6 +3,7 @@ package io.github.swishhyy.wwmc.settlement;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.github.swishhyy.wwmc.core.StructureRole;
 import java.util.*;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
@@ -50,26 +51,33 @@ public final class ForestryService {
         boolean protectedAt(BlockPos pos);
         boolean furnitureAt(BlockPos pos);
         boolean blockEntityAt(BlockPos pos);
+        /** The owning Lumber Station and its job barrels may sit beside a natural tree. */
+        default boolean workFixtureAt(BlockPos pos) { return false; }
     }
     public static Tree tree(ServerLevel level,Settlement town,BlockPos root) {
         var data=WorldWorkData.get(level);
+        TreeView world=view(level,town,root);
         Tree saved=data.clearedTrees.get(root);
         if(saved!=null) {
-            Tree verified=verify(view(level,town),saved);
+            Tree verified=verify(world,saved);
             if(verified!=null) return verified;
             // An unloaded branch cannot invalidate the saved proof of a tree whose leaves we already cleared.
             if(saved.logs().stream().allMatch(p -> loaded(level,town,p))) { data.clearedTrees.remove(root); data.setDirty(); }
         }
-        return tree(view(level,town),root);
+        return tree(world,root);
     }
-    private static TreeView view(ServerLevel level,Settlement town) {
+    private static TreeView view(ServerLevel level,Settlement town,BlockPos root) {
         WorldWorkData data=WorldWorkData.get(level);
+        Station lumber=town.nearestStation(root,s -> s.role()==StructureRole.LUMBER && SettlementService.active(level,s));
+        Set<BlockPos> fixtures=new HashSet<>();
+        if(lumber!=null) { fixtures.add(lumber.position()); fixtures.addAll(SettlementService.jobBarrels(level,town,lumber)); }
         return new TreeView() {
             public BlockState state(BlockPos pos) { return level.getBlockState(pos); }
             public boolean available(BlockPos pos) { return loaded(level,town,pos); }
             public boolean protectedAt(BlockPos pos) { return data.protectedBlocks.contains(pos); }
             public boolean furnitureAt(BlockPos pos) { return SettlementService.protectedFurniture(town,pos); }
             public boolean blockEntityAt(BlockPos pos) { return level.getBlockEntity(pos)!=null; }
+            public boolean workFixtureAt(BlockPos pos) { return fixtures.contains(pos); }
         };
     }
     public static Tree tree(TreeView world,BlockPos root) {
@@ -106,8 +114,8 @@ public final class ForestryService {
                 // Truncating a tree at an unloaded chunk would leave floating trunks.
                 if(!world.available(adjacent)) return null;
                 BlockState state=world.state(adjacent);
-                if(state.is(BlockTags.PLANKS) || world.blockEntityAt(adjacent)
-                        || world.protectedAt(adjacent) && !state.isAir() && !soil(state)) return null;
+                if(state.is(BlockTags.PLANKS) || !world.workFixtureAt(adjacent) && (world.blockEntityAt(adjacent)
+                        || world.protectedAt(adjacent) && !state.isAir() && !soil(state))) return null;
                 if(!state.is(BlockTags.LOGS) || logs.contains(adjacent)) continue;
                 if(!state.is(species.log) || !world.available(adjacent)
                         || Math.abs(adjacent.getX()-root.getX())>CROWN_RADIUS
@@ -200,7 +208,7 @@ public final class ForestryService {
                     && Math.abs(log.getY()-leaf.getY())<=3 && Math.abs(log.getZ()-leaf.getZ())<=3);
     }
     public static boolean clearableLeaf(ServerLevel level,Settlement town,Tree tree,BlockPos leaf) {
-        return clearableLeaf(view(level,town),tree,leaf);
+        return tree!=null && clearableLeaf(view(level,town,tree.root()),tree,leaf);
     }
     public static List<ItemStack> clearLeaf(ServerLevel level,Settlement town,Station station,Tree selected,BlockPos leaf,LivingEntity worker) {
         if(!CitizenReach.within(worker.getEyePosition(),leaf) || !worker.getMainHandItem().is(ItemTags.AXES)

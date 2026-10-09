@@ -22,12 +22,13 @@ public final class ForestryMiningChecks {
     private static void check(boolean result,String message) { checks++; if(!result) throw new AssertionError(message); }
     private static final class TreeWorld implements ForestryService.TreeView {
         final Map<BlockPos,BlockState> states=new HashMap<>();
-        final Set<BlockPos> protectedLogs=new HashSet<>(),unloaded=new HashSet<>(),furniture=new HashSet<>();
+        final Set<BlockPos> protectedLogs=new HashSet<>(),unloaded=new HashSet<>(),furniture=new HashSet<>(),blockEntities=new HashSet<>(),workFixtures=new HashSet<>();
         public BlockState state(BlockPos p) { return states.getOrDefault(p,Blocks.AIR.defaultBlockState()); }
         public boolean available(BlockPos p) { return !unloaded.contains(p); }
         public boolean protectedAt(BlockPos p) { return protectedLogs.contains(p); }
         public boolean furnitureAt(BlockPos p) { return furniture.contains(p); }
-        public boolean blockEntityAt(BlockPos p) { return false; }
+        public boolean blockEntityAt(BlockPos p) { return blockEntities.contains(p); }
+        public boolean workFixtureAt(BlockPos p) { return workFixtures.contains(p); }
     }
     private static TreeWorld oak(BlockPos root) {
         TreeWorld world=new TreeWorld();
@@ -60,6 +61,22 @@ public final class ForestryMiningChecks {
         check(ForestryService.tree(world,root)==null,"A tree touching a protected housing/storage volume is skipped");
         world=oak(root); world.states.put(root.offset(-1,1,0),Blocks.OAK_PLANKS.defaultBlockState());
         check(ForestryService.tree(world,root)==null,"Adjacent construction prevents treating an older log structure as a tree");
+        world=oak(root); BlockPos barrel=root.offset(1,1,0);
+        world.states.put(barrel,Blocks.BARREL.defaultBlockState()); world.blockEntities.add(barrel); world.protectedLogs.add(barrel);
+        check(ForestryService.tree(world,root)==null,"Unassigned storage beside a trunk still protects construction");
+        world.workFixtures.add(barrel);
+        check(ForestryService.tree(world,root)!=null,"The tree's own lumber job barrel does not imply construction");
+        world.protectedLogs.add(root.above(2));
+        check(ForestryService.tree(world,root)==null,"A nearby job barrel cannot authorize chopping player-placed logs");
+        world.protectedLogs.remove(root.above(2)); world.furniture.add(root.above(2));
+        check(ForestryService.tree(world,root)==null,"A nearby job barrel cannot bypass housing/storage protection");
+        world.furniture.clear(); world.states.put(root.west(),Blocks.OAK_PLANKS.defaultBlockState());
+        check(ForestryService.tree(world,root)==null,"An allowed job barrel does not override adjacent building planks");
+        world.states.remove(root.west()); var recognized=ForestryService.tree(world,root);
+        world.states.replaceAll((p,state) -> state.is(Blocks.OAK_LEAVES) ? Blocks.AIR.defaultBlockState() : state);
+        check(ForestryService.verify(world,recognized)!=null,"Saved natural-tree proof survives leaf clearing beside its work barrel");
+        world.workFixtures.clear();
+        check(ForestryService.verify(world,recognized)==null,"Losing job-barrel ownership invalidates saved permission to fell");
         world=oak(root);
         world.states.replaceAll((p,state) -> state.is(Blocks.OAK_LEAVES) ? state.setValue(LeavesBlock.PERSISTENT,true) : state);
         check(ForestryService.tree(world,root)==null,"Decorative player leaves do not prove a natural tree");
