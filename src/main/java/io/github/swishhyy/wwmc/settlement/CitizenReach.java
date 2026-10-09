@@ -52,6 +52,7 @@ public final class CitizenReach {
         boolean available(BlockPos pos);
         boolean clear(BlockPos pos);
         boolean footing(BlockPos pos);
+        default boolean room(BlockPos pos) { return clear(pos) && clear(pos.above()) && footing(pos.below()); }
         /** Navigation nodes name the air above a floor, whose surface may be below a whole block. */
         default Vec3 feet(BlockPos pos) { return Vec3.atBottomCenterOf(pos); }
     }
@@ -60,6 +61,15 @@ public final class CitizenReach {
         return new StandingView() {
             public boolean available(BlockPos pos) { return available.test(pos); }
             public boolean clear(BlockPos pos) { return world.getBlockState(pos).getCollisionShape(world,pos).isEmpty() && world.getFluidState(pos).isEmpty(); }
+            private boolean cover(BlockPos pos) {
+                var shape=world.getBlockState(pos).getCollisionShape(world,pos);
+                return !shape.isEmpty() && shape.bounds().maxY<=0.125 && world.getFluidState(pos).isEmpty();
+            }
+            public boolean room(BlockPos pos) {
+                // Carpets occupy the walking node itself; slabs and ordinary floors sit below it.
+                if(cover(pos)) return footing(pos.below()) && clear(pos.above()) && available(pos.above(2)) && clear(pos.above(2));
+                return !cover(pos.below()) && clear(pos) && clear(pos.above()) && footing(pos.below());
+            }
             public boolean footing(BlockPos pos) {
                 var state=world.getBlockState(pos);
                 var shape=state.getCollisionShape(world,pos);
@@ -69,6 +79,7 @@ public final class CitizenReach {
                 return bounds.maxY>0 && bounds.maxY<=1 && bounds.minX<=0.2 && bounds.maxX>=0.8 && bounds.minZ<=0.2 && bounds.maxZ>=0.8;
             }
             public Vec3 feet(BlockPos pos) {
+                if(cover(pos)) return Vec3.atBottomCenterOf(pos).add(0,world.getBlockState(pos).getCollisionShape(world,pos).bounds().maxY,0);
                 BlockPos below=pos.below();
                 var shape=world.getBlockState(below).getCollisionShape(world,below);
                 double surface=shape.isEmpty() ? 0 : shape.bounds().maxY;
@@ -78,7 +89,7 @@ public final class CitizenReach {
     }
     public static boolean standing(StandingView world,BlockPos pos) {
         return world.available(pos) && world.available(pos.above()) && world.available(pos.below())
-                && world.clear(pos) && world.clear(pos.above()) && world.footing(pos.below());
+                && world.room(pos);
     }
     /** Bounded alternatives with room for the body and firm footing; never stand on the block being removed. */
     public static List<BlockPos> stands(StandingView world,BlockPos target,Vec3 from,double eyeHeight) {

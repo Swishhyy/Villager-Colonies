@@ -99,12 +99,18 @@ public final class CitizenReachChecks {
         double[] surfaces={63.9375,63.5,64.0,63.0625};
         for(int n=0;n<floors.size();n++) {
             world.blocks.put(stand.below(),floors.get(n));
-            assertTrue(CitizenReach.standing(ground,stand),"Walkable floor was rejected: "+floors.get(n));
-            assertEquals(surfaces[n],ground.feet(stand).y,1.0E-7);
+            world.blocks.put(stand.below(2),Blocks.STONE.defaultBlockState());
+            BlockPos node=n==3 ? stand.below() : stand;
+            assertTrue(CitizenReach.standing(ground,node),"Walkable floor was rejected: "+floors.get(n));
+            assertEquals(surfaces[n],ground.feet(node).y,1.0E-7);
             var approaches=CitizenReach.stands(ground,barrel,new Vec3(12,64,0),1.6);
-            assertTrue(approaches.contains(stand),"No barrel approach over "+floors.get(n));
-            assertTrue(CitizenReach.canUse(world,ground.feet(stand).add(0,1.6,0),barrel));
+            assertTrue(approaches.contains(node),"No barrel approach over "+floors.get(n));
+            assertTrue(CitizenReach.canUse(world,ground.feet(node).add(0,1.6,0),barrel));
         }
+        assertFalse(CitizenReach.standing(ground,stand),"The air above carpet is not its walking node");
+        world.blocks.put(stand.above(),Blocks.STONE.defaultBlockState());
+        assertFalse(CitizenReach.standing(ground,stand.below()),"Carpet under a low ceiling must leave room for the citizen's head");
+        world.blocks.remove(stand.above());
         world.blocks.put(stand,Blocks.STONE.defaultBlockState());
         assertFalse(CitizenReach.standing(ground,stand),"A blocked body still prevents standing");
         world.blocks.remove(stand);

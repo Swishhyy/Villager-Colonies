@@ -829,20 +829,23 @@ public final class CitizenEntity extends Villager {
         Station job=town.station(workplace);
         return job==null ? null : nearestBarrel(SettlementService.jobBarrels(level,town,job));
     }
-    /**
-     * A supply or delivery trip to the job's own barrels; couriers deliver supplies and collect finished goods.
-     */
-    private boolean visitDepot(ServerLevel level,Settlement town,Station station) {
+    /** Shared barrel selection and diagnostics for every production job, including crafting, processing and enchanting. */
+    private BlockPos jobBarrel(ServerLevel level,Settlement town,Station station) {
         List<BlockPos> barrels=SettlementService.jobBarrels(level,town,station);
-        if(barrels.isEmpty()) { activity="Needs a job barrel within "+station.radius()+" blocks of the station, outside warehouse range"; return false; }
+        if(barrels.isEmpty()) { activity="Needs a job barrel within "+station.radius()+" blocks of the station, outside warehouse range"; return null; }
         BlockPos barrel=nearestBarrel(barrels);
         if(barrel==null) {
             // A citizen brought beside a barrel can use it immediately, even after a recent failed route.
             barrel=nearest(barrels.stream().filter(pos -> canUse(level,pos)).toList());
             if(barrel!=null) failedTargets.remove(barrel);
         }
-        if(barrel==null) { activity="Cannot reach "+barrels.size()+" job barrel"+(barrels.size()==1 ? "" : "s")+"; clear a path and standing room beside "+(barrels.size()==1 ? "it" : "them"); return false; }
-        return visitStorage(level,town,station.role(),barrel,SettlementService.jobStorage(level,town,station),true);
+        if(barrel==null) activity="Cannot reach "+barrels.size()+" job barrel"+(barrels.size()==1 ? "" : "s")+"; clear a path and standing room beside "+(barrels.size()==1 ? "it" : "them");
+        return barrel;
+    }
+    /** A supply or delivery trip to the job's own barrels; couriers deliver supplies and collect finished goods. */
+    private boolean visitDepot(ServerLevel level,Settlement town,Station station) {
+        BlockPos barrel=jobBarrel(level,town,station);
+        return barrel!=null && visitStorage(level,town,station.role(),barrel,SettlementService.jobStorage(level,town,station),true);
     }
     /** Walk to the storage, hand in goods (if {@code deposit}), and collect food, tools and supplies this job needs. */
     private boolean visitStorage(ServerLevel level,Settlement town,StructureRole role,BlockPos depot,List<Container> storage,boolean deposit) {
@@ -1481,8 +1484,8 @@ public final class CitizenEntity extends Villager {
             if(carryingGoods(station.role()) && !visitDepot(level,town,station)) return;
             List<Container> stock=SettlementService.townStorage(level,town);
             List<Container> local=SettlementService.jobStorage(level,town,station);
-            BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
-            if(barrel==null) { activity="Needs a kitchen barrel supplied by couriers"; return; }
+            BlockPos barrel=jobBarrel(level,town,station);
+            if(barrel==null) return;
             if(!visitStorage(level,town,station.role(),barrel,local,false)) return;
             List<Container> storage=local;
             Crafting.Recipe next=Crafting.choose(stock,storage,town.disabledRecipes,station.role());
@@ -1519,10 +1522,10 @@ public final class CitizenEntity extends Villager {
         if(craftJob==null) {
             if(carryingGoods(station.role()) && !visitDepot(level,town,station)) return;
             List<Container> stock=SettlementService.townStorage(level,town);
-            BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
+            BlockPos barrel=jobBarrel(level,town,station);
             List<Container> local=SettlementService.jobStorage(level,town,station);
             Workshop.Job next=barrel==null ? null : Workshop.choose(Workshop.Recipes.of(level),town.craftOrders,stock,local);
-            if(barrel==null) { activity="Needs a workshop barrel supplied by couriers"; return; }
+            if(barrel==null) return;
             if(!visitStorage(level,town,station.role(),barrel,local,false)) return;
             List<Container> sources=local;
             if(next==null || Workshop.fetch(Workshop.Recipes.of(level),town.craftOrders,next,stock,sources,cargo)==0) {
@@ -1704,9 +1707,9 @@ public final class CitizenEntity extends Villager {
         }
         if(level.getGameTime()<nextProcessingAt) { activity="Waiting for the next cooking/smelting batch"; return; }
         if(processingDelivery || !processingSupplied) {
-            BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
+            BlockPos barrel=jobBarrel(level,town,station);
             List<Container> local=barrel==null ? List.of() : SettlementService.jobStorage(level,town,station);
-            if(barrel==null) { activity="Needs a processing barrel supplied by couriers"; return; }
+            if(barrel==null) return;
             if(!visitStorage(level,town,station.role(),barrel,local,true)) return;
             List<Container> storage=local;
             processingDelivery=false;
@@ -1839,8 +1842,8 @@ public final class CitizenEntity extends Villager {
                     .filter(p -> handNear(p) || canReach(p)).findFirst().orElse(null);
         }
         if(repairAnvil==null) { activity="Needs an accessible anvil within three blocks of the Blacksmith Station"; nextSmithAt=level.getGameTime()+100; return; }
-        BlockPos warehouse=jobDepot(level,town);
-        if(warehouse==null) { activity="Needs a blacksmith barrel with repair materials delivered by couriers"; nextSmithAt=level.getGameTime()+100; return; }
+        BlockPos warehouse=jobBarrel(level,town,station);
+        if(warehouse==null) { nextSmithAt=level.getGameTime()+100; return; }
         List<Container> storage=SettlementService.jobStorage(level,town,town.station(workplace));
         // A chosen stand stays the destination until pickup, rather than restarting the warehouse trip each update.
         if(repairItem.isEmpty() && repairStand!=null) {
@@ -1984,9 +1987,9 @@ public final class CitizenEntity extends Villager {
         Predicate<ItemStack> skipped=stack -> unenchantable.containsKey(stack.getItem());
         int needed=Enchanting.lapisCost(enchantLevel>0 ? enchantLevel : cap);
         boolean wantItem=enchantItem.isEmpty(),wantLapis=lapisCarried()<needed;
-        BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
+        BlockPos barrel=jobBarrel(level,town,station);
         List<Container> local=barrel==null ? List.of() : SettlementService.jobStorage(level,town,station);
-        if(barrel==null) { activity="Needs an enchanter barrel supplied by couriers"; return false; }
+        if(barrel==null) return false;
         if(wantItem && !Enchanting.waiting(local,skipped)) { activity="Waiting for unenchanted gear or books in my barrel"; nextEnchantAt=level.getGameTime()+200; return false; }
         if(wantLapis && lapisCarried()+InventoryOps.count(local,Enchanting::lapis)<needed) { activity="Waiting for "+needed+" lapis in my barrel"; nextEnchantAt=level.getGameTime()+200; return false; }
         List<Container> source=local;
@@ -2005,11 +2008,11 @@ public final class CitizenEntity extends Villager {
     /** Bring a finished item to this station's barrels when goods may stay there (see {@link #dropOff}), else to the warehouse. */
     private void deliverEnchanted(ServerLevel level,Settlement town,Station station) {
         String name=enchantItem.getHoverName().getString();
-        BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
+        BlockPos barrel=jobBarrel(level,town,station);
         List<Container> local=barrel==null ? List.of() : SettlementService.jobStorage(level,town,station);
         boolean toBarrel=barrel!=null && dropOff(level,town,local);
         BlockPos depot=barrel;
-        if(depot==null) { activity="Holding the finished "+name+": needs a barrel by the station"; nextEnchantAt=level.getGameTime()+100; return; }
+        if(depot==null) { nextEnchantAt=level.getGameTime()+100; return; }
         if(!canUse(level,depot)) {
             activity="Delivering the finished "+name; pathTicks+=10;
             if(!walk(depot) && onGround() || pathTicks>1200) {
