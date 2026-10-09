@@ -103,6 +103,9 @@ public final class CitizenEntity extends Villager {
     private final AnimalWork animalWork=new AnimalWork();
     /** Ticks a craftsman works one batch at the bench. */
     private static final int CRAFT_TICKS=40;
+    private BlockPos trapWork;
+    private final Map<BlockPos,Long> failedTrapWork=new HashMap<>();
+    private int trapWorkTicks,trapPathTicks;
     private static final int MAX_FAILED_TARGETS=2048;
     /** Ticks between a citizen's looks for an open place in a job of higher priority than its own. */
     private static final int PROMOTION_CHECK=600;
@@ -587,6 +590,7 @@ public final class CitizenEntity extends Villager {
         animalWork.reset();
         enchantTable=null; enchantStand=null;
         researchDesk=null; researchStand=null;
+        trapWork=null; trapWorkTicks=0; trapPathTicks=0;
         var book=SettlementService.reservations(level);
         if(workplace!=null) SettlementService.workers(level).release(workplace,getUUID());
         if(target!=null) book.release(target,getUUID());
@@ -818,6 +822,10 @@ public final class CitizenEntity extends Villager {
     private boolean retainSupply(ItemStack stack) {
         StructureRole role=role();
         if(role==StructureRole.BLACKSMITH && !repairItem.isEmpty() && BlacksmithRepair.material(repairItem,stack)) return true;
+        if(role==StructureRole.CRAFTSMAN && trapWork!=null && level() instanceof ServerLevel server) {
+            var material=TrapService.material(server.getBlockState(trapWork));
+            if(material!=null && material.accepts().test(stack)) return true;
+        }
         if(gear(stack) && GuardEquipment.worn(stack)) return false;
         if(level() instanceof ServerLevel level && role!=null && role.processes() && ProcessingService.supply(level,role,stack)) return true;
         if(role!=null && role.animalJob() && AnimalWork.supply(role,stack)) return true;
@@ -1642,6 +1650,7 @@ public final class CitizenEntity extends Villager {
      */
     private void craftsman(ServerLevel level,Settlement town,Station station) {
         BlockPos bench=station.position();
+        if(craftJob==null && maintainTraps(level,town,station)) return;
         if(craftJob!=null && !AgeProgression.allowed(town,craftJob.plan().result())) {
             activity="Workshop order requires "+AgeProgression.requirement(craftJob.plan().result())+" research";
             getNavigation().stop(); return;
@@ -1683,6 +1692,47 @@ public final class CitizenEntity extends Villager {
             if(Workshop.craft(level,cargo,craftJob.plan(),cargo::offer)) { swing(InteractionHand.MAIN_HAND); gainExperience(station.role(),1); }
             else craftJob=null;
         }
+    }
+    /** A craftsman carries paid materials to one reachable defense, and performs repairs only after the alarm ends. */
+    private boolean maintainTraps(ServerLevel level,Settlement town,Station station) {
+        if(DefenseService.alarmed(town)) { trapWork=null; trapWorkTicks=0; trapPathTicks=0; return false; }
+        long now=level.getGameTime();
+        failedTrapWork.values().removeIf(until -> until<=now);
+        if(trapWork!=null && (!level.hasChunkAt(trapWork) || !TrapService.needsMaintenance(level.getBlockState(trapWork)))) {
+            trapWork=null; trapWorkTicks=0; trapPathTicks=0;
+        }
+        List<Container> local=SettlementService.jobStorage(level,town,station);
+        if(trapWork==null) {
+            List<Container> available=new ArrayList<>(local); available.add(cargo);
+            trapWork=TrapService.nextMaintenance(level,town,station.position(),available,
+                    pos -> failedTrapWork.getOrDefault(pos,0L)>now || pos.distSqr(station.position())>128*128);
+            if(trapWork==null) return false;
+            trapWorkTicks=0; trapPathTicks=0;
+        }
+        var material=TrapService.material(level.getBlockState(trapWork));
+        if(material==null) { trapWork=null; return false; }
+        if(!TrapService.supplied(material,List.of(cargo))) {
+            BlockPos barrel=jobBarrel(level,town,station);
+            if(barrel==null) { trapWork=null; return false; }
+            if(!visitStorage(level,town,StructureRole.CRAFTSMAN,barrel,local,false)) return true;
+            int held=InventoryOps.count(List.of(cargo),material.accepts());
+            if(InventoryOps.count(local,material.accepts())+held<material.count()) { trapWork=null; return false; }
+            for(int i=held;i<material.count();i++) cargo.offer(InventoryOps.takeOne(local,material.accepts()));
+        }
+        if(!canUse(level,trapWork)) {
+            activity="Carrying materials to maintain a trap"; trapPathTicks+=10;
+            if(!walk(trapWork) || trapPathTicks>=600) {
+                failedTrapWork.put(trapWork,now+600); trapWork=null; trapWorkTicks=0; trapPathTicks=0; return false;
+            }
+            return true;
+        }
+        getNavigation().stop(); activity="Maintaining a settlement trap";
+        WorkFeedback.pulse(level,this,trapWork,WorkFeedback.CRAFTING); trapWorkTicks+=workStep();
+        if(trapWorkTicks>=CRAFT_TICKS) {
+            if(TrapService.maintain(level,town,trapWork,List.of(cargo))) gainExperience(StructureRole.CRAFTSMAN,1);
+            trapWork=null; trapWorkTicks=0; trapPathTicks=0;
+        }
+        return true;
     }
     /** Couriers carry finished goods to the warehouse and supply every production job's local barrels. */
     private void courier(ServerLevel level,Settlement town,Station station) {

@@ -45,7 +45,7 @@ public final class JobStorage {
         if(role==StructureRole.BLACKSMITH) return BlacksmithRepair.damaged(stack) || repairMaterial(stack);
         if(role==StructureRole.GUARD) return !GuardEquipment.worn(stack) && (GuardWeapons.weapon(stack) || GuardWeapons.arrow(stack)
                 || Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> GuardEquipment.armor(stack,slot)));
-        return role==StructureRole.CRAFTSMAN && !Workshop.product(town,stack);
+        return role==StructureRole.CRAFTSMAN && (!Workshop.product(town,stack) || maintenanceInput(supplies,town,stack));
     }
     public static List<Pickup> collectable(Supplies supplies,Settlement town,StructureRole role,List<Container> barrels) {
         int support=SUPPORT_RESERVE,saplings=SAPLING_RESERVE,meals=role.foodJob() ? 0 : FoodSharing.PERSONAL_LIMIT;
@@ -97,7 +97,7 @@ public final class JobStorage {
         if(role==StructureRole.ENCHANTER) return Enchanting.lapis(stack) || Enchanting.candidate(stack);
         if(role==StructureRole.BLACKSMITH) return BlacksmithRepair.damaged(stack) || repairMaterial(stack);
         if(role==StructureRole.GUARD) return supply(supplies,town,role,stack);
-        if(role==StructureRole.CRAFTSMAN && town!=null) return town.craftOrders.stream().filter(o -> o.target()>0)
+        if(role==StructureRole.CRAFTSMAN && town!=null) return maintenanceInput(supplies,town,stack) || town.craftOrders.stream().filter(o -> o.target()>0)
                 .flatMap(o -> Workshop.plans(supplies.crafting(),o).stream()).anyMatch(p -> p.uses(stack));
         if(role.excavates() && ExcavationService.supportMaterial(stack) || role==StructureRole.LUMBER && stack.is(ItemTags.SAPLINGS)) return true;
         return role.processes() && (supplies.fuel(stack) || role==StructureRole.COOK && stack.is(Items.WHEAT) || supplies.ingredient(role,stack));
@@ -154,11 +154,22 @@ public final class JobStorage {
             }),8));
         }
         if(role==StructureRole.CRAFTSMAN && town!=null) {
+            if(supplies.level() instanceof ServerLevel level) {
+                Set<String> seen=new HashSet<>();
+                for(var material:TrapService.neededMaterials(level,town))
+                    if(seen.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(material.icon().getItem()).toString()))
+                        result.add(new Demand(material.accepts(),Math.max(4,material.count()*2)));
+            }
             List<Container> stock=new ArrayList<>(barrels); stock.addAll(warehouse);
             Workshop.Job job=Workshop.choose(supplies.crafting(),town.craftOrders,stock,stock);
             if(job!=null) for(Ingredient ingredient:job.plan().ingredients()) result.add(new Demand(ingredient,Workshop.TRIP_BATCHES));
         }
         return result;
+    }
+    private static boolean maintenanceInput(Supplies supplies,Settlement town,ItemStack stack) {
+        if(town==null || town.progress.traps.isEmpty()) return false;
+        return stack.is(ItemTags.PLANKS) || stack.is(Items.STRING) || stack.is(Items.IRON_INGOT)
+                || stack.is(io.github.swishhyy.wwmc.WWMC.BRONZE_INGOT.get());
     }
     public static boolean needsSupplies(Supplies supplies,StructureRole role,List<Container> barrels,List<Container> warehouse) { return needsSupplies(supplies,null,role,barrels,warehouse); }
     public static boolean needsSupplies(Supplies supplies,Settlement town,StructureRole role,List<Container> barrels,List<Container> warehouse) {

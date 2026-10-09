@@ -125,6 +125,7 @@ public final class Panels {
         }));
         overview.add(alarm(town));
         overview.add(new Row(icon(Items.IRON_SWORD),"Enemy waves",WaveService.status(level,town)+"; "+town.waves+" repelled"));
+        overview.add(new Row(icon(WWMC.TRAP_ITEMS.get(io.github.swishhyy.wwmc.core.TrapKind.WOODEN_SPIKES).get()),"Traps",TrapService.status(level,town)));
         List<Row> people=new ArrayList<>();
         List<CitizenEntity> loaded=new ArrayList<>(DefenseService.loadedCitizens(level,town));
         loaded.sort(Comparator.comparing(citizen -> citizen.getName().getString()));

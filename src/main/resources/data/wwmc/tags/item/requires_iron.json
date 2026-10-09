@@ -106,6 +106,7 @@
     "minecraft:damaged_anvil",
     "minecraft:blast_furnace",
     "minecraft:smithing_table",
-    "wwmc:blacksmith_station"
+    "wwmc:blacksmith_station",
+    "wwmc:iron_spring_trap"
   ]
 }

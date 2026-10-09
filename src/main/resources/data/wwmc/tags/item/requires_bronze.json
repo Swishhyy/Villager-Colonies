@@ -53,6 +53,8 @@
     {
       "id": "minecraft:copper_spear",
       "required": false
-    }
+    },
+    "wwmc:bronze_snare",
+    "wwmc:bronze_caltrops"
   ]
 }

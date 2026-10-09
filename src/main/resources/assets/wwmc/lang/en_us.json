@@ -153,5 +153,12 @@
   "block.wwmc.raw_tin_block": "Raw Tin Block",
   "block.wwmc.tin_block": "Tin Block",
   "block.wwmc.bronze_block": "Bronze Block",
-  "block.wwmc.researcher_station": "Researcher Station"
+  "block.wwmc.researcher_station": "Researcher Station",
+  "block.wwmc.wooden_spikes": "Wooden Spikes",
+  "block.wwmc.tangle_net": "Tangle Net",
+  "block.wwmc.bronze_snare": "Bronze Snare",
+  "block.wwmc.bronze_caltrops": "Bronze Caltrops",
+  "block.wwmc.iron_spring_trap": "Iron Spring Trap",
+  "wwmc.configuration.maxSettlementTraps": "Traps per settlement",
+  "wwmc.configuration.maxSettlementTraps.tooltip": "Maximum placed traps per town. Only traps in ticking chunks activate; each activation spends durability."
 }

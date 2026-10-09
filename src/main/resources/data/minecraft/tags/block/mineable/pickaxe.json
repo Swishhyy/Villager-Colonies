@@ -5,6 +5,9 @@
     "wwmc:deepslate_tin_ore",
     "wwmc:raw_tin_block",
     "wwmc:tin_block",
-    "wwmc:bronze_block"
+    "wwmc:bronze_block",
+    "wwmc:bronze_snare",
+    "wwmc:bronze_caltrops",
+    "wwmc:iron_spring_trap"
   ]
 }

@@ -2,6 +2,8 @@ package io.github.swishhyy.wwmc;
 import com.mojang.logging.LogUtils;
 import io.github.swishhyy.wwmc.block.SettlementBannerBlock;
 import io.github.swishhyy.wwmc.block.StationBlock;
+import io.github.swishhyy.wwmc.block.TrapBlock;
+import io.github.swishhyy.wwmc.core.TrapKind;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.core.BronzeEquipment;
 import net.minecraft.world.item.equipment.ArmorType;
@@ -82,6 +84,15 @@ public final class WWMC {
             STATIONS.put(role,block); STATION_ITEMS.put(role,ITEMS.registerSimpleBlockItem(block));
         }
     }
+    public static final Map<TrapKind,DeferredBlock<TrapBlock>> TRAPS=new EnumMap<>(TrapKind.class);
+    public static final Map<TrapKind,DeferredItem<BlockItem>> TRAP_ITEMS=new EnumMap<>(TrapKind.class);
+    static {
+        for(TrapKind kind:TrapKind.values()) {
+            var block=BLOCKS.registerBlock(kind.id,p -> new TrapBlock(kind,p),p -> p.mapColor(MapColor.WOOD).strength(1.5F)
+                    .noCollission().noOcclusion().pushReaction(PushReaction.BLOCK));
+            TRAPS.put(kind,block); TRAP_ITEMS.put(kind,ITEMS.registerSimpleBlockItem(block));
+        }
+    }
     public static final Map<Carcasses.Kind,DeferredItem<Item>> CARCASSES=new EnumMap<>(Carcasses.Kind.class);
     static { for(var kind:Carcasses.Kind.values()) CARCASSES.put(kind,ITEMS.registerItem(kind.id+"_carcass",Item::new,p -> p.stacksTo(16))); }
     public static final DeferredItem<SurveyorItem> SURVEYOR=ITEMS.registerItem("surveyor",SurveyorItem::new,p -> p.stacksTo(1));
@@ -96,6 +107,7 @@ public final class WWMC {
                     RAW_TIN,TIN_INGOT,BRONZE_BLEND,BRONZE_INGOT,BRONZE_SWORD,BRONZE_PICKAXE,BRONZE_AXE,BRONZE_SHOVEL,BRONZE_HOE,
                     BRONZE_HELMET,BRONZE_CHESTPLATE,BRONZE_LEGGINGS,BRONZE_BOOTS)) out.accept(item.get());
             for(StructureRole role:StructureRole.values()) out.accept(STATION_ITEMS.get(role).get());
+            for(TrapKind kind:TrapKind.values()) out.accept(TRAP_ITEMS.get(kind).get());
             for(var kind:Carcasses.Kind.values()) out.accept(CARCASSES.get(kind).get());
         }).build());
     public WWMC(IEventBus bus, ModContainer container) {
@@ -113,6 +125,7 @@ public final class WWMC {
         NeoForge.EVENT_BUS.register(new GuardService());
         NeoForge.EVENT_BUS.register(new DefenseService());
         NeoForge.EVENT_BUS.register(new WaveService());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.TrapService());
         NeoForge.EVENT_BUS.register(new TradeChunks());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CitizenRecall());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.TradeAtlas.Survey());

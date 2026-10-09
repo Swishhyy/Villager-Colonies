@@ -142,6 +142,11 @@ public final class TownNeeds {
             int workers=count.get(key);
             needs.add(workers==1 ? need : new Need(need.severity(),need.icon(),need.title()+" and "+(workers-1)+" more",need.detail(),need.at()));
         });
+        for(TrapService.Entry trap:town.progress.traps) {
+            BlockPos at=trap.pos();
+            if(level.hasChunkAt(at) && level.isPositionEntityTicking(at) && TrapService.needsMaintenance(level.getBlockState(at)))
+                needs.add(new Need(WARNING,icon(level.getBlockState(at).getBlock()),"Trap needs maintenance",TrapService.describe(level,at),at));
+        }
         needs.sort(Comparator.comparingInt((Need need) -> -need.severity()));
         return needs;
     }

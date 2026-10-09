@@ -6,6 +6,10 @@
 
 In development on a separate branch; not yet released.
 
+- Add five research-gated traps: wooden spikes, tangle nets, bronze snares, bronze caltrops and iron spring traps. Friendly traffic is safe; wear survives moving and saving.
+- Add paid rearming and repairs, craftsmen maintaining nearby traps after combat, courier repair supplies, and quiet maintenance notices at the banner.
+- Spawn waves beyond furnished stations and placed traps on safe ticking natural ground. Postpone blocked arrivals instead of spawning inside defenses; report persistent problems in the console.
+
 - Add Stone, Bronze and Iron progression shared by a settlement's owner and accepted members. Higher-tier loot can be stored until its research unlocks use.
 - Add a Researcher Station and lectern work: pay project supplies once, wait for real work, and keep progress through pauses and saves.
 - Add tin ore, bronze alloying, bronze tools and armor, with further research for diamond and netherite gear. Existing settlements retain their equipment access.

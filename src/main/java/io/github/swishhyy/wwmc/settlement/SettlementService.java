@@ -458,7 +458,7 @@ public final class SettlementService {
     public static String status(ServerLevel level,Settlement settlement) {
         return settlement.name+": "+settlement.citizens.size()+" of "+populationLimit(settlement)+" citizens allowed / "+housingBeds(level,settlement).size()+
                 " loaded housing beds, "+settlement.stations.size()+" stations, priority: "+settlement.priority+". Claim radius: "+settlement.radius+
-                ". Defense: "+DefenseService.status(settlement)+"; "+WaveService.status(level,settlement)+".";
+                ". Defense: "+DefenseService.status(settlement)+"; "+WaveService.status(level,settlement)+". Traps: "+TrapService.status(level,settlement)+".";
     }
     private static Settlement owned(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer player=source.getPlayerOrException();

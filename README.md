@@ -18,6 +18,7 @@ Trade with other settlements, play alongside friends, and equip guards to defend
 - **Defense and exploration:** guards, patrols, raids, bandit camps, and supplied outposts.
 - **Visible progress:** job outfits and work effects, town colors, upgrades, research, a visual handbook, and tutorial advancements.
 - **Settlement ages in 0.1.1.0:** Stone → Bronze → Iron, with researchers, tin, bronze equipment, and shared unlocks for town members.
+- **Traps in 0.1.1.0:** spikes, nets, snares, caltrops and spring traps, with saved wear, paid maintenance and waves arriving beyond the town's stations and traps. See [trap defenses](docs/defenses.md).
 
 Larger warfare systems, countries, automatic building, and distant settlement simulation remain [planned features](docs/ROADMAP.md).
 

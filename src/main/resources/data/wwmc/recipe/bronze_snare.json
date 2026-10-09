@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "B B",
+    " S ",
+    "PPP"
+  ],
+  "key": {
+    "B": "wwmc:bronze_ingot",
+    "S": "minecraft:string",
+    "P": "#minecraft:planks"
+  },
+  "result": {
+    "id": "wwmc:bronze_snare",
+    "count": 1
+  }
+}

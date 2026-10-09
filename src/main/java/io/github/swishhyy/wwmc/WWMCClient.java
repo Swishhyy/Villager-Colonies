@@ -41,6 +41,14 @@ public final class WWMCClient {
     private static void tooltip(ItemTooltipEvent event) {
         if(io.github.swishhyy.wwmc.settlement.AgeProgression.required(event.getItemStack())>0)
             event.getToolTip().add(Component.literal("Settlement research: "+io.github.swishhyy.wwmc.settlement.AgeProgression.requirement(event.getItemStack())).withStyle(ChatFormatting.GOLD));
+        if(event.getItemStack().getItem() instanceof BlockItem trapItem && trapItem.getBlock() instanceof io.github.swishhyy.wwmc.block.TrapBlock trap) {
+            var saved=event.getItemStack().get(DataComponents.BLOCK_STATE);
+            int wear=0;
+            if(saved!=null) try { wear=Integer.parseInt(saved.properties().getOrDefault("wear","0")); } catch(NumberFormatException ignored) {}
+            event.getToolTip().add(Component.literal(trap.kind().effect()).withStyle(ChatFormatting.GRAY));
+            event.getToolTip().add(Component.literal(Math.max(0,trap.kind().uses-wear)+" uses remaining; hostile mobs only")
+                    .withStyle(wear>=trap.kind().uses ? ChatFormatting.RED : ChatFormatting.GREEN));
+        }
         if(!(event.getItemStack().getItem() instanceof BlockItem item) || !(item.getBlock() instanceof StationBlock block)) return;
         var state=event.getItemStack().get(DataComponents.BLOCK_STATE);
         if(state==null) return;

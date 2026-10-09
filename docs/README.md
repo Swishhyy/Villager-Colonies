@@ -12,6 +12,7 @@ Start with [installing WWMC](../README.md#install) and [building your first town
 | --- | --- |
 | Stations, recipes, commands, inventories, and settings | [Settlement guide](settlement-guide.md) |
 | Stone, Bronze and Iron Ages; tin and bronze equipment | [Ages and research](settlement-guide.md#ages-and-research) |
+| Trap recipes, maintenance and defending against waves | [Defenses and traps](defenses.md) |
 | Furnaces, kitchens, yield upgrades, pickaxes, and hospitals | [Production and recovery](production-recovery.md) |
 | Permissions, alliances, trade, squads, expeditions, research, and outposts | [Multiplayer and campaign](multiplayer-campaign.md) |
 | Missing Overworld settings on a dedicated server | [Server startup help](server-startup.md) |

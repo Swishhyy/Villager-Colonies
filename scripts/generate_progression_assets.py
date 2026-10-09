@@ -176,10 +176,10 @@ def main():
         tag('minecraft','item','enchantable/'+enchant,['wwmc:bronze_'+p for p in parts])
     gear=['sword','pickaxe','axe','shovel','hoe','helmet','chestplate','leggings','boots','spear']
     def optional(id):return {'id':id,'required':False}
-    tag('wwmc','item','requires_bronze',['wwmc:bronze_'+p for p in list(patterns)]+['wwmc:bronze_blend','wwmc:bronze_ingot','wwmc:bronze_block','wwmc:quarry_station']+[optional('minecraft:copper_'+p) for p in gear])
+    tag('wwmc','item','requires_bronze',['wwmc:bronze_'+p for p in list(patterns)]+['wwmc:bronze_blend','wwmc:bronze_ingot','wwmc:bronze_block','wwmc:quarry_station','wwmc:bronze_snare','wwmc:bronze_caltrops']+[optional('minecraft:copper_'+p) for p in gear])
     tag('wwmc','item','requires_iron',[optional('minecraft:'+m+'_'+p) for m in ('iron','golden') for p in gear]+['minecraft:chainmail_'+p for p in ['helmet','chestplate','leggings','boots']]
         +['minecraft:bucket','minecraft:water_bucket','minecraft:lava_bucket','minecraft:milk_bucket','minecraft:powder_snow_bucket','minecraft:cod_bucket','minecraft:salmon_bucket','minecraft:pufferfish_bucket','minecraft:tropical_fish_bucket','minecraft:axolotl_bucket','minecraft:tadpole_bucket',
-          'minecraft:shears','minecraft:flint_and_steel','minecraft:shield','minecraft:crossbow','minecraft:trident','minecraft:anvil','minecraft:chipped_anvil','minecraft:damaged_anvil','minecraft:blast_furnace','minecraft:smithing_table','wwmc:blacksmith_station'])
+          'minecraft:shears','minecraft:flint_and_steel','minecraft:shield','minecraft:crossbow','minecraft:trident','minecraft:anvil','minecraft:chipped_anvil','minecraft:damaged_anvil','minecraft:blast_furnace','minecraft:smithing_table','wwmc:blacksmith_station','wwmc:iron_spring_trap'])
     tag('wwmc','item','requires_gemcraft',[optional('minecraft:diamond_'+p) for p in gear]+['minecraft:enchanting_table','minecraft:mace','wwmc:enchanter_station'])
     tag('wwmc','item','requires_netherite',[optional('minecraft:netherite_'+p) for p in gear])
     configured={'type':'minecraft:ore','config':{'size':7,'discard_chance_on_air_exposure':0.0,'targets':[

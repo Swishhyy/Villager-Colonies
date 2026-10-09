@@ -1,0 +1,82 @@
+{
+  "variants": {
+    "armed=true,wear=0": {
+      "model": "wwmc:block/bronze_snare_armed"
+    },
+    "armed=false,wear=0": {
+      "model": "wwmc:block/bronze_snare_spent"
+    },
+    "armed=true,wear=1": {
+      "model": "wwmc:block/bronze_snare_armed"
+    },
+    "armed=false,wear=1": {
+      "model": "wwmc:block/bronze_snare_spent"
+    },
+    "armed=true,wear=2": {
+      "model": "wwmc:block/bronze_snare_armed"
+    },
+    "armed=false,wear=2": {
+      "model": "wwmc:block/bronze_snare_spent"
+    },
+    "armed=true,wear=3": {
+      "model": "wwmc:block/bronze_snare_armed"
+    },
+    "armed=false,wear=3": {
+      "model": "wwmc:block/bronze_snare_spent"
+    },
+    "armed=true,wear=4": {
+      "model": "wwmc:block/bronze_snare_armed"
+    },
+    "armed=false,wear=4": {
+      "model": "wwmc:block/bronze_snare_spent"
+    },
+    "armed=true,wear=5": {
+      "model": "wwmc:block/bronze_snare_armed"
+    },
+    "armed=false,wear=5": {
+      "model": "wwmc:block/bronze_snare_spent"
+    },
+    "armed=true,wear=6": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=false,wear=6": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=true,wear=7": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=false,wear=7": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=true,wear=8": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=false,wear=8": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=true,wear=9": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=false,wear=9": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=true,wear=10": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=false,wear=10": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=true,wear=11": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=false,wear=11": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=true,wear=12": {
+      "model": "wwmc:block/bronze_snare_broken"
+    },
+    "armed=false,wear=12": {
+      "model": "wwmc:block/bronze_snare_broken"
+    }
+  }
+}

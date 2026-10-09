@@ -46,7 +46,10 @@ public final class GuideBook {
             new Card("wwmc:guard_station","Equip a guard","Place usable armor on nearby stands. Put weapons and arrows in the guard barrel. One post has one guard."),
             new Card("minecraft:shield","Posts & patrols","Choose a swordsman, shield guard or archer role at Guard. Use the Inspector to mark posts and patrol points."),
             new Card("minecraft:bell","Sound the alarm","Ring a bell to call guards. Keep some home when borrowing guards for a squad or expedition."),
-            new Card("wwmc:hospital_station","Make patient beds","Put beds beside Hospital. They heal slowly. Fund Field Hospital and stock meals plus paper to let a medic assist.")
+            new Card("wwmc:hospital_station","Make patient beds","Put beds beside Hospital. They heal slowly. Fund Field Hospital and stock meals plus paper to let a medic assist."),
+            new Card("wwmc:wooden_spikes","Build trap defenses","Stone Age spikes damage and slow; nets strongly slow. Bronze unlocks snares and caltrops; Iron unlocks spring traps. Place them on solid ground inside your town."),
+            new Card("wwmc:bronze_snare","Maintain your traps","Only hostile monsters trigger traps. Each activation spends a use. Nets and snares need string to rearm; broken traps need planks, string or their metal. Moving a trap retains wear."),
+            new Card("wwmc:craftsman_station","Repair after combat","Craftsmen carry courier-delivered repair materials to nearby traps after the alarm ends. Check Overview and Needs at the banner; Show locates worn defenses.")
         ),List.of(),"Housing beds and food do not heal injuries. Hospital patients stay until their health is full."),
         new Topic("relationships","Town & friends","Manage access and colors at the flag",List.of(
             new Card("minecraft:iron_door","Invite your friends","Open Relationships > Players. Invite a Builder or Steward. They accept under Invitations. Outsiders have no access."),

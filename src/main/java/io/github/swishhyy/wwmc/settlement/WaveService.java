@@ -21,6 +21,7 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -30,7 +31,8 @@ import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 /**
- * Hostile waves sized by population and by the town's population upgrades. They gather inside the claim at nightfall,
+ * Hostile waves sized by population and by the town's population upgrades. They gather beyond furnished stations and
+ * registered defenses in loaded terrain at nightfall,
  * only while the owner is home, then march on the banner and attack citizens. Wave mobs glow so they are easy to find,
  * and guards are mobilized and given their targets immediately. A minute later the owner hears about stragglers. Wave mobs carry
  * entity tags so they keep marching after a reload.
@@ -48,6 +50,29 @@ public final class WaveService {
     /** When each town's current wave arrived, and the towns whose owner already heard the guards are hunting stragglers. */
     private static final Map<UUID,Long> STARTED=new HashMap<>();
     private static final Set<UUID> HUNTED=new HashSet<>();
+    private static final Set<UUID> BLOCKED_APPROACHES=new HashSet<>();
+    private static final Map<UUID,Long> LAST_APPROACH_WARNING=new HashMap<>();
+    public record Perimeter(int minX,int maxX,int minZ,int maxZ) {
+        public boolean contains(int x,int z) { return x>=minX && x<=maxX && z>=minZ && z<=maxZ; }
+        Perimeter include(BlockPos pos,int padding) {
+            return new Perimeter(Math.min(minX,pos.getX()-padding),Math.max(maxX,pos.getX()+padding),
+                    Math.min(minZ,pos.getZ()-padding),Math.max(maxZ,pos.getZ()+padding));
+        }
+    }
+    /** Claims are much wider than ticking player terrain. Use the actual town footprint without force-loading spawns. */
+    public static Perimeter perimeter(ServerLevel level,Settlement town) {
+        int core=Math.min(64,Math.max(16,town.radius-24));
+        Perimeter bounds=new Perimeter(town.center.getX()-core,town.center.getX()+core,town.center.getZ()-core,town.center.getZ()+core);
+        for(Station station:town.stations) {
+            if(level.hasChunkAt(station.position()) && !SettlementService.active(level,station)) continue;
+            bounds=bounds.include(station.position(),station.radius()+8);
+        }
+        for(var trap:town.progress.traps) {
+            if(level.hasChunkAt(trap.pos()) && !(level.getBlockState(trap.pos()).getBlock() instanceof io.github.swishhyy.wwmc.block.TrapBlock)) continue;
+            bounds=bounds.include(trap.pos(),8);
+        }
+        return bounds;
+    }
     private static Mob create(ServerLevel level,WavePlan.Attacker attacker) {
         var type=BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.withDefaultNamespace(attacker.name().toLowerCase(Locale.ROOT)));
         return type.create(level,EntitySpawnReason.EVENT) instanceof Mob mob ? mob : null;
@@ -63,7 +88,8 @@ public final class WaveService {
         int needed=Config.WAVE_MIN_POPULATION.get();
         if(town.citizens.size()<needed || town.nextWave==0) return "waves begin once the town has "+needed+" citizens";
         long minutes=Math.max(0,town.nextWave-level.getGameTime())/1200;
-        return "next wave of about "+size(town)+" hostiles in "+(minutes==0 ? "under a minute" : "about "+minutes+" min")+" (arrives at night)";
+        return "next wave of about "+size(town)+" hostiles in "+(minutes==0 ? "under a minute" : "about "+minutes+" min")+" (arrives at night)"
+                +(BLOCKED_APPROACHES.contains(town.id) ? "; waiting for a safe loaded approach beyond the defenses" : "");
     }
     private static ServerPlayer ownerHome(ServerLevel level,Settlement town) {
         // A present co-manager can defend the shared town; absent players' towns remain protected.
@@ -76,17 +102,22 @@ public final class WaveService {
         BlockPos pos=new BlockPos(x,level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,x,z),z);
         if(pos.getY()<=level.getMinY() || pos.getY()+1>=level.getMaxY() || !level.getFluidState(pos).isEmpty()
                 || !level.getFluidState(pos.below()).isEmpty() || !level.getBlockState(pos.below()).isFaceSturdy(level,pos.below(),Direction.UP)) return null;
+        var surface=level.getBlockState(pos.below());
+        if(!surface.is(net.minecraft.tags.BlockTags.DIRT) && !surface.is(net.minecraft.tags.BlockTags.BASE_STONE_OVERWORLD)
+                && !surface.is(net.minecraft.tags.BlockTags.SAND) && !surface.is(Blocks.GRAVEL) && !surface.is(Blocks.SNOW_BLOCK)
+                && !surface.is(Blocks.FARMLAND) && !surface.is(Blocks.DIRT_PATH)) return null;
         // Keep spawns outdoors and away from furnished stations and town furniture.
         if(town.stations.stream().anyMatch(s -> s.position().distSqr(pos)<16*16)) return null;
         return pos;
     }
-    private static BlockPos site(ServerLevel level,Settlement town,ServerPlayer owner) {
+    public static BlockPos arrivalSite(ServerLevel level,Settlement town,ServerPlayer owner) {
         var random=level.getRandom();
-        int reach=Math.min(MAX_DISTANCE,town.radius-SPREAD);
-        for(int attempt=0;attempt<24;attempt++) {
-            double angle=random.nextDouble()*Math.PI*2;
-            int distance=Math.min(reach,MIN_DISTANCE+random.nextInt(MAX_DISTANCE-MIN_DISTANCE+1));
-            BlockPos pos=ground(level,town,town.center.getX()+(int)Math.round(Math.cos(angle)*distance),town.center.getZ()+(int)Math.round(Math.sin(angle)*distance));
+        Perimeter bounds=perimeter(level,town);
+        for(int attempt=0;attempt<64;attempt++) {
+            int side=random.nextInt(4),margin=12+random.nextInt(9);
+            int x=side==0 ? bounds.minX()-margin : side==1 ? bounds.maxX()+margin : bounds.minX()+random.nextInt(bounds.maxX()-bounds.minX()+1);
+            int z=side==2 ? bounds.minZ()-margin : side==3 ? bounds.maxZ()+margin : bounds.minZ()+random.nextInt(bounds.maxZ()-bounds.minZ()+1);
+            BlockPos pos=ground(level,town,x,z);
             if(pos!=null && (owner==null || owner.distanceToSqr(Vec3.atCenterOf(pos))>=24*24)) return pos;
         }
         return null;
@@ -95,15 +126,26 @@ public final class WaveService {
     public static int launch(ServerLevel level,Settlement town) {
         if(level.getDifficulty()==Difficulty.PEACEFUL) return 0;
         ServerPlayer owner=ownerHome(level,town);
-        BlockPos site=site(level,town,owner);
-        if(site==null) return 0;
+        BlockPos site=arrivalSite(level,town,owner);
+        if(site==null) {
+            BLOCKED_APPROACHES.add(town.id); long now=level.getGameTime();
+            if(Config.SERVER_DIAGNOSTICS.get() && now-LAST_APPROACH_WARNING.getOrDefault(town.id,now-Config.DIAGNOSTIC_REPEAT.get()*20L)>=Config.DIAGNOSTIC_REPEAT.get()*20L) {
+                LAST_APPROACH_WARNING.put(town.id,now);
+                io.github.swishhyy.wwmc.WWMC.LOGGER.warn("[WWMC][wave-approach] town={} center={} No safe ticking natural ground beyond the defense perimeter; wave postponed",town.name,town.center.toShortString());
+            }
+            return 0;
+        }
+        BLOCKED_APPROACHES.remove(town.id);
         var random=level.getRandom();
         int spawned=0;
+        Perimeter bounds=perimeter(level,town);
         for(var entry:WavePlan.compose(size(town),town.citizens.size(),SettlementService.populationLevel(town)).entrySet()) {
             for(int i=0;i<entry.getValue();i++) {
                 BlockPos pos=null;
-                for(int attempt=0;attempt<8 && pos==null;attempt++)
-                    pos=ground(level,town,site.getX()+random.nextInt(SPREAD*2+1)-SPREAD,site.getZ()+random.nextInt(SPREAD*2+1)-SPREAD);
+                for(int attempt=0;attempt<8 && pos==null;attempt++) {
+                    int x=site.getX()+random.nextInt(SPREAD*2+1)-SPREAD,z=site.getZ()+random.nextInt(SPREAD*2+1)-SPREAD;
+                    if(!bounds.contains(x,z)) pos=ground(level,town,x,z);
+                }
                 if(pos==null) pos=site;
                 Mob mob=create(level,entry.getKey());
                 if(mob==null) continue;
@@ -206,7 +248,9 @@ public final class WaveService {
         mob.targetSelector.addGoal(3,new NearestAttackableTargetGoal<>(mob,CitizenEntity.class,true));
         if(mob instanceof PathfinderMob walker) mob.goalSelector.addGoal(4,new MarchGoal(walker,town.center));
     }
-    @SubscribeEvent public void stopped(ServerStoppedEvent event) { ACTIVE.clear(); STARTED.clear(); HUNTED.clear(); }
+    @SubscribeEvent public void stopped(ServerStoppedEvent event) {
+        ACTIVE.clear(); STARTED.clear(); HUNTED.clear(); BLOCKED_APPROACHES.clear(); LAST_APPROACH_WARNING.clear();
+    }
     /** Without a target, walk toward the town banner. */
     private static final class MarchGoal extends Goal {
         private final PathfinderMob mob;
