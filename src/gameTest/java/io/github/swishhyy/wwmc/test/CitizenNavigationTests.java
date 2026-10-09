@@ -19,6 +19,30 @@ import net.neoforged.neoforge.common.world.chunk.RegisterTicketControllersEvent;
 import net.neoforged.neoforge.common.world.chunk.TicketController;
 
 public final class CitizenNavigationTests {
+    @GameTest(timeoutTicks=240)
+    @EmptyTemplate
+    @TestHolder(description="A worker finishes the small step to its chosen standing spot when vanilla navigation stops inside the same block but leaves the target beyond four-block hand reach.")
+    static void finishesPreciseStandingApproach(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos stand=helper.absolutePos(new BlockPos(0,2,7200)),barrel=stand.offset(4,0,2);
+            var chunks=pinArea(level,stand,-6,10,-6,10); meadow(level,stand,-6,10,-6,10);
+            level.setBlockAndUpdate(barrel,Blocks.BARREL.defaultBlockState());
+            var citizen=walker(level,stand); citizen.setPos(stand.getX()+0.2,stand.getY(),stand.getZ()+0.2);
+            helper.runAtTickTime(5,() -> {
+                helper.assertTrue(io.github.swishhyy.wwmc.settlement.CitizenReach.canUse(level,net.minecraft.world.phys.Vec3.atBottomCenterOf(stand).add(0,citizen.getEyeHeight(),0),barrel),
+                        "The chosen standing spot must put the barrel in reach");
+                helper.assertTrue(!io.github.swishhyy.wwmc.settlement.CitizenReach.canUse(level,citizen.getEyePosition(),barrel),"The initial sub-block offset must be out of reach");
+                helper.succeedWhen(() -> {
+                    citizen.workStandAt(stand);
+                    helper.assertTrue(io.github.swishhyy.wwmc.settlement.CitizenReach.canUse(level,citizen.getEyePosition(),barrel),
+                            "Navigation stopped short of the working spot: offset="+citizen.position().subtract(net.minecraft.world.phys.Vec3.atBottomCenterOf(stand))
+                            +", navigationDone="+citizen.getNavigation().isDone());
+                    citizen.discard(); release(level,stand,chunks);
+                });
+            });
+        });
+    }
+
     private static final TicketController TICKETS=new TicketController(Identifier.fromNamespaceAndPath("wwmc_tests","navigation"),(level,helper) -> {});
     static void registerTickets(RegisterTicketControllersEvent event) { event.register(TICKETS); }
     private static List<ChunkPos> pin(ServerLevel level,BlockPos start,int width) {
