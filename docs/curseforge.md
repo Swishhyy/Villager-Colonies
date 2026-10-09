@@ -1,5 +1,7 @@
 # CurseForge publishing
 
+[Project overview](../README.md) · [All guides](README.md) · [CurseForge project](https://www.curseforge.com/minecraft/mc-mods/world-war-mc)
+
 ## Project summary
 
 Paste this single line into the **General -> Summary** field:
@@ -15,40 +17,19 @@ The text between the markers is ready to paste into the project's **Description*
 <!-- curseforge-description:start -->
 ## World War MC
 
-World War MC (WWMC) brings first-person settlement management and strategy to Minecraft. Found a town, live alongside its citizens, organize production, and lead your guards into the field.
+World War MC lets you build and manage your own settlement in Minecraft.
 
-### Build a working settlement
+Recruit villagers and give them jobs like farming, mining, cooking, and crafting. Keep your people fed, organize supplies, and grow your town.
 
-- Recruit named citizens and give them permanent jobs at dedicated stations.
-- Set up farms, lumber work, mines, quarries, cooking, smelting, crafting, enchanting, and equipment repair.
-- Use warehouses, job barrels, and couriers to move real supplies through your town.
-- Keep citizens fed, provide housing, and build hospital beds for injured citizens to recover.
-- Expand your town with station, production, and population upgrades.
+Trade with other settlements, work together with friends, and equip guards to defend against raids. When you're ready, lead your guards out to clear bandit camps and establish outposts.
 
-### Trade, cooperate, and defend
+An in-game guide and advancements help you get started.
 
-- Establish physical trade routes between towns; traders carry goods through the world.
-- Invite friends as builders or stewards, manage claim permissions, and form mutual alliances.
-- Equip guards, set patrols, raise alarms, and defend against hostile waves.
-- Lead guard squads to bandit camps, occupied mines, and ruined forts, then establish supplied outposts.
-- Fund settlement projects and research with materials from your warehouses.
+**WWMC is playable but still in development**, with more features and improvements planned.
 
-### Learn while you play
+Requires **Minecraft Java 26.2 and NeoForge 26.2.0.88 or newer for 26.2**, using **Java 25**. Install the mod on both the client and server for multiplayer.
 
-Job outfits, work animations, particles, and sounds show what citizens are doing. Town colors and corner banners mark your settlement. A visual Settlement Guide, tutorial advancements, needs board, and shared settlement map help you get started.
-
-Craft the **Settlement Guide** from **one book and one blue dye**, right-click it to open the handbook, and press **L** to view WWMC's advancement tree.
-
-### Requirements and development status
-
-- **Minecraft Java Edition 26.2**
-- **NeoForge 26.2.0.88 or newer for Minecraft 26.2**
-- **Java 25**
-- Install the same WWMC version on the client and server when playing multiplayer.
-
-**WWMC is in early development.** Version **0.1.0.0** starts the public version series and includes the settlement and campaign features above. Larger warfare systems, countries, autonomous building, and distant settlement simulation remain planned features. Balance and systems may change; use a test world or back up an existing world before updating.
-
-[Source code](https://github.com/Swishhyy/World-War-MC) · [Report a bug](https://github.com/Swishhyy/World-War-MC/issues)
+[Project guides](https://github.com/Swishhyy/World-War-MC/blob/main/docs/README.md) · [Report a bug](https://github.com/Swishhyy/World-War-MC/issues)
 <!-- curseforge-description:end -->
 
 ## Public version format

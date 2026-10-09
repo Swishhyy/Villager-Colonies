@@ -1,5 +1,7 @@
 # Dedicated server startup: missing Overworld settings
 
+[Project overview](../README.md) · [All guides](README.md)
+
 The supplied 26.2 NeoForge log loads WWMC successfully, then fails before world startup with:
 
 ```text

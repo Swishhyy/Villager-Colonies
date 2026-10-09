@@ -1,4 +1,6 @@
-# Production and recovery in 0.12.3
+# Production and recovery
+
+[Project overview](../README.md) · [All guides](README.md)
 
 Every job block still takes one citizen, except quarries. These changes improve the output and reliability of that single worker.
 

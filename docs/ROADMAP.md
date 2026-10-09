@@ -1,5 +1,7 @@
 # Simulation and warfare roadmap
 
+[Project overview](../README.md) · [All guides](README.md)
+
 This document describes future design. It is not a list of implemented features.
 
 ## Distant settlement event model
