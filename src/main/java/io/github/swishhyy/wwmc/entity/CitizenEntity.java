@@ -583,12 +583,7 @@ public final class CitizenEntity extends Villager {
         });
     }
     private CitizenReach.StandingView standingView(ServerLevel level,Settlement town) {
-        return new CitizenReach.StandingView() {
-            public boolean available(BlockPos p) { return town.contains(p) && p.getY()>=level.getMinY() && p.getY()<level.getMaxY() && level.hasChunkAt(p); }
-            public boolean clear(BlockPos p) { return CitizenEntity.clear(level,p); }
-            public boolean footing(BlockPos p) { return !level.getBlockState(p).is(BlockTags.LEAVES)
-                    && level.getFluidState(p).isEmpty() && level.getBlockState(p).isFaceSturdy(level,p,net.minecraft.core.Direction.UP); }
-        };
+        return CitizenReach.ground(level,p -> town.contains(p) && p.getY()>=level.getMinY() && p.getY()<level.getMaxY() && level.hasChunkAt(p));
     }
     private boolean reachableStand(BlockPos pos) {
         if(pos.equals(blockPosition()) || beyondOneRoute(pos)) return true;
@@ -610,7 +605,7 @@ public final class CitizenEntity extends Villager {
         for(BlockPos stand:CitizenReach.stands(view,touch,position(),getEyeHeight())) {
             if(reachBudget.deferred()) break;
             if(!reachableStand(stand)) continue;
-            Vec3 eye=Vec3.atBottomCenterOf(stand).add(0,getEyeHeight(),0);
+            Vec3 eye=view.feet(stand).add(0,getEyeHeight(),0);
             if(workSight(level,town,eye,touch)) { workStand=stand; return true; }
             if(failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(stand,level.getGameTime()+1200);
         }
@@ -835,12 +830,18 @@ public final class CitizenEntity extends Villager {
         return job==null ? null : nearestBarrel(SettlementService.jobBarrels(level,town,job));
     }
     /**
-     * A supply or delivery trip. The job's own barrels serve it when they hold the missing tool or supply, or when they
-     * may take the goods (see {@link #dropOff}); the warehouse serves everything else.
+     * A supply or delivery trip to the job's own barrels; couriers deliver supplies and collect finished goods.
      */
     private boolean visitDepot(ServerLevel level,Settlement town,Station station) {
-        BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
-        if(barrel==null) { activity="Needs a reachable job barrel in range; couriers bring supplies and collect goods"; return false; }
+        List<BlockPos> barrels=SettlementService.jobBarrels(level,town,station);
+        if(barrels.isEmpty()) { activity="Needs a job barrel within "+station.radius()+" blocks of the station, outside warehouse range"; return false; }
+        BlockPos barrel=nearestBarrel(barrels);
+        if(barrel==null) {
+            // A citizen brought beside a barrel can use it immediately, even after a recent failed route.
+            barrel=nearest(barrels.stream().filter(pos -> canUse(level,pos)).toList());
+            if(barrel!=null) failedTargets.remove(barrel);
+        }
+        if(barrel==null) { activity="Cannot reach "+barrels.size()+" job barrel"+(barrels.size()==1 ? "" : "s")+"; clear a path and standing room beside "+(barrels.size()==1 ? "it" : "them"); return false; }
         return visitStorage(level,town,station.role(),barrel,SettlementService.jobStorage(level,town,station),true);
     }
     /** Walk to the storage, hand in goods (if {@code deposit}), and collect food, tools and supplies this job needs. */
@@ -860,7 +861,7 @@ public final class CitizenEntity extends Villager {
             depotTicks+=10;
             boolean moving=depotStand!=null && walk(depotStand,0.65,0);
             activity=warehouse ? "Carrying supplies / returning for food or tools" : "Walking to the job's barrel";
-            // A barrel behind a trapdoor or under a carpet is skipped for a minute; the warehouse serves meanwhile.
+            // Skip a blocked barrel for a minute and try another of this station's barrels.
             if(!warehouse && (depotTicks>BARREL_WALK_TICKS || !moving && onGround())) {
                 if(failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(depotTarget,level.getGameTime()+1200);
                 depotTarget=null; depotStand=null; depotTicks=0; activity="Cannot reach the job's barrel";
@@ -1778,7 +1779,7 @@ public final class CitizenEntity extends Villager {
         if(!standingSpotUsable(level,town,hospitalStand,bed)) {
             hospitalStand=null;
             for(BlockPos stand:CitizenReach.stands(standingView(level,town),bed,position(),getEyeHeight())) {
-                if(Vec3.atBottomCenterOf(stand).distanceToSqr(Vec3.atCenterOf(bed))>4 || !standingSpotUsable(level,town,stand,bed)) continue;
+                if(standingView(level,town).feet(stand).distanceToSqr(Vec3.atCenterOf(bed))>4 || !standingSpotUsable(level,town,stand,bed)) continue;
                 if(reachableStand(stand)) { hospitalStand=stand; break; }
                 if(reachBudget.deferred()) return true;
             }
@@ -1901,8 +1902,9 @@ public final class CitizenEntity extends Villager {
     }
     private int lapisCarried() { return InventoryOps.count(List.of(cargo),Enchanting::lapis); }
     private boolean standingSpotUsable(ServerLevel level,Settlement town,BlockPos stand,BlockPos table) {
-        return stand!=null && CitizenReach.standing(standingView(level,town),stand)
-                && CitizenReach.canUse(level,Vec3.atBottomCenterOf(stand).add(0,getEyeHeight(),0),table);
+        var view=standingView(level,town);
+        return stand!=null && CitizenReach.standing(view,stand)
+                && CitizenReach.canUse(level,view.feet(stand).add(0,getEyeHeight(),0),table);
     }
     /** A solid table is a work target, not a walking destination. Probe only clear ground from which it can be used. */
     private boolean chooseEnchantingApproach(ServerLevel level,Settlement town,List<BlockPos> tables) {
@@ -1911,7 +1913,7 @@ public final class CitizenEntity extends Villager {
         for(BlockPos table:tables.stream().sorted(Comparator.comparingDouble(p -> p.distSqr(blockPosition()))).toList()) {
             if(canUse(level,table)) { enchantTable=table; return true; }
             for(BlockPos stand:CitizenReach.stands(view,table,position(),getEyeHeight())) {
-                Vec3 eyes=Vec3.atBottomCenterOf(stand).add(0,getEyeHeight(),0);
+                Vec3 eyes=view.feet(stand).add(0,getEyeHeight(),0);
                 // Obstructed views do not spend a path probe or blacklist the table.
                 if(!CitizenReach.canUse(level,eyes,table)) continue;
                 if(reachableStand(stand)) { enchantTable=table; enchantStand=stand; return true; }

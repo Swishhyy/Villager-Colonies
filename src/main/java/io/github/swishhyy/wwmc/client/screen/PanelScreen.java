@@ -197,7 +197,7 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
             if(mouseY<rowY || mouseY>=rowY+ROW-1 || mouseX<left || mouseX>=left+imageWidth-22) continue;
             PanelView.Row row=rows.get(scroll+i);
             if(mouseX<left+20 && !row.icon().isEmpty()) g.setTooltipForNextFrame(font,row.icon(),mouseX,mouseY);
-            else if(Ui.truncated(font,row.text(),imageWidth-48) || Ui.truncated(font,row.detail(),imageWidth-48))
+            else if(Ui.truncated(font,row.text(),imageWidth-48-controlWidth(row)) || Ui.truncated(font,row.detail(),imageWidth-48-controlWidth(row)))
                 g.setComponentTooltipForNextFrame(font,Ui.tooltip(font,row),mouseX,mouseY);
         }
     }

@@ -83,7 +83,7 @@ public final class TownNeeds {
         int idle=0;
         for(CitizenEntity citizen:loaded) if(town.jobs.home(citizen.getUUID())==null && !SquadService.assigned(town,citizen.getUUID())) idle++;
         if(idle>0 && population>0) needs.add(new Need(ADVICE,icon(Items.PAPER),idle+(idle==1 ? " citizen has" : " citizens have")+" no job",
-                "Place more job stations, or raise a job's priority on the Jobs tab",null));
+                TownJobs.assess(level,town).noJobAdvice(),null));
         // Stations.
         boolean barrels=false;
         for(Station station:town.stations) {
@@ -97,7 +97,8 @@ public final class TownNeeds {
                 needs.add(new Need(WARNING,station(role),name+" has no worker","Recruit citizens, or raise this job's priority on the Jobs tab so a citizen moves here",pos));
             if(role.keepsJobStorage()) {
                 if(SettlementService.jobStorage(level,town,station).isEmpty())
-                    needs.add(new Need(WARNING,station(role),name+" needs a job barrel","Put a barrel within "+station.radius()+" blocks: tools, supplies and goods are kept there",pos));
+                    needs.add(new Need(WARNING,station(role),name+" needs a job barrel","Put a barrel within "+station.radius()
+                            +" blocks, outside warehouse range. Where job ranges overlap, the nearest station owns the barrel",pos));
                 else barrels=true;
             }
             switch(role) {

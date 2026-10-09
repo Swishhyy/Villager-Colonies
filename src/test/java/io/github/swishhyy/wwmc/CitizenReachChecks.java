@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -84,6 +85,32 @@ public final class CitizenReachChecks {
             assertTrue(CitizenReach.within(Vec3.atBottomCenterOf(stand).add(0,1.6,0),trunk));
             assertFalse(stand.below().equals(trunk),"Workers cannot choose the block being mined as their footing");
         }
+    }
+    @Test @ExtendWith(EphemeralTestServerProvider.class)
+    void barrelApproachesUseTheActualSurfaceOfWalkableFloors(MinecraftServer server) {
+        Terrain world=new Terrain(); BlockPos barrel=new BlockPos(0,64,0),stand=barrel.east(2);
+        world.blocks.put(barrel,Blocks.BARREL.defaultBlockState());
+        var ground=CitizenReach.ground(world,world::available);
+        List<BlockState> floors=List.of(Blocks.DIRT_PATH.defaultBlockState(),Blocks.STONE_SLAB.defaultBlockState(),
+                Blocks.STONE_SLAB.defaultBlockState().setValue(net.minecraft.world.level.block.SlabBlock.TYPE,SlabType.TOP),Blocks.WHITE_CARPET.defaultBlockState());
+        double[] surfaces={63.9375,63.5,64.0,63.0625};
+        for(int n=0;n<floors.size();n++) {
+            world.blocks.put(stand.below(),floors.get(n));
+            assertTrue(CitizenReach.standing(ground,stand),"Walkable floor was rejected: "+floors.get(n));
+            assertEquals(surfaces[n],ground.feet(stand).y,1.0E-7);
+            var approaches=CitizenReach.stands(ground,barrel,new Vec3(12,64,0),1.6);
+            assertTrue(approaches.contains(stand),"No barrel approach over "+floors.get(n));
+            assertTrue(CitizenReach.canUse(world,ground.feet(stand).add(0,1.6,0),barrel));
+        }
+        world.blocks.put(stand,Blocks.STONE.defaultBlockState());
+        assertFalse(CitizenReach.standing(ground,stand),"A blocked body still prevents standing");
+        world.blocks.remove(stand);
+        for(BlockState unsafe:List.of(Blocks.WATER.defaultBlockState(),Blocks.OAK_LEAVES.defaultBlockState(),Blocks.OAK_FENCE.defaultBlockState())) {
+            world.blocks.put(stand.below(),unsafe);
+            assertFalse(CitizenReach.standing(ground,stand),"Unsafe footing was accepted: "+unsafe);
+        }
+        world.blocks.put(stand.below(),Blocks.STONE_SLAB.defaultBlockState()); world.unloaded.add(stand.below());
+        assertFalse(CitizenReach.standing(ground,stand),"Floor checks must not use unloaded terrain");
     }
     @Test @ExtendWith(EphemeralTestServerProvider.class)
     void leafClearingKeepsNaturalTreeProofAndConstructionProtection(MinecraftServer server) {

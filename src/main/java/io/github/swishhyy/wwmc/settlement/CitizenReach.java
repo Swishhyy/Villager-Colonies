@@ -3,7 +3,9 @@ package io.github.swishhyy.wwmc.settlement;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
@@ -50,6 +52,29 @@ public final class CitizenReach {
         boolean available(BlockPos pos);
         boolean clear(BlockPos pos);
         boolean footing(BlockPos pos);
+        /** Navigation nodes name the air above a floor, whose surface may be below a whole block. */
+        default Vec3 feet(BlockPos pos) { return Vec3.atBottomCenterOf(pos); }
+    }
+    /** Use collision surfaces, so walkable paths, slabs and carpets provide footing just like full blocks. */
+    public static StandingView ground(BlockGetter world,Predicate<BlockPos> available) {
+        return new StandingView() {
+            public boolean available(BlockPos pos) { return available.test(pos); }
+            public boolean clear(BlockPos pos) { return world.getBlockState(pos).getCollisionShape(world,pos).isEmpty() && world.getFluidState(pos).isEmpty(); }
+            public boolean footing(BlockPos pos) {
+                var state=world.getBlockState(pos);
+                var shape=state.getCollisionShape(world,pos);
+                if(state.is(BlockTags.LEAVES) || !world.getFluidState(pos).isEmpty() || shape.isEmpty()) return false;
+                AABB bounds=shape.bounds();
+                // Narrow poles and walls are not ordinary standing floors; the pathfinder checks access separately.
+                return bounds.maxY>0 && bounds.maxY<=1 && bounds.minX<=0.2 && bounds.maxX>=0.8 && bounds.minZ<=0.2 && bounds.maxZ>=0.8;
+            }
+            public Vec3 feet(BlockPos pos) {
+                BlockPos below=pos.below();
+                var shape=world.getBlockState(below).getCollisionShape(world,below);
+                double surface=shape.isEmpty() ? 0 : shape.bounds().maxY;
+                return new Vec3(pos.getX()+0.5,below.getY()+surface,pos.getZ()+0.5);
+            }
+        };
     }
     public static boolean standing(StandingView world,BlockPos pos) {
         return world.available(pos) && world.available(pos.above()) && world.available(pos.below())
@@ -57,14 +82,16 @@ public final class CitizenReach {
     }
     /** Bounded alternatives with room for the body and firm footing; never stand on the block being removed. */
     public static List<BlockPos> stands(StandingView world,BlockPos target,Vec3 from,double eyeHeight) {
-        List<BlockPos> spots=new ArrayList<>();
+        record Approach(BlockPos pos,double distance) {}
+        List<Approach> spots=new ArrayList<>();
         for(int dx=-4;dx<=4;dx++) for(int dz=-4;dz<=4;dz++) for(int dy=-2;dy<=2;dy++) {
             BlockPos pos=target.offset(dx,dy,dz);
-            if(pos.below().equals(target) || !within(new Vec3(pos.getX()+0.5,pos.getY()+eyeHeight,pos.getZ()+0.5),target)
-                    || !standing(world,pos)) continue;
-            spots.add(pos.immutable());
+            if(pos.below().equals(target) || !standing(world,pos)) continue;
+            Vec3 feet=world.feet(pos);
+            if(!within(feet.add(0,eyeHeight,0),target)) continue;
+            spots.add(new Approach(pos.immutable(),from.distanceToSqr(feet)));
         }
-        spots.sort(Comparator.comparingDouble(p -> from.distanceToSqr(Vec3.atBottomCenterOf(p))));
-        return spots;
+        spots.sort(Comparator.comparingDouble(Approach::distance));
+        return spots.stream().map(Approach::pos).toList();
     }
 }

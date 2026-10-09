@@ -322,6 +322,8 @@ Every citizen has its **own station**. It goes back there each morning, after de
 
 Each job has a **priority**: Off, Low, Normal or High. Set it with the - and + buttons in the banner's **Jobs** tab, the priority button on a station's screen, or `/wwmc job`.
 
+The town header shows **filled / enabled job places**. A station count includes Housing, Barracks and Warehouse Stations, which employ nobody. Most work stations add one place; a quarry adds its configured crew, and a hospital adds a medic only after funding the Field Hospital project. The Jobs tab lists open loaded places, switched-off places and places waiting for loading or a trade route. If all enabled places are full, add work stations or expand a quarry crew; raising a priority moves workers between jobs without creating more places.
+
 - A citizen without a job, such as a new recruit, takes the open place of highest priority. Among equal priorities, guard posts fill first, then the trader, then the station with the fewest workers, then the nearest.
 - About every half minute, and at once after you change a priority, a citizen moves to an open place in a job of **higher** priority than its own. Equal priorities never trade workers, so a new Normal station waits for a recruit, a free citizen or a raised priority.
 - **Off** frees everyone in that job, and nobody takes it until you raise it again.
@@ -343,6 +345,8 @@ The town screen's **Needs** tab gathers what the owner can fix, most urgent firs
 - Anything a worker is waiting for, grouped per station.
 
 Rows that concern one place have a **Show** button. It closes the screen, outlines the block through walls with a tall marker for 20 seconds, and gives its distance and direction in chat. `/wwmc needs` lists the same in chat.
+
+Hover over shortened row text to read the full explanation. A **missing job barrel** means none belongs to that station: place one in range, outside warehouse coverage, and nearer to this station than other job stations. **Cannot reach a job barrel** means one was detected but the worker could not reach clear standing ground beside it. Citizens can approach over paths, slabs and carpets; walls and blocked entrances still prevent access.
 
 **Experience.** Citizens earn experience from finished work at each job, such as a harvest, a vein yield, a felled tree, a batch of cooking, a repair, a delivery or a hostile killed by a guard. Experience is kept per job, so a citizen moved elsewhere keeps what it learned. The levels are Novice, Trained (25), Skilled (75), Expert (175) and Master (375). Each level adds 3% work speed, or 4% for cooks and smelters. For miners, quarry workers, lumberjacks, hunters, fishermen and butchers, each level also spares their tools 5% of uses. Guards instead hit 5% harder and take 3% less damage per level. Each level also gives a 10% chance of recovering from a swing or shot in half the usual time. Small speed bonuses work as a chance of a double work step, so they count in full on average. Reaching a level is written in the journal. Losing a citizen of Skilled level or above is recorded too: experienced citizens are worth bringing home. The citizen screen shows the current job's level, every job's progress and the diet.
 

@@ -91,6 +91,7 @@ public final class Panels {
     public static PanelView town(ServerLevel level,Settlement town) { return town(level,town,null); }
     public static PanelView town(ServerLevel level,Settlement town,ServerPlayer viewer) {
         int beds=SettlementService.housingBeds(level,town).size(),free=vacancies(level,town),limit=SettlementService.populationLimit(town);
+        TownJobs jobs=TownJobs.assess(level,town);
         List<Container> everything=SettlementService.townStorage(level,town);
         List<Row> overview=new ArrayList<>();
         List<Row> needs=needRows(level,town);
@@ -101,6 +102,8 @@ public final class Panels {
                 urgent>0 ? RED : problems>0 ? AMBER : GREEN,PanelView.NO_BAR,PanelView.NO_VALUE));
         overview.add(new Row(icon(WWMC.BANNER_ITEM.get()),"Population",town.citizens.size()+" of "+limit+" citizens allowed, "+beds+" housing beds")
                 .bar(town.citizens.size()/(float)Math.max(1,limit),town.citizens.size()>=limit ? AMBER : GREEN));
+        overview.add(new Row(icon(Items.PAPER),"Jobs",jobs.summary()));
+        overview.add(new Row(icon(WWMC.BANNER_ITEM.get()),"Stations",town.stations.size()+" total; housing, barracks and warehouses provide support, not jobs"));
         overview.add(new Row(icon(Items.EMERALD),"Population upgrades",SettlementService.populationLevel(town)+" bought"
                 +(SettlementService.canGrow(town) ? "; the next allows "+SettlementService.populationLimitAt(SettlementService.populationLevel(town)+1)
                     +" citizens for "+SettlementService.populationCost(town)+" emeralds" : "; the town is at the server's ceiling")));
@@ -135,9 +138,9 @@ public final class Panels {
             new Action(RECRUIT,recruit,free>0,"A citizen needs a free housing bed and room under the population limit of "+limit),
             grow(town,viewer),new Action(CampaignViews.OPEN,"Campaign",true,"Warehouse requests, projects, squads, expedition sites and the town journal"),
             new Action(RelationshipViews.OPEN,"Relationships",true,"Player permissions, invitations, alliances and town naming"));
-        return new PanelView(Component.literal(town.name),Component.literal(town.citizens.size()+" citizens · "+town.stations.size()+" stations · "
+        return new PanelView(Component.literal(town.name),Component.literal(town.citizens.size()+" citizens · "+jobs.assigned()+"/"+jobs.places()+" jobs · "
                 +(problems==0 ? "no needs" : problems+(problems==1 ? " need" : " needs"))),
-                List.of(new Tab("Overview",overview),new Tab("Needs",needs),new Tab("Jobs",jobRows(town)),new Tab("Citizens",people),new Tab("Stations",stations)),actions);
+                List.of(new Tab("Overview",overview),new Tab("Needs",needs),new Tab("Jobs",jobRows(town,jobs)),new Tab("Citizens",people),new Tab("Stations",stations)),actions);
     }
     /** The town's needs, most urgent first; one at a place has a Show button that outlines it in the world. */
     private static List<Row> needRows(ServerLevel level,Settlement town) {
@@ -249,8 +252,10 @@ public final class Panels {
      * One row per job the town has stations for: its priority, with buttons to change it, and who holds its places.
      * Rows keep a fixed order so they do not move under the buttons.
      */
-    private static List<Row> jobRows(Settlement town) {
+    private static List<Row> jobRows(Settlement town,TownJobs jobs) {
         List<Row> rows=new ArrayList<>();
+        rows.add(new Row(icon(Items.PAPER),"Jobs: "+jobs.assigned()+"/"+jobs.places()+" filled",jobs.unassigned()+" unassigned; "+jobs.open()
+                +" loaded openings, "+jobs.off()+" switched-off places, "+jobs.waiting()+" places waiting for loading or trade"));
         rows.add(new Row(icon(Items.BOOK),"Citizens keep their jobs","Open places in higher-priority jobs fill first and draw citizens from lower ones. Off frees a job's crew."));
         for(StructureRole role:StructureRole.values()) {
             if(!role.providesWork()) continue;
@@ -263,12 +268,13 @@ public final class Panels {
                 for(UUID id:town.jobs.crew(station.position())) names.add(town.citizenNames.getOrDefault(id,"a citizen"));
             }
             int level=town.jobs.level(role);
-            String detail=level==JobBoard.OFF ? "Switched off: nobody works here"
+            String detail=places==0 && role==StructureRole.HOSPITAL ? "Medic locked: fund the Field Hospital project on the Campaign tab"
+                    : level==JobBoard.OFF ? "Switched off: nobody works here"
                     : names.size()+" of "+places+" places filled"+(names.isEmpty() ? "" : ": "+String.join(", ",names));
             rows.add(new Row(stationIcon(role),Component.literal(role.title()+" · "+JobBoard.levelName(level)),Component.literal(detail),
                     levelColor(level),PanelView.NO_BAR,level,role.id()));
         }
-        if(rows.size()==1) rows.add(new Row(icon(Items.PAPER),"No work stations","Place a job station inside the claim to give citizens work"));
+        if(rows.size()==2) rows.add(new Row(icon(Items.PAPER),"No work stations","Place a job station inside the claim to give citizens work"));
         return rows;
     }
     /** One line for the town's station list. */

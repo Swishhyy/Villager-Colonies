@@ -86,6 +86,11 @@ public final class ProductionWorldTests {
     @TestHolder(description="A fisherman walks over bottom slabs to collect a real rod from its job barrel.")
     static void reachesBarrelAcrossBottomSlabs(DynamicTest test) { takesRodAcrossFloor(test,-5000,Blocks.STONE_SLAB); }
 
+    @GameTest(timeoutTicks=1200)
+    @EmptyTemplate
+    @TestHolder(description="A fisherman walks over carpet to collect a real rod from its job barrel.")
+    static void reachesBarrelAcrossCarpet(DynamicTest test) { takesRodAcrossFloor(test,-5400,Blocks.WHITE_CARPET); }
+
     @GameTest(timeoutTicks=4000)
     @EmptyTemplate
     @TestHolder(description="One cook uses a raised ordinary furnace and one smelter uses a raised blast furnace, supplying real food, ore and fuel from raised job barrels without walking into either appliance.")
