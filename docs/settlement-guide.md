@@ -160,7 +160,7 @@ The Station Inspector is a shapeless recipe with two paper and one stick. The **
 
 ### Ages and research
 
-New settlements in **0.1.1.0** start in the **Stone Age**. The settlement's owner and accepted builders or stewards share its equipment unlocks wherever they travel, including other dimensions. Invitations and alliances alone do not share research. Existing settlements retain their previous equipment access when upgraded.
+New settlements in **Villager Colonies 0.1.0.0** start in the **Stone Age**. The settlement's owner and accepted builders or stewards share its equipment unlocks wherever they travel, including other dimensions. Invitations and alliances alone do not share research. Existing settlements retain their previous equipment access when upgraded.
 
 1. Craft a **Researcher Station** with eight planks around a lectern. Place it inside your town and put a separate **lectern within three blocks on each axis**.
 2. Keep a citizen assigned to Researcher under **Jobs**, and supply ready-to-eat food.
@@ -212,9 +212,9 @@ NPC towns start neutral with a house, 12 beds, warehouse, trader checkpoint, gua
 
 ### Server configuration
 
-Open **Mods → WWMC → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Quarry Crew**, **Mining & Quarries**, **Work & Food**, **Enchanting**, **Defense & Waves**, **Trade & Other Towns**, and **Diagnostics**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Active TOML keys stay in their original locations. The six retired non-quarry crew settings are removed on config reload; quarry and other server overrides carry over. Multiplayer server configuration remains controlled by the server.
+Open **Mods → Villager Colonies → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Quarry Crew**, **Mining & Quarries**, **Work & Food**, **Enchanting**, **Defense & Waves**, **Trade & Other Towns**, and **Diagnostics**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Active TOML keys stay in their original locations. The six retired non-quarry crew settings are removed on config reload; quarry and other server overrides carry over. Multiplayer server configuration remains controlled by the server.
 
-The generated WWMC server config controls these defaults:
+The generated `wwmc-server.toml` config controls these defaults:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |

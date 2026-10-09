@@ -1,10 +1,10 @@
-# WWMC guides
+# Villager Colonies guides
 
-[Project overview](../README.md) · [CurseForge project](https://www.curseforge.com/minecraft/mc-mods/world-war-mc) · [Report a bug](https://github.com/Swishhyy/World-War-MC/issues)
+[Project overview](../README.md) · [CurseForge project](https://www.curseforge.com/minecraft/mc-mods/world-war-mc) · [Report a bug](https://github.com/Swishhyy/Villager-Colonies/issues)
 
 ## New players
 
-Start with [installing WWMC](../README.md#install) and [building your first town](../README.md#get-started). In game, craft a Settlement Guide from one book and one blue dye, and press **L** for tutorial advancements.
+Start with [installing Villager Colonies](../README.md#install) and [building your first town](../README.md#get-started). In game, craft a Settlement Guide from one book and one blue dye, and press **L** for tutorial advancements.
 
 ## Find what you need
 
@@ -31,4 +31,4 @@ Start with [installing WWMC](../README.md#install) and [building your first town
 - **My gear says it needs research:** keep it in storage, then follow [ages and research](settlement-guide.md#ages-and-research).
 - **I want recipes or commands:** open the [crafting table](settlement-guide.md#crafting) or [command reference](settlement-guide.md#commands).
 
-For bug reports, include your WWMC, Minecraft, and NeoForge versions, the relevant `latest.log`, and the steps that caused the problem.
+For bug reports, include your Villager Colonies, Minecraft, and NeoForge versions, the relevant `latest.log`, and the steps that caused the problem.

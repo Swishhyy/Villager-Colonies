@@ -4,7 +4,7 @@
 
 This document describes future design. It is not a list of implemented features.
 
-The **0.1.1.0 development branch** now adds Stone, Bronze and Iron progression, research shared by accepted settlement members, tin and bronze equipment, and furnished exploration ruins. Researchers spend time and supplies; higher-tier found gear waits for its unlock. Advanced machine blocks and later ages remain future work. See [ages and research](settlement-guide.md#ages-and-research) for the current system.
+The **Villager Colonies 0.1.0.0 development build** now adds Stone, Bronze and Iron progression, research shared by accepted settlement members, tin and bronze equipment, five traps, and furnished exploration ruins. Researchers spend time and supplies; higher-tier found gear waits for its unlock. Advanced machine blocks and later ages remain future work. See [ages and research](settlement-guide.md#ages-and-research) for the current system.
 
 ## Distant settlement event model
 

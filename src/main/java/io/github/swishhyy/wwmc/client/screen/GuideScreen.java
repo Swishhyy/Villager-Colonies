@@ -25,7 +25,7 @@ public final class GuideScreen extends Screen {
     private EditBox search;
     private final List<Link> links=new ArrayList<>();
     private record Link(int x,int y,int width,int height,String topic) {}
-    public GuideScreen(Screen parent,String topic) { super(Component.literal("WWMC Settlement Guide")); this.parent=parent; this.topic=GuideBook.topic(topic).id(); }
+    public GuideScreen(Screen parent,String topic) { super(Component.literal("Villager Colonies Settlement Guide")); this.parent=parent; this.topic=GuideBook.topic(topic).id(); }
     public static void openStation(Screen parent,io.github.swishhyy.wwmc.core.StructureRole role) {
         GuideScreen screen=new GuideScreen(parent,"stations");
         for(int i=0;i<GuideBook.STATIONS.size();i++) if(GuideBook.STATIONS.get(i).role()==role) screen.station=i;
@@ -127,7 +127,7 @@ public final class GuideScreen extends Screen {
     @Override public void extractBackground(GuiGraphicsExtractor g,int mouseX,int mouseY,float partialTick) {
         super.extractBackground(g,mouseX,mouseY,partialTick);
         g.fill(x,y,x+w,y+h,0xFF243540); g.fill(x+nav,y+3,x+w-3,y+h-3,PAPER);
-        g.text(font,"WWMC GUIDE",x+8,y+10,0xFFFFE0A0,false);
+        g.text(font,Ui.fit(font,"VILLAGER COLONIES",nav-16),x+8,y+10,0xFFFFE0A0,false);
         var t=GuideBook.topic(topic);
         g.text(font,Ui.fit(font,t.title(),w-nav-22),left(),y+10,INK,false);
         g.text(font,Ui.fit(font,t.subtitle(),w-nav-22),left(),y+24,MUTED,false);

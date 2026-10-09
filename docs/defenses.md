@@ -1,6 +1,6 @@
 # Defenses and traps
 
-Available on the **0.1.1.0 test branch**. Build traps near gates, roads and narrow approaches, then let guards finish attackers slowed by your defenses.
+Available in the **Villager Colonies 0.1.0.0 test build**. Build traps near gates, roads and narrow approaches, then let guards finish attackers slowed by your defenses.
 
 ## Choose a trap
 

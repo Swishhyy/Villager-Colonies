@@ -2,7 +2,7 @@
 
 [Project overview](../README.md) · [All guides](README.md)
 
-The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same WWMC version on the server and every client. Existing towns keep their owners, stations and inventories; new campaign data starts empty. Every job block has one citizen except quarries, which keep their configured crew and upgrades. Surplus workers from old crews take other open jobs.
+The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same Villager Colonies build on the server and every client. Existing towns keep their owners, stations and inventories; new campaign data starts empty. Every job block has one citizen except quarries, which keep their configured crew and upgrades. Surplus workers from old crews take other open jobs.
 
 ## Playing together
 
@@ -63,7 +63,7 @@ Open **Army** on Campaign or run `/wwmc squad` anywhere for field controls. Must
 
 Orders persist across restart. A missing, dead, disconnected or dimension-changing leader causes guards to walk home. Guards below 30% health fall back individually. Broken or below-25%-durability equipment also sends a guard home to resume the normal repair and shared-armor routine, even after a retreat order. Squads use the same road/bridge-aware travel and weapon combat as existing citizens. They do not force-load a new army corridor; a nearby player or trader window supplies loaded terrain.
 
-Explore for **Bandit Camps**, **Ruined Mining Workshops** and **Ruined Castles**. Discovery uses loaded, dry, relatively level natural ground outside existing claims. It checks the complete structure footprint and rejects player-protected blocks and block entities. New castles and workshops contain WWMC job stations, beds, storage, lecterns and examples of production setups, plus a Settlement Guide and tin supplies in the cache. Their defenders and loot are finite; generation never rebuilds over later player changes. Existing discovered sites keep their layouts. Site state, defender identities and cleared status persist across restart. Campaign -> Sites lists discovered coordinates and remaining defenders.
+Explore for **Bandit Camps**, **Ruined Mining Workshops** and **Ruined Castles**. Discovery uses loaded, dry, relatively level natural ground outside existing claims. It checks the complete structure footprint and rejects player-protected blocks and block entities. New castles and workshops contain the mod's job stations, beds, storage, lecterns and examples of production setups, plus a Settlement Guide and tin supplies in the cache. Their defenders and loot are finite; generation never rebuilds over later player changes. Existing discovered sites keep their layouts. Site state, defender identities and cleared status persist across restart. Campaign -> Sites lists discovered coordinates and remaining defenders.
 
 ### Objectives and rewards
 
