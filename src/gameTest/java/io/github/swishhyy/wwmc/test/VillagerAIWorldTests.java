@@ -34,7 +34,7 @@ public final class VillagerAIWorldTests {
     private record Fixture(ServerLevel level,BlockPos start,List<ChunkPos> chunks,Settlement town,List<CitizenEntity> citizens) {
         CitizenEntity worker(BlockPos feet,Station job) {
             var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level); citizen.join(town.id);
-            citizen.setPos(feet.getX()+0.5,feet.getY(),feet.getZ()+0.5); citizen.bag().offer(new ItemStack(Items.BREAD,4));
+            citizen.setPos(feet.getX()+0.5,feet.getY(),feet.getZ()+0.5); citizen.bag().offer(new ItemStack(Items.BREAD));
             town.citizens.add(citizen.getUUID()); if(job!=null) town.jobs.assign(citizen.getUUID(),job.position());
             citizens.add(citizen); level.addFreshEntity(citizen); return citizen;
         }
@@ -106,14 +106,18 @@ public final class VillagerAIWorldTests {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-8400));
             Station farm=new Station(start.east(24),StructureRole.FARM),trade=new Station(start.offset(24,0,7),StructureRole.TRADER),idle=new Station(start.offset(24,0,-7),StructureRole.FARM);
             var f=fixture(level,start,farm,trade,idle); BlockPos merchantStart=start.south(7);
+            level.setBlockAndUpdate(farm.position().north(2),Blocks.BARREL.defaultBlockState());
+            Container jobStorage=(Container)level.getBlockEntity(farm.position().north(2));
             trap(level,start); trap(level,merchantStart);
             var worker=f.worker(start,farm); worker.bag().offer(new ItemStack(Items.DIAMOND,3));
+            worker.bag().offer(new ItemStack(Items.BREAD,3));
             var trader=f.worker(merchantStart,trade); trader.bag().offer(new ItemStack(Items.GOLD_INGOT,2));
             var waiting=f.worker(idle.position().west(2),idle); var waitingAt=waiting.position();
             helper.runAtTickTime(580,() -> helper.assertTrue(worker.blockPosition().distSqr(start)<4,"Worker was rescued before thirty seconds"));
             helper.runAtTickTime(820,() -> {
                 helper.assertTrue(worker.blockPosition().distSqr(farm.position())<16,"Trapped worker did not return to its job: "+worker.activity()+" at "+worker.blockPosition());
-                helper.assertTrue(farm.position().equals(f.town.jobs.home(worker.getUUID())) && worker.bag().count(Items.DIAMOND)==3,"Recovery lost the worker's job or inventory");
+                helper.assertTrue(farm.position().equals(f.town.jobs.home(worker.getUUID()))
+                        && worker.bag().count(Items.DIAMOND)+InventoryOps.count(List.of(jobStorage),s -> s.is(Items.DIAMOND))==3,"Recovery lost the worker's job or inventory");
                 helper.assertTrue(trader.blockPosition().distSqr(merchantStart)<4 && trader.bag().count(Items.GOLD_INGOT)==2,"A trader was teleported or lost cargo");
                 helper.assertTrue(waiting.position().distanceToSqr(waitingAt)<4,"An idle, unblocked worker was teleported");
                 f.close(); helper.succeed();
@@ -255,6 +259,27 @@ public final class VillagerAIWorldTests {
                 helper.assertTrue(!DefenseService.alarmed(f.town),"The test must exercise local fear without a town alarm");
                 helper.assertTrue(citizen.blockPosition().distSqr(home.north())<9 && citizen.activity().contains("Sheltering at my bed"),
                         "Local fear did not finish the trip to a bed: "+citizen.activity()+" at "+citizen.blockPosition());
+                enemy.discard(); f.close(); helper.succeed();
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=250)
+    @EmptyTemplate
+    @TestHolder(description="A guard whose saved post exists but whose active work has not resumed yet still recognizes its duty, wakes during an alarm and fights instead of remaining idle.")
+    static void savedGuardAssignmentStartsDuringAlarm(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-9600));
+            Station post=new Station(start.east(10),StructureRole.GUARD); var f=fixture(level,start,post);
+            var guard=f.worker(post.position().west(2),post); guard.setNoAi(true); guard.setItemSlot(EquipmentSlot.MAINHAND,new ItemStack(Items.IRON_SWORD));
+            var enemy=zombie(level,post.position().east(4)); enemy.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200); enemy.setHealth(200);
+            DefenseService.waveAlarm(level,f.town);
+            helper.runAtTickTime(30,() -> {
+                helper.assertTrue(guard.isGuard(),"A saved guard assignment was lost while active work was paused");
+                guard.setNoAi(false);
+            });
+            helper.runAtTickTime(200,() -> {
+                helper.assertTrue(enemy.getHealth()<200 && guard.getTarget()==enemy,"Guard never resumed defense during the alarm: "+guard.activity());
                 enemy.discard(); f.close(); helper.succeed();
             });
         });

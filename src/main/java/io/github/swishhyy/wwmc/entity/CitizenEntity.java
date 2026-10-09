@@ -219,10 +219,12 @@ public final class CitizenEntity extends Villager {
     @Override protected void customServerAiStep(ServerLevel level) {}
     @Override public void tick() {
         if(level() instanceof ServerLevel server && !recovering && isGuard() && !HospitalCare.needsCare(town(server),this) && WorkCadence.due(server.getGameTime(),getId(),10)) {
-            Settlement town=town(server); Station station=town.station(workplace);
+            Settlement town=town(server); Station station=homeStation(town);
+            if(station==null) station=town.station(workplace);
+            BlockPos post=station.position();
             // Sleeping reserves do not run their work goal, but still belong to this station's roster.
-            SettlementService.workers(server).claim(workplace,getUUID(),server.getGameTime(),200,SettlementService.workerLimit(town,station));
-            if(GuardService.onDuty(server,town,workplace,getUUID()) || DefenseService.bellRun(town,getUUID())!=null
+            SettlementService.workers(server).claim(post,getUUID(),server.getGameTime(),200,SettlementService.workerLimit(town,station));
+            if(GuardService.onDuty(server,town,post,getUUID()) || DefenseService.bellRun(town,getUUID())!=null
                     || isSleeping() && Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> !getItemBySlot(slot).isEmpty())) wakeForAlarm();
             else if(sleepingBed!=null) {
                 if(SettlementService.housingBeds(server,town).contains(sleepingBed))
@@ -424,10 +426,13 @@ public final class CitizenEntity extends Villager {
         Settlement town=town(server); Station station=town==null ? null : town.station(workplace);
         return station==null ? null : station.role();
     }
+    /** The saved post identifies a guard even while its active work goal is paused or has not resumed after loading. */
     public boolean isGuard() {
-        if(!(level() instanceof ServerLevel server) || workplace==null) return false;
-        Settlement town=town(server); Station station=town==null ? null : town.station(workplace);
-        return station!=null && station.role()==StructureRole.GUARD && SettlementService.active(server,station);
+        if(!(level() instanceof ServerLevel server)) return false;
+        Settlement town=town(server); if(town==null) return false;
+        Station station=homeStation(town);
+        if(station==null) station=town.station(workplace);
+        return station!=null && station.role()==StructureRole.GUARD && town.jobs.level(StructureRole.GUARD)!=JobBoard.OFF && SettlementService.active(server,station);
     }
     /** Damage and attacks keep recovery paused for ten quiet seconds; a nearby, live opponent keeps a guard fighting. */
     public boolean inCombat() {
@@ -945,7 +950,10 @@ public final class CitizenEntity extends Villager {
             barrel=nearest(barrels.stream().filter(pos -> canUse(level,pos)).toList());
             if(barrel!=null) failedTargets.remove(barrel);
         }
-        if(barrel==null) activity="Cannot reach "+barrels.size()+" job barrel"+(barrels.size()==1 ? "" : "s")+"; clear a path and standing room beside "+(barrels.size()==1 ? "it" : "them");
+        if(barrel==null) {
+            activity="Cannot reach "+barrels.size()+" job barrel"+(barrels.size()==1 ? "" : "s")+"; clear a path and standing room beside "+(barrels.size()==1 ? "it" : "them");
+            failedJobPath(level);
+        }
         return barrel;
     }
     /** A supply or delivery trip to the job's own barrels; couriers deliver supplies and collect finished goods. */
@@ -972,6 +980,7 @@ public final class CitizenEntity extends Villager {
             activity=warehouse ? "Carrying supplies / returning for food or tools" : "Walking to the job's barrel";
             // Skip a blocked barrel for a minute and try another of this station's barrels.
             if(!warehouse && (depotTicks>BARREL_WALK_TICKS || !moving && onGround())) {
+                failedJobPath(level);
                 if(failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(depotTarget,level.getGameTime()+1200);
                 depotTarget=null; depotStand=null; depotTicks=0; activity="Cannot reach the job's barrel";
             }
@@ -2479,10 +2488,10 @@ public final class CitizenEntity extends Villager {
         @Override public boolean canUse() {
             if(!(level() instanceof ServerLevel l)) return false;
             Settlement town=town(l);
-            Station home=town==null ? null : homeStation(town);
             if(town==null || recovering || tradeShipment.travelling() || SquadService.assigned(town,getUUID())
-                    || isGuard() || home!=null && home.role()==StructureRole.GUARD) return false;
-            if(DefenseService.alarmed(town) || inCombat()) fearUntil=l.getGameTime()+STUCK_TICKS;
+                    || isGuard()) return false;
+            if(DefenseService.alarmed(town)) fearUntil=l.getGameTime()+20;
+            else if(inCombat()) fearUntil=l.getGameTime()+STUCK_TICKS;
             return l.getGameTime()<fearUntil;
         }
         @Override public boolean canContinueToUse() { return canUse(); }

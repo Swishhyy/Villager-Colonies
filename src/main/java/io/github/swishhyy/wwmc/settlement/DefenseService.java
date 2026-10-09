@@ -241,7 +241,7 @@ public final class DefenseService {
         alert.retryAt=now+200;
         CitizenEntity runner=null; BlockPos bell=null; double best=Double.MAX_VALUE;
         for(CitizenEntity guard:citizens) {
-            if(!guard.isGuard() || alert.failedRunners.getOrDefault(guard.getUUID(),Long.MIN_VALUE)>now) continue;
+            if(!guard.isGuard() || guard.recovering() || alert.failedRunners.getOrDefault(guard.getUUID(),Long.MIN_VALUE)>now) continue;
             BlockPos found=bellNear(level,town,guard.blockPosition());
             if(found!=null && guard.distanceToSqr(Vec3.atCenterOf(found))<best) { best=guard.distanceToSqr(Vec3.atCenterOf(found)); runner=guard; bell=found; }
         }
