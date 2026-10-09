@@ -10,12 +10,13 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.phys.Vec3;
 
-/** Every injured citizen rests in a reserved hospital bed until full health. Medics can assist with real supplies. */
+/** Injured citizens recover in a reserved hospital bed after combat, with optional assistance from a medic. */
 public final class HospitalCare {
     public static final int HEAL_TICKS=100;
     private HospitalCare() {}
     public static boolean needsCare(Settlement town,CitizenEntity citizen) {
-        return town!=null && (citizen.recovering() || citizen.hospitalBed()!=null || citizen.getHealth()<citizen.getMaxHealth());
+        return town!=null && !citizen.inCombat()
+                && (citizen.recovering() || citizen.hospitalBed()!=null || citizen.getHealth()<citizen.getMaxHealth());
     }
     public static boolean inBed(CitizenEntity citizen) {
         return citizen.hospitalBed()!=null && citizen.isSleeping() && citizen.getSleepingPos().filter(citizen.hospitalBed()::equals).isPresent();
@@ -23,7 +24,7 @@ public final class HospitalCare {
     private static void finish(ServerLevel level,Settlement town,CitizenEntity citizen) {
         boolean rested=citizen.hospitalBed()!=null;
         citizen.leaveHospitalBed(); citizen.recovering(false);
-        if(rested) CampaignService.record(level,town,citizen.getName().getString()+" recovered at the hospital and returned to duty.");
+        if(rested) CampaignService.journal(level,town,citizen.getName().getString()+" recovered at the hospital and returned to duty.");
         if(rested) TutorialProgress.record(level,town,"recovery");
     }
     /** Called from the entity tick as well as its awake AI: sleeping villagers suspend their normal work goal. */

@@ -113,10 +113,14 @@ public final class WaveService {
                 mob.finalizeSpawn(level,level.getCurrentDifficultyAt(pos),EntitySpawnReason.EVENT,null);
                 enlist(mob,town);
                 for(Entity rider:mob.getPassengers()) if(rider instanceof Mob passenger) enlist(passenger,town);
-                if(level.tryAddFreshEntityWithPassengers(mob)) spawned++;
+                if(level.tryAddFreshEntityWithPassengers(mob)) {
+                    spawned++;
+                    if(mob instanceof Monster monster) DefenseService.report(town,monster,"",true,level.getGameTime());
+                }
             }
         }
         if(spawned>0) {
+            DefenseService.waveAlarm(level,town);
             town.waves++; ACTIVE.merge(town.id,spawned,Integer::sum);
             STARTED.put(town.id,level.getGameTime()); HUNTED.remove(town.id);
             String direction=WavePlan.compass(site.getX()-town.center.getX(),site.getZ()-town.center.getZ());
@@ -143,12 +147,12 @@ public final class WaveService {
         return level.getEntitiesOfClass(Mob.class,area,m -> m.isAlive() && m.entityTags().contains(tag));
     }
     /** Report every attacker still inside the claim to the guards; the owner hears about it once per wave. */
-    private static void hunt(ServerLevel level,Settlement town,List<Mob> alive) {
+    private static void hunt(ServerLevel level,Settlement town,List<Mob> alive,boolean notify) {
         int reported=0;
         for(Mob mob:alive) if(mob instanceof Monster monster && town.contains(mob.blockPosition())) {
             DefenseService.report(town,monster,"",true,level.getGameTime()); reported++;
         }
-        if(reported>0 && HUNTED.add(town.id)) {
+        if(reported>0 && notify && HUNTED.add(town.id)) {
             ServerPlayer owner=level.getServer().getPlayerList().getPlayer(town.owner);
             if(owner!=null) SettlementService.notify(owner,reported+" wave "+(reported==1 ? "attacker is" : "attackers are")+" still at large in "+town.name+". They glow; the guards are hunting them.");
         }
@@ -168,7 +172,10 @@ public final class WaveService {
         int alive=attackers.size();
         Integer before=alive>0 ? ACTIVE.put(town.id,alive) : ACTIVE.remove(town.id);
         if(alive==0) { STARTED.remove(town.id); HUNTED.remove(town.id); }
-        else if(level.getGameTime()-STARTED.computeIfAbsent(town.id,id -> level.getGameTime())>=LINGER_TICKS) hunt(level,town,attackers);
+        else {
+            hunt(level,town,attackers,level.getGameTime()-STARTED.computeIfAbsent(town.id,id -> level.getGameTime())>=LINGER_TICKS);
+            if(!DefenseService.alarmed(town)) DefenseService.waveAlarm(level,town);
+        }
         if(before!=null && before>0 && alive==0 && level.hasChunkAt(town.center)) {
             TutorialProgress.record(level,town,"defense");
             ServerPlayer owner=level.getServer().getPlayerList().getPlayer(town.owner);
@@ -195,6 +202,7 @@ public final class WaveService {
         Settlement town=townOf(level,mob);
         if(town==null) return;
         glow(mob);
+        if(mob instanceof Monster monster) DefenseService.report(town,monster,"",true,level.getGameTime());
         mob.targetSelector.addGoal(3,new NearestAttackableTargetGoal<>(mob,CitizenEntity.class,true));
         if(mob instanceof PathfinderMob walker) mob.goalSelector.addGoal(4,new MarchGoal(walker,town.center));
     }

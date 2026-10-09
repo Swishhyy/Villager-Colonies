@@ -8,11 +8,15 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 /** Hand reach is measured from the eyes to the target's surface, separately from walking arrival distance. */
 public final class CitizenReach {
@@ -24,17 +28,30 @@ public final class CitizenReach {
     }
     public static boolean within(Vec3 eye,AABB target) { return eye.distanceToSqr(closest(eye,target))<=BLOCKS*BLOCKS; }
     public static boolean within(Vec3 eye,BlockPos target) { return within(eye,new AABB(target)); }
+    /** Harmless meadow plants have selection outlines, but neither block a body nor a worker's hands. */
+    public static boolean softCover(BlockGetter world,BlockPos pos,BlockState state) {
+        return (state.is(BlockTags.FLOWERS) && !state.is(Blocks.WITHER_ROSE)
+                || state.is(Blocks.SHORT_GRASS) || state.is(Blocks.TALL_GRASS) || state.is(Blocks.FERN) || state.is(Blocks.LARGE_FERN))
+                && state.getCollisionShape(world,pos).isEmpty() && state.getFluidState().isEmpty();
+    }
+    private static BlockHitResult clip(BlockGetter world,Vec3 eye,Vec3 end,BlockPos target) {
+        return world.clip(new ClipContext(eye,end,ClipContext.Block.OUTLINE,ClipContext.Fluid.NONE,CollisionContext.empty()) {
+            @Override public VoxelShape getBlockShape(BlockState state,BlockGetter view,BlockPos pos) {
+                return !pos.equals(target) && softCover(view,pos,state) ? Shapes.empty() : super.getBlockShape(state,view,pos);
+            }
+        });
+    }
     /** Aim just inside the closest face, so a boundary endpoint still intersects a full block. */
     public static BlockHitResult hit(BlockGetter world,Vec3 eye,BlockPos target) {
         var shape=world.getBlockState(target).getShape(world,target);
         AABB bounds=shape.isEmpty() ? new AABB(target) : shape.bounds().move(target.getX(),target.getY(),target.getZ());
         Vec3 face=closest(eye,bounds);
         Vec3 end=face.add(bounds.getCenter().subtract(face).scale(0.0001));
-        BlockHitResult nearest=world.clip(new ClipContext(eye,end,ClipContext.Block.OUTLINE,ClipContext.Fluid.NONE,CollisionContext.empty()));
+        BlockHitResult nearest=clip(world,eye,end,target);
         if(nearest.getType()==HitResult.Type.BLOCK && nearest.getBlockPos().equals(target)
                 || shape.isEmpty()) return nearest;
         // Thin blocks and a trunk's shared top edge may need an aim point farther inside the target.
-        return world.clip(new ClipContext(eye,bounds.getCenter(),ClipContext.Block.OUTLINE,ClipContext.Fluid.NONE,CollisionContext.empty()));
+        return clip(world,eye,bounds.getCenter(),target);
     }
     public static boolean visible(BlockGetter world,Vec3 eye,BlockPos target) {
         BlockHitResult hit=hit(world,eye,target);

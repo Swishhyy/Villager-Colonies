@@ -1,5 +1,6 @@
 package io.github.swishhyy.wwmc.entity;
 
+import io.github.swishhyy.wwmc.settlement.CitizenReach;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Mob;
@@ -66,6 +67,14 @@ public final class CitizenNavigation extends GroundPathNavigation {
         private boolean plain;
         private boolean escape;
         private float previousWaterCost;
+        @Override public PathType getPathType(PathfindingContext context,int x,int y,int z) {
+            PathType type=super.getPathType(context,x,y,z);
+            BlockPos pos=new BlockPos(x,y,z);
+            if(type==PathType.BLOCKED && CitizenReach.softCover(context.level(),pos,context.getBlockState(pos))) {
+                return CitizenReach.ground(context.level(),p -> true).footing(pos.below()) ? PathType.WALKABLE : PathType.OPEN;
+            }
+            return type;
+        }
         @Override public void prepare(PathNavigationRegion region,Mob mob) {
             previousWaterCost=mob.getPathfindingMalus(PathType.WATER);
             escape=escapingWater(mob);

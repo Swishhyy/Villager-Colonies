@@ -5,7 +5,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class Config {
     private static final ModConfigSpec.Builder B = new ModConfigSpec.Builder();
     public static final ModConfigSpec.IntValue SETTLEMENT_RADIUS = B.comment("Horizontal claim radius of new settlements; never below 240.").defineInRange("settlementRadius", Settlement.MIN_RADIUS, Settlement.MIN_RADIUS, 512);
-    public static final ModConfigSpec.IntValue MAX_CITIZENS = B.comment("Hard ceiling on citizens in one town, whatever population upgrades it buys; housing beds are also required.").defineInRange("maxCitizens", 64, 1, 256);
+    public static final ModConfigSpec.IntValue MAX_CITIZENS = B.comment("Hard ceiling on citizens in one town, including population upgrades and research; housing beds are also required.").defineInRange("maxCitizens", 64, 1, 256);
     public static final ModConfigSpec.IntValue BASE_POPULATION = B.comment("Citizen limit of a town before it buys population upgrades at its banner.").defineInRange("basePopulation", 10, 1, 256);
     public static final ModConfigSpec.IntValue POPULATION_STEP = B.comment("Extra citizens each population upgrade allows.").defineInRange("populationPerUpgrade", 5, 1, 64);
     public static final ModConfigSpec.IntValue POPULATION_COST = B.comment("Emeralds for the first population upgrade; each later upgrade costs this much more than the one before.").defineInRange("populationUpgradeCost", 8, 0, 4096);

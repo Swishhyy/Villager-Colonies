@@ -85,6 +85,13 @@ public final class DefenseService {
     private static boolean calm(Monster monster) {
         return monster instanceof NeutralMob neutral && !neutral.isAngry() && monster.getTarget()==null;
     }
+    public static boolean hostile(Monster monster) { return monster.isAlive() && !calm(monster); }
+    /** A known attacking wave mobilizes the town immediately, including shield guards and off-duty reserves. */
+    public static void waveAlarm(ServerLevel level,Settlement town) {
+        Alert alert=ALERTS.computeIfAbsent(town.id,id -> new Alert());
+        alert.runner=null; alert.failedRunners.clear(); alert.state.ring();
+        wakeGuards(level,town);
+    }
     /** Hostiles currently reported in this town. */
     public static int threats(Settlement town) { Map<UUID,Threat> threats=THREATS.get(town.id); return threats==null ? 0 : threats.size(); }
     /** Ask the guards to deal with a hostile; a fresh sighting keeps the report alive. */
@@ -217,9 +224,9 @@ public final class DefenseService {
             for(Monster monster:level.getEntitiesOfClass(Monster.class,citizen.getBoundingBox().inflate(scan),
                     m -> m.isAlive() && town.contains(m.blockPosition()) && !(seen.contains(m) && (guard || reported.contains(m))))) {
                 double distance=citizen.distanceToSqr(monster);
-                if(distance>scan*scan || !citizen.hasLineOfSight(monster)) continue;
+                if(distance>scan*scan || !hostile(monster) || !citizen.hasLineOfSight(monster)) continue;
                 if(distance<=range*range) seen.add(monster);
-                if(!guard && calm(monster)) continue;
+                if(guard) report(town,monster,citizen.getName().getString(),false,now);
                 if(!guard && reported.add(monster)) {
                     report(town,monster,citizen.getName().getString(),false,now);
                     citizen.called(monster,guards);
@@ -269,7 +276,7 @@ public final class DefenseService {
             if(seen.size()<threshold) return;
             alert=new Alert(); ALERTS.put(town.id,alert);
         }
-        alert.sighted=seen.size(); alert.now=level.getGameTime();
+        alert.sighted=Math.max(seen.size(),threats(town)); alert.now=level.getGameTime();
         if(alert.state.phase()==AlarmState.Phase.RAISING && alert.runner!=null
                 && !(level.getEntity(alert.runner) instanceof CitizenEntity runner && runner.isAlive() && runner.isGuard())) {
             abandon(town,alert.runner);
