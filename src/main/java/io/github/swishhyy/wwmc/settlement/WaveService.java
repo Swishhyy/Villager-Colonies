@@ -103,7 +103,7 @@ public final class WaveService {
         if(pos.getY()<=level.getMinY() || pos.getY()+1>=level.getMaxY() || !level.getFluidState(pos).isEmpty()
                 || !level.getFluidState(pos.below()).isEmpty() || !level.getBlockState(pos.below()).isFaceSturdy(level,pos.below(),Direction.UP)) return null;
         var surface=level.getBlockState(pos.below());
-        if(!surface.is(net.minecraft.tags.BlockTags.DIRT) && !surface.is(net.minecraft.tags.BlockTags.BASE_STONE_OVERWORLD)
+        if(!surface.is(Blocks.GRASS_BLOCK) && !surface.is(Blocks.DIRT) && !surface.is(net.minecraft.tags.BlockTags.DIRT) && !surface.is(net.minecraft.tags.BlockTags.BASE_STONE_OVERWORLD)
                 && !surface.is(net.minecraft.tags.BlockTags.SAND) && !surface.is(Blocks.GRAVEL) && !surface.is(Blocks.SNOW_BLOCK)
                 && !surface.is(Blocks.FARMLAND) && !surface.is(Blocks.DIRT_PATH)) return null;
         // Keep spawns outdoors and away from furnished stations and town furniture.

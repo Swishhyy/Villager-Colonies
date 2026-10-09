@@ -228,7 +228,10 @@ public final class TrapWorldTests {
                 helper.assertTrue(!bounds.contains(site.getX(),site.getZ()) && town.contains(site) && level.isPositionEntityTicking(site),"Wave bypassed the perimeter or forced unloaded terrain");
                 helper.assertTrue(level.getBlockState(site.below()).is(Blocks.GRASS_BLOCK),"Wave chose constructed or unsafe ground");
             }
-            helper.assertTrue(found>0,"No valid perimeter approach found");
+            BlockPos probe=start.north(72);
+            int height=level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,probe.getX(),probe.getZ());
+            helper.assertTrue(found>0,"No valid perimeter approach found: probe="+probe+", ticking="+level.isPositionEntityTicking(probe)
+                    +", height="+height+", floor="+level.getBlockState(new BlockPos(probe.getX(),height-1,probe.getZ())));
             // All heights now end on a built roof: do not fall back into the village to make a wave happen.
             for(int x=-80;x<=80;x++) for(int z=-80;z<=80;z++) if(!bounds.contains(start.getX()+x,start.getZ()+z))
                 level.setBlockAndUpdate(start.offset(x,1,z),Blocks.OAK_PLANKS.defaultBlockState());
