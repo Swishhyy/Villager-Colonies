@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "wwmc:tin_ore",
+    "wwmc:deepslate_tin_ore",
+    "wwmc:tin_block",
+    "wwmc:raw_tin_block",
+    "wwmc:bronze_block"
+  ]
+}

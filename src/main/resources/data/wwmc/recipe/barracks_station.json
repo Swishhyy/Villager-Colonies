@@ -8,7 +8,7 @@
   ],
   "key": {
     "P": "#minecraft:planks",
-    "I": "minecraft:iron_sword"
+    "I": "minecraft:stone_sword"
   },
   "result": {
     "id": "wwmc:barracks_station",

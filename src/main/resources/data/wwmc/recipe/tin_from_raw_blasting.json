@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:blasting",
+  "category": "misc",
+  "ingredient": "wwmc:raw_tin",
+  "result": {
+    "id": "wwmc:tin_ingot"
+  },
+  "experience": 0.7,
+  "cookingtime": 100
+}

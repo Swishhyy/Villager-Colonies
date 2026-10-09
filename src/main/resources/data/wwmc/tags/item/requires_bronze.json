@@ -1,0 +1,58 @@
+{
+  "replace": false,
+  "values": [
+    "wwmc:bronze_sword",
+    "wwmc:bronze_pickaxe",
+    "wwmc:bronze_axe",
+    "wwmc:bronze_shovel",
+    "wwmc:bronze_hoe",
+    "wwmc:bronze_helmet",
+    "wwmc:bronze_chestplate",
+    "wwmc:bronze_leggings",
+    "wwmc:bronze_boots",
+    "wwmc:bronze_blend",
+    "wwmc:bronze_ingot",
+    "wwmc:bronze_block",
+    "wwmc:quarry_station",
+    {
+      "id": "minecraft:copper_sword",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_pickaxe",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_axe",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_shovel",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_hoe",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_helmet",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_chestplate",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_leggings",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_boots",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_spear",
+      "required": false
+    }
+  ]
+}

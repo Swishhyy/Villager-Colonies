@@ -8,7 +8,7 @@
   ],
   "key": {
     "P": "#minecraft:planks",
-    "I": "minecraft:iron_axe"
+    "I": "minecraft:stone_axe"
   },
   "result": {
     "id": "wwmc:butcher_station",

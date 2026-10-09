@@ -108,6 +108,7 @@ public final class Panels {
                 +(SettlementService.canGrow(town) ? "; the next allows "+SettlementService.populationLimitAt(town,SettlementService.populationLevel(town)+1)
                     +" citizens for "+SettlementService.populationCost(town)+" emeralds" : "; the town is at the server's ceiling")));
         overview.add(new Row(icon(Items.PAPER),"Population research","+"+Research.populationBonus(town)+" places; study Housing Plans, Civic Planning and City Planning in Campaign / Research"));
+        overview.add(new Row(icon(Items.LECTERN),Research.age(town),Research.progress(town)));
         overview.add(new Row(icon(Items.WRITABLE_BOOK),"Town journal","Citizen promotions and hospital recoveries appear in Campaign / Journal"));
         overview.add(new Row(icon(Items.BREAD),"Food",InventoryOps.count(everything,FoodHealing::food)+" meals in storage"));
         overview.add(storage(icon(Items.CHEST),"Warehouse",SettlementService.storage(level,town),"No loaded warehouse with a chest or barrel in range"));

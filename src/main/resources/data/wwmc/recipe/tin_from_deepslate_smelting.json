@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "ingredient": "wwmc:deepslate_tin_ore",
+  "result": {
+    "id": "wwmc:tin_ingot"
+  },
+  "experience": 0.7,
+  "cookingtime": 200
+}

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "III",
+    "III",
+    "III"
+  ],
+  "key": {
+    "I": "wwmc:raw_tin"
+  },
+  "result": {
+    "id": "wwmc:raw_tin_block",
+    "count": 1
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "II ",
+    " S ",
+    " S "
+  ],
+  "key": {
+    "I": "wwmc:bronze_ingot",
+    "S": "minecraft:stick"
+  },
+  "result": {
+    "id": "wwmc:bronze_hoe",
+    "count": 1
+  }
+}

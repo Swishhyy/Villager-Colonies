@@ -39,6 +39,8 @@ public final class WWMCClient {
     }
     /** A station item from a broken, upgraded station names the upgrades it will bring back. */
     private static void tooltip(ItemTooltipEvent event) {
+        if(io.github.swishhyy.wwmc.settlement.AgeProgression.required(event.getItemStack())>0)
+            event.getToolTip().add(Component.literal("Settlement research: "+io.github.swishhyy.wwmc.settlement.AgeProgression.requirement(event.getItemStack())).withStyle(ChatFormatting.GOLD));
         if(!(event.getItemStack().getItem() instanceof BlockItem item) || !(item.getBlock() instanceof StationBlock block)) return;
         var state=event.getItemStack().get(DataComponents.BLOCK_STATE);
         if(state==null) return;

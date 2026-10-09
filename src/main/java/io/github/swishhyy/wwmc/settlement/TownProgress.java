@@ -36,7 +36,10 @@ public final class TownProgress {
         Codec.STRING.listOf().optionalFieldOf("schematics",List.of()).forGetter(p -> List.copyOf(p.schematics)),
         Ping.CODEC.listOf().optionalFieldOf("pings",List.of()).forGetter(p -> p.pings),
         Codec.intRange(-1,15).optionalFieldOf("color",-1).forGetter(p -> p.color),
-        Codec.STRING.listOf().optionalFieldOf("milestones",List.of()).forGetter(p -> List.copyOf(p.milestones))
+        Codec.STRING.listOf().optionalFieldOf("milestones",List.of()).forGetter(p -> List.copyOf(p.milestones)),
+        Codec.STRING.optionalFieldOf("research_project","").forGetter(p -> p.project),
+        Codec.intRange(0,1200000).optionalFieldOf("research_ticks",0).forGetter(p -> p.projectTicks),
+        Codec.intRange(0,4).optionalFieldOf("legacy_gear_tier",4).forGetter(p -> p.legacyGearTier)
     ).apply(i,TownProgress::new));
     public final Set<String> research=new LinkedHashSet<>(),schematics=new LinkedHashSet<>();
     public final List<Ping> pings=new ArrayList<>();
@@ -44,12 +47,23 @@ public final class TownProgress {
     public final Set<String> milestones=new LinkedHashSet<>();
     /** -1 gives older towns a stable color based on their saved id. */
     public int color=-1;
+    /** One paid project at a time. Only actual researcher work adds ticks; unloading and restarting never finish it. */
+    public String project="";
+    public int projectTicks;
+    /** Older settlements retain the equipment they could already use. Newly founded towns start at zero. */
+    public int legacyGearTier;
+    long lastResearchWork=Long.MIN_VALUE;
     public TownProgress() {}
-    private TownProgress(List<String> research,List<String> schematics,List<Ping> pings,int color,List<String> milestones) {
+    public static TownProgress legacy() { TownProgress p=new TownProgress(); p.legacyGearTier=4; return p; }
+    private TownProgress(List<String> research,List<String> schematics,List<Ping> pings,int color,List<String> milestones,
+            String project,int projectTicks,int legacyGearTier) {
         this.research.addAll(research); this.schematics.addAll(schematics);
         this.pings.addAll(pings.subList(Math.max(0,pings.size()-MAX_PINGS),pings.size()));
         this.color=color;
         this.milestones.addAll(milestones);
+        this.project=project.length()<=64 ? project : "";
+        this.projectTicks=project.isEmpty() ? 0 : projectTicks;
+        this.legacyGearTier=legacyGearTier;
     }
     /** Adds a ping, dropping the oldest beyond the limit. */
     public void ping(Ping ping) {

@@ -3,6 +3,9 @@ import com.mojang.logging.LogUtils;
 import io.github.swishhyy.wwmc.block.SettlementBannerBlock;
 import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
+import io.github.swishhyy.wwmc.core.BronzeEquipment;
+import net.minecraft.world.item.equipment.ArmorType;
+import net.minecraft.world.level.block.Block;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.item.SurveyorItem;
 import io.github.swishhyy.wwmc.item.GuideBook;
@@ -52,6 +55,25 @@ public final class WWMC {
     public static final DeferredBlock<SettlementBannerBlock> BANNER=BLOCKS.registerBlock("settlement_banner",SettlementBannerBlock::new,
             p -> p.mapColor(MapColor.COLOR_BLUE).strength(2,3_600_000).pushReaction(PushReaction.BLOCK).noOcclusion());
     public static final DeferredItem<BlockItem> BANNER_ITEM=ITEMS.registerSimpleBlockItem(BANNER);
+    public static final DeferredBlock<Block> TIN_ORE=BLOCKS.registerBlock("tin_ore",Block::new,p -> p.mapColor(MapColor.STONE).strength(3,3).requiresCorrectToolForDrops());
+    public static final DeferredBlock<Block> DEEPSLATE_TIN_ORE=BLOCKS.registerBlock("deepslate_tin_ore",Block::new,p -> p.mapColor(MapColor.DEEPSLATE).strength(4.5F,3).requiresCorrectToolForDrops());
+    public static final DeferredBlock<Block> TIN_BLOCK=BLOCKS.registerBlock("tin_block",Block::new,p -> p.mapColor(MapColor.METAL).strength(3,6).requiresCorrectToolForDrops());
+    public static final DeferredBlock<Block> RAW_TIN_BLOCK=BLOCKS.registerBlock("raw_tin_block",Block::new,p -> p.mapColor(MapColor.METAL).strength(3,6).requiresCorrectToolForDrops());
+    public static final DeferredBlock<Block> BRONZE_BLOCK=BLOCKS.registerBlock("bronze_block",Block::new,p -> p.mapColor(MapColor.COLOR_ORANGE).strength(4,6).requiresCorrectToolForDrops());
+    public static final DeferredItem<BlockItem> TIN_ORE_ITEM=ITEMS.registerSimpleBlockItem(TIN_ORE),
+            DEEPSLATE_TIN_ORE_ITEM=ITEMS.registerSimpleBlockItem(DEEPSLATE_TIN_ORE),TIN_BLOCK_ITEM=ITEMS.registerSimpleBlockItem(TIN_BLOCK),
+            RAW_TIN_BLOCK_ITEM=ITEMS.registerSimpleBlockItem(RAW_TIN_BLOCK),BRONZE_BLOCK_ITEM=ITEMS.registerSimpleBlockItem(BRONZE_BLOCK);
+    public static final DeferredItem<Item> RAW_TIN=ITEMS.registerSimpleItem("raw_tin"),TIN_INGOT=ITEMS.registerSimpleItem("tin_ingot"),
+            BRONZE_BLEND=ITEMS.registerSimpleItem("bronze_blend"),BRONZE_INGOT=ITEMS.registerSimpleItem("bronze_ingot");
+    public static final DeferredItem<Item> BRONZE_SWORD=ITEMS.registerItem("bronze_sword",Item::new,p -> p.sword(BronzeEquipment.TOOLS,3,-2.4F));
+    public static final DeferredItem<Item> BRONZE_PICKAXE=ITEMS.registerItem("bronze_pickaxe",Item::new,p -> p.pickaxe(BronzeEquipment.TOOLS,1,-2.8F));
+    public static final DeferredItem<Item> BRONZE_AXE=ITEMS.registerItem("bronze_axe",Item::new,p -> p.axe(BronzeEquipment.TOOLS,6,-3.1F));
+    public static final DeferredItem<Item> BRONZE_SHOVEL=ITEMS.registerItem("bronze_shovel",Item::new,p -> p.shovel(BronzeEquipment.TOOLS,1.5F,-3));
+    public static final DeferredItem<Item> BRONZE_HOE=ITEMS.registerItem("bronze_hoe",Item::new,p -> p.hoe(BronzeEquipment.TOOLS,-1.5F,-1));
+    public static final DeferredItem<Item> BRONZE_HELMET=ITEMS.registerItem("bronze_helmet",Item::new,p -> p.humanoidArmor(BronzeEquipment.ARMOR,ArmorType.HELMET));
+    public static final DeferredItem<Item> BRONZE_CHESTPLATE=ITEMS.registerItem("bronze_chestplate",Item::new,p -> p.humanoidArmor(BronzeEquipment.ARMOR,ArmorType.CHESTPLATE));
+    public static final DeferredItem<Item> BRONZE_LEGGINGS=ITEMS.registerItem("bronze_leggings",Item::new,p -> p.humanoidArmor(BronzeEquipment.ARMOR,ArmorType.LEGGINGS));
+    public static final DeferredItem<Item> BRONZE_BOOTS=ITEMS.registerItem("bronze_boots",Item::new,p -> p.humanoidArmor(BronzeEquipment.ARMOR,ArmorType.BOOTS));
     public static final Map<StructureRole,DeferredBlock<StationBlock>> STATIONS=new EnumMap<>(StructureRole.class);
     public static final Map<StructureRole,DeferredItem<BlockItem>> STATION_ITEMS=new EnumMap<>(StructureRole.class);
     static {
@@ -70,6 +92,9 @@ public final class WWMC {
         .title(Component.translatable("itemGroup.wwmc")).withTabsBefore(CreativeModeTabs.COMBAT)
         .icon(() -> BANNER_ITEM.get().getDefaultInstance()).displayItems((p,out) -> {
             out.accept(BANNER_ITEM.get()); out.accept(SURVEYOR.get()); out.accept(GUIDE.get());
+            for(var item:java.util.List.of(TIN_ORE_ITEM,DEEPSLATE_TIN_ORE_ITEM,TIN_BLOCK_ITEM,RAW_TIN_BLOCK_ITEM,BRONZE_BLOCK_ITEM,
+                    RAW_TIN,TIN_INGOT,BRONZE_BLEND,BRONZE_INGOT,BRONZE_SWORD,BRONZE_PICKAXE,BRONZE_AXE,BRONZE_SHOVEL,BRONZE_HOE,
+                    BRONZE_HELMET,BRONZE_CHESTPLATE,BRONZE_LEGGINGS,BRONZE_BOOTS)) out.accept(item.get());
             for(StructureRole role:StructureRole.values()) out.accept(STATION_ITEMS.get(role).get());
             for(var kind:Carcasses.Kind.values()) out.accept(CARCASSES.get(kind).get());
         }).build());
@@ -83,6 +108,7 @@ public final class WWMC {
         NeoForge.EVENT_BUS.register(new SettlementService());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.ClaimProtection());
         NeoForge.EVENT_BUS.register(new Carcasses());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.AgeProgression());
         NeoForge.EVENT_BUS.register(new WorkProtection());
         NeoForge.EVENT_BUS.register(new GuardService());
         NeoForge.EVENT_BUS.register(new DefenseService());

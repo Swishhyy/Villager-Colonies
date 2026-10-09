@@ -118,6 +118,7 @@ public final class CitizenEntity extends Villager {
     /** An enchanter's item, kept apart from the bag until it is delivered, with the work done on it and the level rolled for it. */
     private ItemStack enchantItem=ItemStack.EMPTY;
     private int enchantTicks,enchantLevel;
+    private BlockPos researchDesk,researchStand;
     private boolean enchantDone;
     private BlockPos enchantTable,enchantStand;
     private long nextEnchantAt;
@@ -582,6 +583,7 @@ public final class CitizenEntity extends Villager {
         leaveBed();
         animalWork.reset();
         enchantTable=null; enchantStand=null;
+        researchDesk=null; researchStand=null;
         var book=SettlementService.reservations(level);
         if(workplace!=null) SettlementService.workers(level).release(workplace,getUUID());
         if(target!=null) book.release(target,getUUID());
@@ -2049,6 +2051,36 @@ public final class CitizenEntity extends Villager {
         return false;
     }
     /** Enchanters take one item and lapis from their local barrels and work from clear ground within reach of a table. */
+    private void researcher(ServerLevel level,Settlement town,Station station) {
+        eatFrom(List.of(cargo));
+        if(wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0 && !visitPantry(level,town)) return;
+        if(Research.project(town)==null) { activity="Waiting for a research project in Campaign / Research"; getNavigation().stop(); return; }
+        List<BlockPos> desks=Research.desks(level,town,station);
+        if(researchDesk==null || !desks.contains(researchDesk)
+                || !canUse(level,researchDesk) && !standingSpotUsable(level,town,researchStand,researchDesk)) {
+            researchDesk=null; researchStand=null;
+            var view=standingView(level,town);
+            for(BlockPos desk:desks.stream().sorted(Comparator.comparingDouble(p -> p.distSqr(blockPosition()))).limit(4).toList()) {
+                if(canUse(level,desk)) { researchDesk=desk; break; }
+                for(BlockPos stand:CitizenReach.stands(view,desk,position(),getEyeHeight())) {
+                    if(!standingSpotUsable(level,town,stand,desk)) continue;
+                    if(reachableStand(stand)) { researchDesk=desk; researchStand=stand; break; }
+                    if(reachBudget.deferred()) { activity="Checking a route to the research lectern"; return; }
+                }
+                if(researchDesk!=null) break;
+            }
+            if(researchDesk==null) { activity=desks.isEmpty() ? "Needs a lectern within the Researcher Station's range" : "Cannot reach the research lectern"; return; }
+        }
+        if(!canUse(level,researchDesk)) {
+            activity="Walking to the research lectern";
+            walk(researchStand,0.65,0); return;
+        }
+        getNavigation().stop();
+        getLookControl().setLookAt(researchDesk.getX()+0.5,researchDesk.getY()+0.8,researchDesk.getZ()+0.5);
+        activity="Researching "+Research.progress(town);
+        WorkFeedback.pulse(level,this,researchDesk,WorkFeedback.RESEARCHING);
+        if(Research.work(level,town,station,researchDesk) && level.getGameTime()%200==0) gainExperience(StructureRole.RESEARCHER,1);
+    }
     private void enchanter(ServerLevel level,Settlement town,Station station) {
         eatFrom(List.of(cargo));
         if(!enchantItem.isEmpty() && enchantDone) { deliverEnchanted(level,town,station); return; }
@@ -2356,6 +2388,7 @@ public final class CitizenEntity extends Villager {
         if(station.role()==StructureRole.COURIER) { courier(level,town,station); return; }
         if(station.role()==StructureRole.TRADER) { trader(level,town,station); return; }
         if(station.role()==StructureRole.ENCHANTER) { enchanter(level,town,station); return; }
+        if(station.role()==StructureRole.RESEARCHER) { researcher(level,town,station); return; }
         if(town.campaign.parent!=null && InventoryOps.count(SettlementService.townStorage(level,town),FoodHealing::food)==0 && InventoryOps.count(List.of(cargo),FoodHealing::food)==0) {
             getNavigation().stop(); activity="Outpost awaiting a food shipment from home"; return;
         }

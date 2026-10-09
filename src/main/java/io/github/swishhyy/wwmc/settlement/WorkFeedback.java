@@ -10,7 +10,8 @@ import net.minecraft.world.InteractionHand;
 
 /** Small local cues, called only while a job is advancing. No items or durability are consumed by an animation. */
 public final class WorkFeedback {
-    public static final int NONE=0,MINING=1,CHOPPING=2,FARMING=3,ENCHANTING=4,CRAFTING=5,SMITHING=6,PROCESSING=7,FISHING=8,BUTCHERING=9,TREATING=10;
+    public static final int NONE=0,MINING=1,CHOPPING=2,FARMING=3,ENCHANTING=4,CRAFTING=5,SMITHING=6,PROCESSING=7,FISHING=8,BUTCHERING=9,TREATING=10,
+            FISHING_CAST=11,FISHING_REEL=12,RESEARCHING=13;
     private WorkFeedback() {}
     public static void pulse(ServerLevel level,CitizenEntity worker,BlockPos at,int kind) {
         if(worker.isSleeping() || worker.recovering() || !level.hasChunkAt(at)) return;

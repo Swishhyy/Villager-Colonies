@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "wwmc:block/raw_tin_block"
+    }
+  }
+}

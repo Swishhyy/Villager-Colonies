@@ -1,6 +1,11 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import java.util.List;
+import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.core.StructureRole;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.item.Items;
 
 /**
@@ -9,9 +14,23 @@ import net.minecraft.world.item.Items;
  * also need a schematic recovered from a fortified bandit captain.
  */
 public final class Research {
-    public record Tech(String id,String title,String benefit,List<TownProjects.Cost> costs,String schematic) {}
+    public record Tech(String id,String title,String benefit,List<TownProjects.Cost> costs,String schematic,String prerequisite,int ticks) {
+        public Tech(String id,String title,String benefit,List<TownProjects.Cost> costs,String schematic) {
+            this(id,title,benefit,costs,schematic,"",3600);
+        }
+    }
     private static TownProjects.Cost cost(String name,int count,net.minecraft.world.item.Item item) { return new TownProjects.Cost(name,count,s -> s.is(item)); }
     public static final List<Tech> ALL=List.of(
+        new Tech("bronze_age","Bronze Age","Unlocks copper and bronze equipment, bronze alloying and quarry stations for settlement members",
+                List.of(cost("copper ingots",24,Items.COPPER_INGOT),new TownProjects.Cost("tin ingots",8,s -> s.is(WWMC.TIN_INGOT.get())),
+                        cost("coal",8,Items.COAL),cost("paper",8,Items.PAPER)),"","",3600),
+        new Tech("iron_age","Iron Age","Unlocks iron and gold equipment, buckets, shields, anvils and blacksmith stations",
+                List.of(new TownProjects.Cost("bronze ingots",16,s -> s.is(WWMC.BRONZE_INGOT.get())),cost("iron ingots",16,Items.IRON_INGOT),
+                        cost("coal",16,Items.COAL),cost("paper",16,Items.PAPER)),"","bronze_age",7200),
+        new Tech("gemcraft","Gemcraft","Unlocks diamond equipment and enchanting after the Iron Age",
+                List.of(cost("diamonds",8,Items.DIAMOND),cost("lapis lazuli",24,Items.LAPIS_LAZULI),cost("paper",24,Items.PAPER)),"","iron_age",9600),
+        new Tech("netherite_smithing","Netherite Smithing","Unlocks netherite equipment and upgrades after Gemcraft",
+                List.of(cost("netherite scraps",4,Items.NETHERITE_SCRAP),cost("gold ingots",16,Items.GOLD_INGOT),cost("paper",32,Items.PAPER)),"","gemcraft",12000),
         new Tech("housing_plans","Housing Plans","Raises the town's population limit by 10; housing beds are still required",
                 List.of(cost("paper",16,Items.PAPER),cost("cobblestone",64,Items.COBBLESTONE),cost("emeralds",8,Items.EMERALD)),""),
         new Tech("civic_planning","Civic Planning","Raises the population limit by another 15 after Housing Plans",
@@ -47,7 +66,27 @@ public final class Research {
         return role!=null && CitizenSkill.wearsTools(role) && has(town,"steel_tools") ? 15 : 0;
     }
     public static Tech byId(String id) { return ALL.stream().filter(t -> t.id().equals(id)).findFirst().orElse(null); }
-    public static boolean has(Settlement town,String id) { return town!=null && town.progress.research.contains(id); }
+    public static boolean has(Settlement town,String id) {
+        if(town==null) return false;
+        int tier=switch(id) { case "bronze_age" -> 1; case "iron_age" -> 2; case "gemcraft" -> 3; case "netherite_smithing" -> 4; default -> 0; };
+        return town.progress.research.contains(id) || tier>0 && town.progress.legacyGearTier>=tier;
+    }
+    public static String age(Settlement town) { return has(town,"iron_age") ? "Iron Age" : has(town,"bronze_age") ? "Bronze Age" : "Stone Age"; }
+    public static Tech project(Settlement town) { return byId(town.progress.project); }
+    public static String progress(Settlement town) {
+        Tech tech=project(town);
+        if(tech==null) return "Choose a project in Campaign / Research";
+        int left=Math.max(0,tech.ticks()-town.progress.projectTicks);
+        return tech.title()+": "+Math.min(100,town.progress.projectTicks*100/tech.ticks())+"%; "+(left+1199)/1200+" min of work left";
+    }
+    /** Nearby desks are real, loaded lecterns. A researcher still has to reach and work at one. */
+    public static List<BlockPos> desks(ServerLevel level,Settlement town,Station station) {
+        var result=new java.util.ArrayList<BlockPos>();
+        if(!SettlementService.active(level,station)) return result;
+        for(BlockPos p:SettlementService.cells(station)) if(town.contains(p) && level.hasChunkAt(p)
+                && level.getBlockState(p).is(Blocks.LECTERN) && SettlementService.ownsBlock(level,town,station,p)) result.add(p.immutable());
+        return result;
+    }
     public static int populationBonus(Settlement town) {
         return (has(town,"housing_plans") ? 10 : 0)+(has(town,"civic_planning") ? 15 : 0)+(has(town,"city_planning") ? 25 : 0);
     }
@@ -55,13 +94,19 @@ public final class Research {
         return switch(id) { case "armor" -> "Armorer's schematic"; case "signals" -> "Signal tower schematic"; case "mining" -> "Deep mining schematic"; default -> id; };
     }
     public static String missing(net.minecraft.server.level.ServerLevel level,Settlement town,Tech tech) {
-        String prerequisite=switch(tech.id()) { case "civic_planning" -> "housing_plans"; case "city_planning" -> "civic_planning"; default -> ""; };
+        String prerequisite=!tech.prerequisite().isEmpty() ? tech.prerequisite() : switch(tech.id()) {
+            case "civic_planning" -> "housing_plans"; case "city_planning" -> "civic_planning";
+            case "steel_tools","reinforced_armor","deep_mining" -> "iron_age"; case "bellows" -> "bronze_age"; default -> "";
+        };
         if(!prerequisite.isEmpty() && !has(town,prerequisite)) return "Research "+byId(prerequisite).title()+" first";
         if(List.of("housing_plans","civic_planning","city_planning").contains(tech.id())
                 && SettlementService.populationLimit(town)>=io.github.swishhyy.wwmc.Config.MAX_CITIZENS.get())
             return "Population is already at the server's configured maximum";
         if(!tech.schematic().isEmpty() && !town.progress.schematics.contains(tech.schematic()))
             return "Needs the "+schematicTitle(tech.schematic()).toLowerCase(java.util.Locale.ROOT)+", carried by fortified bandit captains";
+        if(!town.progress.project.isEmpty()) return "Finish "+(project(town)==null ? "the current project" : project(town).title())+" first";
+        if(town.stations.stream().noneMatch(s -> s.role()==StructureRole.RESEARCHER && SettlementService.active(level,s) && !desks(level,town,s).isEmpty()))
+            return "Add a Researcher Station with a lectern in range";
         for(TownProjects.Cost cost:tech.costs()) if(InventoryOps.count(SettlementService.storage(level,town),cost.material())<cost.count())
             return "Needs "+cost.count()+" "+cost.name()+" in the warehouse";
         return "";
@@ -73,8 +118,26 @@ public final class Research {
         String missing=missing(level,town,tech);
         if(!missing.isEmpty()) return missing;
         if(!TownProjects.pay(SettlementService.storage(level,town),tech.costs())) return "Materials changed; check warehouse stock.";
-        town.progress.research.add(id);
-        CampaignService.record(level,town,"Researched "+tech.title()+": "+tech.benefit()+".");
-        return tech.title()+" researched.";
+        town.progress.project=id; town.progress.projectTicks=0;
+        SettlementData.get(level).setDirty();
+        CampaignService.journal(level,town,"Started "+tech.title()+". Supplies paid; a researcher must work at a lectern to finish it.");
+        WWMC.LOGGER.info("[WWMC][research-start] town={} project={} workTicks={}",town.id,id,tech.ticks());
+        return tech.title()+" started. Assign a researcher; progress pauses when they cannot work.";
+    }
+    /** A single town receives at most ten ticks of work each game tick, even with several researchers. */
+    public static boolean work(ServerLevel level,Settlement town,Station station,BlockPos desk) {
+        Tech tech=project(town);
+        if(tech==null || has(town,tech.id()) || station.role()!=StructureRole.RESEARCHER || town.station(station.position())!=station
+                || town.jobs.level(StructureRole.RESEARCHER)==JobBoard.OFF || !SettlementService.active(level,station)
+                || !desks(level,town,station).contains(desk) || town.progress.lastResearchWork==level.getGameTime()) return false;
+        town.progress.lastResearchWork=level.getGameTime();
+        town.progress.projectTicks=Math.min(tech.ticks(),town.progress.projectTicks+10);
+        SettlementData.get(level).setDirty();
+        if(town.progress.projectTicks>=tech.ticks()) {
+            town.progress.research.add(tech.id()); town.progress.project=""; town.progress.projectTicks=0;
+            CampaignService.record(level,town,"Researched "+tech.title()+": "+tech.benefit()+".");
+            WWMC.LOGGER.info("[WWMC][research-complete] town={} project={} age={}",town.id,tech.id(),age(town));
+        }
+        return true;
     }
 }

@@ -8,7 +8,7 @@
   ],
   "key": {
     "P": "#minecraft:planks",
-    "I": "minecraft:iron_helmet"
+    "I": "minecraft:stone_sword"
   },
   "result": {
     "id": "wwmc:guard_station",
