@@ -157,8 +157,8 @@ public final class VillagerAIWorldTests {
     static void waveMobilizesShieldGuardImmediately(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-8800));
-            var chunks=CitizenNavigationTests.pinTicking(level,start,5);
-            CitizenNavigationTests.meadow(level,start,-70,70,-70,70);
+            var chunks=CitizenNavigationTests.pinTicking(level,start,6);
+            CitizenNavigationTests.meadow(level,start,-84,84,-84,84);
             Station post=new Station(start,StructureRole.GUARD);
             var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Immediate wave defense",start,84,List.of(),List.of(post),"balanced");
             SettlementData.get(level).settlements.add(town); SettlementData.get(level).setDirty();

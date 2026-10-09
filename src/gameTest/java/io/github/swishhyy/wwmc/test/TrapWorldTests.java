@@ -60,7 +60,8 @@ public final class TrapWorldTests {
     static void realHostileActivations(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-11800));
-            var chunks=CitizenNavigationTests.pinArea(level,start,-8,36,-8,8); CitizenNavigationTests.meadow(level,start,-8,36,-8,8);
+            var chunks=CitizenNavigationTests.pinTicking(level,start,3); CitizenNavigationTests.meadow(level,start,-8,36,-8,8);
+            helper.runAtTickTime(10,() -> {
             var town=town(level,start,UUID.randomUUID()); town.progress.research.addAll(List.of("bronze_age","iron_age"));
             int x=4;
             for(TrapKind kind:TrapKind.values()) {
@@ -73,16 +74,18 @@ public final class TrapWorldTests {
                 helper.assertTrue(zombie.hasEffect(MobEffects.SLOWNESS),kind+" did not slow the attacker");
                 TrapService.tickTown(level,town);
                 helper.assertTrue(level.getBlockState(pos).getValue(TrapBlock.WEAR)==1,kind+" triggered again during its cooldown");
-                if(!kind.manual) {
+                if(!kind.manual && kind!=TrapKind.IRON_SPRING_TRAP) {
                     int i=town.progress.traps.size()-1;
                     town.progress.traps.set(i,new TrapService.Entry(pos,level.getGameTime()-1)); zombie.discard();
                     TrapService.tickTown(level,town);
                     helper.assertTrue(level.getBlockState(pos).getValue(TrapBlock.ARMED),kind+" did not reset after its saved cooldown");
                 } else zombie.discard();
             }
+            helper.assertTrue(town.progress.traps.getLast().readyAt()>level.getGameTime(),"Active spring cooldown was not retained");
             var saved=Settlement.CODEC.parse(JsonOps.INSTANCE,Settlement.CODEC.encodeStart(JsonOps.INSTANCE,town).getOrThrow()).getOrThrow();
             helper.assertTrue(saved.progress.traps.equals(town.progress.traps),"Trap positions or cooldowns changed in a save roundtrip");
-            SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.release(level,start,chunks); helper.succeed();
+            SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.releaseTicking(level,start,chunks); helper.succeed();
+            });
         });
     }
 
@@ -91,7 +94,8 @@ public final class TrapWorldTests {
     static void friendlyTrafficIsSafe(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-12000));
-            var chunks=CitizenNavigationTests.pinArea(level,start,-8,16,-8,8); CitizenNavigationTests.meadow(level,start,-8,16,-8,8);
+            var chunks=CitizenNavigationTests.pinTicking(level,start,3); CitizenNavigationTests.meadow(level,start,-8,16,-8,8);
+            helper.runAtTickTime(10,() -> {
             var town=town(level,start,UUID.randomUUID()); BlockPos pos=start.east(5); place(level,pos,TrapKind.WOODEN_SPIKES);
             var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level); citizen.join(town.id); citizen.setNoAi(true);
             citizen.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5); level.addFreshEntity(citizen);
@@ -101,7 +105,8 @@ public final class TrapWorldTests {
             TrapService.tickTown(level,town);
             helper.assertTrue(level.getBlockState(pos).getValue(TrapBlock.WEAR)==0 && level.getBlockState(pos).getValue(TrapBlock.ARMED),"Friendly traffic spent the trap");
             for(var entity:List.of(citizen,cow,wolf,neutral)) { helper.assertTrue(entity.getHealth()==entity.getMaxHealth(),"Friendly traffic was hurt"); entity.discard(); }
-            SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.release(level,start,chunks); helper.succeed();
+            SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.releaseTicking(level,start,chunks); helper.succeed();
+            });
         });
     }
 
@@ -110,7 +115,8 @@ public final class TrapWorldTests {
     static void savedWearAndPaidMaintenance(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-12200));
-            var chunks=CitizenNavigationTests.pinArea(level,start,-8,20,-8,8); CitizenNavigationTests.meadow(level,start,-8,20,-8,8);
+            var chunks=CitizenNavigationTests.pinTicking(level,start,3); CitizenNavigationTests.meadow(level,start,-8,20,-8,8);
+            helper.runAtTickTime(10,() -> {
             var player=new FakePlayer(level,new GameProfile(UUID.randomUUID(),"TrapBuilder"));
             var town=town(level,start,player.getUUID()); BlockPos pos=start.east(5);
             place(level,pos,TrapKind.WOODEN_SPIKES);
@@ -139,7 +145,8 @@ public final class TrapWorldTests {
             var legacy=Settlement.CODEC.encodeStart(JsonOps.INSTANCE,town).getOrThrow().getAsJsonObject();
             legacy.getAsJsonObject("progress").remove("traps");
             helper.assertTrue(Settlement.CODEC.parse(JsonOps.INSTANCE,legacy).getOrThrow().progress.traps.isEmpty(),"Old settlements must load without trap data");
-            SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.release(level,start,chunks); helper.succeed();
+            SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.releaseTicking(level,start,chunks); helper.succeed();
+            });
         });
     }
 
@@ -148,7 +155,8 @@ public final class TrapWorldTests {
     static void ageLocksApplyToRecipesAndBlocks(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-12400));
-            var chunks=CitizenNavigationTests.pinArea(level,start,-8,16,-8,8); CitizenNavigationTests.meadow(level,start,-8,16,-8,8);
+            var chunks=CitizenNavigationTests.pinTicking(level,start,3); CitizenNavigationTests.meadow(level,start,-8,16,-8,8);
+            helper.runAtTickTime(10,() -> {
             var player=new FakePlayer(level,new GameProfile(UUID.randomUUID(),"TrapResearcher")); var town=town(level,start,player.getUUID());
             for(var kind:TrapKind.values()) helper.assertTrue(AgeProgression.required(new ItemStack(WWMC.TRAP_ITEMS.get(kind).get()))==kind.age,"Wrong age for "+kind);
             var menu=new CraftingMenu(2,player.getInventory(),ContainerLevelAccess.create(level,start));
@@ -165,7 +173,8 @@ public final class TrapWorldTests {
             menu.clicked(0,0,ContainerInput.QUICK_MOVE,player);
             helper.assertTrue(menu.getSlot(2).getItem().isEmpty() && player.getInventory().countItem(WWMC.TRAP_ITEMS.get(TrapKind.BRONZE_CALTROPS).get())==4,
                     "Unlocked recipe did not craft the promised four caltrops");
-            zombie.discard(); SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.release(level,start,chunks); helper.succeed();
+            zombie.discard(); SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.releaseTicking(level,start,chunks); helper.succeed();
+            });
         });
     }
 
@@ -205,7 +214,8 @@ public final class TrapWorldTests {
     static void wavesUseTheDefensePerimeter(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-13000));
-            var chunks=CitizenNavigationTests.pinArea(level,start,-80,80,-80,80); CitizenNavigationTests.meadow(level,start,-80,80,-80,80);
+            var chunks=CitizenNavigationTests.pinTicking(level,start,6); CitizenNavigationTests.meadow(level,start,-80,80,-80,80);
+            helper.runAtTickTime(10,() -> {
             var town=town(level,start,UUID.randomUUID()); town.radius=80;
             Station guard=new Station(start.west(62),StructureRole.GUARD); town.stations.add(guard);
             level.setBlockAndUpdate(guard.position(),WWMC.STATIONS.get(guard.role()).get().defaultBlockState());
@@ -223,7 +233,8 @@ public final class TrapWorldTests {
             for(int x=-80;x<=80;x++) for(int z=-80;z<=80;z++) if(!bounds.contains(start.getX()+x,start.getZ()+z))
                 level.setBlockAndUpdate(start.offset(x,1,z),Blocks.OAK_PLANKS.defaultBlockState());
             helper.assertTrue(WaveService.arrivalSite(level,town,null)==null,"Unsafe approaches caused a spawn on a roof or inside defenses");
-            SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.release(level,start,chunks); helper.succeed();
+            SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.releaseTicking(level,start,chunks); helper.succeed();
+            });
         });
     }
 }
