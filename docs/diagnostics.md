@@ -30,4 +30,4 @@ These flat keys live in the generated WWMC server TOML. In a loaded single-playe
 
 Brief pauses do not announce a recovery, and unloaded time does not count toward the stall delay. Tracking belongs to each citizen or current recall search, so old worlds and removed citizens do not leave a growing global log cache.
 
-For a bug report, include the relevant `[WWMC]` lines **and nearby exceptions** from `latest.log`, your Minecraft/NeoForge versions, the exact WWMC build or commit, and what happened in game. The working branch remains **0.1.0.0** until the maintainer chooses a version change, so the commit/build identifies which stability fixes you tested.
+For a bug report, include the relevant `[WWMC]` lines **and nearby exceptions** from `latest.log`, your Minecraft/NeoForge versions, the exact WWMC version or commit, and what happened in game. The `server-start` line shows which WWMC version the game loaded.

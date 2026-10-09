@@ -4,7 +4,7 @@ Build a settlement, recruit villagers, and give them jobs like farming, mining, 
 
 Trade with other settlements, play alongside friends, and equip guards to defend against raids. When you're ready, lead your guards out to clear bandit camps and establish outposts.
 
-**WWMC is playable and still in development.** The current public version is **0.1.0.0**.
+**WWMC is playable and still in development.** The current public version is **0.1.0.1**, a bugfix update for citizen jobs and recovery.
 
 [CurseForge project](https://www.curseforge.com/minecraft/mc-mods/world-war-mc) · [All guides](docs/README.md) · [Changelog](docs/CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Report a bug](https://github.com/Swishhyy/World-War-MC/issues)
 
@@ -27,11 +27,11 @@ Larger warfare systems, countries, automatic building, and distant settlement si
 | Minecraft Java Edition | **26.2** |
 | Mod loader | **NeoForge 26.2.0.88 or newer for Minecraft 26.2** |
 | Java | **25** |
-| WWMC | **0.1.0.0** |
+| WWMC | **0.1.0.1** |
 
 1. Install NeoForge for Minecraft **26.2**.
-2. Download the WWMC JAR from [CurseForge](https://www.curseforge.com/minecraft/mc-mods/world-war-mc) or a successful [GitHub Actions build](https://github.com/Swishhyy/World-War-MC/actions/workflows/build.yml).
-3. Place **`wwmc-0.1.0.0.jar`** in the instance's **`mods`** folder. If you downloaded an Actions artifact, extract its ZIP first.
+2. Download the WWMC JAR from [GitHub Releases](https://github.com/Swishhyy/World-War-MC/releases/latest), [CurseForge](https://www.curseforge.com/minecraft/mc-mods/world-war-mc), or a successful [GitHub Actions build](https://github.com/Swishhyy/World-War-MC/actions/workflows/build.yml).
+3. Place **`wwmc-0.1.0.1.jar`** in the instance's **`mods`** folder. If you downloaded an Actions artifact, extract its ZIP first.
 4. For multiplayer, install the **same WWMC version on the server and every client**.
 
 Keep only one WWMC JAR in the folder. Use a test world or back up an existing world before updating.

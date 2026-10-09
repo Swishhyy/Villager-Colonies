@@ -8,6 +8,10 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      mod_version: ${{ steps.build_metadata.outputs.mod_version }}
+      minecraft_version: ${{ steps.build_metadata.outputs.minecraft_version }}
+      release_changed: ${{ steps.build_metadata.outputs.release_changed }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,6 +32,13 @@ jobs:
         id: build_metadata
         run: |
           sed -n -e '/^mod_version=/p' -e '/^minecraft_version=/p' gradle.properties >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
+            current_version=$(sed -n 's/^mod_version=//p' gradle.properties)
+            previous_version=$(git show HEAD^:gradle.properties | sed -n 's/^mod_version=//p')
+            if [[ "$current_version" != "$previous_version" ]]; then
+              echo 'release_changed=true' >> "$GITHUB_OUTPUT"
+            fi
+          fi
 
       # This is needed to be able to run ./gradlew below
       # You can run `git update-index --chmod +x gradlew` then remove this step.
@@ -49,3 +60,62 @@ jobs:
           name: wwmc-${{ steps.build_metadata.outputs.mod_version }}-neoforge-mc${{ steps.build_metadata.outputs.minecraft_version }}
           path: build/libs/wwmc-${{ steps.build_metadata.outputs.mod_version }}.jar
           if-no-files-found: error
+
+  release:
+    name: Publish tested mod release
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.release_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: wwmc-release-${{ needs.build.outputs.mod_version }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      WWMC_VERSION: ${{ needs.build.outputs.mod_version }}
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Download tested mod JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: wwmc-${{ needs.build.outputs.mod_version }}-neoforge-mc${{ needs.build.outputs.minecraft_version }}
+          path: release-artifact
+
+      - name: Verify JAR and prepare release notes
+        run: python3 scripts/prepare_release.py release-artifact
+
+      - name: Publish versioned GitHub release
+        run: |
+          set -euo pipefail
+          tag="v$WWMC_VERSION"
+          jar="release-artifact/wwmc-$WWMC_VERSION.jar"
+          existing_tag=$(gh api "repos/$GH_REPO/git/matching-refs/tags/$tag" \
+            --jq ".[] | select(.ref == \"refs/tags/$tag\") | .ref")
+          if [[ -n "$existing_tag" ]]; then
+            existing_target=$(gh api "repos/$GH_REPO/commits/$tag" --jq '.sha')
+            if [[ "$existing_target" != "$GITHUB_SHA" ]]; then
+              echo "Tag $tag already targets a different commit; refusing to replace it." >&2
+              exit 1
+            fi
+          fi
+          if gh release view "$tag" --json isDraft,targetCommitish > release-state.json; then
+            if [[ "$(jq -r '.isDraft' release-state.json)" == "false" ]]; then
+              echo "Release $tag is already published for this commit."
+              exit 0
+            fi
+            if [[ "$(jq -r '.targetCommitish' release-state.json)" != "$GITHUB_SHA" ]]; then
+              echo "Draft release $tag targets a different commit; refusing to replace it." >&2
+              exit 1
+            fi
+            gh release upload "$tag" "$jar" "$jar.sha256" --clobber
+          else
+            gh release create "$tag" "$jar" "$jar.sha256" \
+              --target "$GITHUB_SHA" --title "World War MC $WWMC_VERSION" \
+              --notes-file release-artifact/release-notes.md --draft --prerelease=false
+          fi
+          gh release edit "$tag" --draft=false --prerelease=false --latest \
+            --notes-file release-artifact/release-notes.md

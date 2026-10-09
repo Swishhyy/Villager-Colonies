@@ -2,7 +2,9 @@
 
 [Project overview](../README.md) · [All guides](README.md) · [Versioning rules](curseforge.md#public-version-format)
 
-## Unreleased stability changes
+## 0.1.0.1
+
+A bugfix release for citizen jobs, movement and recovery, with clearer town status and server logs. WWMC remains playable and in development.
 
 - Bring injured citizens back from unloaded or frozen chunks so hospital care can resume; retain their health, job and carried equipment. Failed recalls retry after 30 seconds without using the successful-recall cooldown.
 - Finish walking to the selected standing spot when vanilla navigation stops short; recheck actual reach and try another approach when needed. This prevents pantry and job interactions from stalling at the edge of reach.
@@ -15,7 +17,7 @@
 - Explain why citizens have no job instead of suggesting higher priorities when all enabled crews are full.
 - Distinguish missing job barrels from barrels a worker cannot reach, explain barrel ownership near warehouses and overlapping stations, and show complete hover text beside row buttons.
 
-The working version stays at **0.1.0.0** until the maintainer chooses the next release. Use the same build on clients and servers. Existing town saves, jobs and inventories remain compatible.
+Install **0.1.0.1** on both clients and servers. Existing town saves, jobs and inventories remain compatible.
 
 ## 0.1.0.0
 
