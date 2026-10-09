@@ -79,12 +79,12 @@ public final class ProductionWorldTests {
     @GameTest(timeoutTicks=1200)
     @EmptyTemplate
     @TestHolder(description="A fisherman walks over dirt paths to collect a real rod from its job barrel.")
-    static void reachesBarrelAcrossDirtPaths(DynamicTest test) { takesRodAcrossFloor(test,-3800,Blocks.DIRT_PATH); }
+    static void reachesBarrelAcrossDirtPaths(DynamicTest test) { takesRodAcrossFloor(test,-4600,Blocks.DIRT_PATH); }
 
     @GameTest(timeoutTicks=1200)
     @EmptyTemplate
     @TestHolder(description="A fisherman walks over bottom slabs to collect a real rod from its job barrel.")
-    static void reachesBarrelAcrossBottomSlabs(DynamicTest test) { takesRodAcrossFloor(test,-3960,Blocks.STONE_SLAB); }
+    static void reachesBarrelAcrossBottomSlabs(DynamicTest test) { takesRodAcrossFloor(test,-5000,Blocks.STONE_SLAB); }
 
     @GameTest(timeoutTicks=4000)
     @EmptyTemplate
