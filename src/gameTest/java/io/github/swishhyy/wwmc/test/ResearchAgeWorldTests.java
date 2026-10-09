@@ -90,9 +90,18 @@ public final class ResearchAgeWorldTests {
             owner.setPos(start.getX()+.5,start.getY(),start.getZ()+.5);
             var town=new Settlement(UUID.randomUUID(),owner.getUUID(),"Age locks",start,96,List.of(),List.of(),"balanced");
             SettlementData.get(level).settlements.add(town);
+            var starterMenu=new CraftingMenu(2,owner.getInventory(),ContainerLevelAccess.create(level,start));
+            for(var entry:Map.of(Items.LECTERN,StructureRole.RESEARCHER,Items.WOODEN_SWORD,StructureRole.GUARD,
+                    Items.STONE_SWORD,StructureRole.BARRACKS,Items.WOODEN_AXE,StructureRole.BUTCHER,Items.STONE_AXE,StructureRole.LUMBER).entrySet()) {
+                for(int slot=1;slot<=9;slot++) starterMenu.getSlot(slot).setByPlayer(new ItemStack(slot==5 ? entry.getKey() : Items.OAK_PLANKS));
+                starterMenu.slotsChanged(starterMenu.getSlot(5).container);
+                ItemStack stationResult=starterMenu.getSlot(0).getItem();
+                helper.assertTrue(stationResult.is(WWMC.STATION_ITEMS.get(entry.getValue()).get()) && AgeProgression.allowed(owner,stationResult),
+                        "Starter station recipe is ambiguous or age-locked: "+entry.getValue());
+            }
             ItemStack sword=new ItemStack(Items.IRON_SWORD),helmet=new ItemStack(Items.IRON_HELMET); helmet.setDamageValue(17);
             helper.assertTrue(!AgeProgression.allowed(owner,sword) && !AgeProgression.allowed(owner,new ItemStack(WWMC.BRONZE_PICKAXE.get())),"Stone Age permits metal equipment");
-            owner.getInventory().add(sword); owner.setItemSlot(EquipmentSlot.HEAD,helmet); AgeProgression.unequip(owner);
+            owner.getInventory().add(sword.copy()); owner.setItemSlot(EquipmentSlot.HEAD,helmet); AgeProgression.unequip(owner);
             helper.assertTrue(owner.getItemBySlot(EquipmentSlot.HEAD).isEmpty() && owner.getInventory().countItem(Items.IRON_SWORD)==1
                     && owner.getInventory().countItem(Items.IRON_HELMET)==1,"Locked loot or armor was lost");
             boolean intact=false;

@@ -14,6 +14,7 @@ This is the detailed reference for the playable settlement systems. For a shorte
 | Guards and attacks | [Guard stations](#guard-stations-and-posts) · [Alarms and waves](#alarms-and-enemy-waves) |
 | Other towns | [Trading](#trading-and-other-settlements) · [Relationships](multiplayer-campaign.md#relationships-claims-and-flags) |
 | Progress and troubleshooting | [Needs](#needs-experience-and-morale) · [Station upgrades](#station-upgrades) · [Population](#population) |
+| Player equipment and ages | [Ages and research](#ages-and-research) |
 | Commands and settings | [Commands](#commands) · [Server configuration](#server-configuration) |
 
 ## Start a settlement
@@ -119,6 +120,7 @@ Only loaded blocks inside the settlement claim count. Scanning never loads chunk
 | Guard | Day/night posts, shared gear, bell alarms, player-led squads and convoy escorts. | Larger armies and siege tactics. |
 | Courier | The only town hauler: moves job outputs, tools and inputs through the warehouse. | Convoys between towns. |
 | Enchanter | Enchants unenchanted gear and books with lapis at an enchanting table within 5 blocks, up to level 25. | Enchanting orders and libraries. |
+| Researcher | Works at a lectern on the town's paid research project; progress survives pauses and saves. | More technologies and later machine production. |
 
 Each station has its own small model built from vanilla textures, a workbench, a watchtower or a tent for example, turned to face the player who placed it. A mine's tunnel entrance and a quarry's red flag point the way they dig. Stations declare use; this build does not infer enclosed rooms, roofs, or architectural quality. Work validates supplies, protection, reservations, loaded terrain, and access before changing blocks.
 
@@ -134,26 +136,49 @@ All markers use eight planks around a center item in a crafting table.
 | --- | --- |
 | Settlement Banner | Blue wool |
 | Housing Station | Oak door |
-| Barracks Station | Iron sword |
+| Barracks Station | Stone sword |
 | Hospital Station | Paper |
 | Warehouse Station | Chest |
 | Farm Station | Wheat seeds |
 | Lumber Station | Stone axe |
 | Mine Station | Stone pickaxe |
-| Quarry Station | Iron pickaxe |
+| Quarry Station | Bronze pickaxe; Bronze Age required |
 | Craftsman Station | Crafting table |
 | Smeltery Station | Furnace |
 | Cook Station | Smoker |
 | Hunter Station | Leather |
 | Fisherman Station | Fishing rod |
 | Animal Keeper Station | Hay bale |
-| Butcher Station | Iron axe |
-| Guard Station | Iron helmet |
+| Butcher Station | Wooden axe |
+| Guard Station | Wooden sword |
 | Blacksmith Station | Iron ingot |
 | Courier Station | Barrel |
 | Enchanter Station | Book |
+| Researcher Station | Lectern |
 
 The Station Inspector is a shapeless recipe with two paper and one stick. The **Settlement Guide** is a shapeless recipe with one book and one blue dye; right-click it to open the native book screen. `/wwmc guide` gives another copy. Tools consumed to craft stations are separate from tools supplied to workers.
+
+### Ages and research
+
+New settlements in **0.1.1.0** start in the **Stone Age**. The settlement's owner and accepted builders or stewards share its equipment unlocks wherever they travel, including other dimensions. Invitations and alliances alone do not share research. Existing settlements retain their previous equipment access when upgraded.
+
+1. Craft a **Researcher Station** with eight planks around a lectern. Place it inside your town and put a separate **lectern within three blocks on each axis**.
+2. Keep a citizen assigned to Researcher under **Jobs**, and supply ready-to-eat food.
+3. Open the banner's **Campaign → Research** tab. Place the listed supplies in loaded warehouse storage, then start one project.
+4. Supplies are paid once at the start. The researcher must reach the lectern and work. Sleep, danger, blocked access and unloaded chunks pause progress; the paid project resumes after saving and loading. The banner shows the current age and progress.
+
+| Research | Warehouse supplies | Active work for one researcher | Equipment unlocked |
+| --- | --- | --- | --- |
+| Bronze Age | 24 copper ingots, 8 tin ingots, 8 coal, 8 paper | 3 minutes | Copper and bronze gear, bronze alloying, Quarry Stations |
+| Iron Age; requires Bronze Age | 16 bronze ingots, 16 iron ingots, 16 coal, 16 paper | 6 minutes | Iron and gold gear, buckets, shields, anvils, smithing and blacksmith stations |
+| Gemcraft; requires Iron Age | 8 diamonds, 24 lapis lazuli, 24 paper | 8 minutes | Diamond gear, enchanting tables and Enchanter Stations |
+| Netherite Smithing; requires Gemcraft | 4 netherite scraps, 16 gold ingots, 32 paper | 10 minutes | Netherite gear and upgrades |
+
+**Tin and bronze.** Tin ore generates in new Overworld terrain from **Y −32 to 64**, including deepslate. Mine it with a stone pickaxe and smelt raw tin into ingots. After Bronze Age research, craft **three copper ingots and one tin ingot into four bronze blends**, then smelt those into bronze ingots. Bronze has its own sword, pickaxe, axe, shovel, hoe and complete armor set. Its tools last longer than stone and still need Iron Age equipment for high-tier ores. Ingots and raw tin also have nine-item storage blocks.
+
+**Found gear stays yours.** A higher-tier sword, tool or armor piece can be picked up and stored before its research. Mining, fighting, using and wearing it wait for the unlock; armor returns intact to inventory. Locked crafting, anvil and smithing outputs retain their ingredients. A short hotbar notice explains the required research. Creative and spectator players are exempt. The material ingots themselves can be collected and smelted for research beforehand.
+
+Other technologies now use the same researcher system; most take three minutes of active work. Advanced machines remain planned for a later update.
 
 ### Trading and other settlements
 
@@ -410,7 +435,8 @@ A bigger town draws bigger attacks. Each population upgrade adds **2 attackers**
 
 - Persistent named settlements, owners, non-overlapping claims, and job priorities.
 - Citizens who keep their own station, and job priorities from Off to High that decide which open places fill first.
-- Settlement banner and twenty role stations, each with its own detailed model, survival crafting recipes and a creative tab.
+- Settlement banner and twenty-one role stations, each with its own detailed model, survival crafting recipes and a creative tab.
+- Settlement ages, a working researcher, tin and bronze equipment, and shared research-based player progression.
 - Emerald upgrades: wider station ranges, more crew slots, and room for more citizens at the price of larger enemy waves.
 - Screens for the town, every station, the Craftsman's orders and each citizen, refreshed every second.
 - A 240-block minimum claim radius, a configurable town color, and matching banners at the four claim corners.

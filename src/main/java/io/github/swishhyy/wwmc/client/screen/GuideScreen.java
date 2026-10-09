@@ -16,7 +16,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
-/** An illustrated, searchable handbook: nine topics, actual item icons, recipe grids and short setup cards. */
+/** An illustrated, searchable handbook with actual item icons, recipe grids and short setup cards. */
 public final class GuideScreen extends Screen {
     private static final int PAPER=0xFFF1E8D2,INK=0xFF292E36,MUTED=0xFF59616C,ACCENT=0xFF346E8A,CARD=0xFFFFFBED;
     private final Screen parent;

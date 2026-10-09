@@ -4,6 +4,8 @@
 
 This document describes future design. It is not a list of implemented features.
 
+The **0.1.1.0 development branch** now adds Stone, Bronze and Iron progression, research shared by accepted settlement members, tin and bronze equipment, and furnished exploration ruins. Researchers spend time and supplies; higher-tier found gear waits for its unlock. Advanced machine blocks and later ages remain future work. See [ages and research](settlement-guide.md#ages-and-research) for the current system.
+
 ## Distant settlement event model
 
 Each town needs a persistent ID, generator cell, faction, development stage, population, workforce, resource ledger, relations, recent event history, revision, last simulation time, and random-step counter. Event definitions contain prerequisites, resource inputs/outputs, weights, cooldowns, and outcome rules.

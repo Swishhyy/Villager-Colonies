@@ -58,7 +58,7 @@ public final class RuinedSites {
         station(level,c,-8,7,StructureRole.MINE); put(level,c.offset(-8,0,9),WWMC.TIN_ORE.get().defaultBlockState()); put(level,c.offset(-7,0,8),Blocks.BARREL.defaultBlockState());
         station(level,c,-4,0,StructureRole.COOK); put(level,c.offset(-5,0,0),Blocks.SMOKER.defaultBlockState()); put(level,c.offset(-4,0,2),Blocks.BARREL.defaultBlockState());
         station(level,c,4,0,StructureRole.CRAFTSMAN); put(level,c.offset(5,0,0),Blocks.CRAFTING_TABLE.defaultBlockState()); put(level,c.offset(4,0,2),Blocks.BARREL.defaultBlockState());
-        station(level,c,0,0,StructureRole.GUARD);
+        station(level,c,0,-4,StructureRole.GUARD);
         for(BlockPos light:java.util.List.of(c.offset(-5,0,-3),c.offset(5,0,-3),c.offset(-5,0,4),c.offset(5,0,4))) put(level,light,Blocks.TORCH.defaultBlockState());
     }
     private static void workshop(ServerLevel level,BlockPos c) {
@@ -73,5 +73,6 @@ public final class RuinedSites {
         station(level,c,4,0,StructureRole.WAREHOUSE); put(level,c.offset(4,0,2),Blocks.BARREL.defaultBlockState());
         station(level,c,0,-4,StructureRole.RESEARCHER); put(level,c.offset(0,0,-5),Blocks.LECTERN.defaultBlockState());
         station(level,c,0,4,StructureRole.HOUSING); bed(level,c.offset(1,0,4)); bed(level,c.offset(2,0,4));
+        bed(level,c.offset(-1,0,4)); bed(level,c.offset(3,0,4));
     }
 }

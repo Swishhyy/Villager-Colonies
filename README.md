@@ -17,12 +17,13 @@ Trade with other settlements, play alongside friends, and equip guards to defend
 - **Friends and trade:** town permissions, alliances, and traders who carry goods between settlements.
 - **Defense and exploration:** guards, patrols, raids, bandit camps, and supplied outposts.
 - **Visible progress:** job outfits and work effects, town colors, upgrades, research, a visual handbook, and tutorial advancements.
+- **Settlement ages in 0.1.1.0:** Stone → Bronze → Iron, with researchers, tin, bronze equipment, and shared unlocks for town members.
 
 Larger warfare systems, countries, automatic building, and distant settlement simulation remain [planned features](docs/ROADMAP.md).
 
 ## Install
 
-This branch is testing **0.1.1.0**: worker movement, guard defense, bed shelter, population research, and quieter notifications. It remains separate from the latest public release, **0.1.0.1**. A successful build of this branch provides `wwmc-0.1.1.0.jar` for testing.
+This branch is testing **0.1.1.0**: settlement ages, timed research, tin and bronze equipment, furnished ruins, clearer work animations, and the worker and guard fixes. It remains separate from the latest public release, **0.1.0.1**. A successful build of this branch provides `wwmc-0.1.1.0.jar` for testing.
 
 | Requirement | Version |
 | --- | --- |
@@ -45,6 +46,7 @@ Keep only one WWMC JAR in the folder. Use a test world or back up an existing wo
 3. **Add housing and supplies.** Put beds near a **Housing Station** and chests or barrels near a **Warehouse Station**. Ordinary stations detect furniture within **three blocks on each axis**.
 4. **Set up your first jobs.** Add a **Farm Station**, a **Lumber Station**, and a **Courier Station**. Put barrels beside the work stations and stock food, tools, and saplings in the warehouse.
 5. **Recruit citizens.** Use the settlement banner's screen to recruit and manage jobs. Add a **Cook Station** and the other jobs you need as the town grows.
+6. **Research the next age in 0.1.1.0.** Add a **Researcher Station** and a nearby lectern, then choose a project under **Campaign → Research**. Supply the warehouse and let the researcher work. See [ages and research](docs/settlement-guide.md#ages-and-research).
 
 Right-click a banner, station, or citizen to open its screen. The banner's **Needs** tab helps you find shortages; **Relationships** manages player access and town alliances. Press **?** on a town or station screen for relevant help.
 

@@ -6,6 +6,11 @@
 
 In development on a separate branch; not yet released.
 
+- Add Stone, Bronze and Iron progression shared by a settlement's owner and accepted members. Higher-tier loot can be stored until its research unlocks use.
+- Add a Researcher Station and lectern work: pay project supplies once, wait for real work, and keep progress through pauses and saves.
+- Add tin ore, bronze alloying, bronze tools and armor, with further research for diamond and netherite gear. Existing settlements retain their equipment access.
+- Give carcasses recognizable 3D models, improve fishing and tool swings, and hide clothing under the armor covering it.
+- Generate furnished ruined castles and mining workshops using WWMC stations, beds, storage and research desks. Claiming them retains their rooms and supplies.
 - Let lumberjacks fell natural trees beside their own job barrels or Lumber Station. Keep player-placed logs, nearby building planks and unrelated storage protected.
 - Keep a worker's actual status visible during its retry pause instead of replacing it with "No work".
 - Stop harmless flowers and grass from blocking worker paths and interactions.

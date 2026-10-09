@@ -15,6 +15,8 @@ WWMC writes diagnostics to the hosting game's **console** and **`logs/latest.log
 | `citizen-missing` | Searches could not find a citizen. Their roster/job place was freed; they rejoin if found later. |
 | `citizen-rejoined` | A citizen previously absent from the roster was seen again. |
 | `recipe-error` | A crafting recipe threw an exception while craftsmen indexed it. Includes the recipe ID and stack trace; other recipes remain usable. This always logs, even if routine diagnostics are disabled. |
+| `research-start` | A project spent its warehouse supplies once. Includes the town ID, project ID and required work ticks. |
+| `research-complete` | A working researcher completed the saved project and granted its unlock once. Includes the town and project IDs. |
 
 Search attempts also use `citizen-search` at **DEBUG** level when the server's logging configuration enables it. Routine idle work, growing crops, replenishing veins, satisfied orders, sleeping citizens and off-duty work do not generate stall warnings. A warning describes an observed condition; it does not automatically mean the mod has a code bug.
 

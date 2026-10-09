@@ -88,14 +88,14 @@ public final class GuideBook {
         new StationHelp(StructureRole.CRAFTSMAN,"minecraft:crafting_table","Job barrel beside the station","Teach an item; deliver its materials","Keeps learned items in stock"),
         new StationHelp(StructureRole.BLACKSMITH,"minecraft:iron_ingot","Anvil + job barrel","Damaged gear and matching repair material","Repaired equipment"),
         new StationHelp(StructureRole.ENCHANTER,"minecraft:book","Enchanting table + bookshelves + barrel","Lapis and unenchanted gear or books","Enchanted gear; takes several minutes"),
-        new StationHelp(StructureRole.GUARD,"minecraft:stone_sword","Equipped armor stands + barrel","Weapons, arrows and armor","One guard per post"),
+        new StationHelp(StructureRole.GUARD,"minecraft:wooden_sword","Equipped armor stands + barrel","Weapons, arrows and armor","One guard per post"),
         new StationHelp(StructureRole.BARRACKS,"minecraft:stone_sword","Complete beds in range","Equipped guards at their own Guard Stations","More housing; required by Armory"),
         new StationHelp(StructureRole.HOSPITAL,"minecraft:paper","Complete patient beds + barrel","Meals and paper after Field Hospital","Hospital beds heal; medic assists"),
         new StationHelp(StructureRole.HUNTER,"minecraft:leather","Unprotected adult game + barrel","Sword or axe","Carcasses for the butcher"),
         new StationHelp(StructureRole.FISHERMAN,"minecraft:fishing_rod","Dry bank, open water 2 blocks deep + barrel","Fishing rod","Whole fish carcasses"),
         new StationHelp(StructureRole.ANIMAL_KEEPER,"minecraft:hay_block","Fenced pen with breeding pairs + barrel","Normal breeding feed and sword or axe","Keeps breeders; harvests surplus adults"),
-        new StationHelp(StructureRole.BUTCHER,"minecraft:stone_axe","Job barrel; station is cutting table","Axe and carcasses","Raw meat for the cook"),
-        new StationHelp(StructureRole.RESEARCHER,"minecraft:book","Lectern within station range","Project supplies in the warehouse; food for the researcher","Timed research shared by settlement members"),
+        new StationHelp(StructureRole.BUTCHER,"minecraft:wooden_axe","Job barrel; station is cutting table","Axe and carcasses","Raw meat for the cook"),
+        new StationHelp(StructureRole.RESEARCHER,"minecraft:lectern","Lectern within station range","Project supplies in the warehouse; food for the researcher","Timed research shared by settlement members"),
         new StationHelp(StructureRole.TRADER,"minecraft:compass","One per town, warehouse and walkable route","Choose exports and reserves in its screen","Real shipments between towns")
     );
     public static Topic topic(String id) { return TOPICS.stream().filter(t -> t.id().equals(id)).findFirst().orElse(TOPICS.getFirst()); }

@@ -145,8 +145,8 @@ def main():
         key={'I':'wwmc:bronze_ingot'}
         if any('S' in row for row in pattern):key['S']='minecraft:stick'
         shaped('bronze_'+part,pattern,key)
-    shaped('researcher_station',['PPP','PIP','PPP'],{'P':'#minecraft:planks','I':'minecraft:book'})
-    for role,center in [('guard','minecraft:stone_sword'),('barracks','minecraft:stone_sword'),('butcher','minecraft:stone_axe'),('quarry','wwmc:bronze_pickaxe')]:
+    shaped('researcher_station',['PPP','PIP','PPP'],{'P':'#minecraft:planks','I':'minecraft:lectern'})
+    for role,center in [('guard','minecraft:wooden_sword'),('barracks','minecraft:stone_sword'),('butcher','minecraft:wooden_axe'),('quarry','wwmc:bronze_pickaxe')]:
         shaped(role+'_station',['PPP','PIP','PPP'],{'P':'#minecraft:planks','I':center})
     elements=[cube([1,0,1],[3,12,3],'wood'),cube([13,0,1],[15,12,3],'wood'),cube([1,0,13],[3,12,15],'wood'),cube([13,0,13],[15,12,15],'wood'),
               cube([0,11,0],[16,13,16],'wood'),cube([2,2,4],[14,10,13],'shelf'),cube([4,13,5],[12,13.5,11],'cover'),

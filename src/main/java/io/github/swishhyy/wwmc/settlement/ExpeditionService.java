@@ -2,6 +2,7 @@ package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.Config;
 import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.nio.charset.StandardCharsets;
@@ -327,9 +328,19 @@ public final class ExpeditionService {
         if(player.distanceToSqr(Vec3.atCenterOf(site.pos))>12*12) return "Walk to the cleared site to claim it; use /wwmc outpost claim there.";
         var data=SettlementData.get(level);
         if(data.settlements.stream().anyMatch(t -> t.overlaps(site.pos,Settlement.MIN_RADIUS))) return "This site overlaps a newer settlement claim.";
+        List<Station> furnished=furnishedStations(level,site);
+        Map<StructureRole,BlockPos> positions=new EnumMap<>(StructureRole.class);
         for(var role:List.of(StructureRole.WAREHOUSE,StructureRole.TRADER,StructureRole.MINE,StructureRole.HOUSING,StructureRole.COURIER)) {
-            BlockPos p=station(site.pos,role);
-            if(!level.hasChunkAt(p) || !level.getBlockState(p).isAir()) return "Clear the center and station positions before claiming; the site was changed.";
+            BlockPos p=furnished.stream().filter(s -> s.role()==role).min(Comparator.comparingDouble(s -> s.position().distSqr(site.pos)))
+                    .map(Station::position).orElseGet(() -> station(site.pos,role));
+            // The furnished mining workshop uses the old courier spot for its residential room.
+            if(role==StructureRole.COURIER && furnished.stream().anyMatch(s -> s.position().equals(site.pos.south(4)) && s.role()==StructureRole.HOUSING))
+                p=site.pos.offset(2,0,2);
+            if(!level.hasChunkAt(p)) return "Wait for the site's station positions to load before claiming.";
+            var state=level.getBlockState(p);
+            if(!state.isAir() && !(state.getBlock() instanceof StationBlock block && block.role()==role))
+                return "Clear the center and station positions before claiming; the site was changed.";
+            positions.put(role,p);
         }
         if(!level.getBlockState(site.pos).isAir()) return "Clear the center block before claiming.";
         Settlement outpost=new Settlement(UUID.randomUUID(),parent.owner,parent.name+" "+site.title()+" Outpost",site.pos,Settlement.MIN_RADIUS,List.of(),List.of(),"materials");
@@ -341,12 +352,16 @@ public final class ExpeditionService {
         outpost.trading.exports.add(new TradeSettings.Export(land==null ? "minecraft:raw_iron" : land.product(),4,32));
         put(level,site.pos,WWMC.BANNER.get().defaultBlockState());
         for(var role:List.of(StructureRole.WAREHOUSE,StructureRole.TRADER,StructureRole.MINE,StructureRole.HOUSING,StructureRole.COURIER)) {
-            BlockPos p=station(site.pos,role); put(level,p,WWMC.STATIONS.get(role).get().defaultBlockState()); outpost.stations.add(new Station(p,role));
+            BlockPos p=positions.get(role);
+            if(level.getBlockState(p).isAir()) { put(level,p,WWMC.STATIONS.get(role).get().defaultBlockState()); outpost.stations.add(new Station(p,role)); }
         }
+        outpost.stations.addAll(furnished);
         // Every outpost's mine works its region's ore as an endless vein.
-        for(int y=0;y<2;y++) {
-            BlockPos vein=site.pos.offset(-4,y,-1);
-            if(level.hasChunkAt(vein) && level.getBlockState(vein).isAir()) level.setBlock(vein,ore(site).defaultBlockState(),3);
+        BlockPos mine=positions.get(StructureRole.MINE);
+        for(Direction direction:List.of(Direction.WEST,Direction.NORTH,Direction.SOUTH,Direction.EAST)) {
+            BlockPos vein=mine.relative(direction);
+            if(!level.hasChunkAt(vein) || !level.getBlockState(vein).isAir() || !level.getBlockState(vein.above()).isAir()) continue;
+            level.setBlock(vein,ore(site).defaultBlockState(),3); level.setBlock(vein.above(),ore(site).defaultBlockState(),3); break;
         }
         data.settlements.add(outpost); site.claimed=outpost.id; ExpeditionData.get(level).setDirty();
         parent.campaign.extraRoutes.add(outpost.id); outpost.campaign.extraRoutes.add(parent.id);
@@ -354,6 +369,17 @@ public final class ExpeditionService {
         CampaignService.record(level,parent,"Claimed "+outpost.name+" at "+site.pos.toShortString()+". Its trader requests food and tools from home.");
         CampaignService.record(level,outpost,"Founded as a supplied outpost of "+parent.name+". Recruit workers and keep the warehouse stocked.");
         return "Outpost claimed. Food and tools keep its mining industry working; a physical supply route now connects it to home.";
+    }
+    /** Adopt the example rooms as they stand, retaining station upgrades and every inventory. Old camp layouts still work. */
+    private static List<Station> furnishedStations(ServerLevel level,ExpeditionData.Site site) {
+        List<Station> found=new ArrayList<>(); int radius=RuinedSites.radius(site.kind);
+        for(BlockPos p:BlockPos.betweenClosed(site.pos.offset(-radius,0,-radius),site.pos.offset(radius,6,radius))) {
+            if(!level.hasChunkAt(p)) continue;
+            var state=level.getBlockState(p);
+            if(state.getBlock() instanceof StationBlock block)
+                found.add(new Station(p,block.role(),state.getValue(StationBlock.FACING),state.getValue(StationBlock.RANGE),state.getValue(StationBlock.CREW),state.getValue(StationBlock.YIELD)));
+        }
+        return found;
     }
     private static BlockPos station(BlockPos center,StructureRole role) {
         return switch(role) { case WAREHOUSE -> center.east(2); case TRADER -> center.south(2); case MINE -> center.west(2);

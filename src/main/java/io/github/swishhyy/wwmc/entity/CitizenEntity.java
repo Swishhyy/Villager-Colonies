@@ -1654,8 +1654,8 @@ public final class CitizenEntity extends Villager {
             BlockPos barrel=jobBarrel(level,town,station);
             List<Container> local=SettlementService.jobStorage(level,town,station);
             var permitted=town.craftOrders.stream().filter(o -> {
-                var item=net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(o.item()));
-                return item!=null && AgeProgression.allowed(town,new ItemStack(item));
+                var item=o.resolve();
+                return item!=Items.AIR && AgeProgression.allowed(town,new ItemStack(item));
             }).toList();
             Workshop.Job next=barrel==null ? null : Workshop.choose(Workshop.Recipes.of(level),permitted,stock,local);
             if(barrel==null) return;

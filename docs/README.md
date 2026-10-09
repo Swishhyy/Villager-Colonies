@@ -11,6 +11,7 @@ Start with [installing WWMC](../README.md#install) and [building your first town
 | Topic | Guide |
 | --- | --- |
 | Stations, recipes, commands, inventories, and settings | [Settlement guide](settlement-guide.md) |
+| Stone, Bronze and Iron Ages; tin and bronze equipment | [Ages and research](settlement-guide.md#ages-and-research) |
 | Furnaces, kitchens, yield upgrades, pickaxes, and hospitals | [Production and recovery](production-recovery.md) |
 | Permissions, alliances, trade, squads, expeditions, research, and outposts | [Multiplayer and campaign](multiplayer-campaign.md) |
 | Missing Overworld settings on a dedicated server | [Server startup help](server-startup.md) |
@@ -26,6 +27,7 @@ Start with [installing WWMC](../README.md#install) and [building your first town
 - **My cook or smelter isn't working:** see [furnaces and kitchens](production-recovery.md#furnaces-and-kitchens).
 - **My citizens are injured:** see [hospital recovery](production-recovery.md#hospital-recovery). Meals satisfy hunger; hospital beds heal injuries.
 - **My friend can't use my town:** see [claim permissions and invitations](multiplayer-campaign.md#relationships-claims-and-flags).
+- **My gear says it needs research:** keep it in storage, then follow [ages and research](settlement-guide.md#ages-and-research).
 - **I want recipes or commands:** open the [crafting table](settlement-guide.md#crafting) or [command reference](settlement-guide.md#commands).
 
 For bug reports, include your WWMC, Minecraft, and NeoForge versions, the relevant `latest.log`, and the steps that caused the problem.
