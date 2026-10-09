@@ -37,7 +37,9 @@ public final class TownNeeds {
         if(text.startsWith("off duty") || text.contains("hospital bed")) return false;
         // Growing crops, saplings and an idle smith are ordinary waits, not needs.
         return text.startsWith("needs ") || text.contains(": needs ") || text.startsWith("cannot reach")
-                || text.startsWith("waiting for couriers to deliver") || text.startsWith("waiting for courier-delivered") || text.contains("is full");
+                || text.startsWith("waiting for couriers to deliver") || text.startsWith("waiting for courier-delivered")
+                || text.startsWith("waiting for this item's matching repair material")
+                || text.startsWith("waiting for ") && text.contains(" lapis in my barrel") || text.contains("is full") || text.contains("are full");
     }
     public static List<Need> assess(ServerLevel level,Settlement town) {
         List<Need> needs=new ArrayList<>();
@@ -83,7 +85,7 @@ public final class TownNeeds {
         int idle=0;
         for(CitizenEntity citizen:loaded) if(town.jobs.home(citizen.getUUID())==null && !SquadService.assigned(town,citizen.getUUID())) idle++;
         if(idle>0 && population>0) needs.add(new Need(ADVICE,icon(Items.PAPER),idle+(idle==1 ? " citizen has" : " citizens have")+" no job",
-                "Place more job stations, or raise a job's priority on the Jobs tab",null));
+                TownJobs.assess(level,town).noJobAdvice(),null));
         // Stations.
         boolean barrels=false;
         for(Station station:town.stations) {
@@ -97,7 +99,8 @@ public final class TownNeeds {
                 needs.add(new Need(WARNING,station(role),name+" has no worker","Recruit citizens, or raise this job's priority on the Jobs tab so a citizen moves here",pos));
             if(role.keepsJobStorage()) {
                 if(SettlementService.jobStorage(level,town,station).isEmpty())
-                    needs.add(new Need(WARNING,station(role),name+" needs a job barrel","Put a barrel within "+station.radius()+" blocks: tools, supplies and goods are kept there",pos));
+                    needs.add(new Need(WARNING,station(role),name+" needs a job barrel","Put a barrel within "+station.radius()
+                            +" blocks, outside warehouse range. Where job ranges overlap, the nearest station owns the barrel",pos));
                 else barrels=true;
             }
             switch(role) {
@@ -121,7 +124,7 @@ public final class TownNeeds {
             }
         }
         if(barrels && !SettlementService.couriers(level,town))
-            needs.add(new Need(WARNING,station(StructureRole.COURIER),"No courier","Production waits in job barrels: add a Courier Station so goods reach the warehouse",null));
+            needs.add(new Need(WARNING,station(StructureRole.COURIER),"No courier","Production waits in job barrels: "+SettlementService.courierAdvice(level,town),null));
         // What workers themselves are waiting for, once per station and message.
         Map<String,Need> asked=new LinkedHashMap<>();
         Map<String,Integer> count=new HashMap<>();

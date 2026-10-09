@@ -322,9 +322,24 @@ public final class SettlementService {
         for(Station station:town.stations) containers.addAll(jobStorage(level,town,station));
         return containers;
     }
-    /** With a courier station in town, jobs leave finished goods in their barrels for couriers to collect. */
+    /** An enabled, loaded station with a living assigned courier can collect from job barrels. */
     public static boolean couriers(ServerLevel level,Settlement town) {
-        return town.stations.stream().anyMatch(s -> s.role()==StructureRole.COURIER && active(level,s));
+        if(town.jobs.level(StructureRole.COURIER)==JobBoard.OFF) return false;
+        return town.stations.stream().filter(s -> s.role()==StructureRole.COURIER && active(level,s)).anyMatch(s ->
+                town.jobs.crew(s.position()).stream().anyMatch(id -> town.citizens.contains(id)
+                        && town.jobs.holdsPlace(id,s,workerLimit(town,s)) && !SquadService.assigned(town,id)
+                        && level.getEntity(id) instanceof CitizenEntity citizen && citizen.isAlive() && !HospitalCare.needsCare(town,citizen)));
+    }
+    /** Explains why placing a courier station alone has not started hauling. */
+    public static String courierAdvice(ServerLevel level,Settlement town) {
+        List<Station> stations=town.stations.stream().filter(s -> s.role()==StructureRole.COURIER).toList();
+        if(stations.isEmpty()) return "Add a Courier Station and assign a citizen to collect goods for the warehouse";
+        if(town.jobs.level(StructureRole.COURIER)==JobBoard.OFF) return "Enable Courier jobs on the Jobs tab and assign a citizen";
+        if(stations.stream().noneMatch(s -> active(level,s))) return "Keep a Courier Station loaded so its worker can collect goods";
+        if(stations.stream().filter(s -> active(level,s)).noneMatch(s -> town.jobs.crew(s.position()).stream().anyMatch(id ->
+                town.citizens.contains(id) && town.jobs.holdsPlace(id,s,workerLimit(town,s)) && !SquadService.assigned(town,id))))
+            return "Assign a citizen to a loaded Courier Station; recruit one or raise Courier priority on the Jobs tab";
+        return "The assigned courier is unavailable; check the Courier Station's Crew tab for their location and health";
     }
     public static BlockPos warehouse(ServerLevel level,Settlement settlement,BlockPos from) {
         return settlement.stations.stream().filter(s -> s.role()==StructureRole.WAREHOUSE && active(level,s))

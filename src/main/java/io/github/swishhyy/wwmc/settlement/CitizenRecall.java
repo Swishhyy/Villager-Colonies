@@ -1,6 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.Config;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.util.*;
 import net.minecraft.core.BlockPos;
@@ -41,8 +42,9 @@ public final class CitizenRecall {
         final UUID town;
         final long since;
         BlockPos place;
-        long heldAt=-1,loadedAt=-1,retryAt;
+        long heldAt=-1,loadedAt=-1,retryAt,nextWarning;
         int failed;
+        boolean returnBlocked;
         Missing(UUID town,long since) { this.town=town; this.since=since; }
         boolean held() { return place!=null && heldAt>=0; }
     }
@@ -59,7 +61,10 @@ public final class CitizenRecall {
         UUID id=citizen.getUUID();
         BlockPos pos=citizen.blockPosition();
         boolean changed=false;
-        if(!town.citizens.contains(id)) { town.citizens.add(id); changed=true; }
+        if(!town.citizens.contains(id)) {
+            town.citizens.add(id); changed=true;
+            if(Config.SERVER_DIAGNOSTICS.get()) WWMC.LOGGER.info("[WWMC][citizen-rejoined] {} citizen=\"{}\" position={}",context(level,town,id),citizen.getName().getString(),pos);
+        }
         BlockPos old=town.citizenPlaces.put(id,pos);
         if(old==null || Math.floorDiv(old.getX(),16)!=Math.floorDiv(pos.getX(),16) || Math.floorDiv(old.getZ(),16)!=Math.floorDiv(pos.getZ(),16)) changed=true;
         if(changed) SettlementData.get(level).setDirty();
@@ -82,6 +87,7 @@ public final class CitizenRecall {
         }
         String at=place.getX()+", "+place.getZ();
         if(state!=null && state.held()) return "Out of range at "+at+": bringing them back";
+        if(state!=null && state.returnBlocked) return "Return blocked at "+at+": check standing room by the station/banner and active trips; retry in "+Math.max(0,(state.retryAt-level.getGameTime()+19)/20)+"s";
         if(state!=null && state.failed>0) return "Not found at "+at+": looking again soon";
         return "Out of range at "+at+": brought back soon";
     }
@@ -115,13 +121,25 @@ public final class CitizenRecall {
                 if(now-state.since<GRACE) continue;
                 if(citizen!=null) {
                     // Found in a frozen chunk, or in the chunks loaded to look for it.
-                    if(!held && recalled.containsKey(id)) continue;
+                    if(now<state.retryAt || !held && recalled.containsKey(id)) continue;
+                    BlockPos from=citizen.blockPosition();
                     boolean back=citizen.recall(level,town,home);
-                    recalled.put(id,now);
                     if(held) searches--;
                     release(level,id,state);
                     // Without standing room by the station or banner, try again later rather than every scan.
-                    if(back) { missing.remove(id); watched.remove(id); } else state.retryAt=now+RETRY;
+                    if(back) {
+                        recalled.put(id,now);
+                        if(Config.SERVER_DIAGNOSTICS.get()) WWMC.LOGGER.info("[WWMC][citizen-recalled] {} from={} to={} job={} health={}/{}",
+                                context(level,town,id),from,citizen.blockPosition(),town.jobs.home(id),citizen.getHealth(),citizen.getMaxHealth());
+                        missing.remove(id); watched.remove(id);
+                    } else {
+                        state.returnBlocked=true;
+                        state.retryAt=now+RETRY;
+                        if(Config.SERVER_DIAGNOSTICS.get() && now>=state.nextWarning) {
+                            WWMC.LOGGER.warn("[WWMC][recall-blocked] {} position={} home={} reason=no-standing-room-or-active-trip retrySeconds={}",context(level,town,id),from,home,RETRY/20);
+                            state.nextWarning=now+Config.DIAGNOSTIC_REPEAT.get()*20L;
+                        }
+                    }
                     continue;
                 }
                 BlockPos place=town.citizenPlaces.get(id);
@@ -132,6 +150,7 @@ public final class CitizenRecall {
                 if(!held) {
                     if(now<state.retryAt || searches>=MAX_SEARCHES) continue;
                     state.place=place; state.heldAt=now; state.loadedAt=-1;
+                    if(Config.SERVER_DIAGNOSTICS.get()) WWMC.LOGGER.debug("[WWMC][citizen-search] {} lastSeen={} attempt={}/{}",context(level,town,id),place,state.failed+1,SEARCHES);
                     force(level,id,place,true); searches++;
                     continue;
                 }
@@ -153,6 +172,9 @@ public final class CitizenRecall {
             release(level,entry.getKey(),entry.getValue()); it.remove();
         }
     }
+    private static String context(ServerLevel level,Settlement town,UUID id) {
+        return "dimension="+level.dimension()+" town=\""+town.name+"\" townId="+town.id+" citizen=\""+town.citizenNames.getOrDefault(id,"unknown")+"\" citizenId="+id;
+    }
     private static void force(ServerLevel level,UUID id,BlockPos place,boolean add) {
         int x=Math.floorDiv(place.getX(),16),z=Math.floorDiv(place.getZ(),16);
         for(int dx=-1;dx<=1;dx++) for(int dz=-1;dz<=1;dz++) CONTROLLER.forceChunk(level,id,x+dx,z+dz,add,false);
@@ -164,6 +186,8 @@ public final class CitizenRecall {
     /** Takes a citizen nobody can find off the roster: its job and population place open up. */
     private static void strikeOff(ServerLevel level,Settlement town,UUID id,String why) {
         String name=town.citizenNames.getOrDefault(id,"A citizen");
+        if(Config.SERVER_DIAGNOSTICS.get()) WWMC.LOGGER.warn("[WWMC][citizen-missing] {} lastSeen={} job={} reason=\"{}\" action=removed-from-roster; citizen rejoins if found",
+                context(level,town,id),town.citizenPlaces.get(id),town.jobs.home(id),why);
         town.citizens.remove(id); town.citizenNames.remove(id); town.citizenPlaces.remove(id); town.jobs.release(id);
         SettlementData.get(level).setDirty();
         ServerPlayer owner=level.getServer().getPlayerList().getPlayer(town.owner);

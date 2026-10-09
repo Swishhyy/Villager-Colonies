@@ -98,6 +98,9 @@ public final class WWMC {
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.SettlementMap());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.TutorialProgress());
         container.registerConfig(ModConfig.Type.SERVER,Config.SPEC);
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent event) -> LOGGER.info(
+                "[WWMC][server-start] version={} diagnostics={} stallSeconds={} repeatSeconds={}",
+                container.getModInfo().getVersion(),Config.SERVER_DIAGNOSTICS.get(),Config.DIAGNOSTIC_DELAY.get(),Config.DIAGNOSTIC_REPEAT.get()));
     }
     private void attributes(EntityAttributeCreationEvent event) {
         event.put(CITIZEN.get(),Villager.createAttributes().add(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE,2.0).build());

@@ -195,7 +195,9 @@ public final class FoodWorldTests {
             }
             helper.runAtTickTime(900,() -> {
                 helper.assertTrue(count(pantry,Items.BREAD)==0,"Some hungry citizens never reached the communal pantry; loaves="+count(pantry,Items.BREAD)
-                        +", citizens="+citizens.stream().map(c -> c.getHealth()+" hp, "+c.activity()+" at "+c.blockPosition()).toList());
+                        +", citizens="+citizens.stream().map(c -> c.getHealth()+" hp, hunger="+c.mealTicks()+", "+c.activity()+", pantryOffset="
+                            +c.position().subtract(net.minecraft.world.phys.Vec3.atBottomCenterOf(warehouse.position()))
+                            +", pantryUsable="+CitizenReach.canUse(level,c.getEyePosition(),warehouse.position())).toList());
                 for(CitizenEntity citizen:citizens) {
                     helper.assertTrue(citizen.getHealth()==1 && citizen.mealTicks()>0,"Meals must satisfy hunger without healing outside hospital: health="+citizen.getHealth()+", "+citizen.activity());
                     helper.assertTrue(citizen.bag().count(Items.BREAD)==0,"A citizen stockpiled scarce bread");

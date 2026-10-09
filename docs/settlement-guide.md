@@ -187,7 +187,7 @@ NPC towns start neutral with a house, 12 beds, warehouse, trader checkpoint, gua
 
 ### Server configuration
 
-Open **Mods → WWMC → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Quarry Crew**, **Mining & Quarries**, **Work & Food**, **Enchanting**, **Defense & Waves**, and **Trade & Other Towns**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Active TOML keys stay in their original locations. The six retired non-quarry crew settings are removed on config reload; quarry and other server overrides carry over. Multiplayer server configuration remains controlled by the server.
+Open **Mods → WWMC → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Quarry Crew**, **Mining & Quarries**, **Work & Food**, **Enchanting**, **Defense & Waves**, **Trade & Other Towns**, and **Diagnostics**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Active TOML keys stay in their original locations. The six retired non-quarry crew settings are removed on config reload; quarry and other server overrides carry over. Multiplayer server configuration remains controlled by the server.
 
 The generated WWMC server config controls these defaults:
 
@@ -221,6 +221,8 @@ Veins replenish in about 15 seconds with a stone pickaxe (`oreVeinSeconds`). Woo
 | `mineBranchLength` | 24 | Length of each mine side branch. |
 | `mineBranchPairs` | 4 | Paired side-branch junctions along the mine spine. |
 
+See [server diagnostics](diagnostics.md) for worker warnings, recovery events and log settings.
+
 ### Personal inventories
 
 Citizens keep resources in a persistent **36-slot bag**. Their owner can open it with an empty-hand right-click within eight blocks; the screen also shows the citizen's job, activity, health, next meal and equipment. Work pauses while the inventory is open; guards continue defending during an alarm. Menus close when the citizen dies, you move out of range, or ownership is no longer valid.
@@ -229,9 +231,9 @@ Workers use carried supplies before collecting replacements from their own job b
 
 **Changing jobs.** Old gear is put away and returned to the new job's barrel for a courier to collect. Unloaded, full or missing storage keeps the items in the bag. Guards still share armor through their station's stands and defend before returning gear during alarms. Equipment below 25% durability is carried for repair. Smelters and cooks never burn bows or tools.
 
-**Getting unstuck.** Citizens open doors on their way. A citizen who keeps trying to walk somewhere but stays within a block and a half of the same spot for 30 seconds is moved on top of the settlement banner, or onto clear, firm ground right beside it, and drops the trip that trapped them: a quarry worker carries on from the control block, other workers try a different station for a while. Sleeping citizens are never moved, and nobody is moved into an unloaded part of town.
+**Getting unstuck.** Citizens open doors on their way. They finish the short step to their selected work position when Minecraft navigation stops within the block, and recheck actual reach before using furniture. A citizen who keeps trying to walk somewhere but stays within a block and a half of the same spot for 30 seconds is moved on top of the settlement banner, or onto clear, firm ground right beside it, and drops the trip that trapped them: a quarry worker carries on from the control block, other workers try a different station for a while. Recovery uses the actual surface of slabs, dirt paths and carpets as well as full blocks. Sleeping citizens are never moved, and nobody is moved into an unloaded part of town.
 
-**Out of range.** Each town remembers where every citizen last stood while ticking. If a citizen is frozen or unloaded for ten seconds while its station is loaded (the banner, for a citizen without a job), it is brought back. A frozen citizen is simply moved. For an unloaded one, the town loads a 3×3 chunk window around its last place for a few seconds, never longer, and moves it once it appears. It lands beside its station, keeps its job and drops the errand that led it away. A citizen that is not found after two searches, or that has been missing for five minutes with no recorded place, leaves the roster: its job and population place open up, and the owner is told if online. If it turns up later, it rejoins. Traders on a trip are never fetched.
+**Out of range.** Each town remembers where every citizen last stood while ticking. If a citizen is frozen or unloaded for ten seconds while its station is loaded (the banner, for a citizen without a job), it is brought back. A frozen citizen is simply moved. For an unloaded one, the town loads a 3×3 chunk window around its last place for a few seconds, never longer, and moves it once it appears. It lands beside its station, keeps its job and drops the errand that led it away. Injured citizens return too, so they can reach hospital care. Failed recalls without standing room retry after 30 seconds. A citizen that is not found after two searches, or that has been missing for five minutes with no recorded place, leaves the roster: its job and population place open up, and the owner is told if online. If it turns up later, it rejoins. Traders on a trip are never fetched.
 
 A full warehouse leaves the remainder in the citizen's bag. An unusually large tree harvest has a saved backlog that moves into the bag when space opens; citizens wait for space instead of dropping overflow on the ground. On death, actual carried items and equipped gear drop normally.
 
@@ -322,6 +324,8 @@ Every citizen has its **own station**. It goes back there each morning, after de
 
 Each job has a **priority**: Off, Low, Normal or High. Set it with the - and + buttons in the banner's **Jobs** tab, the priority button on a station's screen, or `/wwmc job`.
 
+The town header shows **filled / enabled job places**. A station count includes Housing, Barracks and Warehouse Stations, which employ nobody. Most work stations add one place; a quarry adds its configured crew, and a hospital adds a medic only after funding the Field Hospital project. The Jobs tab lists open loaded places, switched-off places and places waiting for loading or a trade route. If all enabled places are full, add work stations or expand a quarry crew; raising a priority moves workers between jobs without creating more places.
+
 - A citizen without a job, such as a new recruit, takes the open place of highest priority. Among equal priorities, guard posts fill first, then the trader, then the station with the fewest workers, then the nearest.
 - About every half minute, and at once after you change a priority, a citizen moves to an open place in a job of **higher** priority than its own. Equal priorities never trade workers, so a new Normal station waits for a recruit, a free citizen or a raised priority.
 - **Off** frees everyone in that job, and nobody takes it until you raise it again.
@@ -343,6 +347,8 @@ The town screen's **Needs** tab gathers what the owner can fix, most urgent firs
 - Anything a worker is waiting for, grouped per station.
 
 Rows that concern one place have a **Show** button. It closes the screen, outlines the block through walls with a tall marker for 20 seconds, and gives its distance and direction in chat. `/wwmc needs` lists the same in chat.
+
+Hover over shortened row text to read the full explanation. A **missing job barrel** means none belongs to that station: place one in range, outside warehouse coverage, and nearer to this station than other job stations. **Cannot reach a job barrel** means one was detected but the worker could not reach clear standing ground beside it. Citizens can approach over paths, slabs and carpets; walls and blocked entrances still prevent access.
 
 **Experience.** Citizens earn experience from finished work at each job, such as a harvest, a vein yield, a felled tree, a batch of cooking, a repair, a delivery or a hostile killed by a guard. Experience is kept per job, so a citizen moved elsewhere keeps what it learned. The levels are Novice, Trained (25), Skilled (75), Expert (175) and Master (375). Each level adds 3% work speed, or 4% for cooks and smelters. For miners, quarry workers, lumberjacks, hunters, fishermen and butchers, each level also spares their tools 5% of uses. Guards instead hit 5% harder and take 3% less damage per level. Each level also gives a 10% chance of recovering from a swing or shot in half the usual time. Small speed bonuses work as a chance of a double work step, so they count in full on average. Reaching a level is written in the journal. Losing a citizen of Skilled level or above is recorded too: experienced citizens are worth bringing home. The citizen screen shows the current job's level, every job's progress and the diet.
 

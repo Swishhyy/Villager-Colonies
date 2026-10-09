@@ -1,6 +1,8 @@
 package io.github.swishhyy.wwmc.entity;
 
 import io.github.swishhyy.wwmc.Config;
+import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.core.DiagnosticWindow;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.core.CitizenNames;
 import io.github.swishhyy.wwmc.core.WorkCadence;
@@ -163,6 +165,8 @@ public final class CitizenEntity extends Villager {
     /** Why the citizen has no work at the moment, shown as its activity. */
     private String jobNote="Looking for a job";
     private String activity="Waiting for a job station";
+    private final DiagnosticWindow diagnosticWindow=new DiagnosticWindow();
+    private long nextRescueWarning;
     private TradeShipment tradeShipment=new TradeShipment();
     private final TradeNavigation tradeNavigation=new TradeNavigation();
     private final TradeNavigation expeditionNavigation=new TradeNavigation();
@@ -260,8 +264,38 @@ public final class CitizenEntity extends Villager {
                     if(!name.equals(town.citizenNames.put(getUUID(),name))) SettlementData.get(server).setDirty();
                     if(isAlive()) CitizenRecall.seen(server,town,this);
                     checkStuck(server,town);
+                    reportDiagnostics(server,town);
                 }
+                else diagnosticWindow.reset();
             }
+        }
+    }
+    /** Context is built only when a diagnostic is emitted; no scans, path probes or chunk loads. */
+    private String diagnosticContext(ServerLevel level,Settlement town) {
+        BlockPos home=town.jobs.home(getUUID()); Station station=home==null ? null : town.station(home);
+        return "dimension="+level.dimension()+" town=\""+town.name+"\" townId="+town.id+" citizen=\""+getName().getString()
+                +"\" citizenId="+getUUID()+" job="+(station==null ? "none" : station.role().id())+" station="+home+" position="+blockPosition();
+    }
+    private void reportDiagnostics(ServerLevel level,Settlement town) {
+        if(!Config.SERVER_DIAGNOSTICS.get() || !isAlive() || isNoAi() || isSleeping() || cargo.isOpen()
+                || !recovering && !tradeShipment.travelling() && !isGuard() && (night(level) || DefenseService.alarmed(town))) {
+            diagnosticWindow.reset(); return;
+        }
+        boolean blocked=TownNeeds.asks(activity) || activity.startsWith("Needs a free, reachable hospital bed")
+                || activity.startsWith("Stuck,") || activity.startsWith("Trade route blocked");
+        BlockPos home=town.jobs.home(getUUID());
+        String problem=blocked ? town.id+"|"+home : null;
+        long now=level.getGameTime();
+        switch(diagnosticWindow.sample(problem,now,Config.DIAGNOSTIC_DELAY.get()*20L,Config.DIAGNOSTIC_REPEAT.get()*20L)) {
+            case WARNING -> {
+                int slots=0;
+                for(int slot=0;slot<cargo.getContainerSize();slot++) if(!cargo.getItem(slot).isEmpty()) slots++;
+                WWMC.LOGGER.warn("[WWMC][worker-stalled] {} blockedSeconds={} activity=\"{}\" target={} depot={} pantry={} pantryStand={} pathDestination={} navigationDone={} pathTicks={} failedTargets={} health={}/{} mealTicks={} bagSlots={}/{} pendingStacks={}",
+                        diagnosticContext(level,town),diagnosticWindow.blockedTicks(now)/20,activity,target,depotTarget,pantryTarget,pantryStand,pathDestination,getNavigation().isDone(),pathTicks,failedTargets.size(),
+                        getHealth(),getMaxHealth(),mealTicks,slots,cargo.getContainerSize(),cargo.pendingItems().size());
+            }
+            case RESOLVED -> WWMC.LOGGER.info("[WWMC][worker-resumed] {} activity=\"{}\"",diagnosticContext(level,town),activity);
+            default -> {}
         }
     }
     /** Trying to walk (a recent walk() call) while staying within a block and a half counts as stuck. */
@@ -273,11 +307,16 @@ public final class CitizenEntity extends Villager {
         stuckTicks+=20;
         if(stuckTicks<STUCK_TICKS) return;
         stuckAnchor=null; stuckTicks=0;
-        BlockPos spot=rescueSpot(level,town);
+        Vec3 spot=rescueSpot(level,town);
+        if(Config.SERVER_DIAGNOSTICS.get() && level.getGameTime()>=nextRescueWarning) {
+            WWMC.LOGGER.warn("[WWMC][stuck-rescue] {} result={} destination={} activity=\"{}\" target={} pathDestination={}",
+                    diagnosticContext(level,town),spot==null ? "no-standing-room" : "returned-to-banner",spot,activity,target,pathDestination);
+            nextRescueWarning=level.getGameTime()+Config.DIAGNOSTIC_REPEAT.get()*20L;
+        }
         if(spot==null) { activity="Stuck, and the settlement banner has no free standing room"; return; }
         getNavigation().stop();
         if(!abandonTrip(level) && workplace!=null) { idleStations.put(workplace,level.getGameTime()+200); releaseWork(level); }
-        setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5); resetFallDistance();
+        setPos(spot.x,spot.y,spot.z); resetFallDistance();
         activity="Got stuck and returned to the settlement banner";
     }
     /** Abandons the trip under way, so the citizen does not walk straight back into the same trap; false when there was none. */
@@ -296,33 +335,31 @@ public final class CitizenEntity extends Villager {
      * job. The errand that led it out is dropped. False when it is on a trade trip or there is no room to stand.
      */
     public boolean recall(ServerLevel level,Settlement town,BlockPos home) {
-        if(HospitalCare.needsCare(town,this) || tradeShipment.travelling() || SquadService.assigned(town,getUUID())) return false;
-        BlockPos spot=standingRoom(level,home);
+        if(tradeShipment.travelling() || SquadService.assigned(town,getUUID())) return false;
+        Vec3 spot=standingRoom(level,home);
         if(spot==null) spot=rescueSpot(level,town);
         if(spot==null) return false;
+        leaveHospitalBed();
         leaveBed();
         if(isPassenger()) stopRiding();
         getNavigation().stop();
         abandonTrip(level);
-        setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5); resetFallDistance();
+        setPos(spot.x,spot.y,spot.z); resetFallDistance();
         stuckAnchor=null; stuckTicks=0;
         activity="Was out of loaded range and came back";
         return true;
     }
-    private static BlockPos rescueSpot(ServerLevel level,Settlement town) { return standingRoom(level,town.center); }
+    private static Vec3 rescueSpot(ServerLevel level,Settlement town) { return standingRoom(level,town.center); }
     /** On top of a block such as the banner, or failing that a clear spot with firm footing right beside it; never in an unloaded or frozen chunk. */
-    private static BlockPos standingRoom(ServerLevel level,BlockPos anchor) {
+    private static Vec3 standingRoom(ServerLevel level,BlockPos anchor) {
         if(!level.hasChunkAt(anchor) || !level.isPositionEntityTicking(anchor)) return null;
+        CitizenReach.StandingView ground=CitizenReach.ground(level,pos -> level.hasChunkAt(pos) && level.isPositionEntityTicking(pos));
         List<BlockPos> spots=new ArrayList<>(List.of(anchor.above()));
         for(int dy=1;dy>=-1;dy--) for(int dx=-2;dx<=2;dx++) for(int dz=-2;dz<=2;dz++) if(dx!=0 || dz!=0) spots.add(anchor.offset(dx,dy,dz));
         for(BlockPos spot:spots) {
-            if(!level.hasChunkAt(spot) || !level.hasChunkAt(spot.above()) || !level.isPositionEntityTicking(spot)) continue;
-            if(clear(level,spot) && clear(level,spot.above()) && level.getBlockState(spot.below()).isFaceSturdy(level,spot.below(),net.minecraft.core.Direction.UP)) return spot;
+            if(CitizenReach.standing(ground,spot)) return ground.feet(spot);
         }
         return null;
-    }
-    private static boolean clear(ServerLevel level,BlockPos pos) {
-        return level.getBlockState(pos).getCollisionShape(level,pos).isEmpty() && level.getFluidState(pos).isEmpty();
     }
     // Citizens never shove each other, so crews can pass on narrow quarry stairs and walkways without knocking anyone off.
     @Override protected void doPush(Entity entity) { if(!(entity instanceof CitizenEntity)) super.doPush(entity); }
@@ -458,6 +495,20 @@ public final class CitizenEntity extends Villager {
             BlockPos via=ExcavationService.waypoint(server,town(server),blockPosition(),pos);
             if(via!=null) { pos=via; accuracy=1; }
         }
+        // Vanilla accepts a waypoint within part of a block. A usable work spot may need its actual center:
+        // stopping a few tenths short can leave the target outside hand reach or behind adjacent furniture.
+        if(accuracy==0 && getNavigation().isDone() && level() instanceof ServerLevel server
+                && Math.floor(getX())==pos.getX() && Math.floor(getZ())==pos.getZ()) {
+            var ground=CitizenReach.ground(server,server::hasChunkAt);
+            if(CitizenReach.standing(ground,pos)) {
+                Vec3 feet=ground.feet(pos);
+                if(Math.abs(getY()-feet.y)<0.6) {
+                    if(position().distanceToSqr(feet)>1.0E-6) getMoveControl().setWantedPosition(feet.x,feet.y,feet.z,speed);
+                    getLookControl().setLookAt(pos.getX()+0.5,pos.getY()+0.5,pos.getZ()+0.5);
+                    return true;
+                }
+            }
+        }
         long now=level().getGameTime();
         if(getNavigation().isDone() || !pos.equals(pathDestination) || now>=nextPathAt) {
             var path=getNavigation().createPath(pos,accuracy);
@@ -583,12 +634,7 @@ public final class CitizenEntity extends Villager {
         });
     }
     private CitizenReach.StandingView standingView(ServerLevel level,Settlement town) {
-        return new CitizenReach.StandingView() {
-            public boolean available(BlockPos p) { return town.contains(p) && p.getY()>=level.getMinY() && p.getY()<level.getMaxY() && level.hasChunkAt(p); }
-            public boolean clear(BlockPos p) { return CitizenEntity.clear(level,p); }
-            public boolean footing(BlockPos p) { return !level.getBlockState(p).is(BlockTags.LEAVES)
-                    && level.getFluidState(p).isEmpty() && level.getBlockState(p).isFaceSturdy(level,p,net.minecraft.core.Direction.UP); }
-        };
+        return CitizenReach.ground(level,p -> town.contains(p) && p.getY()>=level.getMinY() && p.getY()<level.getMaxY() && level.hasChunkAt(p));
     }
     private boolean reachableStand(BlockPos pos) {
         if(pos.equals(blockPosition()) || beyondOneRoute(pos)) return true;
@@ -610,7 +656,7 @@ public final class CitizenEntity extends Villager {
         for(BlockPos stand:CitizenReach.stands(view,touch,position(),getEyeHeight())) {
             if(reachBudget.deferred()) break;
             if(!reachableStand(stand)) continue;
-            Vec3 eye=Vec3.atBottomCenterOf(stand).add(0,getEyeHeight(),0);
+            Vec3 eye=view.feet(stand).add(0,getEyeHeight(),0);
             if(workSight(level,town,eye,touch)) { workStand=stand; return true; }
             if(failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(stand,level.getGameTime()+1200);
         }
@@ -834,14 +880,23 @@ public final class CitizenEntity extends Villager {
         Station job=town.station(workplace);
         return job==null ? null : nearestBarrel(SettlementService.jobBarrels(level,town,job));
     }
-    /**
-     * A supply or delivery trip. The job's own barrels serve it when they hold the missing tool or supply, or when they
-     * may take the goods (see {@link #dropOff}); the warehouse serves everything else.
-     */
+    /** Shared barrel selection and diagnostics for every production job, including crafting, processing and enchanting. */
+    private BlockPos jobBarrel(ServerLevel level,Settlement town,Station station) {
+        List<BlockPos> barrels=SettlementService.jobBarrels(level,town,station);
+        if(barrels.isEmpty()) { activity="Needs a job barrel within "+station.radius()+" blocks of the station, outside warehouse range"; return null; }
+        BlockPos barrel=nearestBarrel(barrels);
+        if(barrel==null) {
+            // A citizen brought beside a barrel can use it immediately, even after a recent failed route.
+            barrel=nearest(barrels.stream().filter(pos -> canUse(level,pos)).toList());
+            if(barrel!=null) failedTargets.remove(barrel);
+        }
+        if(barrel==null) activity="Cannot reach "+barrels.size()+" job barrel"+(barrels.size()==1 ? "" : "s")+"; clear a path and standing room beside "+(barrels.size()==1 ? "it" : "them");
+        return barrel;
+    }
+    /** A supply or delivery trip to the job's own barrels; couriers deliver supplies and collect finished goods. */
     private boolean visitDepot(ServerLevel level,Settlement town,Station station) {
-        BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
-        if(barrel==null) { activity="Needs a reachable job barrel in range; couriers bring supplies and collect goods"; return false; }
-        return visitStorage(level,town,station.role(),barrel,SettlementService.jobStorage(level,town,station),true);
+        BlockPos barrel=jobBarrel(level,town,station);
+        return barrel!=null && visitStorage(level,town,station.role(),barrel,SettlementService.jobStorage(level,town,station),true);
     }
     /** Walk to the storage, hand in goods (if {@code deposit}), and collect food, tools and supplies this job needs. */
     private boolean visitStorage(ServerLevel level,Settlement town,StructureRole role,BlockPos depot,List<Container> storage,boolean deposit) {
@@ -860,7 +915,7 @@ public final class CitizenEntity extends Villager {
             depotTicks+=10;
             boolean moving=depotStand!=null && walk(depotStand,0.65,0);
             activity=warehouse ? "Carrying supplies / returning for food or tools" : "Walking to the job's barrel";
-            // A barrel behind a trapdoor or under a carpet is skipped for a minute; the warehouse serves meanwhile.
+            // Skip a blocked barrel for a minute and try another of this station's barrels.
             if(!warehouse && (depotTicks>BARREL_WALK_TICKS || !moving && onGround())) {
                 if(failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(depotTarget,level.getGameTime()+1200);
                 depotTarget=null; depotStand=null; depotTicks=0; activity="Cannot reach the job's barrel";
@@ -1480,8 +1535,8 @@ public final class CitizenEntity extends Villager {
             if(carryingGoods(station.role()) && !visitDepot(level,town,station)) return;
             List<Container> stock=SettlementService.townStorage(level,town);
             List<Container> local=SettlementService.jobStorage(level,town,station);
-            BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
-            if(barrel==null) { activity="Needs a kitchen barrel supplied by couriers"; return; }
+            BlockPos barrel=jobBarrel(level,town,station);
+            if(barrel==null) return;
             if(!visitStorage(level,town,station.role(),barrel,local,false)) return;
             List<Container> storage=local;
             Crafting.Recipe next=Crafting.choose(stock,storage,town.disabledRecipes,station.role());
@@ -1518,10 +1573,10 @@ public final class CitizenEntity extends Villager {
         if(craftJob==null) {
             if(carryingGoods(station.role()) && !visitDepot(level,town,station)) return;
             List<Container> stock=SettlementService.townStorage(level,town);
-            BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
+            BlockPos barrel=jobBarrel(level,town,station);
             List<Container> local=SettlementService.jobStorage(level,town,station);
             Workshop.Job next=barrel==null ? null : Workshop.choose(Workshop.Recipes.of(level),town.craftOrders,stock,local);
-            if(barrel==null) { activity="Needs a workshop barrel supplied by couriers"; return; }
+            if(barrel==null) return;
             if(!visitStorage(level,town,station.role(),barrel,local,false)) return;
             List<Container> sources=local;
             if(next==null || Workshop.fetch(Workshop.Recipes.of(level),town.craftOrders,next,stock,sources,cargo)==0) {
@@ -1703,9 +1758,9 @@ public final class CitizenEntity extends Villager {
         }
         if(level.getGameTime()<nextProcessingAt) { activity="Waiting for the next cooking/smelting batch"; return; }
         if(processingDelivery || !processingSupplied) {
-            BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
+            BlockPos barrel=jobBarrel(level,town,station);
             List<Container> local=barrel==null ? List.of() : SettlementService.jobStorage(level,town,station);
-            if(barrel==null) { activity="Needs a processing barrel supplied by couriers"; return; }
+            if(barrel==null) return;
             if(!visitStorage(level,town,station.role(),barrel,local,true)) return;
             List<Container> storage=local;
             processingDelivery=false;
@@ -1778,7 +1833,7 @@ public final class CitizenEntity extends Villager {
         if(!standingSpotUsable(level,town,hospitalStand,bed)) {
             hospitalStand=null;
             for(BlockPos stand:CitizenReach.stands(standingView(level,town),bed,position(),getEyeHeight())) {
-                if(Vec3.atBottomCenterOf(stand).distanceToSqr(Vec3.atCenterOf(bed))>4 || !standingSpotUsable(level,town,stand,bed)) continue;
+                if(standingView(level,town).feet(stand).distanceToSqr(Vec3.atCenterOf(bed))>4 || !standingSpotUsable(level,town,stand,bed)) continue;
                 if(reachableStand(stand)) { hospitalStand=stand; break; }
                 if(reachBudget.deferred()) return true;
             }
@@ -1838,8 +1893,8 @@ public final class CitizenEntity extends Villager {
                     .filter(p -> handNear(p) || canReach(p)).findFirst().orElse(null);
         }
         if(repairAnvil==null) { activity="Needs an accessible anvil within three blocks of the Blacksmith Station"; nextSmithAt=level.getGameTime()+100; return; }
-        BlockPos warehouse=jobDepot(level,town);
-        if(warehouse==null) { activity="Needs a blacksmith barrel with repair materials delivered by couriers"; nextSmithAt=level.getGameTime()+100; return; }
+        BlockPos warehouse=jobBarrel(level,town,station);
+        if(warehouse==null) { nextSmithAt=level.getGameTime()+100; return; }
         List<Container> storage=SettlementService.jobStorage(level,town,town.station(workplace));
         // A chosen stand stays the destination until pickup, rather than restarting the warehouse trip each update.
         if(repairItem.isEmpty() && repairStand!=null) {
@@ -1901,8 +1956,13 @@ public final class CitizenEntity extends Villager {
     }
     private int lapisCarried() { return InventoryOps.count(List.of(cargo),Enchanting::lapis); }
     private boolean standingSpotUsable(ServerLevel level,Settlement town,BlockPos stand,BlockPos table) {
-        return stand!=null && CitizenReach.standing(standingView(level,town),stand)
-                && CitizenReach.canUse(level,Vec3.atBottomCenterOf(stand).add(0,getEyeHeight(),0),table);
+        var view=standingView(level,town);
+        if(stand==null || !CitizenReach.standing(view,stand)) return false;
+        Vec3 feet=view.feet(stand);
+        // If the citizen has actually arrived but still cannot interact, try another approach rather than
+        // trusting an optimistic ray from the ideal node center forever.
+        if(getNavigation().isDone() && position().distanceToSqr(feet)<0.01 && !canUse(level,table)) return false;
+        return CitizenReach.canUse(level,feet.add(0,getEyeHeight(),0),table);
     }
     /** A solid table is a work target, not a walking destination. Probe only clear ground from which it can be used. */
     private boolean chooseEnchantingApproach(ServerLevel level,Settlement town,List<BlockPos> tables) {
@@ -1911,9 +1971,8 @@ public final class CitizenEntity extends Villager {
         for(BlockPos table:tables.stream().sorted(Comparator.comparingDouble(p -> p.distSqr(blockPosition()))).toList()) {
             if(canUse(level,table)) { enchantTable=table; return true; }
             for(BlockPos stand:CitizenReach.stands(view,table,position(),getEyeHeight())) {
-                Vec3 eyes=Vec3.atBottomCenterOf(stand).add(0,getEyeHeight(),0);
                 // Obstructed views do not spend a path probe or blacklist the table.
-                if(!CitizenReach.canUse(level,eyes,table)) continue;
+                if(!standingSpotUsable(level,town,stand,table)) continue;
                 if(reachableStand(stand)) { enchantTable=table; enchantStand=stand; return true; }
                 if(reachBudget.deferred()) return false;
             }
@@ -1982,9 +2041,9 @@ public final class CitizenEntity extends Villager {
         Predicate<ItemStack> skipped=stack -> unenchantable.containsKey(stack.getItem());
         int needed=Enchanting.lapisCost(enchantLevel>0 ? enchantLevel : cap);
         boolean wantItem=enchantItem.isEmpty(),wantLapis=lapisCarried()<needed;
-        BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
+        BlockPos barrel=jobBarrel(level,town,station);
         List<Container> local=barrel==null ? List.of() : SettlementService.jobStorage(level,town,station);
-        if(barrel==null) { activity="Needs an enchanter barrel supplied by couriers"; return false; }
+        if(barrel==null) return false;
         if(wantItem && !Enchanting.waiting(local,skipped)) { activity="Waiting for unenchanted gear or books in my barrel"; nextEnchantAt=level.getGameTime()+200; return false; }
         if(wantLapis && lapisCarried()+InventoryOps.count(local,Enchanting::lapis)<needed) { activity="Waiting for "+needed+" lapis in my barrel"; nextEnchantAt=level.getGameTime()+200; return false; }
         List<Container> source=local;
@@ -2003,11 +2062,11 @@ public final class CitizenEntity extends Villager {
     /** Bring a finished item to this station's barrels when goods may stay there (see {@link #dropOff}), else to the warehouse. */
     private void deliverEnchanted(ServerLevel level,Settlement town,Station station) {
         String name=enchantItem.getHoverName().getString();
-        BlockPos barrel=nearestBarrel(SettlementService.jobBarrels(level,town,station));
+        BlockPos barrel=jobBarrel(level,town,station);
         List<Container> local=barrel==null ? List.of() : SettlementService.jobStorage(level,town,station);
         boolean toBarrel=barrel!=null && dropOff(level,town,local);
         BlockPos depot=barrel;
-        if(depot==null) { activity="Holding the finished "+name+": needs a barrel by the station"; nextEnchantAt=level.getGameTime()+100; return; }
+        if(depot==null) { nextEnchantAt=level.getGameTime()+100; return; }
         if(!canUse(level,depot)) {
             activity="Delivering the finished "+name; pathTicks+=10;
             if(!walk(depot) && onGround() || pathTicks>1200) {

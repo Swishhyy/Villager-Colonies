@@ -9,6 +9,8 @@ import io.github.swishhyy.wwmc.menu.Panels;
 import io.github.swishhyy.wwmc.settlement.*;
 import java.util.*;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
@@ -54,6 +56,71 @@ public final class ProductionWorldTests {
     }
     private static int count(Container box,net.minecraft.world.item.Item item) { return InventoryOps.count(List.of(box),s -> s.is(item)); }
     private static String describe(CitizenEntity c) { return c.activity()+" at "+c.blockPosition()+", bag "+c.bag().contents(); }
+
+    private static void takesRodAcrossFloor(DynamicTest test,int offset,Block floor,int approachY) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,offset));
+            Station station=new Station(start.east(24),StructureRole.FISHERMAN);
+            var f=fixture(level,start,station);
+            for(int x=12;x<=32;x++) for(int z=-8;z<=8;z++) level.setBlockAndUpdate(start.offset(x,-1,z),floor.defaultBlockState());
+            BlockPos depot=station.position().west(2);
+            Container stock=barrel(level,depot,new ItemStack(Items.FISHING_ROD));
+            var fisher=f.worker(station,start);
+            helper.runAtTickTime(5,() -> {
+                var path=fisher.getNavigation().createPath(depot.west(2).above(approachY),0);
+                helper.assertTrue(path!=null && path.canReach(),"Fixture must have a walkable route to the barrel");
+            });
+            helper.succeedWhen(() -> {
+                helper.assertTrue(fisher.getMainHandItem().is(Items.FISHING_ROD),"Walkable barrel was rejected: "+describe(fisher));
+                helper.assertTrue(count(stock,Items.FISHING_ROD)==0,"Taking a tool must not duplicate it");
+                f.close();
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=1200)
+    @EmptyTemplate
+    @TestHolder(description="A fisherman walks over dirt paths to collect a real rod from its job barrel.")
+    static void reachesBarrelAcrossDirtPaths(DynamicTest test) { takesRodAcrossFloor(test,-4600,Blocks.DIRT_PATH,0); }
+
+    @GameTest(timeoutTicks=1200)
+    @EmptyTemplate
+    @TestHolder(description="A fisherman walks over bottom slabs to collect a real rod from its job barrel.")
+    static void reachesBarrelAcrossBottomSlabs(DynamicTest test) { takesRodAcrossFloor(test,-5000,Blocks.STONE_SLAB,0); }
+
+    @GameTest(timeoutTicks=1200)
+    @EmptyTemplate
+    @TestHolder(description="A fisherman walks over carpet to collect a real rod from its job barrel.")
+    static void reachesBarrelAcrossCarpet(DynamicTest test) { takesRodAcrossFloor(test,-5400,BuiltInRegistries.BLOCK.getValue(Identifier.withDefaultNamespace("white_carpet")),-1); }
+
+    @GameTest(timeoutTicks=4000)
+    @EmptyTemplate
+    @TestHolder(description="A miner, cook and smelter fetch real supplies and complete work over bottom slabs, including job barrels and appliance approaches.")
+    static void productionJobsUseSlabFloors(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-5800));
+            Station mine=new Station(start.offset(24,0,-8),StructureRole.MINE),cook=new Station(start.east(24),StructureRole.COOK),smelter=new Station(start.offset(24,0,8),StructureRole.SMELTERY);
+            var f=fixture(level,start,mine,cook,smelter);
+            for(int x=12;x<=32;x++) for(int z=-14;z<=14;z++) level.setBlockAndUpdate(start.offset(x,-1,z),Blocks.STONE_SLAB.defaultBlockState());
+            Container tools=barrel(level,mine.position().west(2),new ItemStack(Items.IRON_PICKAXE));
+            Container kitchen=barrel(level,cook.position().west(2),new ItemStack(Items.BEEF,2),new ItemStack(Items.COAL));
+            Container foundry=barrel(level,smelter.position().west(2),new ItemStack(Items.RAW_IRON,2),new ItemStack(Items.COAL));
+            level.setBlockAndUpdate(mine.position().east(2),Blocks.COAL_ORE.defaultBlockState());
+            level.setBlockAndUpdate(cook.position().east(2),Blocks.SMOKER.defaultBlockState());
+            level.setBlockAndUpdate(smelter.position().east(2),Blocks.BLAST_FURNACE.defaultBlockState());
+            var miner=f.worker(mine,start.north(8)); var chef=f.worker(cook,start); var smith=f.worker(smelter,start.south(8));
+            for(var citizen:f.workers()) citizen.bag().offer(new ItemStack(Items.BREAD,2));
+            helper.succeedWhen(() -> {
+                helper.assertTrue(miner.getMainHandItem().is(Items.IRON_PICKAXE) && miner.getMainHandItem().getDamageValue()>0,
+                        "Miner did not fetch its pickaxe and work: "+describe(miner));
+                helper.assertTrue(count(kitchen,Items.COOKED_BEEF)==2 && count(foundry,Items.IRON_INGOT)==2,
+                        "Slab production stalled: cook "+describe(chef)+"; smelter "+describe(smith));
+                helper.assertTrue(count(tools,Items.IRON_PICKAXE)==0,"The miner's real pickaxe was duplicated");
+                helper.assertTrue(count(kitchen,Items.BEEF)==0 && count(foundry,Items.RAW_IRON)==0,"Production inputs were duplicated");
+                f.close();
+            });
+        });
+    }
 
     @GameTest(timeoutTicks=4000)
     @EmptyTemplate
