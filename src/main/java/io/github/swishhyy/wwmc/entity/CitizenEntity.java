@@ -290,8 +290,8 @@ public final class CitizenEntity extends Villager {
             case WARNING -> {
                 int slots=0;
                 for(int slot=0;slot<cargo.getContainerSize();slot++) if(!cargo.getItem(slot).isEmpty()) slots++;
-                WWMC.LOGGER.warn("[WWMC][worker-stalled] {} blockedSeconds={} activity=\"{}\" target={} depot={} pathTicks={} failedTargets={} health={}/{} mealTicks={} bagSlots={}/{} pendingStacks={}",
-                        diagnosticContext(level,town),diagnosticWindow.blockedTicks(now)/20,activity,target,depotTarget,pathTicks,failedTargets.size(),
+                WWMC.LOGGER.warn("[WWMC][worker-stalled] {} blockedSeconds={} activity=\"{}\" target={} depot={} pantry={} pantryStand={} pathDestination={} navigationDone={} pathTicks={} failedTargets={} health={}/{} mealTicks={} bagSlots={}/{} pendingStacks={}",
+                        diagnosticContext(level,town),diagnosticWindow.blockedTicks(now)/20,activity,target,depotTarget,pantryTarget,pantryStand,pathDestination,getNavigation().isDone(),pathTicks,failedTargets.size(),
                         getHealth(),getMaxHealth(),mealTicks,slots,cargo.getContainerSize(),cargo.pendingItems().size());
             }
             case RESOLVED -> WWMC.LOGGER.info("[WWMC][worker-resumed] {} activity=\"{}\"",diagnosticContext(level,town),activity);
@@ -494,6 +494,20 @@ public final class CitizenEntity extends Villager {
         if(level() instanceof ServerLevel server && town(server)!=null) {
             BlockPos via=ExcavationService.waypoint(server,town(server),blockPosition(),pos);
             if(via!=null) { pos=via; accuracy=1; }
+        }
+        // Vanilla accepts a waypoint within part of a block. A usable work spot may need its actual center:
+        // stopping a few tenths short can leave the target outside hand reach or behind adjacent furniture.
+        if(accuracy==0 && getNavigation().isDone() && level() instanceof ServerLevel server
+                && Math.floor(getX())==pos.getX() && Math.floor(getZ())==pos.getZ()) {
+            var ground=CitizenReach.ground(server,server::hasChunkAt);
+            if(CitizenReach.standing(ground,pos)) {
+                Vec3 feet=ground.feet(pos);
+                if(Math.abs(getY()-feet.y)<0.6) {
+                    if(position().distanceToSqr(feet)>1.0E-6) getMoveControl().setWantedPosition(feet.x,feet.y,feet.z,speed);
+                    getLookControl().setLookAt(pos.getX()+0.5,pos.getY()+0.5,pos.getZ()+0.5);
+                    return true;
+                }
+            }
         }
         long now=level().getGameTime();
         if(getNavigation().isDone() || !pos.equals(pathDestination) || now>=nextPathAt) {
@@ -1943,8 +1957,12 @@ public final class CitizenEntity extends Villager {
     private int lapisCarried() { return InventoryOps.count(List.of(cargo),Enchanting::lapis); }
     private boolean standingSpotUsable(ServerLevel level,Settlement town,BlockPos stand,BlockPos table) {
         var view=standingView(level,town);
-        return stand!=null && CitizenReach.standing(view,stand)
-                && CitizenReach.canUse(level,view.feet(stand).add(0,getEyeHeight(),0),table);
+        if(stand==null || !CitizenReach.standing(view,stand)) return false;
+        Vec3 feet=view.feet(stand);
+        // If the citizen has actually arrived but still cannot interact, try another approach rather than
+        // trusting an optimistic ray from the ideal node center forever.
+        if(getNavigation().isDone() && position().distanceToSqr(feet)<0.01 && !canUse(level,table)) return false;
+        return CitizenReach.canUse(level,feet.add(0,getEyeHeight(),0),table);
     }
     /** A solid table is a work target, not a walking destination. Probe only clear ground from which it can be used. */
     private boolean chooseEnchantingApproach(ServerLevel level,Settlement town,List<BlockPos> tables) {
@@ -1953,9 +1971,8 @@ public final class CitizenEntity extends Villager {
         for(BlockPos table:tables.stream().sorted(Comparator.comparingDouble(p -> p.distSqr(blockPosition()))).toList()) {
             if(canUse(level,table)) { enchantTable=table; return true; }
             for(BlockPos stand:CitizenReach.stands(view,table,position(),getEyeHeight())) {
-                Vec3 eyes=view.feet(stand).add(0,getEyeHeight(),0);
                 // Obstructed views do not spend a path probe or blacklist the table.
-                if(!CitizenReach.canUse(level,eyes,table)) continue;
+                if(!standingSpotUsable(level,town,stand,table)) continue;
                 if(reachableStand(stand)) { enchantTable=table; enchantStand=stand; return true; }
                 if(reachBudget.deferred()) return false;
             }

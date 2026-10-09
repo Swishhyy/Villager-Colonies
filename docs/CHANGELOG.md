@@ -5,6 +5,7 @@
 ## Unreleased stability changes
 
 - Bring injured citizens back from unloaded or frozen chunks so hospital care can resume; retain their health, job and carried equipment. Failed recalls retry after 30 seconds without using the successful-recall cooldown.
+- Finish walking to the selected standing spot when vanilla navigation stops short; recheck actual reach and try another approach when needed. This prevents pantry and job interactions from stalling at the edge of reach.
 - Use the actual slab, dirt-path and carpet surfaces for recall and stuck rescues instead of requiring full-block floors.
 - Keep hauling warnings visible when Courier jobs are disabled, unstaffed or their assigned citizen is unavailable for work.
 - Add configurable server diagnostics for sustained worker stalls, blocked routes, stuck rescues, recall failures and missing citizens; include context and rate limits. Log crafting recipe exceptions with their recipe ID and stack trace.
