@@ -4,6 +4,8 @@ import com.mojang.serialization.JsonOps;
 import io.github.swishhyy.wwmc.settlement.*;
 import java.util.*;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Blocks;
@@ -92,7 +94,8 @@ public final class CitizenReachChecks {
         world.blocks.put(barrel,Blocks.BARREL.defaultBlockState());
         var ground=CitizenReach.ground(world,world::available);
         List<BlockState> floors=List.of(Blocks.DIRT_PATH.defaultBlockState(),Blocks.STONE_SLAB.defaultBlockState(),
-                Blocks.STONE_SLAB.defaultBlockState().setValue(net.minecraft.world.level.block.SlabBlock.TYPE,SlabType.TOP),Blocks.WHITE_CARPET.defaultBlockState());
+                Blocks.STONE_SLAB.defaultBlockState().setValue(net.minecraft.world.level.block.SlabBlock.TYPE,SlabType.TOP),
+                BuiltInRegistries.BLOCK.getValue(Identifier.withDefaultNamespace("white_carpet")).defaultBlockState());
         double[] surfaces={63.9375,63.5,64.0,63.0625};
         for(int n=0;n<floors.size();n++) {
             world.blocks.put(stand.below(),floors.get(n));

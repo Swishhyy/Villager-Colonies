@@ -9,6 +9,8 @@ import io.github.swishhyy.wwmc.menu.Panels;
 import io.github.swishhyy.wwmc.settlement.*;
 import java.util.*;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
@@ -89,7 +91,7 @@ public final class ProductionWorldTests {
     @GameTest(timeoutTicks=1200)
     @EmptyTemplate
     @TestHolder(description="A fisherman walks over carpet to collect a real rod from its job barrel.")
-    static void reachesBarrelAcrossCarpet(DynamicTest test) { takesRodAcrossFloor(test,-5400,Blocks.WHITE_CARPET); }
+    static void reachesBarrelAcrossCarpet(DynamicTest test) { takesRodAcrossFloor(test,-5400,BuiltInRegistries.BLOCK.getValue(Identifier.withDefaultNamespace("white_carpet"))); }
 
     @GameTest(timeoutTicks=4000)
     @EmptyTemplate
