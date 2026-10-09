@@ -307,7 +307,7 @@ public final class CitizenEntity extends Villager {
         stuckTicks+=20;
         if(stuckTicks<STUCK_TICKS) return;
         stuckAnchor=null; stuckTicks=0;
-        BlockPos spot=rescueSpot(level,town);
+        Vec3 spot=rescueSpot(level,town);
         if(Config.SERVER_DIAGNOSTICS.get() && level.getGameTime()>=nextRescueWarning) {
             WWMC.LOGGER.warn("[WWMC][stuck-rescue] {} result={} destination={} activity=\"{}\" target={} pathDestination={}",
                     diagnosticContext(level,town),spot==null ? "no-standing-room" : "returned-to-banner",spot,activity,target,pathDestination);
@@ -316,7 +316,7 @@ public final class CitizenEntity extends Villager {
         if(spot==null) { activity="Stuck, and the settlement banner has no free standing room"; return; }
         getNavigation().stop();
         if(!abandonTrip(level) && workplace!=null) { idleStations.put(workplace,level.getGameTime()+200); releaseWork(level); }
-        setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5); resetFallDistance();
+        setPos(spot.x,spot.y,spot.z); resetFallDistance();
         activity="Got stuck and returned to the settlement banner";
     }
     /** Abandons the trip under way, so the citizen does not walk straight back into the same trap; false when there was none. */
@@ -336,7 +336,7 @@ public final class CitizenEntity extends Villager {
      */
     public boolean recall(ServerLevel level,Settlement town,BlockPos home) {
         if(tradeShipment.travelling() || SquadService.assigned(town,getUUID())) return false;
-        BlockPos spot=standingRoom(level,home);
+        Vec3 spot=standingRoom(level,home);
         if(spot==null) spot=rescueSpot(level,town);
         if(spot==null) return false;
         leaveHospitalBed();
@@ -344,25 +344,22 @@ public final class CitizenEntity extends Villager {
         if(isPassenger()) stopRiding();
         getNavigation().stop();
         abandonTrip(level);
-        setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5); resetFallDistance();
+        setPos(spot.x,spot.y,spot.z); resetFallDistance();
         stuckAnchor=null; stuckTicks=0;
         activity="Was out of loaded range and came back";
         return true;
     }
-    private static BlockPos rescueSpot(ServerLevel level,Settlement town) { return standingRoom(level,town.center); }
+    private static Vec3 rescueSpot(ServerLevel level,Settlement town) { return standingRoom(level,town.center); }
     /** On top of a block such as the banner, or failing that a clear spot with firm footing right beside it; never in an unloaded or frozen chunk. */
-    private static BlockPos standingRoom(ServerLevel level,BlockPos anchor) {
+    private static Vec3 standingRoom(ServerLevel level,BlockPos anchor) {
         if(!level.hasChunkAt(anchor) || !level.isPositionEntityTicking(anchor)) return null;
+        CitizenReach.StandingView ground=CitizenReach.ground(level,pos -> level.hasChunkAt(pos) && level.isPositionEntityTicking(pos));
         List<BlockPos> spots=new ArrayList<>(List.of(anchor.above()));
         for(int dy=1;dy>=-1;dy--) for(int dx=-2;dx<=2;dx++) for(int dz=-2;dz<=2;dz++) if(dx!=0 || dz!=0) spots.add(anchor.offset(dx,dy,dz));
         for(BlockPos spot:spots) {
-            if(!level.hasChunkAt(spot) || !level.hasChunkAt(spot.above()) || !level.isPositionEntityTicking(spot)) continue;
-            if(clear(level,spot) && clear(level,spot.above()) && level.getBlockState(spot.below()).isFaceSturdy(level,spot.below(),net.minecraft.core.Direction.UP)) return spot;
+            if(CitizenReach.standing(ground,spot)) return ground.feet(spot);
         }
         return null;
-    }
-    private static boolean clear(ServerLevel level,BlockPos pos) {
-        return level.getBlockState(pos).getCollisionShape(level,pos).isEmpty() && level.getFluidState(pos).isEmpty();
     }
     // Citizens never shove each other, so crews can pass on narrow quarry stairs and walkways without knocking anyone off.
     @Override protected void doPush(Entity entity) { if(!(entity instanceof CitizenEntity)) super.doPush(entity); }

@@ -17,6 +17,49 @@ import net.neoforged.testframework.gametest.GameTest;
 
 /** Citizens stranded outside the loaded area while their station is loaded, in a player-free world. */
 public final class RecallWorldTests {
+    @GameTest(timeoutTicks=400)
+    @EmptyTemplate
+    @TestHolder(description="Citizen recovery accepts slab, dirt-path and carpet floors and lands on their actual collision surfaces instead of rejecting all standing room.")
+    static void recallsOntoPartialFloors(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,6800));
+            CitizenNavigationTests.meadow(level,start,-6,8,-6,6);
+            var home=CitizenNavigationTests.pinTicking(level,start,1);
+            var job=new Station(start.east(3),StructureRole.FARM);
+            var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Partial floor recall",start,240,List.of(),List.of(job),"balanced");
+            var data=SettlementData.get(level); data.settlements.add(town); data.setDirty();
+            level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
+            level.setBlockAndUpdate(job.position(),WWMC.STATIONS.get(job.role()).get().defaultBlockState());
+            // Force recovery beside the furniture, where every floor is partial height.
+            level.setBlockAndUpdate(start.above(),Blocks.STONE.defaultBlockState());
+            level.setBlockAndUpdate(job.position().above(),Blocks.STONE.defaultBlockState());
+            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level); citizen.join(town.id); citizen.setNoAi(true);
+            town.citizens.add(citizen.getUUID()); town.jobs.assign(citizen.getUUID(),job.position()); level.addFreshEntity(citizen);
+            helper.runAtTickTime(5,() -> {
+                var slab=Blocks.STONE_SLAB.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SLAB_TYPE,
+                        net.minecraft.world.level.block.state.properties.SlabType.BOTTOM);
+                var carpet=net.minecraft.core.registries.BuiltInRegistries.BLOCK.getValue(net.minecraft.resources.Identifier.withDefaultNamespace("white_carpet")).defaultBlockState();
+                var floors=List.of(slab,Blocks.DIRT_PATH.defaultBlockState(),Blocks.STONE.defaultBlockState());
+                for(int n=0;n<floors.size();n++) {
+                    var floor=floors.get(n);
+                    for(int x=-3;x<=6;x++) for(int z=-3;z<=3;z++) level.setBlockAndUpdate(start.offset(x,-1,z),floor);
+                    if(n==2) for(int x=-3;x<=6;x++) for(int z=-3;z<=3;z++) {
+                        BlockPos pos=start.offset(x,0,z);
+                        if(!pos.equals(start) && !pos.equals(job.position())) level.setBlockAndUpdate(pos,carpet);
+                    }
+                    citizen.setPos(start.getX()+7.5,start.getY(),start.getZ()+4.5);
+                    helper.assertTrue(citizen.recall(level,town,job.position()),"Recovery rejects walkable floor: "+floor);
+                    double expected=start.getY()-1+floor.getCollisionShape(level,start.below()).bounds().maxY;
+                    if(n==2) expected+=carpet.getCollisionShape(level,start).bounds().maxY;
+                    helper.assertTrue(Math.abs(citizen.getY()-expected)<1.0E-7,"Recovery did not land on the floor surface: "+citizen.getY()+" vs "+expected);
+                    helper.assertTrue(level.noCollision(citizen),"Recovery placed the citizen inside furniture");
+                    helper.assertTrue(job.position().equals(town.jobs.home(citizen.getUUID())),"Partial floor recovery lost the job");
+                }
+                citizen.discard(); data.settlements.remove(town); data.setDirty(); CitizenNavigationTests.releaseTicking(level,start,home); helper.succeed();
+            });
+        });
+    }
+
     @GameTest(timeoutTicks=1600)
     @EmptyTemplate
     @TestHolder(description="A failed recall from a frozen chunk retries after thirty seconds when standing room opens, without starting the successful-recall cooldown.")

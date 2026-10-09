@@ -5,9 +5,10 @@
 ## Unreleased stability changes
 
 - Bring injured citizens back from unloaded or frozen chunks so hospital care can resume; retain their health, job and carried equipment. Failed recalls retry after 30 seconds without using the successful-recall cooldown.
+- Use the actual slab, dirt-path and carpet surfaces for recall and stuck rescues instead of requiring full-block floors.
 - Keep hauling warnings visible when Courier jobs are disabled, unstaffed or their assigned citizen is unavailable for work.
 - Add configurable server diagnostics for sustained worker stalls, blocked routes, stuck rescues, recall failures and missing citizens; include context and rate limits. Log crafting recipe exceptions with their recipe ID and stack trace.
-
+- Include full job barrels and missing repair/enchanting materials in the Needs list.
 - Fix citizens rejecting reachable job barrels and work furniture on bottom slabs and carpets. Approach checks use the floor's actual collision surface while keeping the four-block reach limit and blocked-wall checks.
 - Show filled and enabled job places in the town header; list support stations separately. The Jobs tab distinguishes loaded openings, disabled places and places waiting for loading or trade.
 - Explain why citizens have no job instead of suggesting higher priorities when all enabled crews are full.
