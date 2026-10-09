@@ -22,6 +22,47 @@ import net.neoforged.testframework.gametest.GameTest;
 public final class ProgressWorldTests {
     @GameTest(timeoutTicks=400)
     @EmptyTemplate
+    @TestHolder(description="A courier block alone cannot suppress hauling warnings: jobs must be enabled, staffed, loaded and healthy.")
+    static void courierNeedsReflectUsableWorkers(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,5600));
+            var chunks=CitizenNavigationTests.pinArea(level,start,-8,24,-8,8);
+            CitizenNavigationTests.meadow(level,start,-8,24,-8,8);
+            var courier=new Station(start.east(8),StructureRole.COURIER);
+            var mine=new Station(start.east(16),StructureRole.MINE);
+            var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Courier needs",start,96,List.of(),List.of(courier,mine),"balanced");
+            var data=SettlementData.get(level); data.settlements.add(town); data.setDirty();
+            level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
+            for(Station station:town.stations) level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+            level.setBlockAndUpdate(mine.position().east(2),Blocks.BARREL.defaultBlockState());
+            var worker=new CitizenEntity(WWMC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(true);
+            worker.setPos(start.getX()+6.5,start.getY(),start.getZ()+0.5); town.citizens.add(worker.getUUID()); level.addFreshEntity(worker);
+            helper.runAtTickTime(5,() -> {
+                helper.assertTrue(!SettlementService.couriers(level,town),"An empty courier station cannot haul");
+                var need=TownNeeds.assess(level,town).stream().filter(n -> n.title().equals("No courier")).findFirst().orElseThrow();
+                helper.assertTrue(need.detail().contains("Assign a citizen"),"The warning must explain staffing: "+need.detail());
+                town.jobs.assign(worker.getUUID(),courier.position());
+                helper.assertTrue(SettlementService.couriers(level,town),"A healthy assigned courier must clear the warning");
+                helper.assertTrue(TownNeeds.assess(level,town).stream().noneMatch(n -> n.title().equals("No courier")),"A working courier must remove the hauling need");
+                SettlementService.setJobLevel(level,town,StructureRole.COURIER,JobBoard.OFF);
+                helper.assertTrue(!SettlementService.couriers(level,town) && SettlementService.courierAdvice(level,town).startsWith("Enable Courier"),"Disabled courier work must be explained");
+                SettlementService.setJobLevel(level,town,StructureRole.COURIER,JobBoard.NORMAL); town.jobs.assign(worker.getUUID(),courier.position());
+                worker.setHealth(worker.getMaxHealth()-5);
+                helper.assertTrue(!SettlementService.couriers(level,town) && SettlementService.courierAdvice(level,town).contains("health"),"A courier receiving hospital care cannot haul");
+                worker.setHealth(worker.getMaxHealth());
+                helper.assertTrue(SettlementService.couriers(level,town),"A recovered courier can haul again");
+                worker.discard();
+                helper.assertTrue(!SettlementService.couriers(level,town),"An unloaded or removed worker cannot suppress the warning");
+                helper.assertTrue(SettlementService.courierAdvice(level,town).contains("Crew tab"),"The manager must be directed to the unavailable worker");
+                town.citizens.remove(worker.getUUID());
+                helper.assertTrue(SettlementService.courierAdvice(level,town).startsWith("Assign a citizen"),"A stale assignment cannot count as a staffed courier station");
+                data.settlements.remove(town); data.setDirty(); CitizenNavigationTests.release(level,start,chunks); helper.succeed();
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=400)
+    @EmptyTemplate
     @TestHolder(description="Thirty citizens and twenty-eight stations can correctly mean twenty-four filled jobs and six unemployed citizens; disabled, open, quarry and medic places are counted separately.")
     static void jobCountsExplainSupportStations(DynamicTest test) {
         test.onGameTest(helper -> {

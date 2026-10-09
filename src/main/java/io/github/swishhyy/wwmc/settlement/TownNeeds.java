@@ -37,7 +37,9 @@ public final class TownNeeds {
         if(text.startsWith("off duty") || text.contains("hospital bed")) return false;
         // Growing crops, saplings and an idle smith are ordinary waits, not needs.
         return text.startsWith("needs ") || text.contains(": needs ") || text.startsWith("cannot reach")
-                || text.startsWith("waiting for couriers to deliver") || text.startsWith("waiting for courier-delivered") || text.contains("is full");
+                || text.startsWith("waiting for couriers to deliver") || text.startsWith("waiting for courier-delivered")
+                || text.startsWith("waiting for this item's matching repair material")
+                || text.startsWith("waiting for ") && text.contains(" lapis in my barrel") || text.contains("is full") || text.contains("are full");
     }
     public static List<Need> assess(ServerLevel level,Settlement town) {
         List<Need> needs=new ArrayList<>();
@@ -122,7 +124,7 @@ public final class TownNeeds {
             }
         }
         if(barrels && !SettlementService.couriers(level,town))
-            needs.add(new Need(WARNING,station(StructureRole.COURIER),"No courier","Production waits in job barrels: add a Courier Station so goods reach the warehouse",null));
+            needs.add(new Need(WARNING,station(StructureRole.COURIER),"No courier","Production waits in job barrels: "+SettlementService.courierAdvice(level,town),null));
         // What workers themselves are waiting for, once per station and message.
         Map<String,Need> asked=new LinkedHashMap<>();
         Map<String,Integer> count=new HashMap<>();

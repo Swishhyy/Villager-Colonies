@@ -187,7 +187,7 @@ NPC towns start neutral with a house, 12 beds, warehouse, trader checkpoint, gua
 
 ### Server configuration
 
-Open **Mods → WWMC → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Quarry Crew**, **Mining & Quarries**, **Work & Food**, **Enchanting**, **Defense & Waves**, and **Trade & Other Towns**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Active TOML keys stay in their original locations. The six retired non-quarry crew settings are removed on config reload; quarry and other server overrides carry over. Multiplayer server configuration remains controlled by the server.
+Open **Mods → WWMC → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Quarry Crew**, **Mining & Quarries**, **Work & Food**, **Enchanting**, **Defense & Waves**, **Trade & Other Towns**, and **Diagnostics**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Active TOML keys stay in their original locations. The six retired non-quarry crew settings are removed on config reload; quarry and other server overrides carry over. Multiplayer server configuration remains controlled by the server.
 
 The generated WWMC server config controls these defaults:
 
@@ -221,6 +221,8 @@ Veins replenish in about 15 seconds with a stone pickaxe (`oreVeinSeconds`). Woo
 | `mineBranchLength` | 24 | Length of each mine side branch. |
 | `mineBranchPairs` | 4 | Paired side-branch junctions along the mine spine. |
 
+See [server diagnostics](diagnostics.md) for worker warnings, recovery events and log settings.
+
 ### Personal inventories
 
 Citizens keep resources in a persistent **36-slot bag**. Their owner can open it with an empty-hand right-click within eight blocks; the screen also shows the citizen's job, activity, health, next meal and equipment. Work pauses while the inventory is open; guards continue defending during an alarm. Menus close when the citizen dies, you move out of range, or ownership is no longer valid.
@@ -231,7 +233,7 @@ Workers use carried supplies before collecting replacements from their own job b
 
 **Getting unstuck.** Citizens open doors on their way. A citizen who keeps trying to walk somewhere but stays within a block and a half of the same spot for 30 seconds is moved on top of the settlement banner, or onto clear, firm ground right beside it, and drops the trip that trapped them: a quarry worker carries on from the control block, other workers try a different station for a while. Sleeping citizens are never moved, and nobody is moved into an unloaded part of town.
 
-**Out of range.** Each town remembers where every citizen last stood while ticking. If a citizen is frozen or unloaded for ten seconds while its station is loaded (the banner, for a citizen without a job), it is brought back. A frozen citizen is simply moved. For an unloaded one, the town loads a 3×3 chunk window around its last place for a few seconds, never longer, and moves it once it appears. It lands beside its station, keeps its job and drops the errand that led it away. A citizen that is not found after two searches, or that has been missing for five minutes with no recorded place, leaves the roster: its job and population place open up, and the owner is told if online. If it turns up later, it rejoins. Traders on a trip are never fetched.
+**Out of range.** Each town remembers where every citizen last stood while ticking. If a citizen is frozen or unloaded for ten seconds while its station is loaded (the banner, for a citizen without a job), it is brought back. A frozen citizen is simply moved. For an unloaded one, the town loads a 3×3 chunk window around its last place for a few seconds, never longer, and moves it once it appears. It lands beside its station, keeps its job and drops the errand that led it away. Injured citizens return too, so they can reach hospital care. Failed recalls without standing room retry after 30 seconds. A citizen that is not found after two searches, or that has been missing for five minutes with no recorded place, leaves the roster: its job and population place open up, and the owner is told if online. If it turns up later, it rejoins. Traders on a trip are never fetched.
 
 A full warehouse leaves the remainder in the citizen's bag. An unusually large tree harvest has a saved backlog that moves into the bag when space opens; citizens wait for space instead of dropping overflow on the ground. On death, actual carried items and equipped gear drop normally.
 

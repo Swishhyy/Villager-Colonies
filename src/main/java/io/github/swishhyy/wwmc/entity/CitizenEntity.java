@@ -1,6 +1,8 @@
 package io.github.swishhyy.wwmc.entity;
 
 import io.github.swishhyy.wwmc.Config;
+import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.core.DiagnosticWindow;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.core.CitizenNames;
 import io.github.swishhyy.wwmc.core.WorkCadence;
@@ -163,6 +165,8 @@ public final class CitizenEntity extends Villager {
     /** Why the citizen has no work at the moment, shown as its activity. */
     private String jobNote="Looking for a job";
     private String activity="Waiting for a job station";
+    private final DiagnosticWindow diagnosticWindow=new DiagnosticWindow();
+    private long nextRescueWarning;
     private TradeShipment tradeShipment=new TradeShipment();
     private final TradeNavigation tradeNavigation=new TradeNavigation();
     private final TradeNavigation expeditionNavigation=new TradeNavigation();
@@ -260,8 +264,38 @@ public final class CitizenEntity extends Villager {
                     if(!name.equals(town.citizenNames.put(getUUID(),name))) SettlementData.get(server).setDirty();
                     if(isAlive()) CitizenRecall.seen(server,town,this);
                     checkStuck(server,town);
+                    reportDiagnostics(server,town);
                 }
+                else diagnosticWindow.reset();
             }
+        }
+    }
+    /** Context is built only when a diagnostic is emitted; no scans, path probes or chunk loads. */
+    private String diagnosticContext(ServerLevel level,Settlement town) {
+        BlockPos home=town.jobs.home(getUUID()); Station station=home==null ? null : town.station(home);
+        return "dimension="+level.dimension()+" town=\""+town.name+"\" townId="+town.id+" citizen=\""+getName().getString()
+                +"\" citizenId="+getUUID()+" job="+(station==null ? "none" : station.role().id())+" station="+home+" position="+blockPosition();
+    }
+    private void reportDiagnostics(ServerLevel level,Settlement town) {
+        if(!Config.SERVER_DIAGNOSTICS.get() || !isAlive() || isNoAi() || isSleeping() || cargo.isOpen()
+                || !recovering && !tradeShipment.travelling() && !isGuard() && (night(level) || DefenseService.alarmed(town))) {
+            diagnosticWindow.reset(); return;
+        }
+        boolean blocked=TownNeeds.asks(activity) || activity.startsWith("Needs a free, reachable hospital bed")
+                || activity.startsWith("Stuck,") || activity.startsWith("Trade route blocked");
+        BlockPos home=town.jobs.home(getUUID());
+        String problem=blocked ? town.id+"|"+home : null;
+        long now=level.getGameTime();
+        switch(diagnosticWindow.sample(problem,now,Config.DIAGNOSTIC_DELAY.get()*20L,Config.DIAGNOSTIC_REPEAT.get()*20L)) {
+            case WARNING -> {
+                int slots=0;
+                for(int slot=0;slot<cargo.getContainerSize();slot++) if(!cargo.getItem(slot).isEmpty()) slots++;
+                WWMC.LOGGER.warn("[WWMC][worker-stalled] {} blockedSeconds={} activity=\"{}\" target={} depot={} pathTicks={} failedTargets={} health={}/{} mealTicks={} bagSlots={}/{} pendingStacks={}",
+                        diagnosticContext(level,town),diagnosticWindow.blockedTicks(now)/20,activity,target,depotTarget,pathTicks,failedTargets.size(),
+                        getHealth(),getMaxHealth(),mealTicks,slots,cargo.getContainerSize(),cargo.pendingItems().size());
+            }
+            case RESOLVED -> WWMC.LOGGER.info("[WWMC][worker-resumed] {} activity=\"{}\"",diagnosticContext(level,town),activity);
+            default -> {}
         }
     }
     /** Trying to walk (a recent walk() call) while staying within a block and a half counts as stuck. */
@@ -274,6 +308,11 @@ public final class CitizenEntity extends Villager {
         if(stuckTicks<STUCK_TICKS) return;
         stuckAnchor=null; stuckTicks=0;
         BlockPos spot=rescueSpot(level,town);
+        if(Config.SERVER_DIAGNOSTICS.get() && level.getGameTime()>=nextRescueWarning) {
+            WWMC.LOGGER.warn("[WWMC][stuck-rescue] {} result={} destination={} activity=\"{}\" target={} pathDestination={}",
+                    diagnosticContext(level,town),spot==null ? "no-standing-room" : "returned-to-banner",spot,activity,target,pathDestination);
+            nextRescueWarning=level.getGameTime()+Config.DIAGNOSTIC_REPEAT.get()*20L;
+        }
         if(spot==null) { activity="Stuck, and the settlement banner has no free standing room"; return; }
         getNavigation().stop();
         if(!abandonTrip(level) && workplace!=null) { idleStations.put(workplace,level.getGameTime()+200); releaseWork(level); }
@@ -296,10 +335,11 @@ public final class CitizenEntity extends Villager {
      * job. The errand that led it out is dropped. False when it is on a trade trip or there is no room to stand.
      */
     public boolean recall(ServerLevel level,Settlement town,BlockPos home) {
-        if(HospitalCare.needsCare(town,this) || tradeShipment.travelling() || SquadService.assigned(town,getUUID())) return false;
+        if(tradeShipment.travelling() || SquadService.assigned(town,getUUID())) return false;
         BlockPos spot=standingRoom(level,home);
         if(spot==null) spot=rescueSpot(level,town);
         if(spot==null) return false;
+        leaveHospitalBed();
         leaveBed();
         if(isPassenger()) stopRiding();
         getNavigation().stop();

@@ -14,6 +14,7 @@ Start with [installing WWMC](../README.md#install) and [building your first town
 | Furnaces, kitchens, yield upgrades, pickaxes, and hospitals | [Production and recovery](production-recovery.md) |
 | Permissions, alliances, trade, squads, expeditions, research, and outposts | [Multiplayer and campaign](multiplayer-campaign.md) |
 | Missing Overworld settings on a dedicated server | [Server startup help](server-startup.md) |
+| Worker stalls, recovery warnings, errors and console settings | [Server diagnostics](diagnostics.md) |
 | Release history | [Changelog](CHANGELOG.md) |
 | Planned systems | [Roadmap](ROADMAP.md) |
 | Building, testing, source layout, and saved data | [Development guide](development.md) |

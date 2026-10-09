@@ -2,14 +2,18 @@
 
 [Project overview](../README.md) · [All guides](README.md) · [Versioning rules](curseforge.md#public-version-format)
 
-## 0.1.0.1
+## Unreleased stability changes
+
+- Bring injured citizens back from unloaded or frozen chunks so hospital care can resume; retain their health, job and carried equipment. Failed recalls retry after 30 seconds without using the successful-recall cooldown.
+- Keep hauling warnings visible when Courier jobs are disabled, unstaffed or their assigned citizen is unavailable for work.
+- Add configurable server diagnostics for sustained worker stalls, blocked routes, stuck rescues, recall failures and missing citizens; include context and rate limits. Log crafting recipe exceptions with their recipe ID and stack trace.
 
 - Fix citizens rejecting reachable job barrels and work furniture on bottom slabs and carpets. Approach checks use the floor's actual collision surface while keeping the four-block reach limit and blocked-wall checks.
 - Show filled and enabled job places in the town header; list support stations separately. The Jobs tab distinguishes loaded openings, disabled places and places waiting for loading or trade.
 - Explain why citizens have no job instead of suggesting higher priorities when all enabled crews are full.
 - Distinguish missing job barrels from barrels a worker cannot reach, explain barrel ownership near warehouses and overlapping stations, and show complete hover text beside row buttons.
 
-Use matching **0.1.0.1** builds on clients and servers. Existing town saves, jobs and inventories remain compatible.
+The working version stays at **0.1.0.0** until the maintainer chooses the next release. Use the same build on clients and servers. Existing town saves, jobs and inventories remain compatible.
 
 ## 0.1.0.0
 

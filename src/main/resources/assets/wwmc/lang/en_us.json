@@ -126,5 +126,13 @@
   "wwmc.configuration.convoyRaids": "Convoy raids",
   "wwmc.configuration.convoyRaids.tooltip": "Nearby occupied camps can warn of and launch raids while players are nearby.",
   "wwmc.configuration.yieldUpgradeCost": "Yield upgrade cost",
-  "wwmc.configuration.yieldUpgradeCost.tooltip": "First farm or mine yield upgrade price. Each level doubles it: 16, 32 and 64 emeralds by default, for 10%, 20% and 30% average extra produce or mineral drops."
+  "wwmc.configuration.yieldUpgradeCost.tooltip": "First farm or mine yield upgrade price. Each level doubles it: 16, 32 and 64 emeralds by default, for 10%, 20% and 30% average extra produce or mineral drops.",
+  "wwmc.configuration.category.diagnostics": "Diagnostics",
+  "wwmc.configuration.category.diagnostics.tooltip": "Server logs for sustained worker problems and citizen recovery.",
+  "wwmc.configuration.serverDiagnostics": "Server diagnostics",
+  "wwmc.configuration.serverDiagnostics.tooltip": "Write worker and recovery diagnostics to the server console and latest.log. Default: enabled. Recipe exceptions always log their ID and stack trace.",
+  "wwmc.configuration.diagnosticStallSeconds": "Stall delay (seconds)",
+  "wwmc.configuration.diagnosticStallSeconds.tooltip": "Loaded seconds of a sustained worker problem before its first warning. Default: 120; range: 10 to 3600. Ordinary idle work and off-duty citizens are excluded.",
+  "wwmc.configuration.diagnosticRepeatSeconds": "Repeat interval (seconds)",
+  "wwmc.configuration.diagnosticRepeatSeconds.tooltip": "Minimum seconds between repeat warnings of the same kind for one citizen. Default: 300; range: 30 to 3600. Changing activity or job does not bypass the worker-warning cooldown."
 }

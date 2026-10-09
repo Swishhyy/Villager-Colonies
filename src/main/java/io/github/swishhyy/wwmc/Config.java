@@ -43,6 +43,9 @@ public final class Config {
     public static final ModConfigSpec.IntValue MAX_EXPEDITIONS = B.comment("Maximum expedition sites per dimension; cleared sites are retained for journals and outposts.").defineInRange("maxExpeditionSites",64,0,256);
     public static final ModConfigSpec.IntValue MAX_BANDITS = B.comment("Maximum living expedition defenders and convoy raiders, including unloaded defenders.").defineInRange("maxExpeditionBandits",48,0,256);
     public static final ModConfigSpec.BooleanValue CONVOY_RAIDS = B.comment("Occupied sites can warn of and launch small convoy raids only while a player is nearby.").define("convoyRaids",true);
+    public static final ModConfigSpec.BooleanValue SERVER_DIAGNOSTICS = B.comment("Log sustained worker problems, citizen recovery and missing-citizen searches to the server console and latest.log. Recipe exceptions always log their stack trace.").define("serverDiagnostics",true);
+    public static final ModConfigSpec.IntValue DIAGNOSTIC_DELAY = B.comment("Loaded seconds a worker must report a problem before its first warning; ordinary idle work and off-duty citizens are excluded.").defineInRange("diagnosticStallSeconds",120,10,3600);
+    public static final ModConfigSpec.IntValue DIAGNOSTIC_REPEAT = B.comment("Minimum seconds between repeated warnings for one citizen, including changing problems and repeated rescue attempts.").defineInRange("diagnosticRepeatSeconds",300,30,3600);
     public static final ModConfigSpec SPEC = B.build();
     private Config() {}
 }

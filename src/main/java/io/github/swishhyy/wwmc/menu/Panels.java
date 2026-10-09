@@ -112,7 +112,7 @@ public final class Panels {
         int barrels=0;
         for(Station station:town.stations) barrels+=SettlementService.jobBarrels(level,town,station).size();
         overview.add(new Row(icon(Items.BARREL),"Job barrels",barrels==0 ? "None: put a barrel in a work station's range"
-                : barrels+" barrels"+(SettlementService.couriers(level,town) ? ", emptied by couriers" : "; add a Courier Station to collect from them")));
+                : barrels+" barrels"+(SettlementService.couriers(level,town) ? ", collected by assigned couriers" : "; "+SettlementService.courierAdvice(level,town))));
         overview.add(new Row(icon(Items.COMPASS),"Claim",town.radius+" blocks from the banner on X and Z"));
         overview.add(new Row(icon(Items.WHEAT),"Job priorities",switch(town.priority) {
             case "food" -> "Food preset: farms and cooks first";

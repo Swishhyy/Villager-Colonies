@@ -43,7 +43,7 @@ WWMC uses a custom four-part format: **release.milestone.update.hotfix**. It is 
 | Update | A normal feature, improvement, balance, or maintenance update | `0.1.1.0` |
 | Hotfix | A focused correction to the current update | `0.1.0.1` |
 
-Increase only the relevant part, reset every part to its right to zero, and never reuse a public version for different JAR contents. The numbers track releases, not a percentage of completion. Edit `mod_version` in `gradle.properties`; Gradle uses it for the JAR filename and NeoForge metadata, and CI uses it for the downloadable artifact name.
+The maintainer chooses when to change the version. Keep the working branch at **0.1.0.0** while its stability fixes are being tested, and list those changes as unreleased. For the next public release, increase the relevant part and reset every part to its right to zero. The numbers track releases, not a percentage of completion. Edit `mod_version` in `gradle.properties`; Gradle uses it for the JAR filename and NeoForge metadata, and CI uses it for the downloadable artifact name.
 
 `0.1.0.0` is a one-time reset from the internal `0.14.0-alpha` numbering. Earlier development history stays under its original numbers. This does not remove features or change the mod ID or saved-data formats. Version comparators consider the new number lower than the old one, so existing testers must replace the old JAR manually and use matching client/server builds. Keep only one WWMC JAR in each `mods` directory.
 
@@ -51,19 +51,23 @@ The numeric version has no `-alpha` suffix. The leading `0` and the project desc
 
 ## File upload
 
-1. Build with `./gradlew build`, or download the artifact from a successful [GitHub Actions build](https://github.com/Swishhyy/World-War-MC/actions/workflows/build.yml). CI produces `wwmc-0.1.0.1-neoforge-mc26.2` and uploads only the distributable mod JAR.
-2. If downloaded from Actions, extract the artifact ZIP. Upload **`wwmc-0.1.0.1.jar`**, not the artifact ZIP, a sources JAR, or a test JAR.
-3. Set **Display Name** to **World War MC 0.1.0.1 - NeoForge 26.2**.
+1. Build with `./gradlew build`, or download the artifact from a successful [GitHub Actions build](https://github.com/Swishhyy/World-War-MC/actions/workflows/build.yml). CI produces `wwmc-0.1.0.0-neoforge-mc26.2` and uploads only the distributable mod JAR.
+2. If downloaded from Actions, extract the artifact ZIP. Upload **`wwmc-0.1.0.0.jar`**, not the artifact ZIP, a sources JAR, or a test JAR.
+3. Set **Display Name** to **World War MC 0.1.0.0 - NeoForge 26.2**.
 4. Select **Minecraft 26.2** and the **NeoForge** loader, and use the **MIT License** already present in this repository.
 5. Set **Release Type** to **Release** for this playable public build. Keep the early-development notice in the description: this channel choice does not declare the mod complete. Release files sync to the CurseForge app by default and are used by the default download button. A new project with only Alpha files is available on the website; an approved Beta or Release file is required for the project to appear in the app, and Beta/Alpha installs require users to opt into those channels.
 6. Use the changelog below and submit the file. Save the corrected project summary and use the dashboard's submission controls to send the project back for moderation. Approval remains CurseForge's decision.
 
-### 0.1.0.1 changelog
+### Unreleased stability changes
+
+- Recover injured citizens from outside loaded range and retry failed recalls correctly.
+- Explain hauling problems when Courier jobs are disabled, unstaffed or unavailable.
+- Add configurable worker/recovery diagnostics and recipe error stack traces in server logs.
 
 - Fix reachable job barrels and work furniture being rejected on bottom slabs and carpets.
 - Show filled job places separately from support station counts and explain unemployment, disabled jobs and waiting places.
 - Clarify missing versus inaccessible job barrels and show full hover text beside action buttons.
-- Preserve existing town saves, jobs and inventories. Install matching 0.1.0.1 builds on the client and server.
+- Preserve existing town saves, jobs and inventories. Install the same build on the client and server.
 
 ### 0.1.0.0 changelog
 
