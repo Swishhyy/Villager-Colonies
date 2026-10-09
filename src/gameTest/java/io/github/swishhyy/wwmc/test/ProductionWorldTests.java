@@ -20,6 +20,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.neoforged.testframework.DynamicTest;
 import net.neoforged.testframework.annotation.TestHolder;
@@ -28,6 +29,45 @@ import net.neoforged.testframework.gametest.GameTest;
 
 /** Physical appliances, late supplies, pickaxe replenishment and station upgrade drops in a loaded server world. */
 public final class ProductionWorldTests {
+    @GameTest(timeoutTicks=1600)
+    @EmptyTemplate
+    @TestHolder(description="A lumberjack fetches an axe from its player-placed job barrel touching a natural trunk and fells the tree without removing the barrel.")
+    static void fellsTreeBesideJobBarrel(DynamicTest test) { lumberBesideFixture(test,-7600,false); }
+
+    @GameTest(timeoutTicks=1600)
+    @EmptyTemplate
+    @TestHolder(description="A player-placed Lumber Station beside a natural trunk does not misclassify the tree as a building.")
+    static void fellsTreeBesideLumberStation(DynamicTest test) { lumberBesideFixture(test,-7800,true); }
+
+    private static void lumberBesideFixture(DynamicTest test,int offset,boolean stationBesideTree) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,offset));
+            Station lumber=new Station(start.east(24),StructureRole.LUMBER);
+            var f=fixture(level,start,lumber);
+            BlockPos root=lumber.position().east(stationBesideTree ? 1 : 2);
+            for(int y=0;y<4;y++) level.setBlockAndUpdate(root.above(y),Blocks.OAK_LOG.defaultBlockState());
+            for(int x=-1;x<=1;x++) for(int z=-1;z<=1;z++) if(x!=0 || z!=0)
+                level.setBlockAndUpdate(root.offset(x,3,z),Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,false));
+            BlockPos storage=stationBesideTree ? lumber.position().west(2) : root.south().above();
+            Container supplies=barrel(level,storage,new ItemStack(Items.IRON_AXE));
+            WorldWorkData.get(level).protect(storage); WorldWorkData.get(level).protect(lumber.position());
+            var citizen=f.worker(lumber,lumber.position().west(3));
+            citizen.bag().offer(new ItemStack(Items.BREAD,2));
+            helper.runAtTickTime(5,() -> {
+                helper.assertTrue(ForestryService.tree(level,f.town(),root)!=null,
+                        "Natural tree was rejected because it touches its lumber work fixture");
+                helper.succeedWhen(() -> {
+                    helper.assertTrue(!level.getBlockState(root).is(Blocks.OAK_LOG),"Lumberjack did not fell the tree: "+describe(citizen));
+                    for(int y=1;y<4;y++) helper.assertTrue(!level.getBlockState(root.above(y)).is(Blocks.OAK_LOG),"Tree was only partly felled");
+                    helper.assertTrue(citizen.bag().count(Items.OAK_LOG)+count(supplies,Items.OAK_LOG)==4,"Whole-tree log drops were lost or duplicated");
+                    helper.assertTrue(level.getBlockState(storage).is(Blocks.BARREL) && level.getBlockEntity(storage)==supplies,"The job barrel was changed");
+                    helper.assertTrue(level.getBlockState(lumber.position()).getBlock()==WWMC.STATIONS.get(StructureRole.LUMBER).get(),"The Lumber Station was changed");
+                    f.close();
+                });
+            });
+        });
+    }
+
     private record Fixture(ServerLevel level,BlockPos start,List<ChunkPos> chunks,Settlement town,List<CitizenEntity> workers) {
         CitizenEntity worker(Station station,BlockPos feet) {
             var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level); citizen.join(town.id);
