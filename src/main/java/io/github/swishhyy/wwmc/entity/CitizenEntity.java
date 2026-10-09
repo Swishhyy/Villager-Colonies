@@ -146,7 +146,8 @@ public final class CitizenEntity extends Villager {
     private boolean processingDelivery,processingSupplied;
     private long nextProcessingAt,guardSupplyAt;
     private int processingIdle;
-    private final Map<BlockPos,Long> idleStations=new HashMap<>();
+    private record IdleStation(long until,String reason) {}
+    private final Map<BlockPos,IdleStation> idleStations=new HashMap<>();
     private UUID settlementId;
     private BlockPos workplace, target, sleepingBed,workStand,clearingLeaf;
     private final CitizenInventory cargo=new CitizenInventory(this::canOpenInventory);
@@ -315,9 +316,10 @@ public final class CitizenEntity extends Villager {
         }
         if(spot==null) { activity="Stuck, and the settlement banner has no free standing room"; return; }
         getNavigation().stop();
-        if(!abandonTrip(level) && workplace!=null) { idleStations.put(workplace,level.getGameTime()+200); releaseWork(level); }
-        setPos(spot.x,spot.y,spot.z); resetFallDistance();
+        boolean abandoned=abandonTrip(level);
         activity="Got stuck and returned to the settlement banner";
+        if(!abandoned && workplace!=null) { pauseStation(level,workplace,200); releaseWork(level); }
+        setPos(spot.x,spot.y,spot.z); resetFallDistance();
     }
     /** Abandons the trip under way, so the citizen does not walk straight back into the same trap; false when there was none. */
     private boolean abandonTrip(ServerLevel level) {
@@ -546,7 +548,7 @@ public final class CitizenEntity extends Villager {
     private Station chooseJob(ServerLevel level,Settlement town) {
         var book=SettlementService.workers(level);
         long now=level.getGameTime();
-        idleStations.entrySet().removeIf(e -> e.getValue()<=now);
+        idleStations.entrySet().removeIf(e -> e.getValue().until()<=now);
         JobBoard jobs=town.jobs;
         Station home=homeStation(town);
         if(home!=null && !keepsJob(level,town,home)) { jobs.release(getUUID()); home=null; SettlementData.get(level).setDirty(); }
@@ -559,9 +561,14 @@ public final class CitizenEntity extends Villager {
         if(!SettlementService.active(level,home)) { jobNote="Waiting for my "+name+" to load"; return null; }
         if(night(level) && home.role()!=StructureRole.GUARD) { jobNote="Off duty until morning"; return null; }
         if(!traderOpen(level,town,home)) { jobNote="Waiting for a connected, unpaused trade route"; return null; }
-        if(idleStations.containsKey(home.position())) { jobNote="No work at my "+name+" right now; waiting nearby"; return null; }
+        IdleStation idle=idleStations.get(home.position());
+        if(idle!=null) { jobNote=idle.reason(); return null; }
         if(book.claim(home.position(),getUUID(),now,200,SettlementService.workerLimit(town,home))) return home;
         jobNote="My "+name+" crew is full for now"; return null;
+    }
+    /** Keep the actual problem visible in screens and diagnostics until this job is retried. */
+    private void pauseStation(ServerLevel level,BlockPos station,int ticks) {
+        idleStations.put(station,new IdleStation(level.getGameTime()+ticks,activity));
     }
     /** Part-way through an enchantment, a repair or a trade run, a citizen finishes before changing job. */
     private boolean midTask() { return !enchantItem.isEmpty() || !repairItem.isEmpty() || tradeShipment.travelling(); }
@@ -1542,14 +1549,14 @@ public final class CitizenEntity extends Villager {
             Crafting.Recipe next=Crafting.choose(stock,storage,town.disabledRecipes,station.role());
             if(next==null || Crafting.fetch(stock,storage,cargo,next)==0) {
                 activity="Waiting for orders or courier-delivered ingredients in the kitchen barrel";
-                idleStations.put(station.position(),level.getGameTime()+400); releaseWork(level); searchDelay=20; return;
+                pauseStation(level,station.position(),400); releaseWork(level); searchDelay=20; return;
             }
             order=next; workProgress=0; pathTicks=0;
         }
         if(!canUse(level,bench)) {
             activity="Carrying materials for "+order.label()+" to the workbench"; pathTicks+=10;
             if(station.role().processes()) { approachProcessor(level,town); return; }
-            if(!walk(bench) || pathTicks>1200) { idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); }
+            if(!walk(bench) || pathTicks>1200) { pauseStation(level,station.position(),200); releaseWork(level); }
             return;
         }
         getNavigation().stop(); pathTicks=0;
@@ -1581,14 +1588,14 @@ public final class CitizenEntity extends Villager {
             List<Container> sources=local;
             if(next==null || Workshop.fetch(Workshop.Recipes.of(level),town.craftOrders,next,stock,sources,cargo)==0) {
                 activity="Orders are stocked, or waiting for courier-delivered materials";
-                idleStations.put(station.position(),level.getGameTime()+400); releaseWork(level); searchDelay=20; return;
+                pauseStation(level,station.position(),400); releaseWork(level); searchDelay=20; return;
             }
             craftJob=next; workProgress=0; pathTicks=0;
         }
         String product=craftJob.plan().result().getHoverName().getString();
         if(!canUse(level,bench)) {
             activity="Carrying materials for "+product+" to the workbench"; pathTicks+=10;
-            if(!walk(bench) || pathTicks>1200) { idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); }
+            if(!walk(bench) || pathTicks>1200) { pauseStation(level,station.position(),200); releaseWork(level); }
             return;
         }
         getNavigation().stop(); pathTicks=0;
@@ -1608,7 +1615,7 @@ public final class CitizenEntity extends Villager {
         BlockPos warehouse=SettlementService.warehouse(level,town,blockPosition());
         if(warehouse==null) {
             activity="Needs a loaded warehouse to carry goods to";
-            idleStations.put(station.position(),level.getGameTime()+400); releaseWork(level); searchDelay=20; return;
+            pauseStation(level,station.position(),400); releaseWork(level); searchDelay=20; return;
         }
         Station job=haulStation==null ? null : town.station(haulStation);
         List<BlockPos> barrels=job==null ? List.of() : SettlementService.jobBarrels(level,town,job);
@@ -1622,7 +1629,7 @@ public final class CitizenEntity extends Villager {
             job=errand(level,town,warehouse);
             if(job==null) {
                 activity="No goods waiting in job barrels";
-                idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); searchDelay=20; return;
+                pauseStation(level,station.position(),200); releaseWork(level); searchDelay=20; return;
             }
             barrels=SettlementService.jobBarrels(level,town,job);
         }
@@ -1745,14 +1752,14 @@ public final class CitizenEntity extends Villager {
         List<BlockPos> devices=SettlementService.processingDevices(level,town,station);
         if(devices.isEmpty()) {
             activity=station.role()==StructureRole.COOK ? "Needs a furnace, smoker or lit campfire in range" : "Needs a furnace or blast furnace in range";
-            idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); return;
+            pauseStation(level,station.position(),200); releaseWork(level); return;
         }
         if(processor==null || !devices.contains(processor)
                 || !canUse(level,processor) && !standingSpotUsable(level,town,processorStand,processor)) {
             if(!chooseProcessingApproach(level,town,devices)) {
                 if(reachBudget.deferred()) { activity="Checking reachable cooking/smelting blocks"; return; }
                 activity="Cannot reach the station's appliances";
-                idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); return;
+                pauseStation(level,station.position(),200); releaseWork(level); return;
             }
             pathTicks=0;
         }
@@ -1790,7 +1797,7 @@ public final class CitizenEntity extends Villager {
             }
             if(++processingIdle>=devices.size()) {
                 activity="Waiting for courier-delivered processing inputs";
-                idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); return;
+                pauseStation(level,station.position(),200); releaseWork(level); return;
             }
         } else processingIdle=0;
         if(ProcessingService.needsFuel(level,processor)) activity="Waiting for couriers to deliver furnace/smoker fuel";
@@ -2003,7 +2010,7 @@ public final class CitizenEntity extends Villager {
             activity="Carrying "+name+" to the enchanting table"; pathTicks+=10;
             if(!walk(enchantStand,0.65,0) && onGround() || pathTicks>1200) {
                 if(failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(enchantStand,level.getGameTime()+1200);
-                idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level);
+                pauseStation(level,station.position(),200); releaseWork(level);
             }
             return;
         }
@@ -2315,7 +2322,7 @@ public final class CitizenEntity extends Villager {
             if(stationary && !handNear(station.position())) {
                 activity="Returning to the "+station.role().id()+" worksite"; pathTicks+=10;
                 if(!walk(station.position()) || pathTicks>1200) {
-                    idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level);
+                    pauseStation(level,station.position(),200); releaseWork(level);
                 }
                 return;
             }
@@ -2324,7 +2331,7 @@ public final class CitizenEntity extends Villager {
                 if(reachBudget.deferred()) { activity="Checking accessible work nearby"; return; }
                 if(cargo.hasDeliverable(this::retainSupply,this::food)) { visitDepot(level,town,station); return; }
                 activity=idleReason(level,town,station);
-                idleStations.put(station.position(),level.getGameTime()+200); releaseWork(level); searchDelay=20; return;
+                pauseStation(level,station.position(),200); releaseWork(level); searchDelay=20; return;
             }
             pathTicks=0; blindTicks=0;
         }
