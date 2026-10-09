@@ -90,7 +90,11 @@ public final class AgeProgression {
         }
     }
     @SubscribeEvent public void block(PlayerInteractEvent.RightClickBlock event) {
-        if(event.getEntity() instanceof ServerPlayer && denyHand(event.getEntity(),event.getHand())) {
+        if(!(event.getEntity() instanceof ServerPlayer player)) return;
+        ItemStack block=new ItemStack(event.getLevel().getBlockState(event.getPos()).getBlock().asItem());
+        boolean lockedBlock=!allowed(player,block);
+        if(denyHand(player,event.getHand()) || lockedBlock) {
+            if(lockedBlock) notice(player,block);
             event.setCanceled(true); event.setCancellationResult(InteractionResult.FAIL);
         }
     }

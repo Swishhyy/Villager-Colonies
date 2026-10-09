@@ -57,9 +57,10 @@ import net.neoforged.neoforge.common.Tags;
 public final class CitizenEntity extends Villager {
     private static final EntityDataAccessor<Integer> JOB_LOOK=SynchedEntityData.defineId(CitizenEntity.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> WORK_LOOK=SynchedEntityData.defineId(CitizenEntity.class,EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Long> WORK_BEGAN=SynchedEntityData.defineId(CitizenEntity.class,EntityDataSerializers.LONG);
     private long workingUntil,nextFeedbackPulse,nextFeedbackSound;
     @Override protected void defineSynchedData(SynchedEntityData.Builder builder) {
-        super.defineSynchedData(builder); builder.define(JOB_LOOK,-1); builder.define(WORK_LOOK,WorkFeedback.NONE);
+        super.defineSynchedData(builder); builder.define(JOB_LOOK,-1); builder.define(WORK_LOOK,WorkFeedback.NONE); builder.define(WORK_BEGAN,0L);
     }
     /** The saved assignment, also visible to remote clients while the worker is idle or resting. */
     public StructureRole appearanceJob() {
@@ -67,8 +68,10 @@ public final class CitizenEntity extends Villager {
         return job>=0 && job<StructureRole.values().length ? StructureRole.values()[job] : null;
     }
     public int workAnimation() { return entityData.get(WORK_LOOK); }
+    public long workAnimationBegan() { return entityData.get(WORK_BEGAN); }
     public void working(int kind) {
         if(!(level() instanceof ServerLevel) || isSleeping() || recovering) return;
+        if(entityData.get(WORK_LOOK)!=kind || level().getGameTime()>=workingUntil) entityData.set(WORK_BEGAN,level().getGameTime());
         workingUntil=level().getGameTime()+15; entityData.set(WORK_LOOK,kind);
     }
     public boolean feedbackPulse(long now) { if(now<nextFeedbackPulse) return false; nextFeedbackPulse=now+20; return true; }
@@ -1639,6 +1642,10 @@ public final class CitizenEntity extends Villager {
      */
     private void craftsman(ServerLevel level,Settlement town,Station station) {
         BlockPos bench=station.position();
+        if(craftJob!=null && !AgeProgression.allowed(town,craftJob.plan().result())) {
+            activity="Workshop order requires "+AgeProgression.requirement(craftJob.plan().result())+" research";
+            getNavigation().stop(); return;
+        }
         if(craftJob!=null && (Workshop.find(town,craftJob.order().item())<0 || town.craftOrders.get(Workshop.find(town,craftJob.order().item())).target()<=0
                 || !Workshop.ready(cargo,craftJob.plan()))) craftJob=null;
         if(craftJob==null) {
@@ -1646,7 +1653,11 @@ public final class CitizenEntity extends Villager {
             List<Container> stock=SettlementService.townStorage(level,town);
             BlockPos barrel=jobBarrel(level,town,station);
             List<Container> local=SettlementService.jobStorage(level,town,station);
-            Workshop.Job next=barrel==null ? null : Workshop.choose(Workshop.Recipes.of(level),town.craftOrders,stock,local);
+            var permitted=town.craftOrders.stream().filter(o -> {
+                var item=net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse(o.item()));
+                return item!=null && AgeProgression.allowed(town,new ItemStack(item));
+            }).toList();
+            Workshop.Job next=barrel==null ? null : Workshop.choose(Workshop.Recipes.of(level),permitted,stock,local);
             if(barrel==null) return;
             if(!visitStorage(level,town,station.role(),barrel,local,false)) return;
             List<Container> sources=local;

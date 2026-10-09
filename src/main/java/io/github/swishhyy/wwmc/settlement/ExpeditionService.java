@@ -51,14 +51,17 @@ public final class ExpeditionService {
         return siteIssue(level,pos).isEmpty();
     }
     public static String siteIssue(ServerLevel level,BlockPos pos) {
+        return siteIssue(level,pos,5);
+    }
+    private static String siteIssue(ServerLevel level,BlockPos pos,int radius) {
         var data=SettlementData.get(level); var protection=WorldWorkData.get(level);
-        if(data.settlements.stream().anyMatch(t -> t.overlaps(pos,Settlement.MIN_RADIUS+8))) return "too close to an existing claim";
-        for(int x=-5;x<=5;x++) for(int z=-5;z<=5;z++) {
+        if(data.settlements.stream().anyMatch(t -> t.overlaps(pos,Settlement.MIN_RADIUS+radius+3))) return "too close to an existing claim";
+        for(int x=-radius;x<=radius;x++) for(int z=-radius;z<=radius;z++) {
             BlockPos feet=pos.offset(x,0,z); if(!level.hasChunkAt(feet)) return "unloaded ground at "+feet.toShortString();
             int ground=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,feet.getX(),feet.getZ());
             if(Math.abs(ground-pos.getY())>2) return "uneven ground at "+feet.toShortString()+"; height "+ground;
             if(!level.getFluidState(new BlockPos(feet.getX(),ground-1,feet.getZ())).isEmpty()) return "wet ground at "+feet.toShortString();
-            for(int y=-3;y<=4;y++) {
+            for(int y=-3;y<=6;y++) {
                 BlockPos block=feet.offset(0,y,0); var state=level.getBlockState(block);
                 if(protection.protectedBlocks.contains(block) || level.getBlockEntity(block)!=null) return "protected construction at "+block.toShortString();
                 if(!state.isAir() && !state.is(Blocks.GRASS_BLOCK) && !state.is(BlockTags.DIRT) && !state.is(BlockTags.BASE_STONE_OVERWORLD) && !state.is(BlockTags.LEAVES)
@@ -72,7 +75,7 @@ public final class ExpeditionService {
         if(data.sites.size()>=Config.MAX_EXPEDITIONS.get() || data.sites.stream().anyMatch(s -> s.region.equals(region) || s.pos.distSqr(probe)<384*384)) return null;
         if(!level.hasChunkAt(probe)) return null;
         BlockPos pos=new BlockPos(probe.getX(),level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,probe.getX(),probe.getZ()),probe.getZ());
-        if(!clearSite(level,pos)) return null;
+        if(!siteIssue(level,pos,RuinedSites.radius(kind)).isEmpty()) return null;
         UUID id=UUID.nameUUIDFromBytes((level.getSeed()+":"+region).getBytes(StandardCharsets.UTF_8));
         String objective=switch(kind) {
             case "fort" -> ExpeditionData.Site.LEADER;
@@ -92,6 +95,10 @@ public final class ExpeditionService {
     }
     private static void build(ServerLevel level,ExpeditionData.Site site) {
         BlockPos c=site.pos;
+        if(site.kind.equals("fort") || site.kind.equals("mine")) {
+            RuinedSites.build(level,site);
+            cache(level,site); return;
+        }
         for(int x=-4;x<=4;x++) for(int z=-4;z<=4;z++) {
             put(level,c.offset(x,-1,z),(site.kind.equals("fort") ? Blocks.STONE_BRICKS : Blocks.COBBLESTONE).defaultBlockState());
             for(int y=0;y<=3;y++) level.setBlock(c.offset(x,y,z),Blocks.AIR.defaultBlockState(),3);
@@ -106,12 +113,18 @@ public final class ExpeditionService {
             put(level,c.offset(x,0,-2),bed.setValue(BedBlock.PART,BedPart.FOOT));
             put(level,c.offset(x,0,-3),bed.setValue(BedBlock.PART,BedPart.HEAD));
         }
+        cache(level,site);
+    }
+    private static void cache(ServerLevel level,ExpeditionData.Site site) {
+        BlockPos c=site.pos;
         put(level,c.east(3),Blocks.BARREL.defaultBlockState());
         put(level,c.west(3),Blocks.BARREL.defaultBlockState());
         var cache=(Container)level.getBlockEntity(c.east(3));
         cache.setItem(0,new ItemStack(Items.IRON_INGOT,site.kind.equals("fort") ? 24 : 12));
         cache.setItem(1,new ItemStack(Items.BREAD,16)); cache.setItem(2,new ItemStack(Items.EMERALD,4));
         cache.setItem(3,new ItemStack(Items.STONE_PICKAXE)); cache.setItem(4,new ItemStack(Items.PAPER,16)); cache.setChanged();
+        cache.setItem(6,new ItemStack(WWMC.GUIDE.get())); cache.setItem(7,new ItemStack(WWMC.TIN_INGOT.get(),8));
+        cache.setChanged();
         if(site.kind.equals("mine")) for(int y=0;y<2;y++) level.setBlock(c.offset(-4,y,-1),ore(site).defaultBlockState(),3);
         if(ExpeditionData.Site.RESCUE.equals(site.objective)) {
             // A fenced pen in the south-east corner, clear of the outpost's station spots.

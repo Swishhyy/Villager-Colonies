@@ -16,8 +16,9 @@ import com.mojang.blaze3d.vertex.PoseStack;
 /** Vanilla profession clothes plus job-colored sashes and hats; these are visual layers, never equipment items. */
 public final class CitizenOutfitLayer extends RenderLayer<CitizenRenderer.State,CitizenModel> {
     public static final ModelLayerLocation LAYER=new ModelLayerLocation(Identifier.fromNamespaceAndPath(WWMC.MODID,"citizen_outfit"),"main");
+    public static final ModelLayerLocation PROFESSION=new ModelLayerLocation(Identifier.fromNamespaceAndPath(WWMC.MODID,"citizen_profession"),"main");
     private static final Identifier CLOTH=Identifier.withDefaultNamespace("textures/block/white_wool.png");
-    private final CitizenModel accents;
+    private final CitizenModel accents,profession;
     private record Outfit(String profession,int color) {}
     private static Outfit outfit(StructureRole role) {
         return switch(role) {
@@ -38,11 +39,13 @@ public final class CitizenOutfitLayer extends RenderLayer<CitizenRenderer.State,
             case ANIMAL_KEEPER -> new Outfit("shepherd",0xFFB2CA6B);
             case BUTCHER -> new Outfit("butcher",0xFFC46D83);
             case HOSPITAL -> new Outfit("librarian",0xFFF3F6F5);
+            case RESEARCHER -> new Outfit("librarian",0xFF5573BE);
             default -> new Outfit("none",0xFF8C7763);
         };
     }
     public CitizenOutfitLayer(CitizenRenderer parent,EntityRendererProvider.Context context) {
         super(parent); accents=new CitizenModel(context.bakeLayer(LAYER),true);
+        profession=new CitizenModel(context.bakeLayer(PROFESSION),false,true);
     }
     public static LayerDefinition createBodyLayer() {
         MeshDefinition mesh=new MeshDefinition(); var root=mesh.getRoot();
@@ -62,7 +65,7 @@ public final class CitizenOutfitLayer extends RenderLayer<CitizenRenderer.State,
         if(state.isInvisible || state.job==null) return;
         Outfit outfit=outfit(state.job);
         Identifier clothes=Identifier.withDefaultNamespace("textures/entity/villager/profession/"+outfit.profession()+".png");
-        renderColoredCutoutModel(getParentModel(),clothes,poses,collector,light,state,0xFFFFFFFF,1);
+        renderColoredCutoutModel(profession,clothes,poses,collector,light,state,0xFFFFFFFF,1);
         renderColoredCutoutModel(accents,CLOTH,poses,collector,light,state,outfit.color(),2);
     }
 }

@@ -21,7 +21,7 @@ public enum StructureRole {
     public boolean excavates() { return this==MINE || this==QUARRY; }
     public boolean processes() { return this==SMELTERY || this==COOK; }
     /** Jobs whose barrels in range hold their tools, supplies and finished goods; couriers move goods between them and the warehouse. */
-    public boolean keepsJobStorage() { return worker && this!=COURIER && this!=TRADER; }
+    public boolean keepsJobStorage() { return worker && this!=COURIER && this!=TRADER && this!=RESEARCHER; }
     public boolean animalJob() { return this==HUNTER || this==FISHERMAN || this==ANIMAL_KEEPER || this==BUTCHER; }
     public boolean foodJob() { return this==FARM || this==COOK || animalJob(); }
     /** Display name such as "Craftsman". */

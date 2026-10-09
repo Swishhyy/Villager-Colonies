@@ -18,7 +18,7 @@ public final class WorkFeedback {
         worker.working(kind);
         long now=level.getGameTime();
         if(worker.feedbackPulse(now)) {
-            if(kind!=ENCHANTING && kind!=FISHING) worker.swing(InteractionHand.MAIN_HAND);
+            if(kind!=ENCHANTING && kind!=FISHING && kind!=FISHING_CAST && kind!=FISHING_REEL && kind!=RESEARCHING) worker.swing(InteractionHand.MAIN_HAND);
             double x=at.getX()+0.5,y=at.getY()+0.7,z=at.getZ()+0.5;
             switch(kind) {
                 case MINING,CHOPPING,FARMING,BUTCHERING -> {
@@ -29,6 +29,7 @@ public final class WorkFeedback {
                 case SMITHING -> level.sendParticles(ParticleTypes.CRIT,x,y+0.3,z,2,0.18,0.08,0.18,0.04);
                 case PROCESSING -> level.sendParticles(ParticleTypes.SMOKE,x,y+0.4,z,2,0.1,0.12,0.1,0.01);
                 case FISHING -> level.sendParticles(ParticleTypes.BUBBLE,x,y+0.25,z,2,0.12,0.02,0.12,0);
+                case RESEARCHING -> level.sendParticles(ParticleTypes.ENCHANT,x,y+0.4,z,1,0.15,0.05,0.15,0.02);
                 case TREATING -> level.sendParticles(ParticleTypes.HAPPY_VILLAGER,x,y+0.5,z,2,0.2,0.2,0.2,0);
                 default -> { }
             }
