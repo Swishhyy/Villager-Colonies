@@ -69,6 +69,25 @@ public final class CitizenReachChecks {
         assertTrue(CitizenReach.canUse(world,eye,crop),"Thin crop outlines remain reachable");
     }
     @Test @ExtendWith(EphemeralTestServerProvider.class)
+    void harmlessPlantsDoNotBlockWorkButWallsLeavesAndHazardsStillDo(MinecraftServer server) {
+        Terrain world=new Terrain(); Vec3 eye=new Vec3(0.5,65.6,0.5);
+        BlockPos barrel=new BlockPos(4,64,0),cover=new BlockPos(2,65,0);
+        world.blocks.put(barrel,Blocks.BARREL.defaultBlockState());
+        for(BlockState plant:List.of(Blocks.SHORT_GRASS.defaultBlockState(),Blocks.TALL_GRASS.defaultBlockState(),
+                Blocks.FERN.defaultBlockState(),Blocks.LARGE_FERN.defaultBlockState(),Blocks.DANDELION.defaultBlockState(),Blocks.POPPY.defaultBlockState())) {
+            world.blocks.put(cover,plant);
+            assertTrue(CitizenReach.canUse(world,eye,barrel),"Harmless plants blocked a reachable barrel: "+plant);
+            assertTrue(CitizenReach.canUse(world,eye,cover),"The plant itself still needs a selectable work outline");
+        }
+        for(BlockState obstacle:List.of(Blocks.STONE.defaultBlockState(),Blocks.OAK_LEAVES.defaultBlockState(),Blocks.WITHER_ROSE.defaultBlockState())) {
+            world.blocks.put(cover,obstacle);
+            assertFalse(CitizenReach.softCover(world,cover,obstacle),"An obstruction or damaging plant was ignored");
+            assertFalse(CitizenReach.canUse(world,eye,barrel),"Work reached through an obstruction: "+obstacle);
+        }
+        world.blocks.put(cover,Blocks.WHEAT.defaultBlockState());
+        assertFalse(CitizenReach.softCover(world,cover,world.getBlockState(cover)),"Crops must retain their own work shapes");
+    }
+    @Test @ExtendWith(EphemeralTestServerProvider.class)
     void treeApproachesHaveClearBodiesAndFirmFooting(MinecraftServer server) {
         Terrain world=new Terrain(); BlockPos trunk=new BlockPos(0,64,0);
         for(int x=-5;x<=5;x++) for(int z=-5;z<=5;z++) world.blocks.put(new BlockPos(x,63,z),Blocks.GRASS_BLOCK.defaultBlockState());

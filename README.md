@@ -22,6 +22,8 @@ Larger warfare systems, countries, automatic building, and distant settlement si
 
 ## Install
 
+This branch is testing **0.1.1.0**: worker movement, guard defense, bed shelter, population research, and quieter notifications. It remains separate from the latest public release, **0.1.0.1**. A successful build of this branch provides `wwmc-0.1.1.0.jar` for testing.
+
 | Requirement | Version |
 | --- | --- |
 | Minecraft Java Edition | **26.2** |

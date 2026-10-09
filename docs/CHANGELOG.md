@@ -2,10 +2,18 @@
 
 [Project overview](../README.md) · [All guides](README.md) · [Versioning rules](curseforge.md#public-version-format)
 
-## Unreleased
+## 0.1.1.0
+
+In development on a separate branch; not yet released.
 
 - Let lumberjacks fell natural trees beside their own job barrels or Lumber Station. Keep player-placed logs, nearby building planks and unrelated storage protected.
 - Keep a worker's actual status visible during its retry pause instead of replacing it with "No work".
+- Stop harmless flowers and grass from blocking worker paths and interactions.
+- Return workers with blocked job routes to their job after 30 seconds without progress. Traders are exempt; jobs and inventories are retained.
+- Mobilize guards as soon as a wave arrives, let shield guards answer the alarm, and keep injured guards defending until combat ends before hospital recovery.
+- Send frightened civilians to reachable housing beds, including through house doors, instead of fleeing outdoors.
+- Add Housing Plans, Civic Planning and City Planning research for 10, 15 and 25 extra population places, alongside emerald upgrades and within the server maximum.
+- Move skill promotions and hospital recoveries into the settlement banner's Campaign / Journal tab. Other campaign notices use the hotbar instead of filling chat.
 
 ## 0.1.0.1
 

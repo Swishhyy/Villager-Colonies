@@ -145,7 +145,7 @@ public final class CitizenEntity extends Villager {
     private Vec3 blockedJobAnchor;
     private long blockedJobSince=-1,lastBlockedJobAttempt;
     private static final int COMBAT_QUIET_TICKS=200;
-    private long combatUntil=-1,nextFearCheck;
+    private long combatUntil=-1,fearUntil=-1,nextFearCheck;
     private UUID combatEnemy;
     private boolean nearbyDanger,sheltering;
     private BlockPos patrolTarget,activePost;
@@ -1492,9 +1492,9 @@ public final class CitizenEntity extends Villager {
         }
         BlockPos bell=DefenseService.bellRun(town,getUUID());
         boolean alarm=DefenseService.alarmed(town);
-        LivingEntity attacker=combatEnemy==null ? null : level.getEntity(combatEnemy) instanceof LivingEntity living ? living : null;
-        if(attacker instanceof Monster hostile && DefenseService.hostile(hostile) && town.contains(hostile.blockPosition())
-                && distanceToSqr(hostile)<=48*48) { wakeForAlarm(); readyMelee(); fight(level,hostile); return; }
+        LivingEntity aggressor=combatEnemy==null ? null : level.getEntity(combatEnemy) instanceof LivingEntity living ? living : null;
+        if(aggressor instanceof Monster hostile && DefenseService.hostile(hostile) && town.contains(hostile.blockPosition())
+                && distanceToSqr(hostile)<=48*48 && hasLineOfSight(hostile)) { wakeForAlarm(); readyMelee(); fight(level,hostile); return; }
         if(!GuardService.onDuty(level,town,station.position(),getUUID()) && !inCombat()) {
             guardWasActive=false;
             if(activePost!=null) { activePost=null; patrolTarget=null; getNavigation().stop(); }
@@ -1529,11 +1529,12 @@ public final class CitizenEntity extends Villager {
                 m -> DefenseService.hostile(m) && town.contains(m.blockPosition()) && hasLineOfSight(m)
                         && (!shield || alarm || m.blockPosition().distSqr(held)<=100 || m.getTarget()==this)).stream()
                 .min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
-        if(enemy!=null) { fight(level,enemy); return; }
-        if(bell!=null) { runToBell(level,town,bell); return; }
         ignoredThreats.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
         DefenseService.Call call=shield && !alarm ? null : DefenseService.assignment(level,town,this,ignoredThreats::containsKey);
+        if(enemy!=null && (enemy.getTarget()==this || CitizenReach.within(getEyePosition(),enemy.getBoundingBox()))) { fight(level,enemy); return; }
         if(call!=null && respond(level,town,call)) return;
+        if(enemy!=null) { fight(level,enemy); return; }
+        if(bell!=null) { runToBell(level,town,bell); return; }
         respondTarget=null; respondTicks=0;
         setTarget(null);
         if(isUsingItem()) stopUsingItem();
@@ -2476,9 +2477,10 @@ public final class CitizenEntity extends Villager {
             if(!(level() instanceof ServerLevel l)) return false;
             Settlement town=town(l);
             Station home=town==null ? null : homeStation(town);
-            return town!=null && !recovering && !tradeShipment.travelling() && !SquadService.assigned(town,getUUID())
-                    && !isGuard() && (home==null || home.role()!=StructureRole.GUARD)
-                    && (DefenseService.alarmed(town) || inCombat());
+            if(town==null || recovering || tradeShipment.travelling() || SquadService.assigned(town,getUUID())
+                    || isGuard() || home!=null && home.role()==StructureRole.GUARD) return false;
+            if(DefenseService.alarmed(town) || inCombat()) fearUntil=l.getGameTime()+STUCK_TICKS;
+            return l.getGameTime()<fearUntil;
         }
         @Override public boolean canContinueToUse() { return canUse(); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
