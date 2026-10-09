@@ -5,9 +5,9 @@ import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.settlement.*;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 import net.neoforged.testframework.DynamicTest;
@@ -34,22 +34,19 @@ public final class RecallWorldTests {
                 level.setBlockAndUpdate(start.offset(x,y,z),Blocks.STONE.defaultBlockState());
             level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
             level.setBlockAndUpdate(job.position(),WWMC.STATIONS.get(job.role()).get().defaultBlockState());
-            List<Long> attempts=new ArrayList<>();
-            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level) {
-                @Override public boolean recall(net.minecraft.server.level.ServerLevel server,Settlement settlement,BlockPos anchor) {
-                    attempts.add(server.getGameTime()); return super.recall(server,settlement,anchor);
-                }
-            };
+            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
             citizen.join(town.id); citizen.setNoAi(true); citizen.setPos(away.getX()+0.5,away.getY(),away.getZ()+0.5);
             town.citizens.add(citizen.getUUID()); town.jobs.assign(citizen.getUUID(),job.position());
             town.citizenPlaces.put(citizen.getUUID(),away); level.addFreshEntity(citizen);
             var opened=new AtomicInteger();
+            var firstFailure=new AtomicLong();
             helper.succeedWhen(() -> {
                 // A temporary FULL ticket retains the entity without making this distant chunk entity-ticking.
                 level.getChunkAt(away);
                 helper.assertTrue(!level.isPositionEntityTicking(away),"The source chunk must stay frozen for the recall retry regression");
-                helper.assertTrue(!attempts.isEmpty(),"The first recall has not been attempted");
                 if(opened.get()==0) {
+                    helper.assertTrue(CitizenRecall.whereabouts(level,town,citizen.getUUID()).startsWith("Return blocked"),"The first recall has not failed yet");
+                    firstFailure.set(level.getGameTime());
                     helper.assertTrue(citizen.blockPosition().distSqr(away)<9,"A blocked recall must not move the citizen");
                     for(int x=-2;x<=5;x++) for(int z=-2;z<=2;z++) for(int y=0;y<=3;y++) {
                         BlockPos pos=start.offset(x,y,z);
@@ -57,10 +54,9 @@ public final class RecallWorldTests {
                     }
                     opened.set(1);
                 }
-                helper.assertTrue(attempts.size()>=2,"The failed recall has not retried");
-                long waited=attempts.get(1)-attempts.getFirst();
+                helper.assertTrue(citizen.blockPosition().distSqr(job.position())<16,"The failed recall has not retried and returned the citizen home");
+                long waited=level.getGameTime()-firstFailure.get();
                 helper.assertTrue(waited>=600 && waited<=620,"Failed recall must retry after 600 ticks, not the successful recall cooldown: "+waited);
-                helper.assertTrue(citizen.blockPosition().distSqr(job.position())<16,"The retry did not return the citizen home");
                 helper.assertTrue(job.position().equals(town.jobs.home(citizen.getUUID())),"A failed recall must retain the job");
                 citizen.discard(); data.settlements.remove(town); data.setDirty(); CitizenNavigationTests.releaseTicking(level,start,home); helper.succeed();
             });

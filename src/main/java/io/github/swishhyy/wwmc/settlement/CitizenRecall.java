@@ -44,6 +44,7 @@ public final class CitizenRecall {
         BlockPos place;
         long heldAt=-1,loadedAt=-1,retryAt,nextWarning;
         int failed;
+        boolean returnBlocked;
         Missing(UUID town,long since) { this.town=town; this.since=since; }
         boolean held() { return place!=null && heldAt>=0; }
     }
@@ -86,6 +87,7 @@ public final class CitizenRecall {
         }
         String at=place.getX()+", "+place.getZ();
         if(state!=null && state.held()) return "Out of range at "+at+": bringing them back";
+        if(state!=null && state.returnBlocked) return "Return blocked at "+at+": check standing room by the station/banner and active trips; retry in "+Math.max(0,(state.retryAt-level.getGameTime()+19)/20)+"s";
         if(state!=null && state.failed>0) return "Not found at "+at+": looking again soon";
         return "Out of range at "+at+": brought back soon";
     }
@@ -131,6 +133,7 @@ public final class CitizenRecall {
                                 context(level,town,id),from,citizen.blockPosition(),town.jobs.home(id),citizen.getHealth(),citizen.getMaxHealth());
                         missing.remove(id); watched.remove(id);
                     } else {
+                        state.returnBlocked=true;
                         state.retryAt=now+RETRY;
                         if(Config.SERVER_DIAGNOSTICS.get() && now>=state.nextWarning) {
                             WWMC.LOGGER.warn("[WWMC][recall-blocked] {} position={} home={} reason=no-standing-room-or-active-trip retrySeconds={}",context(level,town,id),from,home,RETRY/20);
