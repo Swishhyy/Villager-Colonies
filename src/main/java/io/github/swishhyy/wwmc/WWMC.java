@@ -89,7 +89,7 @@ public final class WWMC {
     static {
         for(TrapKind kind:TrapKind.values()) {
             var block=BLOCKS.registerBlock(kind.id,p -> new TrapBlock(kind,p),p -> p.mapColor(MapColor.WOOD).strength(1.5F)
-                    .noCollission().noOcclusion().pushReaction(PushReaction.BLOCK));
+                    .noCollision().noOcclusion().pushReaction(PushReaction.BLOCK));
             TRAPS.put(kind,block); TRAP_ITEMS.put(kind,ITEMS.registerSimpleBlockItem(block));
         }
     }
