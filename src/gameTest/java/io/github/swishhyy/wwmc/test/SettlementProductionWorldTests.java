@@ -211,9 +211,44 @@ public final class SettlementProductionWorldTests {
                 helper.assertTrue(Research.missing(level,f.town,Research.byId("iron_age")).contains("blacksmith"),"Iron Age ignored infrastructure");
                 level.setBlockAndUpdate(smith.position().east(2),WWMC.BRONZE_ANVIL.get().defaultBlockState());
                 level.setBlockAndUpdate(smith.position().west(2),Blocks.FURNACE.defaultBlockState());
-                helper.assertTrue(Research.study(level,f.town,"iron_age").contains("researched") && Research.has(f.town,"iron_age"),"Bronze forge could not bootstrap the Iron Age");
+            });
+            helper.runAtTickTime(40,() -> {
+                // Station furniture positions are shared for one second; allow the empty anvil scan to refresh.
+                String result=Research.study(level,f.town,"iron_age");
+                helper.assertTrue(result.contains("researched") && Research.has(f.town,"iron_age"),"Bronze forge could not bootstrap the Iron Age: "+result);
                 helper.assertTrue(Research.scrolls(level,f.town)==0 && Research.study(level,f.town,"iron_age").startsWith("Already"),"Research duplicated scroll costs");
                 f.close(); helper.succeed();
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=5200) @EmptyTemplate
+    @TestHolder(description="A real smelter makes glass, bricks and charcoal in native furnaces without burning its charcoal ingredients, and a courier delivers the finished goods and surplus charcoal to the warehouse.")
+    static void buildingMaterialsReachTheWarehouse(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-18200));
+            var warehouse=new Station(start.east(6),StructureRole.WAREHOUSE);
+            var smelter=new Station(start.east(20),StructureRole.SMELTERY);
+            var courier=new Station(start.east(34),StructureRole.COURIER);
+            var f=fixture(level,start,warehouse,smelter,courier);
+            Container stock=barrel(level,warehouse.position().south(2));
+            Container local=barrel(level,smelter.position().south(2),new ItemStack(Items.SAND,4),new ItemStack(Items.CLAY_BALL,4),
+                    new ItemStack(Items.OAK_LOG,16),new ItemStack(Items.COAL,12));
+            var containers=new ArrayList<Container>(List.of(stock,local));
+            for(BlockPos device:List.of(smelter.position().north(2),smelter.position().east(2),smelter.position().west(2))) {
+                level.setBlockAndUpdate(device,Blocks.FURNACE.defaultBlockState()); containers.add((Container)level.getBlockEntity(device));
+            }
+            var worker=f.worker(smelter,true); var hauler=f.worker(courier,true);
+            containers.add(worker.bag()); containers.add(hauler.bag());
+            helper.succeedWhen(() -> {
+                helper.assertTrue(InventoryOps.count(List.of(stock),s -> s.is(Items.GLASS))==4
+                        && InventoryOps.count(List.of(stock),s -> s.is(Items.BRICK))==4
+                        && InventoryOps.count(List.of(stock),s -> s.is(Items.CHARCOAL))>=4,
+                        "Building materials have not reached the warehouse: "+worker.activity()+"; "+hauler.activity());
+                helper.assertTrue(InventoryOps.count(containers,s -> s.is(Items.CHARCOAL))==16
+                        && InventoryOps.count(containers,s -> s.is(Items.OAK_LOG) || s.is(Items.SAND) || s.is(Items.CLAY_BALL))==0,
+                        "The smelter burned ingredients or invented processing output");
+                f.close();
             });
         });
     }

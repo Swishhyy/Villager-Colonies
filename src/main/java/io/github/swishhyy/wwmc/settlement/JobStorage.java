@@ -141,7 +141,7 @@ public final class JobStorage {
         }
         if(role.processes()) {
             result.add(new Demand(s -> !s.is(Items.WHEAT) && supplies.ingredient(role,s),ProcessingService.INPUT_LOAD*2));
-            result.add(new Demand(supplies::fuel,FUEL_RESERVE*2));
+            result.add(new Demand(s -> supplies.fuel(s) && !supplies.ingredient(role,s),FUEL_RESERVE*2));
             if(role==StructureRole.COOK) result.add(new Demand(s -> s.is(Items.WHEAT),WHEAT_RESERVE*2));
         }
         if(role.excavates()) result.add(new Demand(ExcavationService::supportMaterial,SUPPORT_RESERVE));

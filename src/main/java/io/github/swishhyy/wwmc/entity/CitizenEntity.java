@@ -1033,7 +1033,7 @@ public final class CitizenEntity extends Villager {
         int[] foodReserve={role.foodJob() || role==StructureRole.COURIER ? 0 : FoodSharing.PERSONAL_LIMIT};
         int[] fuelReserve={ProcessingService.FUEL_LOAD};
         if(deposit) cargo.deposit(storage,stack -> {
-            if(role.processes() && ProcessingService.fuel(level,stack)) {
+            if(role.processes() && ProcessingService.fuel(level,stack) && !ProcessingService.ingredient(role,stack)) {
                 int keep=Math.min(fuelReserve[0],stack.getCount()); fuelReserve[0]-=keep; return keep;
             }
             if(retainSupply(stack)) return stack.getCount();
@@ -1973,7 +1973,7 @@ public final class CitizenEntity extends Villager {
         int collected=ProcessingService.service(level,station.role(),processor,cargo,this);
         if(collected>0 || ProcessingService.busy(level,processor)) WorkFeedback.pulse(level,this,processor,WorkFeedback.PROCESSING);
         swing(InteractionHand.MAIN_HAND);
-        activity=station.role()==StructureRole.COOK ? "Supplying the kitchen and collecting cooked food" : "Supplying furnaces and collecting smelted ores";
+        activity=station.role()==StructureRole.COOK ? "Supplying the kitchen and collecting cooked food" : "Supplying furnaces and collecting processed materials";
         if(collected==0 && !ProcessingService.busy(level,processor) && !ProcessingService.hasInputs(level,station.role(),processor,List.of(cargo))) {
             if(station.role()==StructureRole.COOK && order!=null && !town.disabledRecipes.contains(order.id()) && Crafting.ready(cargo,order)) {
                 craft(level,town,station,processor);

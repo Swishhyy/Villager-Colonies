@@ -94,7 +94,7 @@ public final class ProcessingService {
                 && (loaded.isEmpty() || ItemStack.isSameItemSameComponents(loaded,s));
         carry(storage,bag,ingredients,INPUT_LOAD-InventoryOps.count(List.of(bag),ingredients));
         if(level.getBlockEntity(pos) instanceof AbstractFurnaceBlockEntity)
-            carry(storage,bag,s -> fuel(level,s),FUEL_LOAD-InventoryOps.count(List.of(bag),s -> fuel(level,s) && !ingredients.test(s)));
+            carry(storage,bag,s -> fuel(level,s) && !ingredient(role,s),FUEL_LOAD-InventoryOps.count(List.of(bag),s -> fuel(level,s) && !ingredient(role,s)));
     }
     private static void carry(List<Container> sources,CitizenInventory bag,Predicate<ItemStack> eligible,int maximum) {
         for(int i=0;i<maximum && !bag.needsDelivery();i++) {
@@ -112,7 +112,7 @@ public final class ProcessingService {
             bag.offer(output);
             InventoryOps.moveToSlot(List.of(bag),furnace,0,s -> input(level,role,pos,s),INPUT_LOAD);
             if(!furnace.getItem(0).isEmpty() && input(level,role,pos,furnace.getItem(0)))
-                InventoryOps.moveToSlot(List.of(bag),furnace,1,s -> fuel(level,s),Math.max(0,FUEL_LOAD-furnace.getItem(1).getCount()));
+                InventoryOps.moveToSlot(List.of(bag),furnace,1,s -> fuel(level,s) && !ingredient(role,s),Math.max(0,FUEL_LOAD-furnace.getItem(1).getCount()));
             furnace.setChanged();
             return collected;
         }
