@@ -23,15 +23,17 @@ Formerly **World War MC**. The internal `wwmc` namespace keeps existing worlds, 
 - **Defense and exploration:** guards, patrols, raids, bandit camps, and supplied outposts.
 - **Visible progress:** job outfits and work effects, town colors, upgrades, research, a visual handbook, and tutorial advancements.
 - **Settlement ages:** Stone → Bronze → Iron. Researchers make tradeable scrolls; towns unlock discoveries together, and blacksmiths forge advanced equipment.
+- **Happiness and families:** varied meals, housing and amenities keep citizens happy. With spare food and beds, happy adults can have children who play and grow before taking jobs.
+- **Alloys and better tools:** smelters make bronze and steel in a two-input alloy furnace. Better tools help workers finish jobs faster; Steelworking unlocks steel equipment within the Iron Age.
 - **Traps:** spikes, nets, snares, caltrops and spring traps, with saved wear, paid maintenance and waves arriving beyond the town's stations and traps. See [trap defenses](docs/defenses.md).
 
 Larger warfare systems, countries, automatic building, and distant settlement simulation remain [planned features](docs/ROADMAP.md).
 
-## Current development branch
+## Latest source changes
 
-The next update adds **settlement forging, researcher-made scrolls, gatherers, and ruined town halls**. The banner now opens a short overview with **People, Production, Research, and Neighbours**. Set workshop and forge stock targets in Production, including automatic job block orders. Wood and stone gear remain player-crafted; bronze and later equipment comes from a blacksmith.
+The latest source adds **settlement forging, researcher-made scrolls, gatherers, ruined town halls, happiness, children, and steel**. The banner opens a short overview with **People, Production, Research, and Neighbours**. Set workshop and metalwork stock targets in Production, including automatic job block orders. Smelters make alloys; blacksmiths repair and forge equipment. Wood and stone gear remain player-crafted.
 
-These changes are under testing on a separate branch. The public version stays **0.1.0.0**. See [settlement production](docs/settlement-production.md) for the new progression loop.
+Use a successful [main Actions build](https://github.com/Swishhyy/Villager-Colonies/actions?query=branch%3Amain) for these changes. The version stays **0.1.0.0**. See [settlement production](docs/settlement-production.md) for recipes, wellbeing and the progression loop. [Education](docs/education-design.md) is still a proposal.
 
 ## Install
 
@@ -91,6 +93,6 @@ On Windows, use `gradlew.bat build` and `gradlew.bat runClient`. The mod JAR is 
 
 Original mod code is [MIT licensed](LICENSE). The NeoForge starter notice is preserved in [TEMPLATE_LICENSE.txt](TEMPLATE_LICENSE.txt).
 
-Bronze and tin textures recolor Minecraft's vanilla assets by Mojang. See [texture sources and regeneration](docs/development.md#metal-texture-recolors).
+Bronze, tin and steel textures recolor Minecraft's vanilla assets by Mojang. See [texture sources and regeneration](docs/development.md#metal-texture-recolors).
 
 Inspired by [Colony Survival](https://store.steampowered.com/app/366090/Colony_Survival/). Villager Colonies uses original mod code and does not include Colony Survival content.

@@ -876,7 +876,10 @@ public final class CitizenEntity extends Villager {
             if(material!=null && material.accepts().test(stack)) return true;
         }
         if(gear(stack) && GuardEquipment.worn(stack)) return false;
-        if(level() instanceof ServerLevel level && role!=null && role.processes() && ProcessingService.supply(level,role,stack)) return true;
+        if(level() instanceof ServerLevel level && role!=null && role.processes()) {
+            Settlement town=town(level);
+            if(town!=null && ProcessingService.supply(level,town,homeStation(town),stack)) return true;
+        }
         if(role!=null && role.animalJob() && AnimalWork.supply(role,stack)) return true;
         boolean guard=role==StructureRole.GUARD;
         return stack.is(ItemTags.HOES) && role==StructureRole.FARM || stack.is(ItemTags.SHOVELS) && role==StructureRole.GATHERER || stack.is(ItemTags.AXES) && role==StructureRole.LUMBER

@@ -70,6 +70,17 @@ public final class ProcessingService {
     public static boolean supply(ServerLevel level,StructureRole role,ItemStack stack) {
         return supply(level.fuelValues(),role,stack);
     }
+    /** Finished metal is a supply only at a station that can actually alloy it. */
+    public static boolean supply(ServerLevel level,Settlement town,Station station,ItemStack stack) {
+        if(station==null || !supply(level,station.role(),stack)) return false;
+        if(station.role()!=StructureRole.SMELTERY || !AlloyWorkshop.material(stack)
+                || ingredient(station.role(),stack) || fuel(level,stack)) return true;
+        boolean bronze=AlloyWorkshop.copper(stack) || AlloyWorkshop.tin(stack);
+        var output=bronze ? io.github.swishhyy.wwmc.WWMC.BRONZE_INGOT.get() : io.github.swishhyy.wwmc.WWMC.STEEL_INGOT.get();
+        return Research.has(town,bronze ? "bronze_age" : "steel_working") && AlloyWorkshop.target(town,output)>0
+                && SettlementService.processingDevices(level,town,station).stream()
+                    .anyMatch(p -> level.getBlockEntity(p) instanceof io.github.swishhyy.wwmc.block.AlloyFurnaceEntity);
+    }
     public static boolean supply(FuelValues fuels,StructureRole role,ItemStack stack) {
         return role==StructureRole.SMELTERY && (rawMetal(stack) || buildingMaterial(stack) || AlloyWorkshop.material(stack) || fuel(fuels,stack))
                 || role==StructureRole.COOK && (stack.is(Items.WHEAT) || fuel(fuels,stack)

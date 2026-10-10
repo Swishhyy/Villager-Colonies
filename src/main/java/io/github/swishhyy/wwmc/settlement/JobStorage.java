@@ -132,6 +132,12 @@ public final class JobStorage {
         }
         return Math.max(0,target);
     }
+    private static int fuelTarget(Settlement town) {
+        if(town==null) return FUEL_RESERVE*2;
+        long consumers=town.stations.stream().filter(s -> s.role().processes() || s.role()==StructureRole.BLACKSMITH).count();
+        // Shared fuel must reach the smith as well as the smelter; one station cannot hoard a whole small delivery.
+        return Math.max(2,FUEL_RESERVE*2/(int)Math.max(1,consumers));
+    }
     private static List<Demand> demands(Supplies supplies,Settlement town,StructureRole role,Station station,List<Container> barrels,List<Container> warehouse) {
         List<Demand> result=new ArrayList<>();
         Predicate<ItemStack> tools=s -> tool(role,s) && !GuardEquipment.worn(s);
@@ -141,10 +147,10 @@ public final class JobStorage {
         }
         if(role.processes()) {
             result.add(new Demand(s -> !s.is(Items.WHEAT) && supplies.ingredient(role,s),ProcessingService.INPUT_LOAD*2));
-            result.add(new Demand(s -> supplies.fuel(s) && (!supplies.ingredient(role,s) || role==StructureRole.SMELTERY && ForgeWorkshop.fuel(s)),FUEL_RESERVE*2));
+            result.add(new Demand(s -> supplies.fuel(s) && (!supplies.ingredient(role,s) || role==StructureRole.SMELTERY && ForgeWorkshop.fuel(s)),fuelTarget(town)));
             if(role==StructureRole.COOK) result.add(new Demand(s -> s.is(Items.WHEAT),WHEAT_RESERVE*2));
             if(role==StructureRole.SMELTERY && town!=null && supplies.level() instanceof ServerLevel level
-                    && town.stations.stream().filter(s -> s.role()==StructureRole.SMELTERY).anyMatch(s -> SettlementService.processingDevices(level,town,s).stream()
+                    && town.stations.stream().filter(s -> s.role()==StructureRole.SMELTERY && (station==null || s.position().equals(station.position()))).anyMatch(s -> SettlementService.processingDevices(level,town,s).stream()
                             .anyMatch(p -> level.getBlockState(p).is(io.github.swishhyy.wwmc.WWMC.ALLOY_FURNACE.get())))) {
                 if(Research.has(town,"bronze_age")) { result.add(new Demand(AlloyWorkshop::copper,12)); result.add(new Demand(AlloyWorkshop::tin,4)); }
                 if(Research.has(town,"steel_working")) result.add(new Demand(AlloyWorkshop::iron,8));
@@ -171,8 +177,9 @@ public final class JobStorage {
             for(var slot:GuardEquipment.ARMOR) result.add(new Demand(s -> GuardEquipment.armor(s,slot) && !GuardEquipment.worn(s),1));
         }
         if(role==StructureRole.BLACKSMITH) {
+            List<Container> stock=new ArrayList<>(barrels); stock.addAll(warehouse);
             if(town!=null && supplies.level() instanceof ServerLevel level) for(var order:town.progress.forgeOrders) {
-                if(order.target()<=0 || Workshop.stock(warehouse,order)>=order.target()) continue;
+                if(order.target()<=0 || Workshop.stock(stock,order)>=order.target()) continue;
                 for(var plan:ForgeWorkshop.plans(level,order)) if(AgeProgression.allowed(town,plan.result())) {
                     Map<List<Item>,Integer> amounts=new LinkedHashMap<>();
                     Map<List<Item>,Ingredient> kinds=new LinkedHashMap<>();
@@ -185,7 +192,6 @@ public final class JobStorage {
                 }
             }
             result.add(new Demand(BlacksmithRepair::damaged,2));
-            List<Container> stock=new ArrayList<>(barrels); stock.addAll(warehouse);
             result.add(new Demand(material -> stock.stream().anyMatch(box -> {
                 for(int slot=0;slot<box.getContainerSize();slot++) if(BlacksmithRepair.damaged(box.getItem(slot)) && BlacksmithRepair.material(box.getItem(slot),material)) return true;
                 return false;
