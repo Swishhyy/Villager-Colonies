@@ -44,11 +44,25 @@ There is no generative AI or external service dependency. Initial decisions use 
 | `client` / `WWMCClient` | Citizen model/renderer and transient range outlines; dedicated servers do not load rendering classes. |
 | `src/main/resources` | Block/item models, language, drops (which keep station upgrades), and recipes. |
 | `tools/station_models.py` | Generates the station and banner models from vanilla block textures; rerun it after editing a model. |
-| `scripts/generate_progression_assets.py` | Generates original tin/bronze pixel textures, equipment, carcass models, research-station assets, recipes, tags and tin world generation; requires Python and Pillow. |
+| `scripts/generate_progression_assets.py` | Recolors vanilla iron textures for tin/bronze and generates equipment, carcass models, research-station assets, recipes, tags and tin world generation; requires Python, Pillow and the official Minecraft 26.2 client JAR. |
 
 Settlement records are dimension SavedData under `wwmc:settlements`. Placement provenance, planting sites, and excavation progress use a separate `wwmc:world_work` record so older settlement saves remain readable. Normal world saves persist both; temporary crew and target reservations expire and are reconstructed after reload. All current gameplay changes happen on the logical server thread. Persistent IDs keep future diplomacy and military systems independent from entity instances.
 
 `TownProgress` saves a research project and its work ticks. New settlements explicitly save equipment tier zero; saves predating the age fields retain their former equipment access through `legacy_gear_tier`. Owner/accepted-member access is checked across server dimensions. The four `wwmc:requires_*` item tags let datapacks add equipment gates. The server's crafting-result mixin rejects locked output before ingredients are consumed; interaction hooks and armor checks enforce use while allowing storage.
+
+## Metal texture recolors
+
+Bronze tools, armor icons and both worn armor layers are color swaps of vanilla iron textures. Tin materials and storage blocks use the corresponding iron textures; tin ores preserve every stone and deepslate background pixel. Tool handles, dark outlines, texture sizes, transparency and armor UV layouts are retained. [View the comparison](images/metal-recolors.png).
+
+The sources are Mojang's assets in the official Minecraft **26.2** client JAR, identified by its [version metadata](https://piston-meta.mojang.com/v1/packages/d367f3dfbc0b3e14688df2311359deb609b234e3/26.2.json). The generator verifies client SHA-1 `2dc72797acbc1b63fc16a11c4ac393605f453754` before reading textures. The original client JAR is an input and is not checked into the repository.
+
+With Python and Pillow installed, supply that client JAR from your Minecraft installation or development cache:
+
+```bash
+python3 scripts/generate_progression_assets.py --client-jar "/path/to/26.2.jar" --textures-only
+```
+
+Omit `--textures-only` to also regenerate the existing models, recipes, tags and world-generation data. Ordinary Gradle builds use the checked-in recolored PNGs and do not require Pillow or a texture-generation step.
 
 ## Build and verify
 
@@ -86,3 +100,5 @@ Keep the first playable scope small, preserve real resource accounting, and make
 ## License and attribution
 
 Original mod code is [MIT licensed](../LICENSE). The generated NeoForge starter's notice remains in [TEMPLATE_LICENSE.txt](../TEMPLATE_LICENSE.txt). Inspiration is a gameplay reference; this project does not include Colony Survival code or assets.
+
+Recolored bronze and tin textures derive from Minecraft assets by Mojang. Their source paths and color palettes are recorded in `scripts/generate_progression_assets.py`; Minecraft's original artwork is not authored by this project.
