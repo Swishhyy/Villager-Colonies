@@ -15,6 +15,8 @@ Villager Colonies starts at **0.1.0.0**. In development on a separate branch; no
 
 - Add Stone, Bronze and Iron progression shared by a settlement's owner and accepted members. Higher-tier loot can be stored until its research unlocks use.
 - Add a Researcher Station and lectern work: pay project supplies once, wait for real work, and keep progress through pauses and saves.
+- Show clear research pause reasons in the banner and Campaign / Research, including blocked lecterns, unstaffed jobs, sleep, danger and recovery. Distinguish walking from paused work without chat spam.
+- Let researchers retry another approach when their route becomes blocked, and recheck inaccessible lecterns after a short pause. Keep paid supplies and progress intact.
 - Add tin ore, bronze alloying, bronze tools and armor, with further research for diamond and netherite gear. Existing settlements retain their equipment access.
 - Give carcasses recognizable 3D models, improve fishing and tool swings, and hide clothing under the armor covering it.
 - Generate furnished ruined castles and mining workshops using the mod's stations, beds, storage and research desks. Claiming them retains their rooms and supplies.

@@ -1,6 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import java.util.List;
+import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.WWMC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import net.minecraft.server.level.ServerLevel;
@@ -14,6 +15,18 @@ import net.minecraft.world.item.Items;
  * also need a schematic recovered from a fortified bandit captain.
  */
 public final class Research {
+    public enum WorkState { IDLE,WORKING,WAITING,PAUSED }
+    /** A current observation, never saved and never used to advance or charge a project. */
+    public record Status(WorkState state,String detail) {
+        public boolean paused() { return state==WorkState.PAUSED; }
+        public String title() {
+            return switch(state) { case IDLE -> "Research"; case WORKING -> "Research working"; case WAITING -> "Research waiting"; case PAUSED -> "Research paused"; };
+        }
+        private int rank() { return state==WorkState.WORKING ? 2 : state==WorkState.WAITING ? 1 : 0; }
+        public static Status paused(String detail) { return new Status(WorkState.PAUSED,detail); }
+        public static Status waiting(String detail) { return new Status(WorkState.WAITING,detail); }
+        public static Status working() { return new Status(WorkState.WORKING,"Researcher is working at the lectern."); }
+    }
     public record Tech(String id,String title,String benefit,List<TownProjects.Cost> costs,String schematic,String prerequisite,int ticks) {
         public Tech(String id,String title,String benefit,List<TownProjects.Cost> costs,String schematic) {
             this(id,title,benefit,costs,schematic,"",3600);
@@ -78,6 +91,37 @@ public final class Research {
         if(tech==null) return "Choose a project in Campaign / Research";
         int left=Math.max(0,tech.ticks()-town.progress.projectTicks);
         return tech.title()+": "+Math.min(100,town.progress.projectTicks*100/tech.ticks())+"%; "+(left+1199)/1200+" min of work left";
+    }
+    /** Read-only banner status. Loaded, available researchers take precedence over another worker's pause. */
+    public static Status status(ServerLevel level,Settlement town) {
+        if(project(town)==null) return new Status(WorkState.IDLE,"Choose a project in Campaign / Research.");
+        if(town.jobs.level(StructureRole.RESEARCHER)==JobBoard.OFF)
+            return Status.paused("Researcher jobs are off. Enable them on the Jobs tab.");
+        List<Station> stations=town.stations.stream().filter(s -> s.role()==StructureRole.RESEARCHER).toList();
+        if(stations.isEmpty()) return Status.paused("No Researcher Station. Add one with a lectern in range.");
+        boolean active=false,desk=false,assigned=false,unloaded=false;
+        Status best=null;
+        for(Station station:stations) {
+            if(!level.hasChunkAt(station.position())) { unloaded=true; continue; }
+            if(!SettlementService.active(level,station)) continue;
+            active=true;
+            if(desks(level,town,station).isEmpty()) continue;
+            desk=true;
+            for(var id:town.jobs.crew(station.position())) {
+                if(!town.citizens.contains(id) || !town.jobs.holdsPlace(id,station,SettlementService.workerLimit(town,station))) continue;
+                assigned=true;
+                if(!(level.getEntity(id) instanceof CitizenEntity citizen) || !citizen.isAlive() || citizen.town(level)!=town) continue;
+                Status current=citizen.researchStatus(level,town,station);
+                if(best==null || current.rank()>best.rank()) best=current;
+                if(best.state()==WorkState.WORKING) return best;
+            }
+        }
+        if(best!=null) return best;
+        if(!active) return Status.paused(unloaded ? "Researcher Station is unloaded. Keep its area loaded."
+                : "Researcher Station is missing. Replace it or add another.");
+        if(!desk) return Status.paused("No lectern in range. Place one beside a Researcher Station.");
+        if(!assigned) return Status.paused("No researcher assigned. Recruit a citizen or raise Researcher priority on the Jobs tab.");
+        return Status.paused("Assigned researcher is unloaded or missing. Check the station's Crew tab.");
     }
     /** Nearby desks are real, loaded lecterns. A researcher still has to reach and work at one. */
     public static List<BlockPos> desks(ServerLevel level,Settlement town,Station station) {

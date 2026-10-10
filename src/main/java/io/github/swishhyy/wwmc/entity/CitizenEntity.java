@@ -125,6 +125,12 @@ public final class CitizenEntity extends Villager {
     private ItemStack enchantItem=ItemStack.EMPTY;
     private int enchantTicks,enchantLevel;
     private BlockPos researchDesk,researchStand;
+    private final Set<BlockPos> researchRejectedStands=new HashSet<>();
+    private long nextResearchRouteAt;
+    private Research.Status researchState=Research.Status.waiting("Waiting for the researcher to start work.");
+    private String researchProject="";
+    private BlockPos researchStation;
+    private long researchStateAt=Long.MIN_VALUE;
     private boolean enchantDone;
     private BlockPos enchantTable,enchantStand;
     private long nextEnchantAt;
@@ -590,6 +596,7 @@ public final class CitizenEntity extends Villager {
         animalWork.reset();
         enchantTable=null; enchantStand=null;
         researchDesk=null; researchStand=null;
+        researchRejectedStands.clear(); nextResearchRouteAt=0;
         trapWork=null; trapWorkTicks=0; trapPathTicks=0;
         var book=SettlementService.reservations(level);
         if(workplace!=null) SettlementService.workers(level).release(workplace,getUUID());
@@ -1935,6 +1942,26 @@ public final class CitizenEntity extends Villager {
         processorStand=null;
     }
     public String activity() { return level().getGameTime()<callNoteUntil ? callNote : activity; }
+    /** Observe current interruptions without running pathfinding, taking supplies or waking the citizen. */
+    public Research.Status researchStatus(ServerLevel level,Settlement town,Station station) {
+        if(!level.isPositionEntityTicking(blockPosition()))
+            return Research.Status.paused("Researcher is outside the active area. Keep their area loaded.");
+        if(HospitalCare.needsCare(town,this)) return Research.Status.paused("Researcher needs hospital recovery before returning to work.");
+        if(SquadService.assigned(town,getUUID())) return Research.Status.paused("Researcher is on squad duty. Return them to their job.");
+        if(DefenseService.alarmed(town) || sheltering || level.getGameTime()<fearUntil || inCombat())
+            return Research.Status.paused("Researcher is sheltering until the danger has passed.");
+        if(night(level)) return Research.Status.paused("Researchers are off duty until morning.");
+        if(isSleeping()) return Research.Status.paused("Researcher is sleeping.");
+        if(cargo.isOpen()) return Research.Status.paused("Researcher's inventory is open. Close it to resume work.");
+        if(isNoAi()) return Research.Status.paused("Researcher is unavailable for work. Check the Crew tab.");
+        if(returningGear) return Research.Status.waiting("Researcher is returning equipment from their previous job.");
+        if(pantryTarget!=null && wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0)
+            return Research.Status.paused("Researcher is fetching a meal from the pantry.");
+        if(station.position().equals(researchStation) && town.progress.project.equals(researchProject)
+                && researchStateAt!=Long.MIN_VALUE && level.getGameTime()>=researchStateAt && level.getGameTime()-researchStateAt<=30)
+            return researchState;
+        return Research.Status.waiting("Waiting for the researcher to start work.");
+    }
     public StructureRole jobRole() { return role(); }
     public CitizenInventory bag() { return cargo; }
     public boolean workWalk(BlockPos pos) { return walk(pos); }
@@ -2113,10 +2140,21 @@ public final class CitizenEntity extends Villager {
     }
     /** Enchanters take one item and lapis from their local barrels and work from clear ground within reach of a table. */
     private void researcher(ServerLevel level,Settlement town,Station station) {
+        if(!station.position().equals(researchStation) || !town.progress.project.equals(researchProject)) {
+            researchDesk=null; researchStand=null; researchRejectedStands.clear(); nextResearchRouteAt=0;
+        }
+        researchProject=town.progress.project; researchStation=station.position(); researchStateAt=level.getGameTime();
+        researchState=Research.Status.waiting("Researcher is checking a route to the lectern.");
         eatFrom(List.of(cargo));
-        if(wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0 && !visitPantry(level,town)) return;
+        if(wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0 && !visitPantry(level,town)) {
+            researchState=Research.Status.paused("Researcher is fetching a meal from the pantry."); return;
+        }
         if(Research.project(town)==null) { activity="Waiting for a research project in Campaign / Research"; getNavigation().stop(); return; }
         List<BlockPos> desks=Research.desks(level,town,station);
+        if(researchDesk==null && level.getGameTime()<nextResearchRouteAt) {
+            researchBlocked(level,desks); return;
+        }
+        if(nextResearchRouteAt>0) { researchRejectedStands.clear(); nextResearchRouteAt=0; }
         if(researchDesk==null || !desks.contains(researchDesk)
                 || !canUse(level,researchDesk) && !standingSpotUsable(level,town,researchStand,researchDesk)) {
             researchDesk=null; researchStand=null;
@@ -2125,22 +2163,56 @@ public final class CitizenEntity extends Villager {
                 if(canUse(level,desk)) { researchDesk=desk; break; }
                 for(BlockPos stand:CitizenReach.stands(view,desk,position(),getEyeHeight())) {
                     if(!standingSpotUsable(level,town,stand,desk)) continue;
-                    if(reachableStand(stand)) { researchDesk=desk; researchStand=stand; break; }
+                    if(researchReachableStand(stand)) { researchDesk=desk; researchStand=stand; break; }
                     if(reachBudget.deferred()) { activity="Checking a route to the research lectern"; return; }
                 }
                 if(researchDesk!=null) break;
             }
-            if(researchDesk==null) { activity=desks.isEmpty() ? "Needs a lectern within the Researcher Station's range" : "Cannot reach the research lectern"; return; }
+            if(researchDesk==null) {
+                nextResearchRouteAt=level.getGameTime()+100;
+                researchBlocked(level,desks);
+                return;
+            }
         }
         if(!canUse(level,researchDesk)) {
             activity="Walking to the research lectern";
-            walk(researchStand,0.65,0); return;
+            researchState=Research.Status.waiting("Researcher is walking to the lectern.");
+            boolean moving=walk(researchStand,0.65,0);
+            var path=getNavigation().getPath();
+            if(onGround() && (!moving || path!=null && !path.canReach() && !beyondOneRoute(researchStand))) {
+                researchRejectedStands.add(researchStand); researchDesk=null; researchStand=null;
+                getNavigation().stop();
+                researchState=Research.Status.waiting("Researcher is checking another route to the lectern.");
+            }
+            return;
         }
         getNavigation().stop();
         getLookControl().setLookAt(researchDesk.getX()+0.5,researchDesk.getY()+0.8,researchDesk.getZ()+0.5);
         activity="Researching "+Research.progress(town);
         WorkFeedback.pulse(level,this,researchDesk,WorkFeedback.RESEARCHING);
-        if(Research.work(level,town,station,researchDesk) && level.getGameTime()%200==0) gainExperience(StructureRole.RESEARCHER,1);
+        if(Research.work(level,town,station,researchDesk)) {
+            clearBlockedJob();
+            researchState=Research.Status.working();
+            if(level.getGameTime()%200==0) gainExperience(StructureRole.RESEARCHER,1);
+        } else researchState=Research.Status.waiting("Waiting for the next researcher work step.");
+    }
+    /** Keep rejected approaches for the complete bounded search, then retry after a short pause. */
+    private boolean researchReachableStand(BlockPos stand) {
+        if(stand.equals(blockPosition()) || beyondOneRoute(stand)) return true;
+        if(researchRejectedStands.contains(stand)) return false;
+        boolean reachable=reachBudget.check(() -> {
+            var path=getNavigation().createPath(stand,0);
+            return path!=null && path.canReach();
+        });
+        if(!reachable && !reachBudget.deferred()) researchRejectedStands.add(stand);
+        return reachable;
+    }
+    private void researchBlocked(ServerLevel level,List<BlockPos> desks) {
+        activity=desks.isEmpty() ? "Needs a lectern within the Researcher Station's range" : "Cannot reach the research lectern";
+        researchState=Research.Status.paused(desks.isEmpty() ? "No lectern in range. Place one beside the Researcher Station."
+                : "Researcher cannot reach the lectern. Clear a route and standing space.");
+        getNavigation().stop();
+        if(!desks.isEmpty() && onGround()) failedJobPath(level);
     }
     private void enchanter(ServerLevel level,Settlement town,Station station) {
         eatFrom(List.of(cargo));

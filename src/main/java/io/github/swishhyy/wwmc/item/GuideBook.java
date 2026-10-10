@@ -64,7 +64,7 @@ public final class GuideBook {
             new Card("wwmc:bronze_ingot","Enter the Bronze Age","Research Bronze Age first. Craft 3 copper ingots + 1 tin ingot into 4 bronze blends, then smelt them into bronze ingots."),
             new Card("minecraft:iron_sword","Unlock equipment","Iron Age unlocks iron and gold equipment. Gemcraft and Netherite Smithing follow. Found equipment can be stored but cannot be used before its research."),
             new Card("minecraft:blue_banner","Share progress","The owner and accepted members share research everywhere, including other dimensions. Allies and invitations alone do not grant it. Existing towns retain their old gear access.")
-        ),List.of("Stone","Researcher","Tin + copper","Bronze","Iron"),"Research pauses during sleep, danger or blocked access. Progress and paid supplies survive saving."),
+        ),List.of("Stone","Researcher","Tin + copper","Bronze","Iron"),"Research pauses during sleep, danger or blocked access. Check the banner's Research status for the reason. Progress and paid supplies survive saving."),
         new Topic("frontier","Projects & exploration","Expand after the town is stable",List.of(
             new Card("minecraft:iron_ingot","Fund projects","Open Campaign > Projects. Furnish the required stations, then pay with real warehouse goods."),
             new Card("minecraft:compass","Explore together","Camps have captives or stolen supplies. Ruined castles have captains and schematics; castles and mining workshops show real station, furniture and storage setups. Clear sites with equipped guards."),

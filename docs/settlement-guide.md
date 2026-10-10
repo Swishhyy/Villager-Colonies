@@ -165,7 +165,9 @@ New settlements in **Villager Colonies 0.1.0.0** start in the **Stone Age**. The
 1. Craft a **Researcher Station** with eight planks around a lectern. Place it inside your town and put a separate **lectern within three blocks on each axis**.
 2. Keep a citizen assigned to Researcher under **Jobs**, and supply ready-to-eat food.
 3. Open the banner's **Campaign → Research** tab. Place the listed supplies in loaded warehouse storage, then start one project.
-4. Supplies are paid once at the start. The researcher must reach the lectern and work. Sleep, danger, blocked access and unloaded chunks pause progress; the paid project resumes after saving and loading. The banner shows the current age and progress.
+4. Supplies are paid once at the start. The researcher must reach the lectern and work. Sleep, danger, blocked access and unloaded chunks pause progress; the paid project resumes after saving and loading. The banner shows the current age, progress and a **Research status** row with the pause reason. The same status appears in **Campaign → Research**. Time remaining counts active work.
+
+If the status says **“Researcher cannot reach the lectern”**, clear a walking route and room to stand beside it. Researchers try another approach when a route fails and recheck blocked lecterns after a short pause. Other reasons identify disabled jobs, missing stations or lecterns, unassigned or unloaded workers, meals, sleep, danger and hospital recovery. Normal travel says **“Researcher is walking to the lectern.”** Fixing a pause resumes the paid project; supplies are not charged again, and status changes do not fill chat.
 
 | Research | Warehouse supplies | Active work for one researcher | Equipment unlocked |
 | --- | --- | --- | --- |
