@@ -63,6 +63,7 @@ public final class ResearchAgeWorldTests {
             owner.setPos(start.getX()+.5,start.getY(),start.getZ()+.5);
             var town=new Settlement(UUID.randomUUID(),owner.getUUID(),"Bronze production",start,32,List.of(),List.of(),"balanced");
             SettlementData.get(level).settlements.add(town);
+            level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
             helper.assertTrue(!owner.getRecipeBook().contains(recipeKey("bronze_blend")),"Blend recipe was known without discovery");
             ItemStack copper=new ItemStack(Items.COPPER_INGOT);
             owner.getInventory().setItem(9,copper);
@@ -95,6 +96,8 @@ public final class ResearchAgeWorldTests {
             }
             furnace.setItem(1,new ItemStack(Items.COAL)); blast.setItem(1,new ItemStack(Items.COAL));
             helper.runAtTickTime(900,() -> {
+                helper.assertTrue(SettlementData.get(level).settlements.contains(town)
+                        && AgeProgression.allowed(owner,new ItemStack(WWMC.BRONZE_PICKAXE.get())),"Test settlement lost its researched equipment access while smelting");
                 helper.assertTrue(furnace.getItem(2).is(WWMC.BRONZE_INGOT.get()) && furnace.getItem(2).getCount()==4,"Furnace did not smelt every blend");
                 helper.assertTrue(blast.getItem(2).is(WWMC.BRONZE_INGOT.get()) && blast.getItem(2).getCount()==4,"Blast furnace did not smelt every blend");
                 helper.assertTrue(furnace.getItem(0).isEmpty() && blast.getItem(0).isEmpty()
@@ -111,7 +114,9 @@ public final class ResearchAgeWorldTests {
                     break;
                 }
                 table.getSlot(5).setByPlayer(new ItemStack(Items.STICK)); table.getSlot(8).setByPlayer(new ItemStack(Items.STICK));
-                table.slotsChanged(table.getSlot(1).container); table.clicked(0,0,ContainerInput.QUICK_MOVE,owner);
+                table.slotsChanged(table.getSlot(1).container);
+                helper.assertTrue(table.getSlot(0).getItem().is(WWMC.BRONZE_PICKAXE.get()),"Smelted bronze did not match the real pickaxe recipe");
+                table.clicked(0,0,ContainerInput.QUICK_MOVE,owner);
                 helper.assertTrue(owner.getInventory().countItem(WWMC.BRONZE_PICKAXE.get())==1
                         && owner.getInventory().countItem(WWMC.BRONZE_INGOT.get())==5,"Bronze pickaxe did not spend exactly three of the smelted ingots");
                 SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.releaseTicking(level,start,chunks);
