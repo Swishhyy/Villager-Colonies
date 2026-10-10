@@ -4,7 +4,7 @@
 
 ## 0.1.0.0
 
-Villager Colonies starts at **0.1.0.0**. In development on a separate branch; not yet released.
+Villager Colonies starts at **0.1.0.0**, with settlement ages, research, traps and villager fixes. The mod remains playable and in development.
 
 - Rename the mod and distributable to **Villager Colonies** and **`villager-colonies-0.1.0.0.jar`**. Reset the version while retaining the `wwmc` mod ID and existing saves.
 - Use the Villager Colonies emblem in the mod list, mod information panel and configuration menu.

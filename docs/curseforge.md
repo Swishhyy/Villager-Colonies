@@ -49,15 +49,15 @@ The maintainer chooses when to change the version. The renamed mod restarts at *
 
 Edit `mod_version` in `gradle.properties`. Gradle uses it for the JAR and NeoForge metadata; `mod_archive_name=villager-colonies` controls the filename independently of the saved `wwmc` namespace. CI checks the filename, display name, internal ID, version and changelog on every build. A version change merged into `main` publishes a GitHub release only after all checks pass. Future tags use **`villager-colonies-v<version>`** so restarting the version does not collide with historical WWMC tags. CurseForge submission remains a separate step.
 
-This development branch stays open and unmerged until the maintainer is ready. Older WWMC releases and their changelogs retain their original names and numbers. The internal mod ID, resource IDs, commands, `wwmc-server.toml` and saved-data namespace stay compatible. Replace the old JAR manually and use matching client/server builds; keep only one Villager Colonies or WWMC JAR in each `mods` directory.
+Older WWMC releases and their changelogs retain their original names and numbers. The internal mod ID, resource IDs, commands, `wwmc-server.toml` and saved-data namespace stay compatible. Replace the old JAR manually and use matching client/server builds; keep only one Villager Colonies or WWMC JAR in each `mods` directory.
 
 The numeric version has no `-alpha` suffix. The leading `0` and the project description communicate the mod's development status. CurseForge's separate **Release Type** field controls which distribution channel a particular file uses: a **Release** file can be a playable build of a mod that is still being developed.
 
 ## File upload
 
-These settings are prepared for **Villager Colonies 0.1.0.0**. The renamed build is currently a branch test artifact; the published legacy release is still World War MC 0.1.0.1.
+These settings are prepared for **Villager Colonies 0.1.0.0**. CurseForge submission is separate from the GitHub release.
 
-1. Build with `./gradlew build` or download the artifact from a successful [GitHub Actions build of the development branch](https://github.com/Swishhyy/Villager-Colonies/actions?query=branch%3Acodex%2F0.1.1.0-villager-ai). CI produces `villager-colonies-0.1.0.0-neoforge-mc26.2` and uploads only the distributable mod JAR. Published builds appear on [GitHub Releases](https://github.com/Swishhyy/Villager-Colonies/releases/latest).
+1. Download the tested JAR from the [Villager Colonies 0.1.0.0 release](https://github.com/Swishhyy/Villager-Colonies/releases/tag/villager-colonies-v0.1.0.0), build with `./gradlew build`, or use an artifact from a successful [GitHub Actions build](https://github.com/Swishhyy/Villager-Colonies/actions?query=branch%3Amain). CI produces `villager-colonies-0.1.0.0-neoforge-mc26.2` and uploads only the distributable mod JAR.
 2. If downloaded from Actions, extract the artifact ZIP. Upload **`villager-colonies-0.1.0.0.jar`**, not the artifact ZIP, a sources JAR, or a test JAR.
 3. Set **Display Name** to **Villager Colonies 0.1.0.0 - NeoForge 26.2**.
 4. Select **Minecraft 26.2** and the **NeoForge** loader, and use the **MIT License** already present in this repository.

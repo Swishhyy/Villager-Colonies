@@ -4,7 +4,7 @@ Build a settlement, recruit villagers, and give them jobs like farming, mining, 
 
 Trade with other settlements, play alongside friends, and equip guards to defend against raids. When you're ready, lead your guards out to clear bandit camps and establish outposts.
 
-**Villager Colonies is playable and still in development.** This branch starts the renamed mod at **0.1.0.0** and remains open for testing. It carries forward the WWMC features and bug fixes.
+**Villager Colonies is playable and still in development.** Version **0.1.0.0** starts the renamed mod and carries forward the WWMC features and bug fixes.
 
 [CurseForge project](https://www.curseforge.com/minecraft/mc-mods/world-war-mc) · [All guides](docs/README.md) · [Changelog](docs/CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Report a bug](https://github.com/Swishhyy/Villager-Colonies/issues)
 
@@ -24,20 +24,18 @@ Larger warfare systems, countries, automatic building, and distant settlement si
 
 ## Install
 
-This branch is testing **Villager Colonies 0.1.0.0**: settlement ages, timed research, tin and bronze equipment, traps, furnished ruins, clearer work animations, and the worker and guard fixes. A successful build provides `villager-colonies-0.1.0.0.jar`.
-
-The latest published legacy build is **World War MC 0.1.0.1**. The renamed build is available from this branch's Actions artifacts until it is released.
+**Villager Colonies 0.1.0.0** includes settlement ages, timed research, tin and bronze equipment, traps, furnished ruins, clearer work animations, and the worker and guard fixes.
 
 | Requirement | Version |
 | --- | --- |
 | Minecraft Java Edition | **26.2** |
 | Mod loader | **NeoForge 26.2.0.88 or newer for Minecraft 26.2** |
 | Java | **25** |
-| Villager Colonies test build | **0.1.0.0** |
+| Villager Colonies | **0.1.0.0** |
 
 1. Install NeoForge for Minecraft **26.2**.
-2. Download the renamed test build from a successful [GitHub Actions build of this branch](https://github.com/Swishhyy/Villager-Colonies/actions?query=branch%3Acodex%2F0.1.1.0-villager-ai). Published builds appear on [GitHub Releases](https://github.com/Swishhyy/Villager-Colonies/releases/latest) and [CurseForge](https://www.curseforge.com/minecraft/mc-mods/world-war-mc).
-3. Extract the Actions artifact ZIP and place **`villager-colonies-0.1.0.0.jar`** in the instance's **`mods`** folder.
+2. Download **`villager-colonies-0.1.0.0.jar`** from the [GitHub release](https://github.com/Swishhyy/Villager-Colonies/releases/tag/villager-colonies-v0.1.0.0). Development builds are also available from successful [GitHub Actions builds](https://github.com/Swishhyy/Villager-Colonies/actions?query=branch%3Amain).
+3. Place the JAR in the instance's **`mods`** folder. If using an Actions download, extract its artifact ZIP first.
 4. For multiplayer, install the **same Villager Colonies build on the server and every client**.
 
 Replace the previous WWMC or Villager Colonies JAR; keep only one copy in the folder. The internal mod ID stays `wwmc` so existing worlds retain their blocks, citizens and settlement data. Use a test world or back up an existing world before updating.
