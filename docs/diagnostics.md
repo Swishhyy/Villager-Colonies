@@ -6,7 +6,7 @@ Villager Colonies writes diagnostics to the hosting game's **console** and **`lo
 
 | Message | What it tells you |
 | --- | --- |
-| `server-start` | The loaded mod version and diagnostic settings. |
+| `server-start` | The loaded Villager Colonies version and diagnostic settings. |
 | `worker-stalled` | A citizen has kept reporting a missing supply, inaccessible storage, full storage, unavailable hospital bed or blocked trade route. Includes town and citizen names/IDs, dimension, station, current position, activity, target, pantry approach, path destination/completion, path counters, health, meal timer and bag usage. |
 | `worker-resumed` | A previously reported citizen has stopped reporting a problem for ten loaded seconds. Check the new activity to see what they are doing. |
 | `stuck-rescue` | A citizen tried to walk without moving for 30 seconds. Shows the old location and target, and whether they returned to the banner or lacked standing room. |
@@ -32,4 +32,4 @@ These flat keys live in the generated `wwmc-server.toml`. In a loaded single-pla
 
 Brief pauses do not announce a recovery, and unloaded time does not count toward the stall delay. Tracking belongs to each citizen or current recall search, so old worlds and removed citizens do not leave a growing global log cache.
 
-For a bug report, include the relevant `[WWMC]` lines **and nearby exceptions** from `latest.log`, your Minecraft/NeoForge versions, the exact Villager Colonies version or commit, and what happened in game. The `server-start` line shows which mod version the game loaded.
+For a bug report, include the relevant `[WWMC]` lines **and nearby exceptions** from `latest.log`, your Minecraft/NeoForge versions, the exact Villager Colonies version or commit, and what happened in game. The `server-start` line shows which Villager Colonies version the game loaded.

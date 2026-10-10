@@ -1,10 +1,14 @@
 # Villager Colonies
 
+<img src="src/main/resources/villager-colonies.png" alt="Villager Colonies project logo" width="200" height="200">
+
 Build a settlement, recruit villagers, and give them jobs like farming, mining, cooking, and crafting. Keep your people fed, organize supplies, and decide how your town grows.
 
 Trade with other settlements, play alongside friends, and equip guards to defend against raids. When you're ready, lead your guards out to clear bandit camps and establish outposts.
 
 **Villager Colonies is playable and still in development.** Version **0.1.0.0** starts the renamed mod and carries forward the WWMC features and bug fixes.
+
+Formerly **World War MC**. The internal `wwmc` namespace keeps existing worlds, commands and configuration files compatible.
 
 [CurseForge project](https://www.curseforge.com/minecraft/mc-mods/world-war-mc) · [All guides](docs/README.md) · [Changelog](docs/CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Report a bug](https://github.com/Swishhyy/Villager-Colonies/issues)
 

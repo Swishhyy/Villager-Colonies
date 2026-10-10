@@ -1,5 +1,7 @@
 # Development guide
 
+The public project name is **Villager Colonies**. Its internal `wwmc` mod ID, Java package, resource namespace, `/wwmc` commands, config filenames and diagnostic prefix are retained for compatibility with existing worlds and integrations. The distributable is now named `villager-colonies-<mod_version>.jar`.
+
 [Project overview](../README.md) · [All guides](README.md) · [Roadmap](ROADMAP.md)
 
 | Looking for | Go to |

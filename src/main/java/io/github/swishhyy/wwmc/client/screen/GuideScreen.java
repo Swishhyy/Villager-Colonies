@@ -127,7 +127,8 @@ public final class GuideScreen extends Screen {
     @Override public void extractBackground(GuiGraphicsExtractor g,int mouseX,int mouseY,float partialTick) {
         super.extractBackground(g,mouseX,mouseY,partialTick);
         g.fill(x,y,x+w,y+h,0xFF243540); g.fill(x+nav,y+3,x+w-3,y+h-3,PAPER);
-        g.text(font,Ui.fit(font,"VILLAGER COLONIES",nav-16),x+8,y+10,0xFFFFE0A0,false);
+        g.text(font,"VILLAGER",x+8,y+6,0xFFFFE0A0,false);
+        g.text(font,"COLONIES",x+8,y+17,0xFFFFE0A0,false);
         var t=GuideBook.topic(topic);
         g.text(font,Ui.fit(font,t.title(),w-nav-22),left(),y+10,INK,false);
         g.text(font,Ui.fit(font,t.subtitle(),w-nav-22),left(),y+24,MUTED,false);

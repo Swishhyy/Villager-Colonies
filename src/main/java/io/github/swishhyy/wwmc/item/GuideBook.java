@@ -103,7 +103,7 @@ public final class GuideBook {
     );
     public static Topic topic(String id) { return TOPICS.stream().filter(t -> t.id().equals(id)).findFirst().orElse(TOPICS.getFirst()); }
     /** A single fallback page preserves existing book components; normal use opens the illustrated guide. */
-    public static List<String> pages() { return List.of("Villager Colonies\nGuide\n\nRight-click this\nguide to open\nvisual topics,\nstation recipes\nand quick help.\n\nPress L to see\nyour progress."); }
+    public static List<String> pages() { return List.of("Villager Colonies\nGuide\n\nRight-click this\nguide to open\nvisual topics,\nstation recipes\nand quick help.\n\nPress L to see\ntown progress."); }
     public static WrittenBookContent content() {
         return new WrittenBookContent(Filterable.passThrough("Settlement Guide"),"Villager Colonies",0,
                 pages().stream().map(s -> Filterable.<Component>passThrough(Component.literal(s))).toList(),true);

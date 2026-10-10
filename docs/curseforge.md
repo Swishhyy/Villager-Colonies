@@ -1,5 +1,7 @@
 # CurseForge publishing
 
+Set the project name to **Villager Colonies**. Use the [400 × 400 PNG project icon](../src/main/resources/villager-colonies.png) for the CurseForge thumbnail.
+
 [Project overview](../README.md) · [All guides](README.md) · [CurseForge project](https://www.curseforge.com/minecraft/mc-mods/world-war-mc)
 
 ## Project summary
