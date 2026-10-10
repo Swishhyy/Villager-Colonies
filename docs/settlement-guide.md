@@ -178,7 +178,11 @@ If the status says **“Researcher cannot reach the lectern”**, clear a walkin
 | Gemcraft; requires Iron Age | 8 diamonds, 24 lapis lazuli, 24 paper | 8 minutes | Diamond gear, enchanting tables and Enchanter Stations |
 | Netherite Smithing; requires Gemcraft | 4 netherite scraps, 16 gold ingots, 32 paper | 10 minutes | Netherite gear and upgrades |
 
-**Tin and bronze.** Tin ore generates in new Overworld terrain from **Y −32 to 64**, including deepslate. Mine it with a stone pickaxe and smelt raw tin into ingots. After Bronze Age research, craft **three copper ingots and one tin ingot into four bronze blends**, then smelt those into bronze ingots. Bronze has its own sword, pickaxe, axe, shovel, hoe and complete armor set. Its tools last longer than stone and still need Iron Age equipment for high-tier ores. Ingots and raw tin also have nine-item storage blocks.
+**Tin and bronze.** Tin ore generates in new Overworld terrain from **Y −32 to 64**, including deepslate. Mine it with a stone pickaxe and smelt raw tin into ingots. After Bronze Age research, put **one copper ingot in each of three crafting slots and one tin ingot in a fourth slot** to make **four bronze blends**. This shapeless recipe fits your inventory's 2×2 grid or a crafting table. Smelt each blend with fuel in a furnace or blast furnace to get one bronze ingot; four blends make four ingots.
+
+Collecting copper or tin discovers the blend in the vanilla recipe book. Collecting raw tin, blends and ingots discovers their smelting, equipment and storage recipes. Recipe discovery does not bypass settlement research. The Settlement Guide's **Ages & research** page shows the alloying grid and furnace step.
+
+Bronze has its own sword, pickaxe, axe, shovel, hoe and complete armor set. Its tools last longer than stone and still need Iron Age equipment for high-tier ores. Ingots and raw tin also have nine-item storage blocks.
 
 **Found gear stays yours.** A higher-tier sword, tool or armor piece can be picked up and stored before its research. Mining, fighting, using and wearing it wait for the unlock; armor returns intact to inventory. Locked crafting, anvil and smithing outputs retain their ingredients. A short hotbar notice explains the required research. Creative and spectator players are exempt. The material ingots themselves can be collected and smelted for research beforehand.
 

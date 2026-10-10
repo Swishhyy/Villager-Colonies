@@ -50,6 +50,36 @@ def tag(namespace, kind, name, values):
 def recipe(name, value):
     write(DATA / 'wwmc/recipe' / (name + '.json'), value)
 
+def unlock_metal_recipes():
+    """Discover metal recipes from their materials, like vanilla's recipe book.
+
+    Discovery explains the recipe; AgeProgression still checks permission when
+    a player takes its result. No visible advancement or chat notice is added.
+    """
+    for path in sorted((DATA / 'wwmc/recipe').glob('*.json')):
+        if not path.stem.startswith(('tin_', 'raw_tin_', 'bronze_')):
+            continue
+        value = json.loads(path.read_text())
+        inputs = value.get('ingredients', list(value.get('key', {}).values()))
+        if 'ingredient' in value:
+            inputs = [value['ingredient']]
+        materials = sorted({item for item in inputs if isinstance(item, str)
+                            and item.startswith(('wwmc:tin_', 'wwmc:deepslate_tin_', 'wwmc:raw_tin', 'wwmc:bronze_'))})
+        if path.stem == 'bronze_blend':
+            materials.append('minecraft:copper_ingot')
+        if not materials:
+            raise ValueError('Missing recipe discovery material: ' + path.stem)
+        recipe_id = 'wwmc:' + path.stem
+        write(DATA / 'wwmc/advancement/recipes/misc' / path.name, {
+            'parent':'minecraft:recipes/root',
+            'criteria':{
+                'has_material':{'trigger':'minecraft:inventory_changed',
+                                'conditions':{'items':[{'items':materials}]}},
+                'has_the_recipe':{'trigger':'minecraft:recipe_unlocked',
+                                  'conditions':{'recipe':recipe_id}}},
+            'requirements':[['has_material', 'has_the_recipe']],
+            'rewards':{'recipes':[recipe_id]}})
+
 def shaped(name, pattern, key, result=None, count=1):
     recipe(name, {'type':'minecraft:crafting_shaped', 'category':'misc', 'pattern':pattern, 'key':key,
                   'result':{'id':result or 'wwmc:' + name, 'count':count}})
@@ -118,18 +148,60 @@ def block(name):
     write(ASSETS / 'blockstates' / (name+'.json'), {'variants':{'':{'model':'wwmc:block/'+name}}})
     item_model(name,parent='wwmc:block/'+name)
 
+def fish_carcass():
+    """A whole fish with an intact head, eyes, fins and a forked tail."""
+    parts=[cube([4.5,5,6.5],[10.5,10.5,9.5],'skin'),
+           cube([2,6,6.25],[4.5,10,9.75],'skin'),
+           cube([1.5,6.5,6.75],[2,9,9.25],'skin'),
+           cube([10.5,6,7],[12,9.5,9],'skin'),
+           cube([12,6.75,7.5],[13,8.75,8.5],'fin'),
+           cube([4.5,5,6.48],[10.5,6,9.52],'belly'),
+           cube([6,10,7.65],[9,12.5,8.35],'fin'),
+           cube([7.5,3.5,7.65],[10,5.5,8.35],'fin'),
+           cube([5.5,5.5,5.25],[8,6.1,6.6],'fin'),
+           cube([5.5,5.5,9.4],[8,6.1,10.75],'fin')]
+    for lo,hi,angle in [([12.75,7.5,7.5],[16,9.5,8.5],22.5),
+                        ([12.75,6,7.5],[16,8,8.5],-22.5)]:
+        tail=cube(lo,hi,'fin')
+        tail['rotation']={'origin':[13,7.75,8],'axis':'z','angle':angle}
+        parts.append(tail)
+    for lo,hi in [([2.8,8.2,6.12],[4.1,9.5,6.27]),
+                  ([2.8,8.2,9.73],[4.1,9.5,9.88])]:
+        parts.append(cube(lo,hi,'eye_white'))
+    for lo,hi in [([2.85,8.55,6.06],[3.6,9.3,6.15]),
+                  ([2.85,8.55,9.85],[3.6,9.3,9.94])]:
+        parts.append(cube(lo,hi,'eye'))
+    parts.append(cube([1.46,7.1,7.1],[1.52,7.35,8.9],'eye'))
+    write(ASSETS / 'models/item/fish_carcass.json', {
+        'parent':'minecraft:block/block',
+        'textures':{'particle':'#skin','belly':'minecraft:block/white_terracotta',
+                    'eye_white':'minecraft:block/white_concrete','eye':'minecraft:block/black_concrete'},
+        'elements':parts,
+        'display':{
+            'gui':{'rotation':[20,-25,-15],'scale':[.9,.9,.9]},
+            'ground':{'rotation':[90,0,0],'translation':[0,2,0],'scale':[.65,.65,.65]},
+            'fixed':{'rotation':[0,0,0],'scale':[.8,.8,.8]},
+            'thirdperson_righthand':{'rotation':[0,90,-25],'translation':[0,2,0],'scale':[.55,.55,.55]},
+            'thirdperson_lefthand':{'rotation':[0,-90,25],'translation':[0,2,0],'scale':[.55,.55,.55]},
+            'firstperson_righthand':{'rotation':[0,-45,0],'translation':[0,2,0],'scale':[.75,.75,.75]},
+            'firstperson_lefthand':{'rotation':[0,45,0],'translation':[0,2,0],'scale':[.75,.75,.75]}}})
+
 def carcass(kind, skin):
-    textures={'particle':skin,'skin':skin,'hoof':'minecraft:block/black_wool','flesh':'minecraft:block/white_terracotta'}
     if kind in ('cod','salmon'):
-        parts=[cube([3,5,6],[12,8,10],'skin'),cube([1,5,6],[4,8,10],'flesh'),cube([12,5,5],[15,8,11],'skin'),cube([6,7.5,7],[9,9,9],'skin')]
-    else:
-        small=kind in ('chicken','rabbit')
-        parts=[cube([3,3,5],[10 if small else 12,8,11],'skin'),cube([10,3.5,5.5],[14,7.5,10.5],'skin')]
-        for x in (4,8 if small else 10):
-            for z in (3.5,10):parts.extend([cube([x,2,z],[x+1.5,4,z+2.5],'skin'),cube([x,2,z],[x+1.5,3,z+1],'hoof')])
-        if kind in ('cow','sheep'):parts.extend([cube([12,7,5],[13,9,6],'flesh'),cube([12,7,10],[13,9,11],'flesh')])
-        if kind=='rabbit':parts.extend([cube([12,7,6],[13,11,7],'skin'),cube([12,7,9],[13,11,10],'skin')])
-        if kind=='chicken':parts.extend([cube([13,4,5],[15,6,6],'flesh'),cube([11,7.5,6],[13,9,7],'flesh')])
+        fish_carcass()
+        write(ASSETS / 'models/item' / (kind+'_carcass.json'), {
+            'parent':'wwmc:item/fish_carcass',
+            'textures':{'skin':'minecraft:block/terracotta' if kind=='cod' else 'minecraft:block/red_terracotta',
+                        'fin':skin}})
+        return
+    textures={'particle':skin,'skin':skin,'hoof':'minecraft:block/black_wool','flesh':'minecraft:block/white_terracotta'}
+    small=kind in ('chicken','rabbit')
+    parts=[cube([3,3,5],[10 if small else 12,8,11],'skin'),cube([10,3.5,5.5],[14,7.5,10.5],'skin')]
+    for x in (4,8 if small else 10):
+        for z in (3.5,10):parts.extend([cube([x,2,z],[x+1.5,4,z+2.5],'skin'),cube([x,2,z],[x+1.5,3,z+1],'hoof')])
+    if kind in ('cow','sheep'):parts.extend([cube([12,7,5],[13,9,6],'flesh'),cube([12,7,10],[13,9,11],'flesh')])
+    if kind=='rabbit':parts.extend([cube([12,7,6],[13,11,7],'skin'),cube([12,7,9],[13,11,10],'skin')])
+    if kind=='chicken':parts.extend([cube([13,4,5],[15,6,6],'flesh'),cube([11,7.5,6],[13,9,7],'flesh')])
     model={'parent':'minecraft:block/block','textures':textures,'elements':parts,
            'display':{'gui':{'rotation':[25,-35,0],'translation':[0,1,0],'scale':[.95,.95,.95]},
                       'ground':{'translation':[0,1,0],'scale':[.6,.6,.6]},'fixed':{'rotation':[0,90,0],'scale':[.8,.8,.8]},
@@ -169,6 +241,7 @@ def main(client_jar, textures_only=False):
         key={'I':'wwmc:bronze_ingot'}
         if any('S' in row for row in pattern):key['S']='minecraft:stick'
         shaped('bronze_'+part,pattern,key)
+    unlock_metal_recipes()
     shaped('researcher_station',['PPP','PIP','PPP'],{'P':'#minecraft:planks','I':'minecraft:lectern'})
     for role,center in [('guard','minecraft:wooden_sword'),('barracks','minecraft:stone_sword'),('butcher','minecraft:wooden_axe'),('quarry','wwmc:bronze_pickaxe')]:
         shaped(role+'_station',['PPP','PIP','PPP'],{'P':'#minecraft:planks','I':center})

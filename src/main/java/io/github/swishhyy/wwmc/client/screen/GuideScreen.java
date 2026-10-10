@@ -124,6 +124,27 @@ public final class GuideScreen extends Screen {
         top=card(g,new GuideBook.Card(s.ingredient(),"Supply",s.supplies()),top,-1,-1);
         return card(g,new GuideBook.Card("minecraft:chest","Produces / provides",s.result()),top,-1,-1);
     }
+    private int bronzeRecipe(GuiGraphicsExtractor g,int top) {
+        int left=left(),cw=contentWidth(),gridX=left+Math.max(0,(cw-108)/2);
+        top=text(g,"Make bronze after Bronze Age research",left,top,cw,INK)+4;
+        top=text(g,"1. Use three separate copper slots and one tin slot. Either crafting grid works.",left,top,cw,MUTED)+6;
+        for(int row=0;row<2;row++) for(int col=0;col<2;col++) {
+            int sx=gridX+col*19,sy=top+row*19;
+            Ui.slot(g,sx,sy); g.item(icon(row==1 && col==1 ? "wwmc:tin_ingot" : "minecraft:copper_ingot"),sx,sy);
+        }
+        g.text(font,">",gridX+48,top+13,ACCENT,false);
+        ItemStack blend=new ItemStack(WWMC.BRONZE_BLEND.get(),4);
+        Ui.slot(g,gridX+66,top+9); g.item(blend,gridX+66,top+9);
+        g.text(font,"4",gridX+80,top+23,INK,false);
+        top+=45;
+        top=text(g,"2. Smelt each bronze blend in a furnace with fuel to make one bronze ingot. A blast furnace also works.",left,top,cw,MUTED)+6;
+        for(int i=0;i<3;i++) {
+            int sx=gridX+i*33;
+            Ui.slot(g,sx,top); g.item(icon(i==0 ? "wwmc:bronze_blend" : i==1 ? "minecraft:furnace" : "wwmc:bronze_ingot"),sx,top);
+            if(i<2) g.text(font,">",sx+23,top+4,ACCENT,false);
+        }
+        return top+28;
+    }
     @Override public void extractBackground(GuiGraphicsExtractor g,int mouseX,int mouseY,float partialTick) {
         super.extractBackground(g,mouseX,mouseY,partialTick);
         g.fill(x,y,x+w,y+h,0xFF243540); g.fill(x+nav,y+3,x+w-3,y+h-3,PAPER);
@@ -142,6 +163,7 @@ public final class GuideScreen extends Screen {
         if(topic.equals("stations")) at=recipe(g,stations().get(station),at);
         else {
             at=flow(g,t.flow(),at);
+            if(topic.equals("research")) at=bronzeRecipe(g,at);
             for(var c:t.cards()) at=card(g,c,at,mouseX,mouseY);
         }
         if(!t.tip().isEmpty()) {

@@ -61,7 +61,7 @@ public final class GuideBook {
             new Card("wwmc:researcher_station","Hire a researcher","Place Researcher beside a lectern. Give a citizen this job in Jobs and keep ready-to-eat food available."),
             new Card("minecraft:paper","Choose a project","Open Campaign > Research at the flag. Supplies are paid from the warehouse once; research advances only while a researcher works at the lectern."),
             new Card("wwmc:tin_ore","Find tin","Tin occurs from Y -32 to 64 in new Overworld terrain. A stone pickaxe can mine it. Smelt raw tin into ingots."),
-            new Card("wwmc:bronze_ingot","Enter the Bronze Age","Research Bronze Age first. Craft 3 copper ingots + 1 tin ingot into 4 bronze blends, then smelt them into bronze ingots."),
+            new Card("wwmc:bronze_ingot","Enter the Bronze Age","Research Bronze Age first. The recipe book discovers bronze blend when you collect copper or tin. Put copper in 3 separate crafting slots and tin in a fourth, then smelt the 4 blends into ingots."),
             new Card("minecraft:iron_sword","Unlock equipment","Iron Age unlocks iron and gold equipment. Gemcraft and Netherite Smithing follow. Found equipment can be stored but cannot be used before its research."),
             new Card("minecraft:blue_banner","Share progress","The owner and accepted members share research everywhere, including other dimensions. Allies and invitations alone do not grant it. Existing towns retain their old gear access.")
         ),List.of("Stone","Researcher","Tin + copper","Bronze","Iron"),"Research pauses during sleep, danger or blocked access. Check the banner's Research status for the reason. Progress and paid supplies survive saving."),
