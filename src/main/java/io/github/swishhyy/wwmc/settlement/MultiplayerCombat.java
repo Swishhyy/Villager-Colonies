@@ -30,7 +30,8 @@ public final class MultiplayerCombat {
     }
     @SubscribeEvent(priority=EventPriority.LOWEST)
     public void finalDamage(LivingDamageEvent.Pre event) {
-        if(!(event.getEntity() instanceof ServerPlayer player) || !(player.level() instanceof ServerLevel level)) return;
+        if(!(event.getEntity() instanceof ServerPlayer player)) return;
+        ServerLevel level=player.level();
         var duel=MultiplayerData.get(level).duel(player.getUUID());
         if(duel==null || !duel.accepted) return;
         if(!(event.getSource().getEntity() instanceof Player attacker) || !PlayerDuels.allows(level,attacker,player)) {
@@ -44,7 +45,8 @@ public final class MultiplayerCombat {
         }
     }
     @SubscribeEvent public void died(LivingDeathEvent event) {
-        if(event.getEntity() instanceof ServerPlayer player && player.level() instanceof ServerLevel level) {
+        if(event.getEntity() instanceof ServerPlayer player) {
+            ServerLevel level=player.level();
             var duel=MultiplayerData.get(level).duel(player.getUUID());
             if(duel!=null && duel.accepted) PlayerDuels.finish(level,duel,duel.other(player.getUUID()),"Participant died");
         }
