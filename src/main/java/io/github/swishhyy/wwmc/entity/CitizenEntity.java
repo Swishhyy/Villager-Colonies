@@ -473,6 +473,21 @@ public final class CitizenEntity extends Villager {
         if(recovering || hospitalBed!=null) { leaveHospitalBed(); recovering=false; }
         if(isGuard()) leaveBed();
     }
+    @Override public float applyItemBlocking(ServerLevel level,DamageSource source,float amount) {
+        ItemStack blocking=getItemBlockingWith();
+        EquipmentSlot slot=getUsedItemHand().asEquipmentSlot();
+        float stopped=super.applyItemBlocking(level,source,amount);
+        // Vanilla's BlocksAttacks durability path only handles players; citizens spend the same real shield wear.
+        if(stopped>0 && blocking!=null && blocking.is(Items.SHIELD)) {
+            var rules=blocking.get(DataComponents.BLOCKS_ATTACKS);
+            if(rules!=null) {
+                int wear=rules.itemDamage().apply(stopped);
+                if(wear>0) blocking.hurtAndBreak(wear,this,slot);
+                if(blocking.isEmpty()) stopUsingItem();
+            }
+        }
+        return stopped;
+    }
     /** A guard post has an open place and guarding matters more than this citizen's own job, so it volunteers. */
     private boolean guardVacancy(ServerLevel level,Settlement town) {
         int guard=town.jobs.level(StructureRole.GUARD);
