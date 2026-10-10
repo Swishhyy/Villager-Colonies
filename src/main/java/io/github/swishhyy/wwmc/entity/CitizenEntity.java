@@ -2158,6 +2158,8 @@ public final class CitizenEntity extends Villager {
         if(researchDesk==null || !desks.contains(researchDesk)
                 || !canUse(level,researchDesk) && !standingSpotUsable(level,town,researchStand,researchDesk)) {
             researchDesk=null; researchStand=null;
+            // Navigation caches the active path: discard it before probing a changed work approach.
+            getNavigation().stop();
             var view=standingView(level,town);
             for(BlockPos desk:desks.stream().sorted(Comparator.comparingDouble(p -> p.distSqr(blockPosition()))).limit(4).toList()) {
                 if(canUse(level,desk)) { researchDesk=desk; break; }
@@ -2177,6 +2179,8 @@ public final class CitizenEntity extends Villager {
         if(!canUse(level,researchDesk)) {
             activity="Walking to the research lectern";
             researchState=Research.Status.waiting("Researcher is walking to the lectern.");
+            // A periodic request for the same target otherwise reuses the path from before a wall was built.
+            if(level.getGameTime()>=nextPathAt) getNavigation().stop();
             boolean moving=walk(researchStand,0.65,0);
             var path=getNavigation().getPath();
             if(onGround() && (!moving || path!=null && !path.canReach() && !beyondOneRoute(researchStand))) {

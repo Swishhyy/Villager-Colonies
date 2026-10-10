@@ -148,7 +148,7 @@ public final class ResearchStatusWorldTests {
                     enclosure(level,secondDesk,true); phase[0]=3;
                 }
                 if(phase[0]==3) {
-                    helper.assertTrue(status.paused() && status.detail().contains("cannot reach the lectern"),"New obstruction retained a stale walking state: "+status+"; "+b.activity());
+                    helper.assertTrue(status.paused() && status.detail().contains("cannot reach the lectern"),"New obstruction retained a stale walking state: "+status+"; "+b.activity()+"; position="+b.blockPosition()+"; job="+town.jobs.home(b.getUUID()));
                     enclosure(level,secondDesk,false); phase[0]=4;
                 }
                 if(phase[0]==4) {

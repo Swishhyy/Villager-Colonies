@@ -101,6 +101,7 @@ public final class Research {
         if(stations.isEmpty()) return Status.paused("No Researcher Station. Add one with a lectern in range.");
         boolean active=false,desk=false,assigned=false,unloaded=false;
         Status best=null;
+        boolean bestHasAi=false;
         for(Station station:stations) {
             if(!level.hasChunkAt(station.position())) { unloaded=true; continue; }
             if(!SettlementService.active(level,station)) continue;
@@ -112,7 +113,10 @@ public final class Research {
                 assigned=true;
                 if(!(level.getEntity(id) instanceof CitizenEntity citizen) || !citizen.isAlive() || citizen.town(level)!=town) continue;
                 Status current=citizen.researchStatus(level,town,station);
-                if(best==null || current.rank()>best.rank()) best=current;
+                boolean hasAi=!citizen.isNoAi();
+                if(best==null || current.rank()>best.rank() || current.rank()==best.rank() && hasAi && !bestHasAi) {
+                    best=current; bestHasAi=hasAi;
+                }
                 if(best.state()==WorkState.WORKING) return best;
             }
         }
