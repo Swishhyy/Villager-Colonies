@@ -1,0 +1,42 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "wwmc:iron_spring_trap",
+          "functions": [
+            {
+              "function": "minecraft:copy_state",
+              "block": "wwmc:iron_spring_trap",
+              "properties": [
+                "wear",
+                "armed"
+              ],
+              "conditions": [
+                {
+                  "condition": "minecraft:inverted",
+                  "term": {
+                    "condition": "minecraft:block_state_property",
+                    "block": "wwmc:iron_spring_trap",
+                    "properties": {
+                      "wear": "0",
+                      "armed": "true"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ]
+    }
+  ]
+}

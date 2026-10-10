@@ -16,8 +16,12 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 public final class CampaignService {
     private int cursor;
     public static void record(ServerLevel level,Settlement town,String text) {
+        journal(level,town,text);
+        for(ServerPlayer player:level.players()) if(TownAccess.manages(town,player.getUUID())) SettlementService.notify(player,town.name+": "+text);
+    }
+    /** Routine citizen updates stay in the banner's Campaign / Journal tab, without chat or hotbar spam. */
+    public static void journal(ServerLevel level,Settlement town,String text) {
         town.campaign.log(level.getGameTime(),text); SettlementData.get(level).setDirty();
-        for(ServerPlayer player:level.players()) if(TownAccess.manages(town,player.getUUID())) SettlementService.tell(player,town.name+": "+text);
     }
     public static Settlement local(ServerPlayer player) {
         ServerLevel level=(ServerLevel)player.level(); SettlementData data=SettlementData.get(level);

@@ -37,7 +37,7 @@ public record GuardPosts(BlockPos station,BlockPos day,BlockPos night,String rol
     }
     public static String describe(String role) {
         return switch(role) {
-            case SHIELD -> "Holds its post like a gate: fights only what comes within 10 blocks, takes 15% less damage, 25% with a shield in hand";
+            case SHIELD -> "Holds its gate within 10 blocks in calm periods, joins town defense during alarms, and takes 15% less damage, 25% with a shield in hand";
             case ARCHER -> "Covers approaches: spots hostiles from 28 blocks, 40 on alert, and pauses longer at each patrol point; needs a bow and arrows";
             default -> "Patrols and chases hostiles within 16 blocks, 32 on alert, and answers calls from citizens";
         };

@@ -105,8 +105,12 @@ public final class Panels {
         overview.add(new Row(icon(Items.PAPER),"Jobs",jobs.summary()));
         overview.add(new Row(icon(WWMC.BANNER_ITEM.get()),"Stations",town.stations.size()+" total; housing, barracks and warehouses provide support, not jobs"));
         overview.add(new Row(icon(Items.EMERALD),"Population upgrades",SettlementService.populationLevel(town)+" bought"
-                +(SettlementService.canGrow(town) ? "; the next allows "+SettlementService.populationLimitAt(SettlementService.populationLevel(town)+1)
+                +(SettlementService.canGrow(town) ? "; the next allows "+SettlementService.populationLimitAt(town,SettlementService.populationLevel(town)+1)
                     +" citizens for "+SettlementService.populationCost(town)+" emeralds" : "; the town is at the server's ceiling")));
+        overview.add(new Row(icon(Items.PAPER),"Population research","+"+Research.populationBonus(town)+" places; study Housing Plans, Civic Planning and City Planning in Campaign / Research"));
+        overview.add(new Row(icon(Items.LECTERN),Research.age(town),Research.progress(town)));
+        overview.add(researchStatus(Research.status(level,town)));
+        overview.add(new Row(icon(Items.WRITABLE_BOOK),"Town journal","Citizen promotions and hospital recoveries appear in Campaign / Journal"));
         overview.add(new Row(icon(Items.BREAD),"Food",InventoryOps.count(everything,FoodHealing::food)+" meals in storage"));
         overview.add(storage(icon(Items.CHEST),"Warehouse",SettlementService.storage(level,town),"No loaded warehouse with a chest or barrel in range"));
         int barrels=0;
@@ -122,6 +126,7 @@ public final class Panels {
         }));
         overview.add(alarm(town));
         overview.add(new Row(icon(Items.IRON_SWORD),"Enemy waves",WaveService.status(level,town)+"; "+town.waves+" repelled"));
+        overview.add(new Row(icon(WWMC.TRAP_ITEMS.get(io.github.swishhyy.wwmc.core.TrapKind.WOODEN_SPIKES).get()),"Traps",TrapService.status(level,town)));
         List<Row> people=new ArrayList<>();
         List<CitizenEntity> loaded=new ArrayList<>(DefenseService.loadedCitizens(level,town));
         loaded.sort(Comparator.comparing(citizen -> citizen.getName().getString()));
@@ -141,6 +146,11 @@ public final class Panels {
         return new PanelView(Component.literal(town.name),Component.literal(town.citizens.size()+" citizens · "+jobs.assigned()+"/"+jobs.places()+" jobs · "
                 +(problems==0 ? "no needs" : problems+(problems==1 ? " need" : " needs"))),
                 List.of(new Tab("Overview",overview),new Tab("Needs",needs),new Tab("Jobs",jobRows(town,jobs)),new Tab("Citizens",people),new Tab("Stations",stations)),actions);
+    }
+    /** A separate short status row keeps the reason visible beside the project's percentage and work time. */
+    public static Row researchStatus(Research.Status status) {
+        return new Row(icon(Items.LECTERN),Component.literal(status.title()),Component.literal(status.detail()),
+                status.paused() ? AMBER : status.state()==Research.WorkState.WORKING ? GREEN : GRAY,PanelView.NO_BAR,PanelView.NO_VALUE);
     }
     /** The town's needs, most urgent first; one at a place has a Show button that outlines it in the world. */
     private static List<Row> needRows(ServerLevel level,Settlement town) {
@@ -180,7 +190,7 @@ public final class Panels {
     /** The population upgrade button: its price, and greyed out when unaffordable or at the ceiling. */
     private static Action grow(Settlement town,ServerPlayer viewer) {
         if(!SettlementService.canGrow(town)) return new Action(GROW,"Population: maxed",false,"The town is at the server's ceiling of "+Config.MAX_CITIZENS.get()+" citizens");
-        int cost=SettlementService.populationCost(town),next=SettlementService.populationLimitAt(SettlementService.populationLevel(town)+1);
+        int cost=SettlementService.populationCost(town),next=SettlementService.populationLimitAt(town,SettlementService.populationLevel(town)+1);
         return new Action(GROW,"Grow: "+cost+" emeralds",affords(viewer,cost),"Raise the limit from "+SettlementService.populationLimit(town)+" to "+next
                 +" citizens for "+cost+" emeralds. Each upgrade costs "+Config.POPULATION_COST.get()+" more than the last, and every enemy wave grows: "
                 +Config.WAVE_MOBS_PER_UPGRADE.get()+" more attackers, with pillagers and later vindicators among them.");

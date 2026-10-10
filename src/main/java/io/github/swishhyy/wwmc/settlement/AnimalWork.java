@@ -27,11 +27,11 @@ public final class AnimalWork {
     public static final int FEED_LOAD=8,CARCASS_LOAD=4;
     private static final Map<ServerLevel,WorkforceBook<UUID>> ANIMALS=new WeakHashMap<>();
     private UUID target;
-    private long nextSearch,nextAttack;
+    private long nextSearch,nextAttack,reelUntil;
     private int progress;
     private FishingSpot fishing;
     public record FishingSpot(BlockPos bank,BlockPos water) {}
-    public void reset() { target=null; fishing=null; progress=0; nextSearch=0; nextAttack=0; }
+    public void reset() { target=null; fishing=null; progress=0; nextSearch=0; nextAttack=0; reelUntil=0; }
     public static boolean weapon(ItemStack stack) { return GuardWeapons.melee(stack) || stack.is(ItemTags.AXES); }
     public static boolean feed(ItemStack stack) {
         return stack.is(Items.WHEAT) || stack.is(Items.WHEAT_SEEDS) || stack.is(Items.BEETROOT_SEEDS)
@@ -231,13 +231,20 @@ public final class AnimalWork {
         }
         worker.getNavigation().stop();
         worker.getLookControl().setLookAt(fishing.water().getX()+0.5,fishing.water().getY()+0.9,fishing.water().getZ()+0.5);
+        if(level.getGameTime()<reelUntil) {
+            worker.workActivity("Reeling in the catch");
+            WorkFeedback.pulse(level,worker,fishing.water(),WorkFeedback.FISHING_REEL); return;
+        }
         worker.workActivity("Fishing: "+progress/20+" / "+Config.FISHING_SECONDS.get()+" seconds");
-        WorkFeedback.pulse(level,worker,fishing.water(),WorkFeedback.FISHING);
-        if(progress==0) worker.swing(InteractionHand.MAIN_HAND);
+        WorkFeedback.pulse(level,worker,fishing.water(),progress<30 ? WorkFeedback.FISHING_CAST : WorkFeedback.FISHING);
+        if(progress==0) worker.playSound(net.minecraft.sounds.SoundEvents.FISHING_BOBBER_THROW,0.35F,1);
         progress+=worker.workStep();
         if(progress>=Specialization.ticks(town,StructureRole.FISHERMAN,Config.FISHING_SECONDS.get()*20)) {
             progress=0; worker.bag().offer((worker.getRandom().nextBoolean() ? Carcasses.Kind.COD : Carcasses.Kind.SALMON).stack());
             worker.wearTool(); worker.swing(InteractionHand.MAIN_HAND); worker.gainExperience(StructureRole.FISHERMAN,1);
+            reelUntil=level.getGameTime()+30;
+            worker.working(WorkFeedback.FISHING_REEL);
+            worker.playSound(net.minecraft.sounds.SoundEvents.FISHING_BOBBER_RETRIEVE,0.45F,1);
             level.sendParticles(ParticleTypes.SPLASH,fishing.water().getX()+0.5,fishing.water().getY()+0.9,fishing.water().getZ()+0.5,5,0.3,0.1,0.3,0);
         }
     }

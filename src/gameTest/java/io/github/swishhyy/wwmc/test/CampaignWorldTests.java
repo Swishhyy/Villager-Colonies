@@ -208,10 +208,13 @@ public final class CampaignWorldTests {
             ExpeditionService.claim(level,parent,player,site.id); helper.assertTrue(site.claimed==null,"Unfunded charter allowed a claim");
             parent.campaign.projects.add("frontier"); player.setPos(start.getX()+40,start.getY(),start.getZ());
             ExpeditionService.claim(level,parent,player,site.id); helper.assertTrue(site.claimed==null,"Remote player claimed the site");
-            player.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); ExpeditionService.claim(level,parent,player,site.id);
-            Settlement outpost=SettlementData.get(level).byId(site.claimed); helper.assertTrue(outpost!=null,"Cleared site could not be claimed");
+            player.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); String claimed=ExpeditionService.claim(level,parent,player,site.id);
+            Settlement outpost=SettlementData.get(level).byId(site.claimed); helper.assertTrue(outpost!=null,"Cleared site could not be claimed: "+claimed);
             helper.assertTrue(outpost.owner.equals(parent.owner) && outpost.campaign.members.equals(parent.campaign.members),"Outpost ownership or membership changed");
             helper.assertTrue(outpost.citizens.size()==4 && SettlementService.housingBeds(level,outpost).size()==4,"Outpost did not recruit its four housed workers");
+            helper.assertTrue(outpost.station(start.south(4)).role()==StructureRole.HOUSING
+                    && outpost.station(start.north(4)).role()==StructureRole.RESEARCHER,"Claiming did not adopt the furnished workshop rooms");
+            helper.assertTrue(((net.minecraft.world.Container)level.getBlockEntity(start.east(3))).getItem(0).getCount()==12,"Claiming changed the site's supply cache");
             helper.assertTrue(TradeRoutes.agreed(parent,outpost) && primary.equals(parent.trading.partner),"Outpost displaced the main route");
             helper.assertTrue(outpost.campaign.requests.get("minecraft:bread")==32 && outpost.campaign.requests.get("minecraft:stone_pickaxe")==2,"Outpost has no supply demand");
             helper.assertTrue(outpost.jobs.level(StructureRole.MINE)==JobBoard.HIGH,"Small starting crew will leave its miner idle");

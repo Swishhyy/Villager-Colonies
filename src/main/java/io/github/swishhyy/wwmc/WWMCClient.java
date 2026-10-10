@@ -39,6 +39,16 @@ public final class WWMCClient {
     }
     /** A station item from a broken, upgraded station names the upgrades it will bring back. */
     private static void tooltip(ItemTooltipEvent event) {
+        if(io.github.swishhyy.wwmc.settlement.AgeProgression.required(event.getItemStack())>0)
+            event.getToolTip().add(Component.literal("Settlement research: "+io.github.swishhyy.wwmc.settlement.AgeProgression.requirement(event.getItemStack())).withStyle(ChatFormatting.GOLD));
+        if(event.getItemStack().getItem() instanceof BlockItem trapItem && trapItem.getBlock() instanceof io.github.swishhyy.wwmc.block.TrapBlock trap) {
+            var saved=event.getItemStack().get(DataComponents.BLOCK_STATE);
+            int wear=0;
+            if(saved!=null) try { wear=Integer.parseInt(saved.properties().getOrDefault("wear","0")); } catch(NumberFormatException ignored) {}
+            event.getToolTip().add(Component.literal(trap.kind().effect()).withStyle(ChatFormatting.GRAY));
+            event.getToolTip().add(Component.literal(Math.max(0,trap.kind().uses-wear)+" uses remaining; hostile mobs only")
+                    .withStyle(wear>=trap.kind().uses ? ChatFormatting.RED : ChatFormatting.GREEN));
+        }
         if(!(event.getItemStack().getItem() instanceof BlockItem item) || !(item.getBlock() instanceof StationBlock block)) return;
         var state=event.getItemStack().get(DataComponents.BLOCK_STATE);
         if(state==null) return;
@@ -49,7 +59,11 @@ public final class WWMCClient {
         if(Upgrades.yields(block.role()) && !yieldLevel.equals("0")) event.getToolTip().add(Component.literal("Yield upgrade "+yieldLevel+" (+"+yieldLevel+"0%)").withStyle(ChatFormatting.GREEN));
     }
     private static void renderers(EntityRenderersEvent.RegisterRenderers event) { event.registerEntityRenderer(WWMC.CITIZEN.get(),CitizenRenderer::new); }
-    private static void layers(EntityRenderersEvent.RegisterLayerDefinitions event) { event.registerLayerDefinition(CitizenRenderer.LAYER,CitizenRenderer::createBodyLayer); event.registerLayerDefinition(io.github.swishhyy.wwmc.client.CitizenOutfitLayer.LAYER,io.github.swishhyy.wwmc.client.CitizenOutfitLayer::createBodyLayer); }
+    private static void layers(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(CitizenRenderer.LAYER,CitizenRenderer::createBodyLayer);
+        event.registerLayerDefinition(io.github.swishhyy.wwmc.client.CitizenOutfitLayer.PROFESSION,CitizenRenderer::createBodyLayer);
+        event.registerLayerDefinition(io.github.swishhyy.wwmc.client.CitizenOutfitLayer.LAYER,io.github.swishhyy.wwmc.client.CitizenOutfitLayer::createBodyLayer);
+    }
     private static void screens(RegisterMenuScreensEvent event) {
         event.register(WwmcMenus.PANEL.get(),PanelScreen::new);
         event.register(WwmcMenus.CRAFTSMAN.get(),CraftsmanScreen::new);

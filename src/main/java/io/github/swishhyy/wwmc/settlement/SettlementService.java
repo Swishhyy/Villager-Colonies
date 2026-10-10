@@ -356,12 +356,15 @@ public final class SettlementService {
     public static int populationLevel(Settlement town) {
         return town.populationLevel>=0 ? town.populationLevel : Upgrades.levelFor(town.citizens.size(),Config.BASE_POPULATION.get(),Config.POPULATION_STEP.get());
     }
-    public static int populationLimit(Settlement town) { return populationLimitAt(populationLevel(town)); }
+    public static int populationLimit(Settlement town) { return populationLimitAt(town,populationLevel(town)); }
+    public static int populationLimitAt(Settlement town,int level) {
+        return Upgrades.populationLimit(level,Config.BASE_POPULATION.get()+Research.populationBonus(town),Config.POPULATION_STEP.get(),Config.MAX_CITIZENS.get());
+    }
     public static int populationLimitAt(int level) {
         return Upgrades.populationLimit(level,Config.BASE_POPULATION.get(),Config.POPULATION_STEP.get(),Config.MAX_CITIZENS.get());
     }
     /** Whether the town can still raise its limit, and what that costs. */
-    public static boolean canGrow(Settlement town) { return populationLimitAt(populationLevel(town)+1)>populationLimit(town); }
+    public static boolean canGrow(Settlement town) { return populationLimitAt(town,populationLevel(town)+1)>populationLimit(town); }
     public static int populationCost(Settlement town) { return Upgrades.populationCost(Config.POPULATION_COST.get(),populationLevel(town)); }
     public static int stationCost(Station station,boolean range) { return stationCost(station,range ? Upgrades.Kind.RANGE : Upgrades.Kind.CREW); }
     public static int stationCost(Station station,Upgrades.Kind kind) {
@@ -455,7 +458,7 @@ public final class SettlementService {
     public static String status(ServerLevel level,Settlement settlement) {
         return settlement.name+": "+settlement.citizens.size()+" of "+populationLimit(settlement)+" citizens allowed / "+housingBeds(level,settlement).size()+
                 " loaded housing beds, "+settlement.stations.size()+" stations, priority: "+settlement.priority+". Claim radius: "+settlement.radius+
-                ". Defense: "+DefenseService.status(settlement)+"; "+WaveService.status(level,settlement)+".";
+                ". Defense: "+DefenseService.status(settlement)+"; "+WaveService.status(level,settlement)+". Traps: "+TrapService.status(level,settlement)+".";
     }
     private static Settlement owned(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
         ServerPlayer player=source.getPlayerOrException();

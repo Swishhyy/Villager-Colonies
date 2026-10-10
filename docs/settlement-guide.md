@@ -14,6 +14,7 @@ This is the detailed reference for the playable settlement systems. For a shorte
 | Guards and attacks | [Guard stations](#guard-stations-and-posts) · [Alarms and waves](#alarms-and-enemy-waves) |
 | Other towns | [Trading](#trading-and-other-settlements) · [Relationships](multiplayer-campaign.md#relationships-claims-and-flags) |
 | Progress and troubleshooting | [Needs](#needs-experience-and-morale) · [Station upgrades](#station-upgrades) · [Population](#population) |
+| Player equipment and ages | [Ages and research](#ages-and-research) |
 | Commands and settings | [Commands](#commands) · [Server configuration](#server-configuration) |
 
 ## Start a settlement
@@ -119,6 +120,7 @@ Only loaded blocks inside the settlement claim count. Scanning never loads chunk
 | Guard | Day/night posts, shared gear, bell alarms, player-led squads and convoy escorts. | Larger armies and siege tactics. |
 | Courier | The only town hauler: moves job outputs, tools and inputs through the warehouse. | Convoys between towns. |
 | Enchanter | Enchants unenchanted gear and books with lapis at an enchanting table within 5 blocks, up to level 25. | Enchanting orders and libraries. |
+| Researcher | Works at a lectern on the town's paid research project; progress survives pauses and saves. | More technologies and later machine production. |
 
 Each station has its own small model built from vanilla textures, a workbench, a watchtower or a tent for example, turned to face the player who placed it. A mine's tunnel entrance and a quarry's red flag point the way they dig. Stations declare use; this build does not infer enclosed rooms, roofs, or architectural quality. Work validates supplies, protection, reservations, loaded terrain, and access before changing blocks.
 
@@ -134,26 +136,51 @@ All markers use eight planks around a center item in a crafting table.
 | --- | --- |
 | Settlement Banner | Blue wool |
 | Housing Station | Oak door |
-| Barracks Station | Iron sword |
+| Barracks Station | Stone sword |
 | Hospital Station | Paper |
 | Warehouse Station | Chest |
 | Farm Station | Wheat seeds |
 | Lumber Station | Stone axe |
 | Mine Station | Stone pickaxe |
-| Quarry Station | Iron pickaxe |
+| Quarry Station | Bronze pickaxe; Bronze Age required |
 | Craftsman Station | Crafting table |
 | Smeltery Station | Furnace |
 | Cook Station | Smoker |
 | Hunter Station | Leather |
 | Fisherman Station | Fishing rod |
 | Animal Keeper Station | Hay bale |
-| Butcher Station | Iron axe |
-| Guard Station | Iron helmet |
+| Butcher Station | Wooden axe |
+| Guard Station | Wooden sword |
 | Blacksmith Station | Iron ingot |
 | Courier Station | Barrel |
 | Enchanter Station | Book |
+| Researcher Station | Lectern |
 
 The Station Inspector is a shapeless recipe with two paper and one stick. The **Settlement Guide** is a shapeless recipe with one book and one blue dye; right-click it to open the native book screen. `/wwmc guide` gives another copy. Tools consumed to craft stations are separate from tools supplied to workers.
+
+### Ages and research
+
+New settlements in **Villager Colonies 0.1.0.0** start in the **Stone Age**. The settlement's owner and accepted builders or stewards share its equipment unlocks wherever they travel, including other dimensions. Invitations and alliances alone do not share research. Existing settlements retain their previous equipment access when upgraded.
+
+1. Craft a **Researcher Station** with eight planks around a lectern. Place it inside your town and put a separate **lectern within three blocks on each axis**.
+2. Keep a citizen assigned to Researcher under **Jobs**, and supply ready-to-eat food.
+3. Open the banner's **Campaign → Research** tab. Place the listed supplies in loaded warehouse storage, then start one project.
+4. Supplies are paid once at the start. The researcher must reach the lectern and work. Sleep, danger, blocked access and unloaded chunks pause progress; the paid project resumes after saving and loading. The banner shows the current age, progress and a **Research status** row with the pause reason. The same status appears in **Campaign → Research**. Time remaining counts active work.
+
+If the status says **“Researcher cannot reach the lectern”**, clear a walking route and room to stand beside it. Researchers try another approach when a route fails and recheck blocked lecterns after a short pause. Other reasons identify disabled jobs, missing stations or lecterns, unassigned or unloaded workers, meals, sleep, danger and hospital recovery. Normal travel says **“Researcher is walking to the lectern.”** Fixing a pause resumes the paid project; supplies are not charged again, and status changes do not fill chat.
+
+| Research | Warehouse supplies | Active work for one researcher | Equipment unlocked |
+| --- | --- | --- | --- |
+| Bronze Age | 24 copper ingots, 8 tin ingots, 8 coal, 8 paper | 3 minutes | Copper and bronze gear, bronze alloying, Quarry Stations |
+| Iron Age; requires Bronze Age | 16 bronze ingots, 16 iron ingots, 16 coal, 16 paper | 6 minutes | Iron and gold gear, buckets, shields, anvils, smithing and blacksmith stations |
+| Gemcraft; requires Iron Age | 8 diamonds, 24 lapis lazuli, 24 paper | 8 minutes | Diamond gear, enchanting tables and Enchanter Stations |
+| Netherite Smithing; requires Gemcraft | 4 netherite scraps, 16 gold ingots, 32 paper | 10 minutes | Netherite gear and upgrades |
+
+**Tin and bronze.** Tin ore generates in new Overworld terrain from **Y −32 to 64**, including deepslate. Mine it with a stone pickaxe and smelt raw tin into ingots. After Bronze Age research, craft **three copper ingots and one tin ingot into four bronze blends**, then smelt those into bronze ingots. Bronze has its own sword, pickaxe, axe, shovel, hoe and complete armor set. Its tools last longer than stone and still need Iron Age equipment for high-tier ores. Ingots and raw tin also have nine-item storage blocks.
+
+**Found gear stays yours.** A higher-tier sword, tool or armor piece can be picked up and stored before its research. Mining, fighting, using and wearing it wait for the unlock; armor returns intact to inventory. Locked crafting, anvil and smithing outputs retain their ingredients. A short hotbar notice explains the required research. Creative and spectator players are exempt. The material ingots themselves can be collected and smelted for research beforehand.
+
+Other technologies now use the same researcher system; most take three minutes of active work. Advanced machines remain planned for a later update.
 
 ### Trading and other settlements
 
@@ -189,7 +216,7 @@ NPC towns start neutral with a house, 12 beds, warehouse, trader checkpoint, gua
 
 Open **Mods → Villager Colonies → Config** while your single-player world is loaded. Settings are grouped into **Settlements & Upgrades**, **Quarry Crew**, **Mining & Quarries**, **Work & Food**, **Enchanting**, **Defense & Waves**, **Trade & Other Towns**, and **Diagnostics**. Hover a label or control for its explanation, valid range and units. The native Undo, Reset and Done controls still apply; Reset affects only the open section. Return to the category menu and press Done to save. Active TOML keys stay in their original locations. The six retired non-quarry crew settings are removed on config reload; quarry and other server overrides carry over. Multiplayer server configuration remains controlled by the server.
 
-The generated Villager Colonies server config controls these defaults:
+The generated `wwmc-server.toml` config controls these defaults:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
@@ -231,7 +258,7 @@ Workers use carried supplies before collecting replacements from their own job b
 
 **Changing jobs.** Old gear is put away and returned to the new job's barrel for a courier to collect. Unloaded, full or missing storage keeps the items in the bag. Guards still share armor through their station's stands and defend before returning gear during alarms. Equipment below 25% durability is carried for repair. Smelters and cooks never burn bows or tools.
 
-**Getting unstuck.** Citizens open doors on their way. They finish the short step to their selected work position when Minecraft navigation stops within the block, and recheck actual reach before using furniture. A citizen who keeps trying to walk somewhere but stays within a block and a half of the same spot for 30 seconds is moved on top of the settlement banner, or onto clear, firm ground right beside it, and drops the trip that trapped them: a quarry worker carries on from the control block, other workers try a different station for a while. Recovery uses the actual surface of slabs, dirt paths and carpets as well as full blocks. Sleeping citizens are never moved, and nobody is moved into an unloaded part of town.
+**Getting unstuck.** Citizens open doors on their way and walk through harmless flowers, grass and ferns. These plants also leave a worker's hands clear; walls, leaves and harmful plants still obstruct work. Citizens finish the short step to a selected work position when Minecraft navigation stops short. A worker with repeated failed job routes or 30 seconds without movement progress is returned to safe standing room beside its job. The banner is a fallback if the job has no room. Its job, health and inventory remain intact, and the failed errand is dropped. Retry pauses do not reset the timer, but ordinary idle time does not start it. Traders, deployed squads, sleeping citizens, citizens in combat and civilians sheltering at home are exempt. Recovery accepts slabs, dirt paths and carpets and never enters unloaded or frozen ground.
 
 **Out of range.** Each town remembers where every citizen last stood while ticking. If a citizen is frozen or unloaded for ten seconds while its station is loaded (the banner, for a citizen without a job), it is brought back. A frozen citizen is simply moved. For an unloaded one, the town loads a 3×3 chunk window around its last place for a few seconds, never longer, and moves it once it appears. It lands beside its station, keeps its job and drops the errand that led it away. Injured citizens return too, so they can reach hospital care. Failed recalls without standing room retry after 30 seconds. A citizen that is not found after two searches, or that has been missing for five minutes with no recorded place, leaves the roster: its job and population place open up, and the owner is told if online. If it turns up later, it rejoins. Traders on a trip are never fetched.
 
@@ -337,6 +364,8 @@ A citizen part-way through an enchantment, a repair or a trade run finishes it b
 
 ### Needs, experience and morale
 
+Routine skill promotions and hospital recoveries are saved in **Campaign → Journal** at the settlement banner. Other campaign notices appear briefly above the hotbar instead of filling chat.
+
 The town screen's **Needs** tab gathers what the owner can fix, most urgent first, from loaded stations, storage and citizens:
 
 - Missing or full storage, low food, and storage holding only one kind of food.
@@ -388,17 +417,19 @@ Each range or crew level costs twice the one before: 8, 16, then 32 emeralds by 
 
 A new town holds up to **10 citizens** (`basePopulation`). The town screen's **Grow** button raises the limit by **5** (`populationPerUpgrade`) for emeralds: 8 for the first upgrade, then 16, 24 and so on (`populationUpgradeCost`), up to the server's ceiling (`maxCitizens`, 64). Housing beds still limit recruiting as before.
 
+**Population research** in the banner's **Campaign → Research** tab gives another way to grow. **Housing Plans** adds 10 places, **Civic Planning** adds 15, and **City Planning** adds 25. Study them in that order using warehouse materials. Their bonuses stack with emerald upgrades, survive saving, and still obey `maxCitizens`; each recruit needs an available housing bed. The overview shows the research bonus and the correct next upgrade limit.
+
 A bigger town draws bigger attacks. Each population upgrade adds **2 attackers** to every wave (`waveMobsPerUpgrade`), even beyond `waveMaxMobs`; from the first upgrade a tenth of each wave per upgrade are **pillagers**, and from the third upgrade **vindicators** join them. Towns from earlier builds count as having bought enough upgrades for the citizens they already have.
 
 ### Alarms and enemy waves
 
 **Noticing a threat.** Every second, the town counts the hostile monsters its citizens can see inside the claim: guards watch out to 24 blocks (32 during an alarm), other citizens only notice hostiles within 8 blocks. One or two monsters are left to the guards. When at least `alarmThreshold` (default **10**) are in sight at once, the guard closest to a **bell** within 96 blocks runs to ring it. Bells must be inside the claim and loaded. If that guard is killed, cannot find a path, or takes longer than a minute, another guard is sent. Without a reachable bell, you receive a warning instead and the town is not alerted.
 
-**The alarm.** Any bell rung inside the town—by a player, projectile, redstone, or a guard—raises the alarm and **wakes every assigned guard at every station**, including resting reserves. Guard-raised alarms also briefly make nearby hostiles glow and tell you how many were sighted. While it rings, civilians stop working, flee hostiles from 20 blocks away instead of 12, and **duck and cover** at the nearest housing or barracks station (the banner if there is none). Alarms at night find civilians in their beds. A citizen may still volunteer for an empty guard slot. Guards stay at their posts instead of making supply trips unless they have no weapon, patrol faster, and engage from farther away. After **30 seconds** without a sighted hostile, the bell rings again for the **all-clear**, everyone returns to work, and guards resume their station shifts. That automatic all-clear ring does not raise a second alarm. `/wwmc alarm` raises the alarm without a runner, or calls the all-clear early.
+**The alarm.** A bell rung inside the town raises the alarm and wakes guards. An arriving wave also raises it immediately, without requiring a bell runner. Frightened civilians run to a reachable **housing or barracks bed**, prefer the bed they used before, open house doors on the way, and wait inside until it is safe. A nearby hostile can send a civilian home even without a town alarm. Losing sight of the hostile on the way does not cancel the trip. At night they can stay asleep in their bed. Without a reachable bed they use housing or the banner as a fallback. Guards prioritize nearby attackers, share reports, and answer wave threats; shield guards leave their gate during alarms. Injured guards keep defending and seek hospital beds after combat ends and ten quiet seconds pass. After **30 seconds** without sighted or reported hostiles, the town gives the all-clear. `/wwmc alarm` raises the alarm or calls the all-clear early.
 
 **Enemy waves.** Once a town has `waveMinPopulation` (default **3**) citizens, a wave is scheduled about every `waveIntervalDays` (default **2**) in-game days. It arrives after sunset, only while you are online and within 64 blocks of the claim, and never while the previous wave's attackers are still alive. Waves contain `waveBaseMobs + waveMobsPerCitizen × population` hostiles, rounded up and capped at `waveMaxMobs`: four for a three-citizen town, 12 for 20 citizens, 18 for 32. Small towns face zombies; from 6 citizens a quarter of each wave are skeletons, and from 10 citizens 15% are spiders. The wave gathers 40–64 blocks from the banner on loaded open ground inside the claim, away from stations and at least 24 blocks from you, then marches on the banner and attacks citizens on sight. You are told its size and compass direction, and again when it has been repelled. Wave mobs do not despawn and remember their town across restarts. `/wwmc status` shows the alarm state and the next wave; `/wwmc wave` calls the next wave immediately. Peaceful difficulty prevents waves. Population upgrades make every wave larger and bring pillagers and vindicators; see [Population](#population).
 
-**Glowing attackers.** Every wave attacker glows through walls, so you can find them. If any are still alive a minute after the wave arrives, the town reports them to the guards, who hunt them down, and you are told how many remain.
+**Glowing attackers.** Every wave attacker glows through walls and is reported to the guards immediately. Reports refresh while attackers remain, including after a reload. If any remain after a minute, a single hotbar notice tells you how many the guards are still hunting.
 
 **Calling the guards.** Citizens who see a hostile within 16 blocks of them inside the claim, near their work for example, call the guards. Up to two guards on duty answer each call: they walk to the hostile, wherever it has gone in town, and fight it as soon as they see it. A guard who cannot reach it within 90 seconds leaves it to the others for two minutes. Calm endermen and other neutral mobs that are not angry are not reported. The citizen's screen shows the call for a few seconds, and the town screen's alarm row shows how many hostiles are reported.
 
@@ -406,7 +437,8 @@ A bigger town draws bigger attacks. Each population upgrade adds **2 attackers**
 
 - Persistent named settlements, owners, non-overlapping claims, and job priorities.
 - Citizens who keep their own station, and job priorities from Off to High that decide which open places fill first.
-- Settlement banner and twenty role stations, each with its own detailed model, survival crafting recipes and a creative tab.
+- Settlement banner and twenty-one role stations, each with its own detailed model, survival crafting recipes and a creative tab.
+- Settlement ages, a working researcher, tin and bronze equipment, and shared research-based player progression.
 - Emerald upgrades: wider station ranges, more crew slots, and room for more citizens at the price of larger enemy waves.
 - Screens for the town, every station, the Craftsman's orders and each citizen, refreshed every second.
 - A 240-block minimum claim radius, a configurable town color, and matching banners at the four claim corners.

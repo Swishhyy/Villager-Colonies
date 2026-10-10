@@ -8,7 +8,7 @@
   ],
   "key": {
     "P": "#minecraft:planks",
-    "I": "minecraft:iron_pickaxe"
+    "I": "wwmc:bronze_pickaxe"
   },
   "result": {
     "id": "wwmc:quarry_station",

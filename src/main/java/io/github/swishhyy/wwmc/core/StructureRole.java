@@ -7,7 +7,7 @@ public enum StructureRole {
     FARM("farm", false, true), LUMBER("lumber", false, true), MINE("mine", false, true), QUARRY("quarry", false, true), GUARD("guard", false, true),
     CRAFTSMAN("craftsman", false, true), SMELTERY("smeltery", false, true), COOK("cook", false, true), BLACKSMITH("blacksmith", false, true),
     COURIER("courier", false, true), ENCHANTER("enchanter", false, true), TRADER("trader", false, true), HUNTER("hunter", false, true), FISHERMAN("fisherman", false, true),
-    ANIMAL_KEEPER("animal_keeper", false, true), BUTCHER("butcher", false, true);
+    ANIMAL_KEEPER("animal_keeper", false, true), BUTCHER("butcher", false, true), RESEARCHER("researcher", false, true);
     private final String id;
     private final boolean residential;
     private final boolean worker;
@@ -21,7 +21,7 @@ public enum StructureRole {
     public boolean excavates() { return this==MINE || this==QUARRY; }
     public boolean processes() { return this==SMELTERY || this==COOK; }
     /** Jobs whose barrels in range hold their tools, supplies and finished goods; couriers move goods between them and the warehouse. */
-    public boolean keepsJobStorage() { return worker && this!=COURIER && this!=TRADER; }
+    public boolean keepsJobStorage() { return worker && this!=COURIER && this!=TRADER && this!=RESEARCHER; }
     public boolean animalJob() { return this==HUNTER || this==FISHERMAN || this==ANIMAL_KEEPER || this==BUTCHER; }
     public boolean foodJob() { return this==FARM || this==COOK || animalJob(); }
     /** Display name such as "Craftsman". */

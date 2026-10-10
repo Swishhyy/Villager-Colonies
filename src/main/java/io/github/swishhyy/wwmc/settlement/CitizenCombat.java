@@ -5,6 +5,7 @@ import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.util.Locale;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
@@ -15,6 +16,8 @@ import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
  */
 public final class CitizenCombat {
     @SubscribeEvent public void damage(LivingIncomingDamageEvent event) {
+        if(event.getAmount()>0 && event.getSource().getEntity() instanceof LivingEntity enemy
+                && event.getEntity() instanceof CitizenEntity defender && enemy!=defender) defender.combatWith(enemy);
         if(event.getSource().getEntity() instanceof CitizenEntity attacker && attacker.skillRole()==StructureRole.GUARD) {
             int bonus=CitizenSkill.guardDamage(attacker.skillLevel(StructureRole.GUARD));
             if(bonus>0) event.setAmount(event.getAmount()*(100+bonus)/100F);

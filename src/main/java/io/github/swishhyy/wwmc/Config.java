@@ -5,7 +5,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public final class Config {
     private static final ModConfigSpec.Builder B = new ModConfigSpec.Builder();
     public static final ModConfigSpec.IntValue SETTLEMENT_RADIUS = B.comment("Horizontal claim radius of new settlements; never below 240.").defineInRange("settlementRadius", Settlement.MIN_RADIUS, Settlement.MIN_RADIUS, 512);
-    public static final ModConfigSpec.IntValue MAX_CITIZENS = B.comment("Hard ceiling on citizens in one town, whatever population upgrades it buys; housing beds are also required.").defineInRange("maxCitizens", 64, 1, 256);
+    public static final ModConfigSpec.IntValue MAX_CITIZENS = B.comment("Hard ceiling on citizens in one town, including population upgrades and research; housing beds are also required.").defineInRange("maxCitizens", 64, 1, 256);
     public static final ModConfigSpec.IntValue BASE_POPULATION = B.comment("Citizen limit of a town before it buys population upgrades at its banner.").defineInRange("basePopulation", 10, 1, 256);
     public static final ModConfigSpec.IntValue POPULATION_STEP = B.comment("Extra citizens each population upgrade allows.").defineInRange("populationPerUpgrade", 5, 1, 64);
     public static final ModConfigSpec.IntValue POPULATION_COST = B.comment("Emeralds for the first population upgrade; each later upgrade costs this much more than the one before.").defineInRange("populationUpgradeCost", 8, 0, 4096);
@@ -27,6 +27,7 @@ public final class Config {
     public static final ModConfigSpec.IntValue ANIMAL_BREEDERS = B.comment("Adult animals kept for breeding per species in each keeper pen. Only surplus adults are harvested; babies, named animals and mating animals are preserved.").defineInRange("animalBreeders", 4, 2, 16);
     public static int mealIntervalTicks() { return RATION_TICKS.get()*MEAL_MULTIPLIER.get(); }
     public static final ModConfigSpec.IntValue ALARM_THRESHOLD = B.comment("Hostiles citizens must sight at once before a guard runs to ring the town bell.").defineInRange("alarmThreshold", 10, 3, 128);
+    public static final ModConfigSpec.IntValue MAX_TRAPS = B.comment("Maximum placed traps per town. Only loaded, ticking traps are checked; each activation spends durability.").defineInRange("maxSettlementTraps",256,1,1024);
     public static final ModConfigSpec.BooleanValue WAVES = B.comment("Send hostile waves against settlements while their owner is home.").define("enemyWaves", true);
     public static final ModConfigSpec.IntValue WAVE_MIN_POPULATION = B.comment("Citizens a town needs before waves are scheduled.").defineInRange("waveMinPopulation", 3, 1, 128);
     public static final ModConfigSpec.IntValue WAVE_INTERVAL_DAYS = B.comment("Average in-game days between waves; each wave arrives at night.").defineInRange("waveIntervalDays", 2, 1, 30);

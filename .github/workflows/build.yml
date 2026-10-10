@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       mod_version: ${{ steps.build_metadata.outputs.mod_version }}
+      mod_archive_name: ${{ steps.build_metadata.outputs.mod_archive_name }}
+      mod_name: ${{ steps.build_metadata.outputs.mod_name }}
       minecraft_version: ${{ steps.build_metadata.outputs.minecraft_version }}
       release_changed: ${{ steps.build_metadata.outputs.release_changed }}
     steps:
@@ -31,7 +33,7 @@ jobs:
       - name: Read build metadata
         id: build_metadata
         run: |
-          sed -n -e '/^mod_version=/p' -e '/^minecraft_version=/p' gradle.properties >> "$GITHUB_OUTPUT"
+          sed -n -e '/^mod_version=/p' -e '/^mod_archive_name=/p' -e '/^mod_name=/p' -e '/^minecraft_version=/p' gradle.properties >> "$GITHUB_OUTPUT"
           if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
             current_version=$(sed -n 's/^mod_version=//p' gradle.properties)
             previous_version=$(git show HEAD^:gradle.properties | sed -n 's/^mod_version=//p')
@@ -48,6 +50,9 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build --console=plain
 
+      - name: Verify distributable name, metadata and changelog
+        run: python3 scripts/prepare_release.py build/libs
+
       - name: Test citizen work, logistics, food, and travel
         run: ./gradlew runGameTestServer --console=plain
 
@@ -57,8 +62,8 @@ jobs:
       - name: Upload mod JAR
         uses: actions/upload-artifact@v4
         with:
-          name: wwmc-${{ steps.build_metadata.outputs.mod_version }}-neoforge-mc${{ steps.build_metadata.outputs.minecraft_version }}
-          path: build/libs/wwmc-${{ steps.build_metadata.outputs.mod_version }}.jar
+          name: ${{ steps.build_metadata.outputs.mod_archive_name }}-${{ steps.build_metadata.outputs.mod_version }}-neoforge-mc${{ steps.build_metadata.outputs.minecraft_version }}
+          path: build/libs/${{ steps.build_metadata.outputs.mod_archive_name }}-${{ steps.build_metadata.outputs.mod_version }}.jar
           if-no-files-found: error
 
   release:
@@ -69,12 +74,14 @@ jobs:
     permissions:
       contents: write
     concurrency:
-      group: wwmc-release-${{ needs.build.outputs.mod_version }}
+      group: ${{ needs.build.outputs.mod_archive_name }}-release-${{ needs.build.outputs.mod_version }}
       cancel-in-progress: false
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      WWMC_VERSION: ${{ needs.build.outputs.mod_version }}
+      RELEASE_VERSION: ${{ needs.build.outputs.mod_version }}
+      RELEASE_ARCHIVE: ${{ needs.build.outputs.mod_archive_name }}
+      RELEASE_NAME: ${{ needs.build.outputs.mod_name }}
     steps:
       - name: Checkout tested commit
         uses: actions/checkout@v4
@@ -82,7 +89,7 @@ jobs:
       - name: Download tested mod JAR
         uses: actions/download-artifact@v4
         with:
-          name: wwmc-${{ needs.build.outputs.mod_version }}-neoforge-mc${{ needs.build.outputs.minecraft_version }}
+          name: ${{ needs.build.outputs.mod_archive_name }}-${{ needs.build.outputs.mod_version }}-neoforge-mc${{ needs.build.outputs.minecraft_version }}
           path: release-artifact
 
       - name: Verify JAR and prepare release notes
@@ -91,8 +98,8 @@ jobs:
       - name: Publish versioned GitHub release
         run: |
           set -euo pipefail
-          tag="v$WWMC_VERSION"
-          jar="release-artifact/wwmc-$WWMC_VERSION.jar"
+          tag="$RELEASE_ARCHIVE-v$RELEASE_VERSION"
+          jar="release-artifact/$RELEASE_ARCHIVE-$RELEASE_VERSION.jar"
           existing_tag=$(gh api "repos/$GH_REPO/git/matching-refs/tags/$tag" \
             --jq ".[] | select(.ref == \"refs/tags/$tag\") | .ref")
           if [[ -n "$existing_tag" ]]; then
@@ -114,7 +121,7 @@ jobs:
             gh release upload "$tag" "$jar" "$jar.sha256" --clobber
           else
             gh release create "$tag" "$jar" "$jar.sha256" \
-              --target "$GITHUB_SHA" --title "Villager Colonies $WWMC_VERSION" \
+              --target "$GITHUB_SHA" --title "$RELEASE_NAME $RELEASE_VERSION" \
               --notes-file release-artifact/release-notes.md --draft --prerelease=false
           fi
           gh release edit "$tag" --draft=false --prerelease=false --latest \

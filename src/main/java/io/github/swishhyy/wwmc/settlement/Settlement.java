@@ -53,7 +53,7 @@ public final class Settlement {
             s.jobs.load(pair.getSecond().jobs());
             pair.getSecond().places().forEach((citizen,place) -> s.citizenPlaces.put(citizen,place.immutable()));
             s.campaign=pair.getSecond().campaign().orElseGet(CampaignState::new);
-            s.progress=pair.getSecond().progress().orElseGet(TownProgress::new);
+            s.progress=pair.getSecond().progress().orElseGet(TownProgress::legacy);
             return s;
         },
         s -> Pair.of(s,new Extra(Optional.of(s.jobs),s.citizenPlaces,Optional.of(s.campaign),Optional.of(s.progress)))).codec();

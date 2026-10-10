@@ -30,7 +30,12 @@ displayName="${mod_name}" #mandatory
 displayURL="https://github.com/Swishhyy/Villager-Colonies" #optional
 
 # A file name (in the root of the mod JAR) containing a logo for display
-logoFile="villager-colonies.png" #optional
+logoFile="assets/wwmc/textures/gui/emblem.png"
+logoBlur=true
+
+# NeoForge's mod-list icon uses the same emblem as its information panel.
+iconFile="assets/wwmc/textures/gui/emblem.png"
+iconBlur=true
 
 # A text field displayed in the mod UI
 #credits="" #optional
@@ -46,8 +51,8 @@ An early-development first-person strategy mod. Use the Settlement Guide and Vil
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
-#[[mixins]]
-#config="${mod_id}.mixins.json"
+[[mixins]]
+config="wwmc.mixins.json"
 
 # The [[accessTransformers]] block allows you to declare where your AT file is.
 # If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg

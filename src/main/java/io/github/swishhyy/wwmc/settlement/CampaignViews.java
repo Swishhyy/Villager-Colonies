@@ -102,15 +102,19 @@ public final class CampaignViews {
     /** Technologies, their regional costs, and the schematics and regions this town can draw on. */
     private static List<PanelView.Row> research(ServerLevel level,Settlement town) {
         List<PanelView.Row> rows=new ArrayList<>();
-        rows.add(row(Items.WRITABLE_BOOK,"Research","Spend warehouse goods, many from regional outposts, on lasting improvements. Schematics: "
+        Research.Status status=Research.status(level,town);
+        rows.add(row(Items.WRITABLE_BOOK,Research.age(town),"Research is shared with the owner and accepted settlement members, wherever they travel. Schematics: "
                 +(town.progress.schematics.isEmpty() ? "none yet; fortified bandit captains carry them" : String.join(", ",town.progress.schematics.stream().map(Research::schematicTitle).toList())),"",-1));
+        rows.add(row(Items.LECTERN,"Research project",Research.progress(town)+". One researcher works at a nearby lectern; paid supplies and progress survive pauses and saving.","",-1));
+        rows.add(Panels.researchStatus(status));
         for(Research.Tech tech:Research.ALL) {
             boolean done=Research.has(town,tech.id());
-            String missing=done ? "" : Research.missing(level,town,tech);
+            boolean active=tech.id().equals(town.progress.project);
+            String missing=done || active ? "" : Research.missing(level,town,tech);
             String costs=String.join(", ",tech.costs().stream().map(c -> c.count()+" "+c.name()).toList());
-            rows.add(action(done ? Items.ENCHANTED_BOOK : Items.BOOK,tech.title()+": "+(done ? "researched" : missing.isEmpty() ? "ready" : "waiting"),
-                    tech.benefit()+". Costs "+costs+(tech.schematic().isEmpty() ? "" : "; needs the "+Research.schematicTitle(tech.schematic()).toLowerCase(Locale.ROOT))
-                            +(missing.isEmpty() ? "" : ". "+missing),"research:"+tech.id(),!done && missing.isEmpty()));
+            rows.add(action(done ? Items.ENCHANTED_BOOK : Items.BOOK,tech.title()+": "+(done ? "researched" : active ? status.paused() ? "paused" : "in progress" : missing.isEmpty() ? "ready" : "waiting"),
+                    tech.benefit()+". Costs "+costs+"; "+tech.ticks()/1200+" min of researcher work"+(tech.schematic().isEmpty() ? "" : "; needs the "+Research.schematicTitle(tech.schematic()).toLowerCase(Locale.ROOT))
+                            +(active ? ". Supplies already paid" : missing.isEmpty() ? "" : ". "+missing),"research:"+tech.id(),!done && !active && missing.isEmpty()));
         }
         for(Regions.Region land:Regions.ALL) {
             List<String> outposts=SettlementData.get(level).settlements.stream().filter(t -> town.id.equals(t.campaign.parent))

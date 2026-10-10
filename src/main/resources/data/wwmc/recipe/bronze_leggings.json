@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "III",
+    "I I",
+    "I I"
+  ],
+  "key": {
+    "I": "wwmc:bronze_ingot"
+  },
+  "result": {
+    "id": "wwmc:bronze_leggings",
+    "count": 1
+  }
+}

@@ -2,7 +2,7 @@
 
 [Project overview](../README.md) · [All guides](README.md)
 
-The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same Villager Colonies version on the server and every client. Existing towns keep their owners, stations and inventories; new campaign data starts empty. Every job block has one citizen except quarries, which keep their configured crew and upgrades. Surplus workers from old crews take other open jobs.
+The playable loop is to specialize towns, stock an expedition, lead real guards alongside friends, clear an occupied site, and build a supplied outpost. Production, treatment, contracts and travel use real items. Install the same Villager Colonies build on the server and every client. Existing towns keep their owners, stations and inventories; new campaign data starts empty. Every job block has one citizen except quarries, which keep their configured crew and upgrades. Surplus workers from old crews take other open jobs.
 
 ## Playing together
 
@@ -63,7 +63,7 @@ Open **Army** on Campaign or run `/wwmc squad` anywhere for field controls. Must
 
 Orders persist across restart. A missing, dead, disconnected or dimension-changing leader causes guards to walk home. Guards below 30% health fall back individually. Broken or below-25%-durability equipment also sends a guard home to resume the normal repair and shared-armor routine, even after a retreat order. Squads use the same road/bridge-aware travel and weapon combat as existing citizens. They do not force-load a new army corridor; a nearby player or trader window supplies loaded terrain.
 
-Explore for **Bandit Camps**, **Occupied Mines** and **Ruined Forts**. Discovery uses loaded, dry, relatively level natural ground outside existing claims. It rejects player-protected blocks and block entities. Sites contain finite defenders, supplies, beds and useful storage; generation never rebuilds over later player changes. Site state, defender identities and cleared status persist across restart. Campaign -> Sites lists discovered coordinates and remaining defenders.
+Explore for **Bandit Camps**, **Ruined Mining Workshops** and **Ruined Castles**. Discovery uses loaded, dry, relatively level natural ground outside existing claims. It checks the complete structure footprint and rejects player-protected blocks and block entities. New castles and workshops contain the mod's job stations, beds, storage, lecterns and examples of production setups, plus a Settlement Guide and tin supplies in the cache. Their defenders and loot are finite; generation never rebuilds over later player changes. Existing discovered sites keep their layouts. Site state, defender identities and cleared status persist across restart. Campaign -> Sites lists discovered coordinates and remaining defenders.
 
 ### Objectives and rewards
 
@@ -73,8 +73,8 @@ Every site found from 0.13.0 has an objective. Sites found earlier keep their pl
 | --- | --- | --- |
 | Bandit Camp | **Rescue**: two captive villagers wait unharmed in a fenced pen | They join your town once you stand among them after the fight. When you leave, the recall service brings them home. |
 | Bandit Camp | **Recover**: a second barrel holds stolen iron, gold, leather, bread, emeralds and a pickaxe | The goods themselves; carry them home or claim the site |
-| Ruined Fort | **Defeat the Bandit Captain**: a vindicator in iron armor with 60 health | Its armor and axe drop; your town gains a research schematic |
-| Occupied Mine | **Drive out the occupiers** | An ore vein for an outpost |
+| Ruined Castle | **Defeat the Bandit Captain**: a vindicator in iron armor with 60 health | Its armor and axe drop; your town gains a research schematic. Keep the gear until Iron Age research permits its use. |
+| Ruined Mining Workshop | **Drive out the occupiers** | An ore vein and furnished work rooms for an outpost |
 | Neighbor raid | **Defend a neutral town** raided while a friendly player visits, at most once every two days per town | If a player or a player town's citizen killed a raider: goodwill (+150) and a volunteer citizen, if your town has room. A raid the neutral guards repel alone earns nothing. |
 
 Rewards go to a town managed by the nearest player when the site is cleared. That player must be within 24 blocks of a site, or 96 blocks of a raided town. A main town is credited before an outpost, so schematics reach the town that does the research. Forts found before 0.13.0 also hold a captain if not yet entered; a fort cleared before the update gives its schematic the next time a manager visits it. Campaign -> Sites and the settlement map show each site's objective and its region.
@@ -83,7 +83,7 @@ Occupied sites close to a trader can issue a 30-second ambush warning. Small con
 
 ## Outposts and recovery
 
-After a Frontier Charter, walk to a cleared, unclaimed site and use `/wwmc outpost claim`. Clear any blocks you added at the center or station positions first. The system does not overwrite your modifications. A new outpost keeps the parent's owner and current memberships, starts with housing, warehouse, mine, courier and trader stations, and recruits up to four citizens if its beds are still present. It has its own population limit.
+After a Frontier Charter, walk to a cleared, unclaimed site and use `/wwmc outpost claim`. Clear any blocks you added at the center or new station positions first. Furnished ruins keep their existing stations, upgrades, beds and stored supplies; missing starting roles are added only on clear ground. A new outpost keeps the parent's owner and current memberships, starts with housing, warehouse, mine, courier and trader stations, and recruits up to four citizens if its beds are still present. It has its own population limit and research projects.
 
 A reciprocal extra route connects the outpost to its parent without replacing the parent's main trading partner. Requests start at 32 bread, two stone pickaxes and 16 oak planks; raw iron exports keep four at the outpost. Couriers remain the only internal haulers. Mining and other production wait when both local food stock and the worker's food bag are empty. Traders and couriers continue so a shortage can recover through deliveries. Players can expand or change the outpost like another town.
 
@@ -103,7 +103,9 @@ Each site records the land it stands on. An outpost claimed there places that re
 
 ### Research
 
-Campaign -> Research spends real warehouse goods once, like projects. Several costs are regional, so a realm needs outposts in different lands.
+Campaign -> Research now starts a **timed project**. Pay the real warehouse goods once, then let a citizen work at a **Researcher Station with a reachable lectern**. One project runs at a time. Sleep, danger, blocked access and unloaded chunks pause it; saving retains the paid supplies and progress. These technologies each take three minutes of active work for one researcher. Several costs are regional, so outposts in different lands help provide them.
+
+The new **Stone → Bronze → Iron** progression also uses research. Completed equipment unlocks are shared by the owner and accepted settlement members, including when travelling beyond the claim. Allies and pending invitations grant none. See [ages, equipment and tin](settlement-guide.md#ages-and-research) for costs and setup. Steel Tools, Reinforced Armor and Deep Mining require Iron Age; Forge Bellows requires Bronze Age. Population research also runs through the researcher.
 
 | Research | Costs | Effect |
 | --- | --- | --- |

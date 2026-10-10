@@ -1,19 +1,36 @@
 # Changelog
 
-## Unreleased
-
-- Rename the public project to **Villager Colonies**, with matching mod-list, creative-tab, settings and handbook branding.
-- Add the 400 × 400 project logo for CurseForge, the GitHub README and the in-game mod list.
-- Keep the `wwmc` namespace, commands, configuration files, saved data and JAR naming compatible with existing installations.
-
 [Project overview](../README.md) · [All guides](README.md) · [Versioning rules](curseforge.md#public-version-format)
 
-## Unreleased
+## 0.1.0.0
 
+Villager Colonies starts at **0.1.0.0**, with settlement ages, research, traps and villager fixes. The mod remains playable and in development.
+
+- Rename the mod and distributable to **Villager Colonies** and **`villager-colonies-0.1.0.0.jar`**. Reset the version while retaining the `wwmc` mod ID and existing saves.
+- Use the Villager Colonies emblem in the mod list, mod information panel and configuration menu.
+- Carry forward all **World War MC 0.1.0.1** bug fixes and the additions below. Update in-game titles, guides, downloads and release packaging for the new name.
+
+- Add five research-gated traps: wooden spikes, tangle nets, bronze snares, bronze caltrops and iron spring traps. Friendly traffic is safe; wear survives moving and saving.
+- Add paid rearming and repairs, craftsmen maintaining nearby traps after combat, courier repair supplies, and quiet maintenance notices at the banner.
+- Spawn waves beyond furnished stations and placed traps on safe ticking natural ground. Postpone blocked arrivals instead of spawning inside defenses; report persistent problems in the console.
+
+- Add Stone, Bronze and Iron progression shared by a settlement's owner and accepted members. Higher-tier loot can be stored until its research unlocks use.
+- Add a Researcher Station and lectern work: pay project supplies once, wait for real work, and keep progress through pauses and saves.
+- Show clear research pause reasons in the banner and Campaign / Research, including blocked lecterns, unstaffed jobs, sleep, danger and recovery. Distinguish walking from paused work without chat spam.
+- Let researchers retry another approach when their route becomes blocked, and recheck inaccessible lecterns after a short pause. Keep paid supplies and progress intact.
+- Add tin ore, bronze alloying, bronze tools and armor, with further research for diamond and netherite gear. Existing settlements retain their equipment access.
+- Give carcasses recognizable 3D models, improve fishing and tool swings, and hide clothing under the armor covering it.
+- Generate furnished ruined castles and mining workshops using the mod's stations, beds, storage and research desks. Claiming them retains their rooms and supplies.
 - Let lumberjacks fell natural trees beside their own job barrels or Lumber Station. Keep player-placed logs, nearby building planks and unrelated storage protected.
 - Keep a worker's actual status visible during its retry pause instead of replacing it with "No work".
+- Stop harmless flowers and grass from blocking worker paths and interactions.
+- Return workers with blocked job routes to their job after 30 seconds without progress. Traders are exempt; jobs and inventories are retained.
+- Mobilize guards as soon as a wave arrives, let shield guards answer the alarm, and keep injured guards defending until combat ends before hospital recovery.
+- Send frightened civilians to reachable housing beds, including through house doors, instead of fleeing outdoors.
+- Add Housing Plans, Civic Planning and City Planning research for 10, 15 and 25 extra population places, alongside emerald upgrades and within the server maximum.
+- Move skill promotions and hospital recoveries into the settlement banner's Campaign / Journal tab. Other campaign notices use the hotbar instead of filling chat.
 
-## 0.1.0.1
+## World War MC 0.1.0.1
 
 A bugfix release for citizen jobs, movement and recovery, with clearer town status and server logs. WWMC remains playable and in development.
 
@@ -30,7 +47,7 @@ A bugfix release for citizen jobs, movement and recovery, with clearer town stat
 
 Install **0.1.0.1** on both clients and servers. Existing town saves, jobs and inventories remain compatible.
 
-## 0.1.0.0
+## World War MC 0.1.0.0
 
 - Start the four-part public version series. The leading **0** marks ongoing development.
 - Carry forward the settlement and campaign features from the earlier **0.14.0-alpha** build.

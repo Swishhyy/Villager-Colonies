@@ -1,0 +1,14 @@
+{
+  "replace": false,
+  "values": [
+    "wwmc:bronze_sword",
+    "wwmc:bronze_pickaxe",
+    "wwmc:bronze_axe",
+    "wwmc:bronze_shovel",
+    "wwmc:bronze_hoe",
+    "wwmc:bronze_helmet",
+    "wwmc:bronze_chestplate",
+    "wwmc:bronze_leggings",
+    "wwmc:bronze_boots"
+  ]
+}

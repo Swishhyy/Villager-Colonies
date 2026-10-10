@@ -57,9 +57,10 @@ import net.neoforged.neoforge.common.Tags;
 public final class CitizenEntity extends Villager {
     private static final EntityDataAccessor<Integer> JOB_LOOK=SynchedEntityData.defineId(CitizenEntity.class,EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> WORK_LOOK=SynchedEntityData.defineId(CitizenEntity.class,EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Long> WORK_BEGAN=SynchedEntityData.defineId(CitizenEntity.class,EntityDataSerializers.LONG);
     private long workingUntil,nextFeedbackPulse,nextFeedbackSound;
     @Override protected void defineSynchedData(SynchedEntityData.Builder builder) {
-        super.defineSynchedData(builder); builder.define(JOB_LOOK,-1); builder.define(WORK_LOOK,WorkFeedback.NONE);
+        super.defineSynchedData(builder); builder.define(JOB_LOOK,-1); builder.define(WORK_LOOK,WorkFeedback.NONE); builder.define(WORK_BEGAN,0L);
     }
     /** The saved assignment, also visible to remote clients while the worker is idle or resting. */
     public StructureRole appearanceJob() {
@@ -67,8 +68,10 @@ public final class CitizenEntity extends Villager {
         return job>=0 && job<StructureRole.values().length ? StructureRole.values()[job] : null;
     }
     public int workAnimation() { return entityData.get(WORK_LOOK); }
+    public long workAnimationBegan() { return entityData.get(WORK_BEGAN); }
     public void working(int kind) {
         if(!(level() instanceof ServerLevel) || isSleeping() || recovering) return;
+        if(entityData.get(WORK_LOOK)!=kind || level().getGameTime()>=workingUntil) entityData.set(WORK_BEGAN,level().getGameTime());
         workingUntil=level().getGameTime()+15; entityData.set(WORK_LOOK,kind);
     }
     public boolean feedbackPulse(long now) { if(now<nextFeedbackPulse) return false; nextFeedbackPulse=now+20; return true; }
@@ -100,6 +103,9 @@ public final class CitizenEntity extends Villager {
     private final AnimalWork animalWork=new AnimalWork();
     /** Ticks a craftsman works one batch at the bench. */
     private static final int CRAFT_TICKS=40;
+    private BlockPos trapWork;
+    private final Map<BlockPos,Long> failedTrapWork=new HashMap<>();
+    private int trapWorkTicks,trapPathTicks;
     private static final int MAX_FAILED_TARGETS=2048;
     /** Ticks between a citizen's looks for an open place in a job of higher priority than its own. */
     private static final int PROMOTION_CHECK=600;
@@ -118,6 +124,13 @@ public final class CitizenEntity extends Villager {
     /** An enchanter's item, kept apart from the bag until it is delivered, with the work done on it and the level rolled for it. */
     private ItemStack enchantItem=ItemStack.EMPTY;
     private int enchantTicks,enchantLevel;
+    private BlockPos researchDesk,researchStand;
+    private final Set<BlockPos> researchRejectedStands=new HashSet<>();
+    private long nextResearchRouteAt;
+    private Research.Status researchState=Research.Status.waiting("Waiting for the researcher to start work.");
+    private String researchProject="";
+    private BlockPos researchStation;
+    private long researchStateAt=Long.MIN_VALUE;
     private boolean enchantDone;
     private BlockPos enchantTable,enchantStand;
     private long nextEnchantAt;
@@ -137,10 +150,17 @@ public final class CitizenEntity extends Villager {
     private final Map<UUID,Long> ignoredLoot=new HashMap<>();
     private UUID scavengeTarget;
     private int scavengePathTicks;
-    /** Citizens who keep trying to walk without getting anywhere are lifted onto the banner after this long. */
+    /** Thirty seconds without progress on a job route triggers recovery beside the job, with a banner fallback. */
     private static final int STUCK_TICKS=600;
     private Vec3 stuckAnchor;
     private int stuckTicks,lastWalkTick=-1000;
+    private BlockPos blockedJob;
+    private Vec3 blockedJobAnchor;
+    private long blockedJobSince=-1,lastBlockedJobAttempt;
+    private static final int COMBAT_QUIET_TICKS=200;
+    private long combatUntil=-1,fearUntil=-1,nextFearCheck;
+    private UUID combatEnemy;
+    private boolean nearbyDanger,sheltering;
     private BlockPos patrolTarget,activePost;
     private BlockPos processor,processorStand;
     private boolean processingDelivery,processingSupplied;
@@ -149,7 +169,7 @@ public final class CitizenEntity extends Villager {
     private record IdleStation(long until,String reason) {}
     private final Map<BlockPos,IdleStation> idleStations=new HashMap<>();
     private UUID settlementId;
-    private BlockPos workplace, target, sleepingBed,workStand,clearingLeaf;
+    private BlockPos workplace, target, sleepingBed,homeBed,workStand,clearingLeaf;
     private final CitizenInventory cargo=new CitizenInventory(this::canOpenInventory);
     private final Map<BlockPos,Long> failedTargets=new HashMap<>();
     private int searchDelay, workProgress, pathTicks, blindTicks, mealTicks=7200;
@@ -202,16 +222,7 @@ public final class CitizenEntity extends Villager {
         goalSelector.addGoal(0,new FloatGoal(this));
         // The villager brain that normally opens doors is disabled for citizens, so doors are handled here.
         goalSelector.addGoal(1,new OpenDoorGoal(this,true));
-        goalSelector.addGoal(1,new AvoidEntityGoal<>(this,Monster.class,12.0F,0.8,1.0) {
-            @Override public boolean canUse() { return !recovering && !isGuard() && super.canUse(); }
-            @Override public boolean canContinueToUse() { return !recovering && !isGuard() && super.canContinueToUse(); }
-        });
-        // An alarm makes civilians notice and flee hostiles from much farther away.
-        goalSelector.addGoal(1,new AvoidEntityGoal<>(this,Monster.class,20.0F,0.9,1.1) {
-            @Override public boolean canUse() { return !recovering && !isGuard() && alarmed() && super.canUse(); }
-            @Override public boolean canContinueToUse() { return !recovering && !isGuard() && alarmed() && super.canContinueToUse(); }
-        });
-        goalSelector.addGoal(2,new ShelterGoal());
+        goalSelector.addGoal(1,new ShelterGoal());
         goalSelector.addGoal(2,new RestGoal());
         goalSelector.addGoal(3,new WorkGoal());
         goalSelector.addGoal(4,new LookAtPlayerGoal(this,Player.class,6.0F));
@@ -220,11 +231,13 @@ public final class CitizenEntity extends Villager {
     // Keep ordinary villager trades, breeding, and POI jobs out of the custom work scheduler.
     @Override protected void customServerAiStep(ServerLevel level) {}
     @Override public void tick() {
-        if(level() instanceof ServerLevel server && !recovering && getHealth()>=getMaxHealth() && isGuard() && WorkCadence.due(server.getGameTime(),getId(),10)) {
-            Settlement town=town(server); Station station=town.station(workplace);
+        if(level() instanceof ServerLevel server && !recovering && isGuard() && !HospitalCare.needsCare(town(server),this) && WorkCadence.due(server.getGameTime(),getId(),10)) {
+            Settlement town=town(server); Station station=homeStation(town);
+            if(station==null) station=town.station(workplace);
+            BlockPos post=station.position();
             // Sleeping reserves do not run their work goal, but still belong to this station's roster.
-            SettlementService.workers(server).claim(workplace,getUUID(),server.getGameTime(),200,SettlementService.workerLimit(town,station));
-            if(GuardService.onDuty(server,town,workplace,getUUID()) || DefenseService.bellRun(town,getUUID())!=null
+            SettlementService.workers(server).claim(post,getUUID(),server.getGameTime(),200,SettlementService.workerLimit(town,station));
+            if(GuardService.onDuty(server,town,post,getUUID()) || DefenseService.bellRun(town,getUUID())!=null
                     || isSleeping() && Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> !getItemBySlot(slot).isEmpty())) wakeForAlarm();
             else if(sleepingBed!=null) {
                 if(SettlementService.housingBeds(server,town).contains(sleepingBed))
@@ -299,26 +312,49 @@ public final class CitizenEntity extends Villager {
             default -> {}
         }
     }
-    /** Trying to walk (a recent walk() call) while staying within a block and a half counts as stuck. */
-    private void checkStuck(ServerLevel level,Settlement town) {
-        // Trade trips have their own short waypoints; do not teleport a convoy across the countryside.
-        if(tradeShipment.travelling() || SquadService.assigned(town,getUUID())) return;
-        boolean trying=tickCount-lastWalkTick<=40 && !isSleeping() && !isPassenger();
-        if(!trying || stuckAnchor==null || position().distanceToSqr(stuckAnchor)>2.25) { stuckAnchor=position(); stuckTicks=0; return; }
-        stuckTicks+=20;
-        if(stuckTicks<STUCK_TICKS) return;
-        stuckAnchor=null; stuckTicks=0;
-        Vec3 spot=rescueSpot(level,town);
-        if(Config.SERVER_DIAGNOSTICS.get() && level.getGameTime()>=nextRescueWarning) {
-            WWMC.LOGGER.warn("[WWMC][stuck-rescue] {} result={} destination={} activity=\"{}\" target={} pathDestination={}",
-                    diagnosticContext(level,town),spot==null ? "no-standing-room" : "returned-to-banner",spot,activity,target,pathDestination);
-            nextRescueWarning=level.getGameTime()+Config.DIAGNOSTIC_REPEAT.get()*20L;
+    private void clearBlockedJob() { blockedJob=null; blockedJobAnchor=null; blockedJobSince=-1; }
+    /** Failed plans survive the job's short retry pauses; they do not count ordinary idle time as being stuck. */
+    private void failedJobPath(ServerLevel level) {
+        Settlement town=town(level); Station home=town==null ? null : homeStation(town);
+        if(home==null || home.role()==StructureRole.TRADER || sheltering || recovering || inCombat()
+                || SquadService.assigned(town,getUUID()) || night(level) && home.role()!=StructureRole.GUARD) return;
+        long now=level.getGameTime();
+        if(!home.position().equals(blockedJob) || blockedJobAnchor==null || position().distanceToSqr(blockedJobAnchor)>2.25) {
+            blockedJob=home.position(); blockedJobAnchor=position(); blockedJobSince=now;
         }
-        if(spot==null) { activity="Stuck, and the settlement banner has no free standing room"; return; }
+        lastBlockedJobAttempt=now;
+    }
+    /** Movement stalls and repeated failed job plans share the same thirty-second, trader-free recovery. */
+    private void checkStuck(ServerLevel level,Settlement town) {
+        Station home=homeStation(town);
+        if(home==null || home.role()==StructureRole.TRADER || tradeShipment.travelling() || SquadService.assigned(town,getUUID())
+                || sheltering || recovering || inCombat() || isNoAi() || cargo.isOpen() || isSleeping() || isPassenger()
+                || night(level) && home.role()!=StructureRole.GUARD) {
+            clearBlockedJob(); stuckAnchor=null; stuckTicks=0; return;
+        }
+        long now=level.getGameTime();
+        if(blockedJob!=null && (!blockedJob.equals(home.position()) || now-lastBlockedJobAttempt>260
+                || position().distanceToSqr(blockedJobAnchor)>2.25)) clearBlockedJob();
+        boolean failed=blockedJobSince>=0 && now-blockedJobSince>=STUCK_TICKS;
+        boolean trying=tickCount-lastWalkTick<=40 && !isSleeping() && !isPassenger();
+        if(!trying || stuckAnchor==null || position().distanceToSqr(stuckAnchor)>2.25) { stuckAnchor=position(); stuckTicks=0; }
+        else stuckTicks+=20;
+        if(!failed && stuckTicks<STUCK_TICKS) return;
+        stuckAnchor=null; stuckTicks=0;
+        Vec3 spot=SettlementService.active(level,home) ? standingRoom(level,home.position()) : null;
+        boolean atJob=spot!=null;
+        if(spot==null) spot=rescueSpot(level,town);
+        clearBlockedJob();
+        if(Config.SERVER_DIAGNOSTICS.get() && now>=nextRescueWarning) {
+            WWMC.LOGGER.warn("[WWMC][stuck-rescue] {} result={} destination={} activity=\"{}\" target={} pathDestination={}",
+                    diagnosticContext(level,town),spot==null ? "no-standing-room" : atJob ? "returned-to-job" : "returned-to-banner",spot,activity,target,pathDestination);
+            nextRescueWarning=now+Config.DIAGNOSTIC_REPEAT.get()*20L;
+        }
+        if(spot==null) { activity="Stuck, and neither my job nor the banner has free standing room"; return; }
         getNavigation().stop();
-        boolean abandoned=abandonTrip(level);
-        activity="Got stuck and returned to the settlement banner";
-        if(!abandoned && workplace!=null) { pauseStation(level,workplace,200); releaseWork(level); }
+        abandonTrip(level); releaseWork(level);
+        activity=atJob ? "Got stuck and returned to my job" : "Got stuck and returned to the settlement banner";
+        idleStations.remove(home.position()); failedTargets.clear(); searchDelay=0; pathDestination=null; nextPathAt=0;
         setPos(spot.x,spot.y,spot.z); resetFallDistance();
     }
     /** Abandons the trip under way, so the citizen does not walk straight back into the same trap; false when there was none. */
@@ -347,7 +383,7 @@ public final class CitizenEntity extends Villager {
         getNavigation().stop();
         abandonTrip(level);
         setPos(spot.x,spot.y,spot.z); resetFallDistance();
-        stuckAnchor=null; stuckTicks=0;
+        stuckAnchor=null; stuckTicks=0; clearBlockedJob();
         activity="Was out of loaded range and came back";
         return true;
     }
@@ -403,10 +439,38 @@ public final class CitizenEntity extends Villager {
         Settlement town=town(server); Station station=town==null ? null : town.station(workplace);
         return station==null ? null : station.role();
     }
+    /** The saved post identifies a guard even while its active work goal is paused or has not resumed after loading. */
     public boolean isGuard() {
-        if(!(level() instanceof ServerLevel server) || workplace==null) return false;
-        Settlement town=town(server); Station station=town==null ? null : town.station(workplace);
-        return station!=null && station.role()==StructureRole.GUARD && SettlementService.active(server,station);
+        if(!(level() instanceof ServerLevel server)) return false;
+        Settlement town=town(server); if(town==null) return false;
+        Station station=homeStation(town);
+        if(station==null) station=town.station(workplace);
+        return station!=null && station.role()==StructureRole.GUARD && town.jobs.level(StructureRole.GUARD)!=JobBoard.OFF && SettlementService.active(server,station);
+    }
+    /** Damage and attacks keep recovery paused for ten quiet seconds; a nearby, live opponent keeps a guard fighting. */
+    public boolean inCombat() {
+        if(!(level() instanceof ServerLevel server)) return false;
+        if(server.getGameTime()<combatUntil) return true;
+        LivingEntity enemy=getTarget();
+        if(isGuard() && enemy!=null && enemy.isAlive() && distanceToSqr(enemy)<=48*48) return true;
+        return nearbyThreat(server,isGuard() ? 24 : 12);
+    }
+    private boolean nearbyThreat(ServerLevel level,int range) {
+        if(level.getGameTime()>=nextFearCheck) {
+            nextFearCheck=level.getGameTime()+20;
+            nearbyDanger=!level.getEntitiesOfClass(Monster.class,getBoundingBox().inflate(range),
+                    m -> DefenseService.hostile(m) && distanceToSqr(m)<=range*range && hasLineOfSight(m)).isEmpty();
+        }
+        return nearbyDanger;
+    }
+    public void combatWith(LivingEntity enemy) {
+        if(!(level() instanceof ServerLevel server) || !enemy.isAlive()) return;
+        combatEnemy=enemy.getUUID(); combatUntil=server.getGameTime()+COMBAT_QUIET_TICKS;
+        Settlement town=town(server);
+        if(town!=null && enemy instanceof Monster monster && DefenseService.hostile(monster) && town.contains(monster.blockPosition()))
+            DefenseService.report(town,monster,getName().getString(),false,server.getGameTime());
+        if(recovering || hospitalBed!=null) { leaveHospitalBed(); recovering=false; }
+        if(isGuard()) leaveBed();
     }
     /** A guard post has an open place and guarding matters more than this citizen's own job, so it volunteers. */
     private boolean guardVacancy(ServerLevel level,Settlement town) {
@@ -442,7 +506,7 @@ public final class CitizenEntity extends Villager {
         TutorialProgress.completed(server,town,role);
         if(reached>CitizenSkill.level(before) && town!=null) {
             String title=CitizenSkill.title(reached);
-            CampaignService.record(server,town,getName().getString()+" is now "+("AEIOU".indexOf(title.charAt(0))>=0 ? "an " : "a ")+title+" "
+            CampaignService.journal(server,town,getName().getString()+" is now "+("AEIOU".indexOf(title.charAt(0))>=0 ? "an " : "a ")+title+" "
                     +role.title().toLowerCase(Locale.ROOT)+": "+CitizenSkill.perk(role,reached)+".");
         }
     }
@@ -514,7 +578,9 @@ public final class CitizenEntity extends Villager {
         long now=level().getGameTime();
         if(getNavigation().isDone() || !pos.equals(pathDestination) || now>=nextPathAt) {
             var path=getNavigation().createPath(pos,accuracy);
-            if(path==null) return false;
+            if(path==null) { if(level() instanceof ServerLevel server && onGround()) failedJobPath(server); return false; }
+            if(path.canReach()) clearBlockedJob();
+            else if(level() instanceof ServerLevel server && onGround()) failedJobPath(server);
             getNavigation().moveTo(path,speed);
             pathDestination=pos.immutable(); nextPathAt=now+40;
         }
@@ -529,6 +595,9 @@ public final class CitizenEntity extends Villager {
         leaveBed();
         animalWork.reset();
         enchantTable=null; enchantStand=null;
+        researchDesk=null; researchStand=null;
+        researchRejectedStands.clear(); nextResearchRouteAt=0;
+        trapWork=null; trapWorkTicks=0; trapPathTicks=0;
         var book=SettlementService.reservations(level);
         if(workplace!=null) SettlementService.workers(level).release(workplace,getUUID());
         if(target!=null) book.release(target,getUUID());
@@ -760,6 +829,10 @@ public final class CitizenEntity extends Villager {
     private boolean retainSupply(ItemStack stack) {
         StructureRole role=role();
         if(role==StructureRole.BLACKSMITH && !repairItem.isEmpty() && BlacksmithRepair.material(repairItem,stack)) return true;
+        if(role==StructureRole.CRAFTSMAN && trapWork!=null && level() instanceof ServerLevel server) {
+            var material=TrapService.material(server.getBlockState(trapWork));
+            if(material!=null && material.accepts().test(stack)) return true;
+        }
         if(gear(stack) && GuardEquipment.worn(stack)) return false;
         if(level() instanceof ServerLevel level && role!=null && role.processes() && ProcessingService.supply(level,role,stack)) return true;
         if(role!=null && role.animalJob() && AnimalWork.supply(role,stack)) return true;
@@ -897,7 +970,10 @@ public final class CitizenEntity extends Villager {
             barrel=nearest(barrels.stream().filter(pos -> canUse(level,pos)).toList());
             if(barrel!=null) failedTargets.remove(barrel);
         }
-        if(barrel==null) activity="Cannot reach "+barrels.size()+" job barrel"+(barrels.size()==1 ? "" : "s")+"; clear a path and standing room beside "+(barrels.size()==1 ? "it" : "them");
+        if(barrel==null) {
+            activity="Cannot reach "+barrels.size()+" job barrel"+(barrels.size()==1 ? "" : "s")+"; clear a path and standing room beside "+(barrels.size()==1 ? "it" : "them");
+            failedJobPath(level);
+        }
         return barrel;
     }
     /** A supply or delivery trip to the job's own barrels; couriers deliver supplies and collect finished goods. */
@@ -924,6 +1000,7 @@ public final class CitizenEntity extends Villager {
             activity=warehouse ? "Carrying supplies / returning for food or tools" : "Walking to the job's barrel";
             // Skip a blocked barrel for a minute and try another of this station's barrels.
             if(!warehouse && (depotTicks>BARREL_WALK_TICKS || !moving && onGround())) {
+                failedJobPath(level);
                 if(failedTargets.size()<MAX_FAILED_TARGETS) failedTargets.put(depotTarget,level.getGameTime()+1200);
                 depotTarget=null; depotStand=null; depotTicks=0; activity="Cannot reach the job's barrel";
             }
@@ -1370,12 +1447,13 @@ public final class CitizenEntity extends Villager {
         bow.hurtAndBreak(1,this,EquipmentSlot.MAINHAND);
     }
     private void fight(ServerLevel level,LivingEntity enemy) {
+        combatWith(enemy);
         setTarget(enemy); activity="Defending the settlement";
         getLookControl().setLookAt(enemy,30.0F,30.0F);
         double distance=distanceTo(enemy);
         // Archers shoot at range with real arrows, switching to a melee weapon once the enemy closes in.
         if(distance>GuardWeapons.BOW_MIN_RANGE && distance<=GuardWeapons.BOW_MAX_RANGE && arrows()>0
-                && carries(GuardWeapons::bow) && clearShot(level,enemy) && hold(GuardWeapons::bow)) {
+                && hasLineOfSight(enemy) && carries(GuardWeapons::bow) && clearShot(level,enemy) && hold(GuardWeapons::bow)) {
             getNavigation().stop(); activity="Shooting at an attacker";
             if(!isUsingItem()) { if(guardAttackTicks==0) startUsingItem(InteractionHand.MAIN_HAND); }
             else if(getTicksUsingItem()>=20) { stopUsingItem(); shoot(level,enemy); guardAttackTicks=CitizenSkill.guardCooldown(skillLevel(StructureRole.GUARD),getRandom().nextInt(100)); }
@@ -1445,9 +1523,11 @@ public final class CitizenEntity extends Villager {
             cargo.offer(getItemBySlot(slot)); setItemSlot(slot,ItemStack.EMPTY);
         }
         BlockPos bell=DefenseService.bellRun(town,getUUID());
-        if(bell!=null) { wakeForAlarm(); runToBell(level,town,bell); return; }
         boolean alarm=DefenseService.alarmed(town);
-        if(!GuardService.onDuty(level,town,station.position(),getUUID())) {
+        LivingEntity aggressor=combatEnemy==null ? null : level.getEntity(combatEnemy) instanceof LivingEntity living ? living : null;
+        if(aggressor instanceof Monster hostile && DefenseService.hostile(hostile) && town.contains(hostile.blockPosition())
+                && distanceToSqr(hostile)<=48*48 && hasLineOfSight(hostile)) { wakeForAlarm(); readyMelee(); fight(level,hostile); return; }
+        if(!GuardService.onDuty(level,town,station.position(),getUUID()) && !inCombat()) {
             guardWasActive=false;
             if(activePost!=null) { activePost=null; patrolTarget=null; getNavigation().stop(); }
             setTarget(null); if(isUsingItem()) stopUsingItem();
@@ -1478,13 +1558,15 @@ public final class CitizenEntity extends Villager {
         // A shield guard keeps its gate; an archer watches the approaches from farther away.
         int sight=archer ? (alarm ? 40 : 28) : alarm ? 32 : 16;
         Monster enemy=level.getEntitiesOfClass(Monster.class,getBoundingBox().inflate(sight),
-                m -> m.isAlive() && town.contains(m.blockPosition()) && hasLineOfSight(m)
-                        && (!shield || m.blockPosition().distSqr(held)<=100 || m.getTarget()==this)).stream()
+                m -> DefenseService.hostile(m) && town.contains(m.blockPosition()) && hasLineOfSight(m)
+                        && (!shield || alarm || m.blockPosition().distSqr(held)<=100 || m.getTarget()==this)).stream()
                 .min(Comparator.comparingDouble(this::distanceToSqr)).orElse(null);
-        if(enemy!=null) { fight(level,enemy); return; }
         ignoredThreats.entrySet().removeIf(e -> e.getValue()<=level.getGameTime());
-        DefenseService.Call call=shield ? null : DefenseService.assignment(level,town,this,ignoredThreats::containsKey);
+        DefenseService.Call call=shield && !alarm ? null : DefenseService.assignment(level,town,this,ignoredThreats::containsKey);
+        if(enemy!=null && (enemy.getTarget()==this || CitizenReach.within(getEyePosition(),enemy.getBoundingBox()))) { fight(level,enemy); return; }
         if(call!=null && respond(level,town,call)) return;
+        if(enemy!=null) { fight(level,enemy); return; }
+        if(bell!=null) { runToBell(level,town,bell); return; }
         respondTarget=null; respondTicks=0;
         setTarget(null);
         if(isUsingItem()) stopUsingItem();
@@ -1575,6 +1657,11 @@ public final class CitizenEntity extends Villager {
      */
     private void craftsman(ServerLevel level,Settlement town,Station station) {
         BlockPos bench=station.position();
+        if(craftJob==null && maintainTraps(level,town,station)) return;
+        if(craftJob!=null && !AgeProgression.allowed(town,craftJob.plan().result())) {
+            activity="Workshop order requires "+AgeProgression.requirement(craftJob.plan().result())+" research";
+            getNavigation().stop(); return;
+        }
         if(craftJob!=null && (Workshop.find(town,craftJob.order().item())<0 || town.craftOrders.get(Workshop.find(town,craftJob.order().item())).target()<=0
                 || !Workshop.ready(cargo,craftJob.plan()))) craftJob=null;
         if(craftJob==null) {
@@ -1582,7 +1669,11 @@ public final class CitizenEntity extends Villager {
             List<Container> stock=SettlementService.townStorage(level,town);
             BlockPos barrel=jobBarrel(level,town,station);
             List<Container> local=SettlementService.jobStorage(level,town,station);
-            Workshop.Job next=barrel==null ? null : Workshop.choose(Workshop.Recipes.of(level),town.craftOrders,stock,local);
+            var permitted=town.craftOrders.stream().filter(o -> {
+                var item=o.resolve();
+                return item!=Items.AIR && AgeProgression.allowed(town,new ItemStack(item));
+            }).toList();
+            Workshop.Job next=barrel==null ? null : Workshop.choose(Workshop.Recipes.of(level),permitted,stock,local);
             if(barrel==null) return;
             if(!visitStorage(level,town,station.role(),barrel,local,false)) return;
             List<Container> sources=local;
@@ -1608,6 +1699,47 @@ public final class CitizenEntity extends Villager {
             if(Workshop.craft(level,cargo,craftJob.plan(),cargo::offer)) { swing(InteractionHand.MAIN_HAND); gainExperience(station.role(),1); }
             else craftJob=null;
         }
+    }
+    /** A craftsman carries paid materials to one reachable defense, and performs repairs only after the alarm ends. */
+    private boolean maintainTraps(ServerLevel level,Settlement town,Station station) {
+        if(DefenseService.alarmed(town)) { trapWork=null; trapWorkTicks=0; trapPathTicks=0; return false; }
+        long now=level.getGameTime();
+        failedTrapWork.values().removeIf(until -> until<=now);
+        if(trapWork!=null && (!level.hasChunkAt(trapWork) || !TrapService.needsMaintenance(level.getBlockState(trapWork)))) {
+            trapWork=null; trapWorkTicks=0; trapPathTicks=0;
+        }
+        List<Container> local=SettlementService.jobStorage(level,town,station);
+        if(trapWork==null) {
+            List<Container> available=new ArrayList<>(local); available.add(cargo);
+            trapWork=TrapService.nextMaintenance(level,town,station.position(),available,
+                    pos -> failedTrapWork.getOrDefault(pos,0L)>now || pos.distSqr(station.position())>128*128);
+            if(trapWork==null) return false;
+            trapWorkTicks=0; trapPathTicks=0;
+        }
+        var material=TrapService.material(level.getBlockState(trapWork));
+        if(material==null) { trapWork=null; return false; }
+        if(!TrapService.supplied(material,List.of(cargo))) {
+            BlockPos barrel=jobBarrel(level,town,station);
+            if(barrel==null) { trapWork=null; return false; }
+            if(!visitStorage(level,town,StructureRole.CRAFTSMAN,barrel,local,false)) return true;
+            int held=InventoryOps.count(List.of(cargo),material.accepts());
+            if(InventoryOps.count(local,material.accepts())+held<material.count()) { trapWork=null; return false; }
+            for(int i=held;i<material.count();i++) cargo.offer(InventoryOps.takeOne(local,material.accepts()));
+        }
+        if(!canUse(level,trapWork)) {
+            activity="Carrying materials to maintain a trap"; trapPathTicks+=10;
+            if(!walk(trapWork) || trapPathTicks>=600) {
+                failedTrapWork.put(trapWork,now+600); trapWork=null; trapWorkTicks=0; trapPathTicks=0; return false;
+            }
+            return true;
+        }
+        getNavigation().stop(); activity="Maintaining a settlement trap";
+        WorkFeedback.pulse(level,this,trapWork,WorkFeedback.CRAFTING); trapWorkTicks+=workStep();
+        if(trapWorkTicks>=CRAFT_TICKS) {
+            if(TrapService.maintain(level,town,trapWork,List.of(cargo))) gainExperience(StructureRole.CRAFTSMAN,1);
+            trapWork=null; trapWorkTicks=0; trapPathTicks=0;
+        }
+        return true;
     }
     /** Couriers carry finished goods to the warehouse and supply every production job's local barrels. */
     private void courier(ServerLevel level,Settlement town,Station station) {
@@ -1810,6 +1942,26 @@ public final class CitizenEntity extends Villager {
         processorStand=null;
     }
     public String activity() { return level().getGameTime()<callNoteUntil ? callNote : activity; }
+    /** Observe current interruptions without running pathfinding, taking supplies or waking the citizen. */
+    public Research.Status researchStatus(ServerLevel level,Settlement town,Station station) {
+        if(!level.isPositionEntityTicking(blockPosition()))
+            return Research.Status.paused("Researcher is outside the active area. Keep their area loaded.");
+        if(HospitalCare.needsCare(town,this)) return Research.Status.paused("Researcher needs hospital recovery before returning to work.");
+        if(SquadService.assigned(town,getUUID())) return Research.Status.paused("Researcher is on squad duty. Return them to their job.");
+        if(DefenseService.alarmed(town) || sheltering || level.getGameTime()<fearUntil || inCombat())
+            return Research.Status.paused("Researcher is sheltering until the danger has passed.");
+        if(night(level)) return Research.Status.paused("Researchers are off duty until morning.");
+        if(isSleeping()) return Research.Status.paused("Researcher is sleeping.");
+        if(cargo.isOpen()) return Research.Status.paused("Researcher's inventory is open. Close it to resume work.");
+        if(isNoAi()) return Research.Status.paused("Researcher is unavailable for work. Check the Crew tab.");
+        if(returningGear) return Research.Status.waiting("Researcher is returning equipment from their previous job.");
+        if(pantryTarget!=null && wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0)
+            return Research.Status.paused("Researcher is fetching a meal from the pantry.");
+        if(station.position().equals(researchStation) && town.progress.project.equals(researchProject)
+                && researchStateAt!=Long.MIN_VALUE && level.getGameTime()>=researchStateAt && level.getGameTime()-researchStateAt<=30)
+            return researchState;
+        return Research.Status.waiting("Waiting for the researcher to start work.");
+    }
     public StructureRole jobRole() { return role(); }
     public CitizenInventory bag() { return cargo; }
     public boolean workWalk(BlockPos pos) { return walk(pos); }
@@ -1987,6 +2139,85 @@ public final class CitizenEntity extends Villager {
         return false;
     }
     /** Enchanters take one item and lapis from their local barrels and work from clear ground within reach of a table. */
+    private void researcher(ServerLevel level,Settlement town,Station station) {
+        if(!station.position().equals(researchStation) || !town.progress.project.equals(researchProject)) {
+            researchDesk=null; researchStand=null; researchRejectedStands.clear(); nextResearchRouteAt=0;
+        }
+        researchProject=town.progress.project; researchStation=station.position(); researchStateAt=level.getGameTime();
+        researchState=Research.Status.waiting("Researcher is checking a route to the lectern.");
+        eatFrom(List.of(cargo));
+        if(wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0 && !visitPantry(level,town)) {
+            researchState=Research.Status.paused("Researcher is fetching a meal from the pantry."); return;
+        }
+        if(Research.project(town)==null) { activity="Waiting for a research project in Campaign / Research"; getNavigation().stop(); return; }
+        List<BlockPos> desks=Research.desks(level,town,station);
+        if(researchDesk==null && level.getGameTime()<nextResearchRouteAt) {
+            researchBlocked(level,desks); return;
+        }
+        if(nextResearchRouteAt>0) { researchRejectedStands.clear(); nextResearchRouteAt=0; }
+        if(researchDesk==null || !desks.contains(researchDesk)
+                || !canUse(level,researchDesk) && !standingSpotUsable(level,town,researchStand,researchDesk)) {
+            researchDesk=null; researchStand=null;
+            // Navigation caches the active path: discard it before probing a changed work approach.
+            getNavigation().stop();
+            var view=standingView(level,town);
+            for(BlockPos desk:desks.stream().sorted(Comparator.comparingDouble(p -> p.distSqr(blockPosition()))).limit(4).toList()) {
+                if(canUse(level,desk)) { researchDesk=desk; break; }
+                for(BlockPos stand:CitizenReach.stands(view,desk,position(),getEyeHeight())) {
+                    if(!standingSpotUsable(level,town,stand,desk)) continue;
+                    if(researchReachableStand(stand)) { researchDesk=desk; researchStand=stand; break; }
+                    if(reachBudget.deferred()) { activity="Checking a route to the research lectern"; return; }
+                }
+                if(researchDesk!=null) break;
+            }
+            if(researchDesk==null) {
+                nextResearchRouteAt=level.getGameTime()+100;
+                researchBlocked(level,desks);
+                return;
+            }
+        }
+        if(!canUse(level,researchDesk)) {
+            activity="Walking to the research lectern";
+            researchState=Research.Status.waiting("Researcher is walking to the lectern.");
+            // A periodic request for the same target otherwise reuses the path from before a wall was built.
+            if(level.getGameTime()>=nextPathAt) getNavigation().stop();
+            boolean moving=walk(researchStand,0.65,0);
+            var path=getNavigation().getPath();
+            if(onGround() && (!moving || path!=null && !path.canReach() && !beyondOneRoute(researchStand))) {
+                researchRejectedStands.add(researchStand); researchDesk=null; researchStand=null;
+                getNavigation().stop();
+                researchState=Research.Status.waiting("Researcher is checking another route to the lectern.");
+            }
+            return;
+        }
+        getNavigation().stop();
+        getLookControl().setLookAt(researchDesk.getX()+0.5,researchDesk.getY()+0.8,researchDesk.getZ()+0.5);
+        activity="Researching "+Research.progress(town);
+        WorkFeedback.pulse(level,this,researchDesk,WorkFeedback.RESEARCHING);
+        if(Research.work(level,town,station,researchDesk)) {
+            clearBlockedJob();
+            researchState=Research.Status.working();
+            if(level.getGameTime()%200==0) gainExperience(StructureRole.RESEARCHER,1);
+        } else researchState=Research.Status.waiting("Waiting for the next researcher work step.");
+    }
+    /** Keep rejected approaches for the complete bounded search, then retry after a short pause. */
+    private boolean researchReachableStand(BlockPos stand) {
+        if(stand.equals(blockPosition()) || beyondOneRoute(stand)) return true;
+        if(researchRejectedStands.contains(stand)) return false;
+        boolean reachable=reachBudget.check(() -> {
+            var path=getNavigation().createPath(stand,0);
+            return path!=null && path.canReach();
+        });
+        if(!reachable && !reachBudget.deferred()) researchRejectedStands.add(stand);
+        return reachable;
+    }
+    private void researchBlocked(ServerLevel level,List<BlockPos> desks) {
+        activity=desks.isEmpty() ? "Needs a lectern within the Researcher Station's range" : "Cannot reach the research lectern";
+        researchState=Research.Status.paused(desks.isEmpty() ? "No lectern in range. Place one beside the Researcher Station."
+                : "Researcher cannot reach the lectern. Clear a route and standing space.");
+        getNavigation().stop();
+        if(!desks.isEmpty() && onGround()) failedJobPath(level);
+    }
     private void enchanter(ServerLevel level,Settlement town,Station station) {
         eatFrom(List.of(cargo));
         if(!enchantItem.isEmpty() && enchantDone) { deliverEnchanted(level,town,station); return; }
@@ -2294,6 +2525,7 @@ public final class CitizenEntity extends Villager {
         if(station.role()==StructureRole.COURIER) { courier(level,town,station); return; }
         if(station.role()==StructureRole.TRADER) { trader(level,town,station); return; }
         if(station.role()==StructureRole.ENCHANTER) { enchanter(level,town,station); return; }
+        if(station.role()==StructureRole.RESEARCHER) { researcher(level,town,station); return; }
         if(town.campaign.parent!=null && InventoryOps.count(SettlementService.townStorage(level,town),FoodHealing::food)==0 && InventoryOps.count(List.of(cargo),FoodHealing::food)==0) {
             getNavigation().stop(); activity="Outpost awaiting a food shipment from home"; return;
         }
@@ -2418,28 +2650,64 @@ public final class CitizenEntity extends Villager {
         @Override public void tick() { if(level() instanceof ServerLevel l && WorkCadence.due(l.getGameTime(),getId(),10)) work(l); }
         @Override public void stop() { if(level() instanceof ServerLevel l) releaseWork(l); }
     }
-    /** "Duck and cover": during a daytime alarm civilians wait at the nearest housing until the all-clear. Night alarms find them in bed. */
+    /** Fear sends civilians to a real housing bed, instead of choosing a random escape point outside their home. */
     private final class ShelterGoal extends Goal {
-        private BlockPos refuge;
+        private BlockPos refuge,bed;
+        private long retryAt;
         ShelterGoal() { setFlags(EnumSet.of(Flag.MOVE,Flag.LOOK)); }
         @Override public boolean canUse() {
             if(!(level() instanceof ServerLevel l)) return false;
             Settlement town=town(l);
-            return town!=null && !HospitalCare.needsCare(town,CitizenEntity.this) && !tradeShipment.travelling() && !isGuard() && DefenseService.alarmed(town) && !night(l) && !guardVacancy(l,town);
+            if(town==null || recovering || tradeShipment.travelling() || SquadService.assigned(town,getUUID())
+                    || isGuard()) return false;
+            if(DefenseService.alarmed(town)) fearUntil=l.getGameTime()+20;
+            else if(inCombat()) fearUntil=l.getGameTime()+STUCK_TICKS;
+            return l.getGameTime()<fearUntil;
         }
         @Override public boolean canContinueToUse() { return canUse(); }
         @Override public boolean requiresUpdateEveryTick() { return true; }
-        @Override public void start() { refuge=null; }
+        @Override public void start() { refuge=null; bed=null; retryAt=0; sheltering=true; }
         @Override public void tick() {
             if(!(level() instanceof ServerLevel level) || !WorkCadence.due(level.getGameTime(),getId(),20)) return;
             Settlement town=town(level); if(town==null) return;
-            if(refuge==null) refuge=DefenseService.refuge(level,town,blockPosition());
-            if(distanceToSqr(Vec3.atCenterOf(refuge))<=9.0 || !walk(refuge,0.9)) {
-                getNavigation().stop(); activity="Taking cover until the all-clear"; return;
+            var beds=new ArrayList<>(SettlementService.housingBeds(level,town));
+            var book=SettlementService.reservations(level);
+            if(bed!=null && (!beds.contains(bed) || !book.claim(bed,getUUID(),level.getGameTime(),200))) {
+                leaveBed(); bed=null; refuge=null;
             }
-            activity="Running for cover";
+            if(bed==null && level.getGameTime()>=retryAt) {
+                retryAt=level.getGameTime()+200;
+                beds.sort(Comparator.comparingDouble(p -> p.equals(homeBed) ? -1 : distanceToSqr(Vec3.atCenterOf(p))));
+                for(BlockPos candidate:beds.stream().limit(8).toList()) {
+                    if(level.getBlockState(candidate).getValue(BedBlock.OCCUPIED) && !candidate.equals(sleepingBed)
+                            || !book.claim(candidate,getUUID(),level.getGameTime(),200)) continue;
+                    BlockPos stand=null;
+                    int probes=0;
+                    for(BlockPos spot:CitizenReach.stands(standingView(level,town),candidate,position(),getEyeHeight())) {
+                        if(spot.distSqr(candidate)>4 || !CitizenReach.visible(level,Vec3.atBottomCenterOf(spot).add(0,getEyeHeight(),0),candidate)) continue;
+                        if(++probes>2) break;
+                        var path=getNavigation().createPath(spot,0);
+                        if(spot.equals(blockPosition()) || path!=null && (path.canReach() || beyondOneRoute(spot))) { stand=spot; break; }
+                    }
+                    if(stand!=null) { bed=candidate; sleepingBed=candidate; homeBed=candidate; refuge=stand; break; }
+                    book.release(candidate,getUUID());
+                }
+            }
+            if(bed!=null) {
+                if(distanceToSqr(Vec3.atCenterOf(bed))<=4 && visible(level,bed)) {
+                    getNavigation().stop();
+                    if(night(level) && !isSleeping()) startSleeping(bed);
+                    activity="Sheltering at my bed until it is safe"; return;
+                }
+                if(walk(refuge,1.0,0)) { activity="Running home to my bed for shelter"; return; }
+                book.release(bed,getUUID()); bed=null; refuge=null;
+            }
+            // Towns without an accessible bed still have a housing or banner rally point.
+            BlockPos fallback=DefenseService.refuge(level,town,blockPosition());
+            if(distanceToSqr(Vec3.atCenterOf(fallback))>9 && walk(fallback,0.9)) activity="Running for cover; needs a reachable housing bed";
+            else { getNavigation().stop(); activity="Taking cover; needs a reachable housing bed"; }
         }
-        @Override public void stop() { refuge=null; getNavigation().stop(); }
+        @Override public void stop() { sheltering=false; refuge=null; bed=null; leaveBed(); getNavigation().stop(); }
     }
     private final class RestGoal extends Goal {
         RestGoal() { setFlags(EnumSet.of(Flag.MOVE,Flag.LOOK)); }
@@ -2457,11 +2725,12 @@ public final class CitizenEntity extends Villager {
     private void rest(ServerLevel level,Settlement town) {
         if(HospitalCare.needsCare(town,this)) return;
         if(!cargo.isOpen()) eatFrom(List.of(cargo));
-        var beds=SettlementService.housingBeds(level,town);
+        var beds=new ArrayList<>(SettlementService.housingBeds(level,town));
+        beds.sort(Comparator.comparingDouble(p -> p.equals(homeBed) ? -1 : distanceToSqr(Vec3.atCenterOf(p))));
         var book=SettlementService.reservations(level);
         if(sleepingBed!=null && (!beds.contains(sleepingBed) || !book.claim(sleepingBed,getUUID(),level.getGameTime(),200))) leaveBed();
         if(sleepingBed==null) for(BlockPos bed:beds) {
-            if(!level.getBlockState(bed).getValue(BedBlock.OCCUPIED) && book.claim(bed,getUUID(),level.getGameTime(),200)) { sleepingBed=bed; break; }
+            if(!level.getBlockState(bed).getValue(BedBlock.OCCUPIED) && book.claim(bed,getUUID(),level.getGameTime(),200)) { sleepingBed=bed; homeBed=bed; break; }
         }
         if(sleepingBed==null) { activity="Needs a loaded housing bed"; return; }
         activity="Resting";
@@ -2480,6 +2749,7 @@ public final class CitizenEntity extends Villager {
         super.addAdditionalSaveData(output);
         if(settlementId!=null) output.putString("wwmc_settlement",settlementId.toString());
         if(workplace!=null) output.store("wwmc_workplace",BlockPos.CODEC,workplace);
+        if(homeBed!=null) output.store("wwmc_home_bed",BlockPos.CODEC,homeBed);
         output.putInt("wwmc_meal_ticks",mealTicks);
         output.putLong("wwmc_last_meal",lastMealAt);
         output.putInt("wwmc_healing_ticks",healingTicks);
@@ -2506,6 +2776,7 @@ public final class CitizenEntity extends Villager {
         String id=input.getStringOr("wwmc_settlement","");
         try { settlementId=id.isEmpty() ? null : UUID.fromString(id); } catch(IllegalArgumentException e) { settlementId=null; }
         workplace=input.read("wwmc_workplace",BlockPos.CODEC).orElse(null);
+        homeBed=input.read("wwmc_home_bed",BlockPos.CODEC).orElse(null);
         mealTicks=input.getIntOr("wwmc_meal_ticks",7200);
         lastMealAt=input.getLongOr("wwmc_last_meal",0L);
         healingTicks=Math.clamp(input.getIntOr("wwmc_healing_ticks",0),0,FoodHealing.COOLDOWN);

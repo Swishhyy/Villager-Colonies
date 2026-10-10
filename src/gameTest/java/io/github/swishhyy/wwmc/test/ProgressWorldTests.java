@@ -126,8 +126,11 @@ public final class ProgressWorldTests {
             BlockPos start=helper.absolutePos(new BlockPos(0,2,3200));
             var chunks=CitizenNavigationTests.pinArea(level,start,-8,24,-8,8);
             CitizenNavigationTests.meadow(level,start,-8,24,-8,8);
-            Station warehouse=new Station(start.east(2),StructureRole.WAREHOUSE),kitchen=new Station(start.east(14),StructureRole.COOK);
-            var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Needs",start,96,List.of(),List.of(warehouse,kitchen),"balanced");
+            Station warehouse=new Station(start.east(2),StructureRole.WAREHOUSE),kitchen=new Station(start.east(14),StructureRole.COOK),
+                    research=new Station(start.east(22),StructureRole.RESEARCHER);
+            var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Needs",start,96,List.of(),List.of(warehouse,kitchen,research),"balanced");
+            town.progress.research.add("bronze_age"); town.progress.research.add("iron_age");
+            BlockPos desk=research.position().north(); level.setBlockAndUpdate(desk,Blocks.LECTERN.defaultBlockState());
             var data=SettlementData.get(level); data.settlements.add(town); data.setDirty();
             level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState());
             for(Station station:town.stations) level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
@@ -144,6 +147,9 @@ public final class ProgressWorldTests {
                         "The kitchen's missing barrel and oven are named: "+titles);
                 helper.assertTrue(needs.getFirst().severity()>=needs.getLast().severity(),"Needs are listed most urgent first");
                 String result=Research.study(level,town,"steel_tools");
+                helper.assertTrue(town.progress.project.equals("steel_tools") && !Research.has(town,"steel_tools"),"Research must be paid before timed work, not instantly unlocked: "+result);
+                town.progress.projectTicks=Research.byId("steel_tools").ticks()-10;
+                Research.work(level,town,research,desk);
                 helper.assertTrue(Research.has(town,"steel_tools"),"Steel Tools could not be researched: "+result);
                 var stock=SettlementService.storage(level,town);
                 helper.assertTrue(InventoryOps.count(stock,s -> s.is(Items.IRON_INGOT))==8 && InventoryOps.count(stock,s -> s.is(Items.COAL))==0
