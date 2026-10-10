@@ -234,7 +234,8 @@ public final class MultiplayerWorldTests {
             var site=new ExpeditionData.Site(UUID.randomUUID(),outpost.center,"mine","test"); site.spawned=true; site.cleared=true; site.claimed=outpost.id;
             ExpeditionData.get(level).sites.add(site); f.sites.add(site); ExpeditionData.get(level).setDirty();
             helper.runAfterDelay(5,() -> {
-                OutpostContests.challenge(level,challenger,b,outpost.id); var data=MultiplayerData.get(level);
+                String offered=OutpostContests.challenge(level,challenger,b,outpost.id); var data=MultiplayerData.get(level);
+                helper.assertTrue(data.contests.stream().anyMatch(c -> c.outpost.equals(outpost.id)),"Outpost offer failed: "+offered);
                 var contest=data.contests.stream().filter(c -> c.outpost.equals(outpost.id)).findFirst().orElseThrow();
                 b.setPos(outpost.center.getX()+2.5,outpost.center.getY(),outpost.center.getZ()+0.5);
                 a.setPos(outpost.center.getX()+0.5,outpost.center.getY(),outpost.center.getZ()+10.5);

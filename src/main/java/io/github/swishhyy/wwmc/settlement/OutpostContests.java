@@ -14,7 +14,10 @@ import net.minecraft.world.phys.Vec3;
 public final class OutpostContests {
     public static final int CAPTURE_TICKS=1200,ARENA=32;
     private OutpostContests() {}
-    private static ServerPlayer online(ServerLevel level,UUID id) { return level.getServer().getPlayerList().getPlayer(id); }
+    private static ServerPlayer online(ServerLevel level,UUID id) {
+        for(ServerPlayer player:level.players()) if(player.getUUID().equals(id)) return player;
+        return level.getServer().getPlayerList().getPlayer(id);
+    }
     public static boolean resourceOutpost(ServerLevel level,Settlement outpost) {
         return outpost!=null && !outpost.trading.npc && outpost.campaign.parent!=null
                 && ExpeditionData.get(level).sites.stream().anyMatch(s -> s.cleared && outpost.id.equals(s.claimed) && !s.kind.equals("raid"));
