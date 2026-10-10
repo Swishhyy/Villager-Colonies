@@ -7,6 +7,7 @@
 - Add a Neighbours banner board with nearby-town needs, trade status, NPC requests, alliances and quiet news. Keep other player towns' journals private.
 - Let existing traders fulfil accepted player-settlement contracts with physical warehouse deliveries, home stock reserves, incoming demand reservations and saved emerald payments. Manual delivery remains available.
 - Let loaded NPC settlements arrange up to two neighbour trade routes and exchange real surplus. Leave their primary checkpoint available for player trade; record deliveries and food-funded growth at the banner.
+- Give player-connected routes priority over autonomous NPC caravans within the existing server trader limit.
 - Remove the duel feature. Refund previously reserved preview stakes when loading existing saves.
 - Add owner-approved battles for expedition resource outposts: hold the flag to capture its existing miners, storage and supply route. Both owners must stay online.
 - Fix guards swapping away their bows while drawing; use real arrows and fall back to melee when ammunition runs out. Let guards collect shields from stands or storage and block between attacks, with a visible raised-shield pose.
