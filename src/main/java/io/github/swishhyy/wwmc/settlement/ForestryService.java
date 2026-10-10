@@ -33,6 +33,8 @@ public final class ForestryService {
         public Tree { root=root.immutable(); logs=logs.stream().map(BlockPos::immutable).toList(); }
     }
     public record Task(BlockPos target,Tree tree,PlantingSite planting) {}
+    public record TreeCheck(Tree tree,String reason) {}
+    public record Search(Task task,String reason) {}
     private ForestryService() {}
     private static boolean loaded(ServerLevel level,Settlement town,BlockPos pos) {
         return pos.getY()>=level.getMinY() && pos.getY()<level.getMaxY() && town.contains(pos) && level.hasChunkAt(pos);
@@ -45,6 +47,9 @@ public final class ForestryService {
     public static boolean naturalLeaf(BlockState state,TreeSpecies species) {
         return state.is(species.leaves) && !state.getValue(LeavesBlock.PERSISTENT);
     }
+    public static boolean naturalLeaf(BlockState state) {
+        return state.getBlock() instanceof LeavesBlock && !state.getValue(LeavesBlock.PERSISTENT);
+    }
     public interface TreeView {
         BlockState state(BlockPos pos);
         boolean available(BlockPos pos);
@@ -55,16 +60,19 @@ public final class ForestryService {
         default boolean workFixtureAt(BlockPos pos) { return false; }
     }
     public static Tree tree(ServerLevel level,Settlement town,BlockPos root) {
+        return inspect(level,town,root).tree();
+    }
+    public static TreeCheck inspect(ServerLevel level,Settlement town,BlockPos root) {
         var data=WorldWorkData.get(level);
         TreeView world=view(level,town,root);
         Tree saved=data.clearedTrees.get(root);
         if(saved!=null) {
             Tree verified=verify(world,saved);
-            if(verified!=null) return verified;
+            if(verified!=null) return new TreeCheck(verified,"");
             // An unloaded branch cannot invalidate the saved proof of a tree whose leaves we already cleared.
             if(saved.logs().stream().allMatch(p -> loaded(level,town,p))) { data.clearedTrees.remove(root); data.setDirty(); }
         }
-        return tree(world,root);
+        return inspect(world,root,4);
     }
     private static TreeView view(ServerLevel level,Settlement town,BlockPos root) {
         WorldWorkData data=WorldWorkData.get(level);
@@ -81,28 +89,30 @@ public final class ForestryService {
         };
     }
     public static Tree tree(TreeView world,BlockPos root) {
-        return tree(world,root,4);
+        return inspect(world,root,4).tree();
     }
     /** Revalidate a tree recognized before clearing leaves, retaining every provenance, construction and loading check. */
     public static Tree verify(TreeView world,Tree saved) {
-        Tree current=tree(world,saved.root(),0);
+        Tree current=inspect(world,saved.root(),0).tree();
         return current!=null && current.species()==saved.species() && current.width()==saved.width()
                 && new HashSet<>(current.logs()).equals(new HashSet<>(saved.logs())) ? current : null;
     }
-    private static Tree tree(TreeView world,BlockPos root,int minimumLeaves) {
-        if(!world.available(root) || !world.available(root.below())) return null;
+    private static TreeCheck rejected(String reason) { return new TreeCheck(null,reason); }
+    private static TreeCheck inspect(TreeView world,BlockPos root,int minimumLeaves) {
+        if(!world.available(root) || !world.available(root.below())) return rejected("Trees extend outside the claim or into unloaded terrain");
         TreeSpecies species=TreeSpecies.ofLog(world.state(root));
-        if(species==null || !soil(world.state(root.below()))) return null;
+        if(species==null || !soil(world.state(root.below()))) return rejected("Trunks need natural soil beneath them");
         if(!world.available(root.above(2)) || !world.state(root.above()).is(species.log)
-                || !world.state(root.above(2)).is(species.log)) return null;
+                || !world.state(root.above(2)).is(species.log)) return rejected("Trunks are incomplete or too short to recognize safely");
         Set<BlockPos> logs=new LinkedHashSet<>(),roots=new HashSet<>();
         Set<BlockPos> canopy=new HashSet<>();
         ArrayDeque<BlockPos> queue=new ArrayDeque<>(); queue.add(root.immutable());
         while(!queue.isEmpty()) {
             BlockPos pos=queue.remove();
             if(!logs.add(pos)) continue;
-            if(logs.size()>MAX_LOGS || !world.available(pos) || world.protectedAt(pos)
-                    || world.furnitureAt(pos)) return null;
+            if(logs.size()>MAX_LOGS) return rejected("Connected trees exceed the safe harvesting limit");
+            if(!world.available(pos)) return rejected("Trees extend outside the claim or into unloaded terrain");
+            if(world.protectedAt(pos) || world.furnitureAt(pos)) return rejected("Player-placed logs or nearby buildings protect these trees");
             if(soil(world.state(pos.below()))) roots.add(pos);
             if(minimumLeaves>0 && canopy.size()<minimumLeaves && pos.getY()>=root.getY()+2) {
                 for(BlockPos leaf:BlockPos.betweenClosed(pos.offset(-2,-1,-2),pos.offset(2,3,2)))
@@ -112,77 +122,95 @@ public final class ForestryService {
             for(BlockPos adjacent:BlockPos.betweenClosed(pos.offset(-1,-1,-1),pos.offset(1,1,1))) {
                 if(adjacent.equals(pos)) continue;
                 // Truncating a tree at an unloaded chunk would leave floating trunks.
-                if(!world.available(adjacent)) return null;
+                if(!world.available(adjacent)) return rejected("Trees extend outside the claim or into unloaded terrain");
                 BlockState state=world.state(adjacent);
                 if(state.is(BlockTags.PLANKS) || !world.workFixtureAt(adjacent) && (world.blockEntityAt(adjacent)
-                        || world.protectedAt(adjacent) && !state.isAir() && !soil(state))) return null;
+                        || world.protectedAt(adjacent) && !state.isAir() && !soil(state))) return rejected("Player-placed logs or nearby buildings protect these trees");
                 if(!state.is(BlockTags.LOGS) || logs.contains(adjacent)) continue;
                 if(!state.is(species.log) || !world.available(adjacent)
                         || Math.abs(adjacent.getX()-root.getX())>CROWN_RADIUS
                         || Math.abs(adjacent.getZ()-root.getZ())>CROWN_RADIUS
-                        || adjacent.getY()<root.getY() || adjacent.getY()>root.getY()+MAX_HEIGHT) return null;
+                        || adjacent.getY()<root.getY() || adjacent.getY()>root.getY()+MAX_HEIGHT) return rejected("Connected trunks or branches cannot be separated safely");
                 queue.add(adjacent.immutable());
             }
         }
-        if(canopy.size()<minimumLeaves || roots.isEmpty() || roots.size()!=1 && roots.size()!=4) return null;
+        if(canopy.size()<minimumLeaves) return rejected("Trunks need a natural leaf canopy; decorative leaves do not count");
+        if(roots.isEmpty() || roots.size()!=1 && roots.size()!=4) return rejected("Connected trunks cannot be separated safely");
         int minX=roots.stream().mapToInt(BlockPos::getX).min().orElse(root.getX());
         int minZ=roots.stream().mapToInt(BlockPos::getZ).min().orElse(root.getZ());
         int width=roots.size()==4 ? 2 : species.width;
         if(roots.size()==4) for(int x=0;x<2;x++) for(int z=0;z<2;z++)
-            if(!roots.contains(new BlockPos(minX+x,root.getY(),minZ+z))) return null;
-        if(species.width==2 && roots.size()!=4) return null;
-        return new Tree(new BlockPos(minX,root.getY(),minZ),List.copyOf(logs),species,width);
+            if(!roots.contains(new BlockPos(minX+x,root.getY(),minZ+z))) return rejected("Large-tree trunks need a complete 2x2 root plot");
+        if(species.width==2 && roots.size()!=4) return rejected("Large-tree trunks need a complete 2x2 root plot");
+        return new TreeCheck(new Tree(new BlockPos(minX,root.getY(),minZ),List.copyOf(logs),species,width),"");
     }
     public static boolean canPlant(ServerLevel level,Settlement town,Station station,PlantingSite site) {
         WorldWorkData data=WorldWorkData.get(level);
         for(int x=0;x<site.width();x++) for(int z=0;z<site.width();z++) {
             BlockPos pos=site.root().offset(x,0,z);
             if(!loaded(level,town,pos) || !station.contains(pos) || !loaded(level,town,pos.below())
-                    || !level.getBlockState(pos).isAir() || !level.getFluidState(pos).isEmpty()
+                    || !(level.getBlockState(pos).isAir() || CitizenReach.softCover(level,pos,level.getBlockState(pos))) || !level.getFluidState(pos).isEmpty()
                     || data.protectedBlocks.contains(pos) || SettlementService.protectedFurniture(town,pos)
+                    || level.getBlockEntity(pos)!=null
                     || !site.species().sapling.defaultBlockState().canSurvive(level,pos)) return false;
         }
         for(BlockPos pos:BlockPos.betweenClosed(site.root().offset(-1,1,-1),site.root().offset(site.width(),5,site.width()))) {
-            if(!loaded(level,town,pos) || !level.getBlockState(pos).isAir()) return false;
+            if(!loaded(level,town,pos)) return false;
+            BlockState state=level.getBlockState(pos);
+            if(state.isAir()) continue;
+            if(!level.getFluidState(pos).isEmpty() || data.protectedBlocks.contains(pos)
+                    || SettlementService.protectedFurniture(town,pos) || level.getBlockEntity(pos)!=null
+                    || !(naturalLeaf(state) || CitizenReach.softCover(level,pos,state))) return false;
         }
         return true;
     }
     public static Task find(ServerLevel level,Settlement town,Station station,Predicate<BlockPos> accessible,java.util.function.ToIntFunction<net.minecraft.world.item.Item> carried) {
+        return search(level,town,station,accessible,carried).task();
+    }
+    public static Search search(ServerLevel level,Settlement town,Station station,Predicate<BlockPos> accessible,java.util.function.ToIntFunction<net.minecraft.world.item.Item> carried) {
         WorldWorkData data=WorldWorkData.get(level);
         // Replant harvested sites before moving on to another tree.
         for(PlantingSite site:data.plantings) if(site.station().equals(station.position())
                 && canPlant(level,town,station,site) && accessible.test(site.root()))
-            return new Task(site.root(),null,site);
+            return new Search(new Task(site.root(),null,site),"");
         List<BlockPos> roots=new ArrayList<>();
+        boolean growing=false;
         for(BlockPos pos:SettlementService.cells(station)) {
             if(!loaded(level,town,pos) || !loaded(level,town,pos.below())) continue;
+            if(level.getBlockState(pos).getBlock() instanceof SaplingBlock) growing=true;
             if(TreeSpecies.ofLog(level.getBlockState(pos))!=null && soil(level.getBlockState(pos.below()))) roots.add(pos.immutable());
         }
         roots.sort(Comparator.comparingDouble(p -> p.distSqr(station.position())));
         Set<BlockPos> checked=new HashSet<>();
+        String treeReason="No tree roots within "+station.radius()+" blocks of this Lumber Station";
         for(BlockPos root:roots) {
-            if(checked.contains(root) || !SettlementService.ownsBlock(level,town,station,root)) continue;
-            Tree tree=tree(level,town,root);
+            if(checked.contains(root)) continue;
+            if(!SettlementService.ownsBlock(level,town,station,root)) { treeReason="Another Lumber Station owns the nearby trees"; continue; }
+            TreeCheck check=inspect(level,town,root);
+            Tree tree=check.tree();
             if(tree!=null) {
                 checked.addAll(tree.logs());
                 // A whole-tree reservation is shared by all four trunks of a large tree.
                 if(SettlementService.ownsBlock(level,town,station,tree.root())
                         && station.contains(tree.root().offset(tree.width()-1,0,tree.width()-1)) && accessible.test(tree.root()))
-                    return new Task(tree.root(),tree,null);
-            }
+                    return new Search(new Task(tree.root(),tree,null),"");
+                treeReason="Cannot reach the trees; clear standing room and a walking path to their trunks";
+            } else treeReason=check.reason();
         }
-        // With no accessible tree, plant from the actual saplings already available: the warehouse and this job's barrels.
-        List<net.minecraft.world.Container> storage=new ArrayList<>(SettlementService.storage(level,town));
-        storage.addAll(SettlementService.jobStorage(level,town,station));
+        // Workers fetch from their own barrels; warehouse stock arrives through a courier.
+        List<net.minecraft.world.Container> storage=SettlementService.jobStorage(level,town,station);
+        boolean stocked=false,plantable=false;
         for(TreeSpecies species:TreeSpecies.values()) {
             int available=carried.applyAsInt(species.seed);
             for(var container:storage) for(int slot=0;slot<container.getContainerSize();slot++)
                 if(container.getItem(slot).is(species.seed)) available+=container.getItem(slot).getCount();
             if(available<species.width*species.width) continue;
+            stocked=true;
             for(BlockPos pos:SettlementService.cells(station)) {
                 if(!loaded(level,town,pos)) continue;
                 PlantingSite site=new PlantingSite(station.position(),pos,species,species.width);
                 if(!canPlant(level,town,station,site)) continue;
+                plantable=true;
                 boolean crowded=false;
                 for(BlockPos nearby:BlockPos.betweenClosed(pos.offset(-3,-1,-3),pos.offset(3,2,3))) {
                     if(!level.hasChunkAt(nearby)) { crowded=true; break; }
@@ -191,19 +219,23 @@ public final class ForestryService {
                 }
                 // Reject solid blocks, unsuitable soil and cramped sites before asking for an expensive path.
                 if(!crowded && SettlementService.ownsBlock(level,town,station,pos) && accessible.test(pos)) {
-                    data.queue(site); return new Task(pos.immutable(),null,site);
+                    data.queue(site); return new Search(new Task(pos.immutable(),null,site),"");
                 }
             }
         }
-        return null;
+        if(growing && !stocked) return new Search(null,"Waiting for saplings in the Lumber Station's range to grow");
+        String plantingReason=!stocked ? "Needs saplings in the Lumber Station's job barrel or my bag (four for dark or pale oak)"
+                : !plantable ? "Needs suitable soil and growing room in the Lumber Station's range"
+                : "Planting spots are crowded or unreachable; leave space between saplings and clear a walking path";
+        return new Search(null,"No accessible natural tree; "+treeReason+"; "+plantingReason);
     }
     public static int durability(ItemStack stack) {
         return stack.isDamageableItem() ? stack.getMaxDamage()-stack.getDamageValue() : Integer.MAX_VALUE;
     }
-    /** Only unplaced, unprotected leaves belonging to the selected natural tree may be cleared on the way in. */
+    /** Only nearby natural, unprotected foliage may be cleared; mixed forest canopies can overlap a trunk. */
     public static boolean clearableLeaf(TreeView world,Tree tree,BlockPos leaf) {
         return tree!=null && world.available(leaf) && !world.protectedAt(leaf) && !world.furnitureAt(leaf)
-                && !world.blockEntityAt(leaf) && naturalLeaf(world.state(leaf),tree.species())
+                && !world.blockEntityAt(leaf) && naturalLeaf(world.state(leaf))
                 && tree.logs().stream().anyMatch(log -> Math.abs(log.getX()-leaf.getX())<=3
                     && Math.abs(log.getY()-leaf.getY())<=3 && Math.abs(log.getZ()-leaf.getZ())<=3);
     }
@@ -265,8 +297,15 @@ public final class ForestryService {
     }
     public static boolean plant(ServerLevel level,Settlement town,Station station,PlantingSite site,ItemStack seeds) {
         if(!seeds.is(site.species().seed) || seeds.getCount()<site.cost() || !canPlant(level,town,station,site)) return false;
+        Map<BlockPos,BlockState> previous=new LinkedHashMap<>();
+        for(int x=0;x<site.width();x++) for(int z=0;z<site.width();z++) {
+            BlockPos pos=site.root().offset(x,0,z); previous.put(pos,level.getBlockState(pos));
+            if(CitizenReach.softCover(level,pos.above(),level.getBlockState(pos.above()))) previous.put(pos.above(),level.getBlockState(pos.above()));
+        }
         if(!site.apply(seeds,pos -> level.setBlock(pos,site.species().sapling.defaultBlockState(),3),
-                pos -> level.setBlock(pos,Blocks.AIR.defaultBlockState(),3))) return false;
+                pos -> level.setBlock(pos,previous.get(pos),3))) {
+            previous.forEach((pos,state) -> level.setBlock(pos,state,3)); return false;
+        }
         WorldWorkData data=WorldWorkData.get(level); data.plantings.remove(site); data.setDirty(); return true;
     }
     public static int protectConnectedLogs(ServerLevel level,Settlement town,BlockPos start) {

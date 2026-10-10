@@ -37,6 +37,7 @@ public final class TownNeeds {
         if(text.startsWith("off duty") || text.contains("hospital bed")) return false;
         // Growing crops, saplings and an idle smith are ordinary waits, not needs.
         return text.startsWith("needs ") || text.contains(": needs ") || text.startsWith("cannot reach")
+                || text.startsWith("no accessible natural tree;")
                 || text.startsWith("waiting for couriers to deliver") || text.startsWith("waiting for courier-delivered")
                 || text.startsWith("waiting for this item's matching repair material")
                 || text.startsWith("waiting for ") && text.contains(" lapis in my barrel") || text.contains("is full") || text.contains("are full");

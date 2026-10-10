@@ -79,6 +79,7 @@ public final class CitizenEntity extends Villager {
     private enum Action { HARVEST,FELL,PLANT,EXCAVATE,SUPPORT,CAVE,VEIN }
     private Action action=Action.HARVEST;
     private ForestryService.Task forestTask;
+    private String forestIdleReason="No accessible natural tree; needs saplings and clear soil in range";
     private ExcavationService.Ticket excavation;
     private BlockPos targetLease;
     /** Arrows a guard with a bow keeps in their bag. */
@@ -724,7 +725,8 @@ public final class CitizenEntity extends Villager {
     }
     /** Select ground from which the resource is in reach, instead of trying to enter a log or canopy. */
     private boolean workAccessible(ServerLevel level,Settlement town,BlockPos pos) {
-        BlockPos touch=level.getBlockState(pos).isAir() ? pos.below() : pos;
+        BlockState state=level.getBlockState(pos);
+        BlockPos touch=state.isAir() || CitizenReach.softCover(level,pos,state) ? pos.below() : pos;
         var view=standingView(level,town);
         boolean lumber=TreeSpecies.ofLog(level.getBlockState(touch))!=null;
         if(handNear(touch) && workSight(level,town,getEyePosition(),touch)
@@ -745,7 +747,7 @@ public final class CitizenEntity extends Villager {
         var hit=CitizenReach.hit(level,eye,pos);
         BlockPos obstacle=hit.getBlockPos();
         return hit.getType()==net.minecraft.world.phys.HitResult.Type.BLOCK && CitizenReach.within(eye,obstacle)
-                && level.hasChunkAt(obstacle) && town.contains(obstacle) && ForestryService.naturalLeaf(level.getBlockState(obstacle),species)
+                && level.hasChunkAt(obstacle) && town.contains(obstacle) && ForestryService.naturalLeaf(level.getBlockState(obstacle))
                 && !WorldWorkData.get(level).protectedBlocks.contains(obstacle) && !SettlementService.protectedFurniture(town,obstacle);
     }
     /** The first natural leaf in reach, including leaves intersecting a worker who was already stuck in a canopy. */
@@ -1087,9 +1089,10 @@ public final class CitizenEntity extends Villager {
     private BlockPos findTarget(ServerLevel level,Settlement town,Station station) {
         var book=SettlementService.reservations(level);
         if(station.role()==StructureRole.LUMBER) {
-            forestTask=ForestryService.find(level,town,station,p -> !failedTargets.containsKey(p)
+            var search=ForestryService.search(level,town,station,p -> !failedTargets.containsKey(p)
                     && !reachBudget.deferred() && book.available(p,getUUID(),level.getGameTime()) && workAccessible(level,town,p),
                     item -> cargo.count(item)+(getOffhandItem().is(item) ? getOffhandItem().getCount() : 0));
+            forestTask=search.task(); forestIdleReason=search.reason();
             if(forestTask==null || !book.claim(forestTask.target(),getUUID(),level.getGameTime(),200)) return null;
             action=forestTask.planting()==null ? Action.FELL : Action.PLANT;
             minimumAxeDurability=forestTask.tree()==null ? 1 : forestTask.tree().logs().size();
@@ -1133,7 +1136,7 @@ public final class CitizenEntity extends Villager {
                     : "Another miner is already working this vein";
         }
         return station.role().excavates() ? ExcavationService.status(level,town,station)
-                : station.role()==StructureRole.LUMBER ? "No accessible natural tree; needs saplings and clear soil in range" : "No mature accessible crops";
+                : station.role()==StructureRole.LUMBER ? forestIdleReason : "No mature accessible crops";
     }
     private void cancelTarget(ServerLevel level,boolean failed) {
         if(target!=null) {
