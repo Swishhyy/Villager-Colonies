@@ -13,6 +13,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Item;
@@ -91,8 +92,8 @@ public final class SettlementProductionWorldTests {
         });
     }
 
-    @GameTest(timeoutTicks=1600) @EmptyTemplate
-    @TestHolder(description="A real early blacksmith repairs first, forges one bronze pickaxe, alloys four bronze ingots from three copper and one tin, consumes actual fuel and wears the bronze anvil once per completed operation.")
+    @GameTest(timeoutTicks=2800) @EmptyTemplate
+    @TestHolder(description="A real early blacksmith repairs first, forges one bronze pickaxe and alloys four bronze ingots at the slower bronze-anvil speed, preserving the original gear and consuming actual materials and fuel.")
     static void blacksmithRepairsForgesAndAlloys(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-15400));
@@ -110,7 +111,6 @@ public final class SettlementProductionWorldTests {
                         && s.get(DataComponents.CUSTOM_NAME).getString().equals("Old hoe"))==1,"Repair replaced or lost the original hoe");
                 helper.assertTrue(count(local,worker,WWMC.BRONZE_INGOT.get())==8 && count(local,worker,Items.COPPER_INGOT)==0
                         && count(local,worker,WWMC.TIN_INGOT.get())==0 && count(local,worker,Items.COAL)==2,"Forging/alloying costs or real output are wrong");
-                helper.assertTrue(level.getBlockState(anvil).getValue(BronzeAnvilBlock.WEAR)==3,"The bronze anvil did not wear for exactly three successful operations");
                 helper.assertTrue(InventoryOps.count(List.of(local),s -> s.is(WWMC.BRONZE_PICKAXE.get()))==1,"Pickaxe was not physically delivered");
                 // Finished metallurgy output exceeds the active equipment reserve and can be hauled away.
                 var pickups=JobStorage.collectable(JobStorage.Supplies.of(level),f.town,StructureRole.BLACKSMITH,List.of(local));
@@ -120,18 +120,69 @@ public final class SettlementProductionWorldTests {
         });
     }
 
+    @GameTest(timeoutTicks=1600) @EmptyTemplate
+    @TestHolder(description="Two equally supplied newcomer blacksmiths make real alloy batches: iron finishes first, bronze cannot finish at iron speed, and both eventually deliver the same output for the same material and fuel costs.")
+    static void bronzeAnvilSlowsActualBlacksmithWork(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); var fixtures=new ArrayList<Fixture>();
+            var stock=new ArrayList<Container>(); var workers=new ArrayList<CitizenEntity>();
+            for(int i=0;i<2;i++) {
+                BlockPos start=helper.absolutePos(new BlockPos(0,2,-18600-i*400));
+                var station=new Station(start.east(20),StructureRole.BLACKSMITH); var f=fixture(level,start,station); fixtures.add(f);
+                f.town.progress.research.add("bronze_age");
+                level.setBlockAndUpdate(station.position().north(2),i==0 ? Blocks.ANVIL.defaultBlockState() : WWMC.BRONZE_ANVIL.get().defaultBlockState());
+                level.setBlockAndUpdate(station.position().east(2),Blocks.FURNACE.defaultBlockState());
+                stock.add(barrel(level,station.position().south(2),new ItemStack(Items.COPPER_INGOT,3),new ItemStack(WWMC.TIN_INGOT.get()),new ItemStack(Items.COAL)));
+                helper.assertTrue(ForgeWorkshop.order(level,f.town,"wwmc:bronze_ingot",4),"Alloy order was rejected");
+                workers.add(f.worker(station,true));
+            }
+            boolean[] checked={false};
+            helper.runAtTickTime(400,() -> {
+                helper.assertTrue(count(stock.get(0),workers.get(0),WWMC.BRONZE_INGOT.get())==4,"Iron anvil lost its normal work speed: "+workers.get(0).activity());
+                helper.assertTrue(count(stock.get(1),workers.get(1),WWMC.BRONZE_INGOT.get())==0,"Bronze alloying completed before the slower work time");
+                checked[0]=true;
+            });
+            helper.succeedWhen(() -> {
+                helper.assertTrue(checked[0],"Waiting for the speed comparison");
+                for(int i=0;i<2;i++) {
+                    helper.assertTrue(InventoryOps.count(List.of(stock.get(i)),s -> s.is(WWMC.BRONZE_INGOT.get()))==4,"Blacksmith has not delivered its real alloy: "+workers.get(i).activity());
+                    helper.assertTrue(count(stock.get(i),workers.get(i),Items.COPPER_INGOT)==0 && count(stock.get(i),workers.get(i),WWMC.TIN_INGOT.get())==0
+                            && count(stock.get(i),workers.get(i),Items.COAL)==0,"Slower work changed the batch costs");
+                }
+                fixtures.forEach(Fixture::close);
+            });
+        });
+    }
+
     @GameTest(timeoutTicks=100) @EmptyTemplate
-    @TestHolder(description="Bronze anvil wear is deterministic, its dropped item keeps wear on relocation, it breaks after twelve operations, and native netherite upgrading preserves the original equipment components.")
+    @TestHolder(description="Saved bronze anvil wear survives relocation, normal wear rolls match iron through all three stages, and native netherite upgrading preserves the original equipment components.")
     static void anvilWearAndNativeUpgradeKeepState(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-15800)); var f=fixture(level,start);
-            BlockPos anvil=start.east(4); level.setBlockAndUpdate(anvil,WWMC.BRONZE_ANVIL.get().defaultBlockState());
-            for(int i=0;i<7;i++) ForgeWorkshop.wear(level,anvil);
+            BlockPos anvil=start.east(4); level.setBlockAndUpdate(anvil,WWMC.BRONZE_ANVIL.get().defaultBlockState().setValue(BronzeAnvilBlock.WEAR,7));
             var drops=Block.getDrops(level.getBlockState(anvil),level,anvil,null,null,new ItemStack(Items.IRON_PICKAXE));
             helper.assertTrue(drops.size()==1 && drops.getFirst().is(WWMC.BRONZE_ANVIL_ITEM.get())
                     && drops.getFirst().get(DataComponents.BLOCK_STATE).properties().get("wear").equals("7"),"Moving an anvil refreshed its durability");
-            for(int i=7;i<12;i++) ForgeWorkshop.wear(level,anvil);
-            helper.assertTrue(level.getBlockState(anvil).isAir(),"Bronze anvil survived twelve operations");
+            ForgeWorkshop.wear(level,anvil,RandomSource.create(0));
+            helper.assertTrue(level.getBlockState(anvil).getValue(BronzeAnvilBlock.WEAR)==7,"A non-wear roll damaged a saved bronze anvil");
+            long wearSeed=0; while(RandomSource.create(wearSeed).nextFloat()>=0.12F) wearSeed++;
+            ForgeWorkshop.wear(level,anvil,RandomSource.create(wearSeed));
+            helper.assertTrue(level.getBlockState(anvil).getValue(BronzeAnvilBlock.WEAR)==8,"Saved chipped wear did not advance to damaged");
+            ForgeWorkshop.wear(level,anvil,RandomSource.create(wearSeed));
+            helper.assertTrue(level.getBlockState(anvil).isAir(),"Damaged bronze anvil did not break on a wear roll");
+            level.setBlockAndUpdate(anvil,WWMC.BRONZE_ANVIL.get().defaultBlockState());
+            BlockPos iron=anvil.east(2); level.setBlockAndUpdate(iron,Blocks.ANVIL.defaultBlockState());
+            var bronzeRandom=RandomSource.create(42); var ironRandom=RandomSource.create(42); int operations=0;
+            do {
+                ForgeWorkshop.wear(level,anvil,bronzeRandom); ForgeWorkshop.wear(level,iron,ironRandom); operations++;
+                var bronzeState=level.getBlockState(anvil); var ironState=level.getBlockState(iron);
+                helper.assertTrue(bronzeState.isAir()==ironState.isAir(),"Bronze and iron broke on different wear rolls");
+                if(!bronzeState.isAir()) {
+                    int ironStage=ironState.is(Blocks.ANVIL) ? 0 : ironState.is(Blocks.CHIPPED_ANVIL) ? 1 : 2;
+                    helper.assertTrue(bronzeState.getValue(BronzeAnvilBlock.WEAR)/4==ironStage,"Bronze and iron have different wear stages");
+                }
+            } while(!level.getBlockState(anvil).isAir() && operations<200);
+            helper.assertTrue(level.getBlockState(anvil).isAir() && operations>12,"Bronze still has a fixed twelve-operation lifetime");
             var order=new Workshop.Order("minecraft:netherite_pickaxe",1); var plans=ForgeWorkshop.plans(level,order);
             helper.assertTrue(plans.size()==1 && plans.getFirst().upgrade()!=null,"Native netherite recipe is unavailable to the blacksmith");
             var original=new ItemStack(Items.DIAMOND_PICKAXE); original.setDamageValue(42); original.set(DataComponents.CUSTOM_NAME,Component.literal("Family pick"));

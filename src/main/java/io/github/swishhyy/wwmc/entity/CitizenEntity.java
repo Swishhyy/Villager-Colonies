@@ -2162,7 +2162,7 @@ public final class CitizenEntity extends Villager {
         if(!approachAnvil(level,town)) return;
         getNavigation().stop(); activity="Repairing equipment at the anvil";
         WorkFeedback.pulse(level,this,repairAnvil,WorkFeedback.SMITHING); workProgress+=workStep();
-        if(workProgress>=BlacksmithRepair.WORK_TICKS) {
+        if(workProgress>=ForgeWorkshop.workTicks(level.getBlockState(repairAnvil),BlacksmithRepair.WORK_TICKS)) {
             if(BlacksmithRepair.repair(repairItem,cargo)) { swing(InteractionHand.MAIN_HAND); playSound(SoundEvents.ANVIL_USE,0.4F,1.0F);
                 ForgeWorkshop.wear(level,repairAnvil); gainExperience(StructureRole.BLACKSMITH,2); }
             workProgress=0;
@@ -2227,7 +2227,7 @@ public final class CitizenEntity extends Villager {
         getNavigation().stop(); getLookControl().setLookAt(repairAnvil.getX()+.5,repairAnvil.getY()+.8,repairAnvil.getZ()+.5);
         activity="Forging "+forgeJob.result().getHoverName().getString();
         WorkFeedback.pulse(level,this,repairAnvil,WorkFeedback.SMITHING); workProgress+=workStep();
-        if(workProgress>=forgeJob.ticks()) {
+        if(workProgress>=ForgeWorkshop.workTicks(level.getBlockState(repairAnvil),forgeJob.ticks())) {
             if(ForgeWorkshop.craft(level,forgeJob,cargo)) {
                 swing(InteractionHand.MAIN_HAND); playSound(SoundEvents.ANVIL_USE,.4F,1.0F); ForgeWorkshop.wear(level,repairAnvil);
                 gainExperience(StructureRole.BLACKSMITH,2); forgeDelivery=true;

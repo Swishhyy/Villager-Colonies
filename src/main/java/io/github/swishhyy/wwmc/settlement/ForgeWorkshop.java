@@ -8,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.Item;
@@ -16,9 +17,11 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.block.AnvilBlock;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 
 /** Blacksmith stock orders use real recipe ingredients, fuel, an anvil and heat. No output is granted by a GUI click. */
 public final class ForgeWorkshop {
+    public static final int BRONZE_SPEED_PERCENT=35;
     public record Plan(Workshop.Order order,List<Ingredient> ingredients,ItemStack result,
             Workshop.Plan crafting,RecipeHolder<SmithingRecipe> upgrade,int ticks) {
         public boolean uses(ItemStack stack) { return fuel(stack) || ingredients.stream().anyMatch(i -> i.test(stack)); }
@@ -147,14 +150,23 @@ public final class ForgeWorkshop {
         }
         return changed;
     }
-    /** Bronze lasts exactly twelve successful operations; iron uses vanilla's twelve-percent wear chance. */
+    /** Bronze does 35% of iron's work per second; extend the target rather than rounding away worker bonuses. */
+    public static int workTicks(BlockState anvil,int baseTicks) {
+        return anvil.getBlock() instanceof BronzeAnvilBlock ? Math.ceilDiv(baseTicks*100,BRONZE_SPEED_PERCENT) : baseTicks;
+    }
+    /** Both materials use vanilla's twelve-percent chance of advancing one wear stage per completed operation. */
     public static void wear(ServerLevel level,BlockPos anvil) {
+        wear(level,anvil,level.getRandom());
+    }
+    public static void wear(ServerLevel level,BlockPos anvil,RandomSource random) {
         if(anvil==null || !level.hasChunkAt(anvil)) return;
         var state=level.getBlockState(anvil);
-        var next=state;
-        if(state.getBlock() instanceof BronzeAnvilBlock)
-            next=state.getValue(BronzeAnvilBlock.WEAR)==11 ? null : state.setValue(BronzeAnvilBlock.WEAR,state.getValue(BronzeAnvilBlock.WEAR)+1);
-        else if(state.getBlock() instanceof AnvilBlock && level.getRandom().nextFloat()<0.12F) next=AnvilBlock.damage(state);
+        if(!(state.getBlock() instanceof BronzeAnvilBlock || state.getBlock() instanceof AnvilBlock) || random.nextFloat()>=0.12F) return;
+        BlockState next;
+        if(state.getBlock() instanceof BronzeAnvilBlock) {
+            int stage=state.getValue(BronzeAnvilBlock.WEAR)/4;
+            next=stage==2 ? null : state.setValue(BronzeAnvilBlock.WEAR,(stage+1)*4);
+        } else next=AnvilBlock.damage(state);
         if(next==null) { level.removeBlock(anvil,false); level.levelEvent(1029,anvil,0); }
         else if(!next.equals(state)) level.setBlockAndUpdate(anvil,next);
     }

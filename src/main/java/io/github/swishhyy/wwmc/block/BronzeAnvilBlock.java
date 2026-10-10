@@ -14,8 +14,9 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-/** Early blacksmith furniture. Twelve completed smithing operations wear it out. */
+/** Early blacksmith furniture: slower work, with the same wear stages as an iron anvil. */
 public final class BronzeAnvilBlock extends Block {
+    // Retain all old values so placed anvils and dropped items keep their saved condition.
     public static final IntegerProperty WEAR=IntegerProperty.create("wear",0,11);
     public BronzeAnvilBlock(Properties properties) {
         super(properties);

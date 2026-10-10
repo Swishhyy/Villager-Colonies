@@ -7,7 +7,7 @@
 - Simplify the banner to an overview and four main destinations: People, Production, Research and Neighbours.
 - Add stock orders for automatic job block production and blacksmith forging, without requiring example items.
 - Require blacksmith forging for bronze, copper and later equipment. Keep wood and stone player-crafted; protect ingredients when blocked, including vanilla redstone crafters.
-- Add blacksmith metallurgy and a bronze anvil that lasts 12 completed operations. Repairs take priority, preserve the original gear, and wear anvils normally.
+- Add blacksmith metallurgy and a bronze anvil that works 65% slower than iron, with normal anvil wear. Repairs take priority and preserve the original gear.
 - Replace new research timers with tradeable researcher-made scrolls, paid discoveries, and practical settlement requirements. Preserve existing unlocks and already-paid projects.
 - Add Gatherers for cane, bamboo, sand, gravel and clay. Preserve plant bases and protected construction.
 - Let smelters make charcoal, glass, bricks and terracotta. Let couriers collect surplus fuel and alloys while retaining production reserves.

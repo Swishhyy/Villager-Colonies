@@ -407,8 +407,12 @@ public final class Panels {
             case BLACKSMITH -> {
                 rows.add(new Row(icon(Items.ANVIL),"Blacksmith",SettlementService.anvils(level,town,station).size()+" anvils; repairs damaged equipment and fills forge orders"));
                 rows.add(new Row(icon(Items.FURNACE),"Forge heat",ForgeWorkshop.heat(level,town,station).size()+" furnaces; new equipment and alloys also need coal/charcoal"));
-                for(BlockPos at:SettlementService.anvils(level,town,station)) if(level.getBlockState(at).getBlock() instanceof io.github.swishhyy.wwmc.block.BronzeAnvilBlock)
-                    rows.add(new Row(icon(WWMC.BRONZE_ANVIL_ITEM.get()),"Bronze anvil durability",(12-level.getBlockState(at).getValue(io.github.swishhyy.wwmc.block.BronzeAnvilBlock.WEAR))+" completed operations left at "+at.toShortString()));
+                for(BlockPos at:SettlementService.anvils(level,town,station)) if(level.getBlockState(at).getBlock() instanceof io.github.swishhyy.wwmc.block.BronzeAnvilBlock) {
+                    String condition=switch(level.getBlockState(at).getValue(io.github.swishhyy.wwmc.block.BronzeAnvilBlock.WEAR)/4) {
+                        case 0 -> "Fresh"; case 1 -> "Chipped"; default -> "Damaged";
+                    };
+                    rows.add(new Row(icon(WWMC.BRONZE_ANVIL_ITEM.get()),"Bronze anvil",condition+" · 65% slower than iron · "+at.toShortString()));
+                }
             }
             case GATHERER -> rows.add(new Row(icon(Items.STONE_SHOVEL),"Gathering","Needs a shovel; harvests cane and bamboo tops, plus dry exposed sand, gravel and clay. Plant bases and construction are preserved."));
             case CRAFTSMAN -> rows.add(new Row(icon(Items.CRAFTING_TABLE),"Orders",town.craftOrders.size()+" learned recipes"));

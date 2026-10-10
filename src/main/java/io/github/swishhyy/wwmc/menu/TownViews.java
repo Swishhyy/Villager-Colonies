@@ -80,7 +80,7 @@ public final class TownViews {
                 workshop.add(target(item,new ItemStack(item).getHoverName().getString(),InventoryOps.count(SettlementService.townStorage(level,town),s -> s.is(item))+" in town"+note,"craft:"+id,value));
             }
             var forge=new ArrayList<PanelView.Row>();
-            forge.add(row(WWMC.BRONZE_ANVIL_ITEM.get(),"Forge and metallurgy","A staffed smith needs an anvil, nearby furnace, job barrel and coal/charcoal. Repairs take priority. Bronze anvils last 12 completed operations."));
+            forge.add(row(WWMC.BRONZE_ANVIL_ITEM.get(),"Forge and metallurgy","A staffed smith needs an anvil, nearby furnace, job barrel and coal/charcoal. Repairs take priority. Bronze anvils work 65% slower than iron and wear normally."));
             for(Item item:ForgeWorkshop.catalogue()) {
                 String id=BuiltInRegistries.ITEM.getKey(item).toString();
                 if(ForgeWorkshop.plans(level,new Workshop.Order(id,1)).isEmpty()) continue;

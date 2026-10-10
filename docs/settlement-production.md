@@ -26,7 +26,7 @@ Existing unlocks are retained. Projects paid under the earlier system still fini
 
 Bronze Age unlocks the Blacksmith Station: **8 planks around 1 copper ingot**. Add a bronze anvil, a furnace and a job barrel within its range.
 
-A bronze anvil uses **3 bronze ingots across the top, 1 copper ingot in the centre, and 3 copper ingots across the bottom**. It lasts **12 completed repair, alloy or forging operations**. Moving it preserves its wear. Its station screen shows the remaining operations. Iron anvils keep vanilla's wear chance and can support gem and netherite forging.
+A bronze anvil uses **3 bronze ingots across the top, 1 copper ingot in the centre, and 3 copper ingots across the bottom**. Repairs, metallurgy and forging work **65% slower than iron**, at **35% of iron's speed**. Both use normal anvil wear: a 12% chance per completed operation to advance from fresh to chipped to damaged, then break. Moving an anvil preserves its wear, including anvils from existing saves. The station screen shows its condition and speed. Iron anvils can also support gem and netherite forging.
 
 The smith repairs damaged equipment first, using the matching material and preserving the original item, name and enchantments. It then fills stock orders in **Production → Forge**:
 
@@ -37,7 +37,7 @@ The smith repairs damaged equipment first, using the matching material and prese
 | Equipment forging | The item's normal recipe ingredients | Its normal equipment result |
 | Netherite upgrading | Template + original diamond gear + netherite ingot | Native netherite upgrade, preserving components |
 
-Each completed batch also consumes **1 coal or charcoal**. Refining/alloying takes 8 seconds; equipment takes 12–18 seconds; netherite upgrades take 20 seconds, before modest worker skill bonuses. These are active work times; walking and supplies add time. If work is interrupted, unused ingredients stay with the worker. Restarting can require redoing the unfinished work time.
+Each completed batch also consumes **1 coal or charcoal**. With an **iron anvil**, refining/alloying takes 8 seconds; equipment takes 12–18 seconds; netherite upgrades take 20 seconds, before modest worker skill bonuses. Bronze-anvil work takes about **2.86 times as long**: an 8-second alloy batch takes about 23 seconds. These are active work times; walking and supplies add time. If work is interrupted, unused ingredients stay with the worker. Restarting can require redoing the unfinished work time.
 
 Wood and stone gear remain player-crafted. Bronze, copper and later gear must be forged, including shields, buckets, shears, crossbows and maces. Blocked player recipes and vanilla redstone crafters leave their ingredients intact. Found gear becomes usable once its age is researched.
 
