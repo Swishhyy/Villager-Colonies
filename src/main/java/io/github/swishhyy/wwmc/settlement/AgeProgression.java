@@ -31,16 +31,18 @@ public final class AgeProgression {
     private static final String[] TITLES={"Stone Age","Bronze Age","Iron Age","Gemcraft","Netherite Smithing"};
     private static TagKey<Item> tag(String name) { return TagKey.create(Registries.ITEM,Identifier.fromNamespaceAndPath("wwmc","requires_"+name)); }
     public static final TagKey<Item> BRONZE=tag("bronze"),IRON=tag("iron"),DIAMOND=tag("gemcraft"),NETHERITE=tag("netherite");
+    public static final TagKey<Item> STEEL=tag("steel");
     private static final Map<Player,Long> NOTICES=new WeakHashMap<>();
     public static int required(ItemStack stack) {
         if(stack.isEmpty()) return 0;
-        return stack.is(NETHERITE) ? 4 : stack.is(DIAMOND) ? 3 : stack.is(IRON) ? 2 : stack.is(BRONZE) ? 1 : 0;
+        return stack.is(NETHERITE) ? 4 : stack.is(DIAMOND) ? 3 : stack.is(STEEL) || stack.is(IRON) ? 2 : stack.is(BRONZE) ? 1 : 0;
     }
-    public static String requirement(ItemStack stack) { return TITLES[required(stack)]; }
+    public static String requirement(ItemStack stack) { return stack.is(STEEL) ? "Steelworking" : TITLES[required(stack)]; }
     public static boolean member(Settlement town,UUID player) {
         return !town.trading.npc && (town.owner.equals(player) || town.campaign.members.containsKey(player));
     }
     public static boolean allowed(Settlement town,ItemStack stack) {
+        if(stack.is(STEEL)) return Research.has(town,"steel_working");
         int tier=required(stack); return tier==0 || Research.has(town,TECHS[tier]);
     }
     public static boolean allowed(Player player,ItemStack stack) {

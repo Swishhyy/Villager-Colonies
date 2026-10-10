@@ -27,7 +27,9 @@ public final class GuideBook {
         new Topic("people","Citizens","Recognize their job at a glance",List.of(
             new Card("minecraft:leather_chestplate","Job outfits","Each job has its own outfit. Armor hides the clothing underneath it; uncovered clothes and real tools remain visible."),
             new Card("wwmc:courier_station","One worker per job","Every job block has one worker. Quarries can have a crew. Add stations to add workers."),
-            new Card("minecraft:experience_bottle","Skills & meals","Finished jobs build experience. Several kinds of meals help workers; eating only satisfies hunger."),
+            new Card("minecraft:experience_bottle","Skills & meals","Finished jobs build experience. Better axes, hoes and shovels speed up suitable work; pickaxes already affect mining. Varied meals improve work speed and happiness."),
+            new Card("minecraft:apple","Happy homes","Check People > Wellbeing. Meals they actually eat, enough housing, safety, flowers, bells, lit campfires and books affect happiness. Each amenity type counts once."),
+            new Card("minecraft:red_bed","Grow your population","Two happy, healthy adults with varied meals may have a baby. A spare housing bed, room under the cap and 6 meals plus a food reserve are needed. Babies play near home and take no job until adulthood after 20 loaded minutes. Pause growth at the banner."),
             new Card("wwmc:hospital_station","Hospital recovery","Injured citizens rest in hospital beds until fully healed. These beds never count as housing.","defense")
         ),List.of(),"Empty-hand right-click: open a citizen's bag and status. Sneak-right-click: release their job."),
         new Topic("food","Food & hauling","Keep the supply chain moving",List.of(
@@ -39,7 +41,7 @@ public final class GuideBook {
         new Topic("industry","Mining & workshops","Real tools, real supplies, visible work",List.of(
             new Card("wwmc:mine_station","Mine or quarry","A Mine near exposed ore harvests a replenishing vein; otherwise it digs tunnels. A Quarry digs the chunk its arrow points toward."),
             new Card("minecraft:iron_pickaxe","Tools & upgrades","Better pickaxes dig and replenish faster. Mine and Farm yield upgrades give extra output. Supply floor blocks for tunnels."),
-            new Card("wwmc:craftsman_station","Craft & repair","Set stock targets in Production > Workshop for job blocks and supplies, or teach a recipe by example. Use Production > Forge for alloys and metal equipment; blacksmith repairs run first."),
+            new Card("wwmc:craftsman_station","Craft & repair","Set stock targets in Production > Workshop for job blocks and supplies, or teach a recipe by example. Use Production > Metalwork for smelter alloy targets and forged equipment; blacksmith repairs run first."),
             new Card("minecraft:enchanting_table","Enchant gear","Put an enchanting table and bookshelves near Enchanter. Supply lapis and plain gear or books. Runes and hand motions show active work.")
         ),List.of(),"No swings or work particles? The worker may be walking, resting or waiting. Open Needs to see why."),
         new Topic("defense","Defense & recovery","Prepare before the next wave",List.of(
@@ -62,9 +64,10 @@ public final class GuideBook {
             new Card("wwmc:research_scroll","Write research scrolls","Researchers spend 2 paper and 1 ink sac or charcoal per scroll, working at a real lectern for 30 seconds. Set their stock target in Research. Scrolls can be traded."),
             new Card("minecraft:book","Unlock a discovery","Open Research at the flag. Spend earned scrolls and supplies once. Bronze Age needs 3 citizens; Iron Age needs a staffed, furnished smithy. All settlement members share the unlock."),
             new Card("wwmc:tin_ore","Find tin","Tin occurs from Y -32 to 64 in new Overworld terrain. A stone pickaxe can mine it. Smelt raw tin into ingots."),
-            new Card("wwmc:bronze_blend","Make Bronze Blend","Research Bronze Age first. Bronze Blend is the brown lump beside Tin Ingot in the mod tab. Craft 3 Copper Ingots in separate slots with 1 Tin Ingot to get 4 blends, then smelt them into bronze ingots."),
+            new Card("wwmc:alloy_furnace","Alloy bronze directly","After Bronze Age, build an Alloy Furnace from a furnace, 6 cobblestone and 2 copper ingots. Put 3 copper and 1 tin in the two inputs, plus separate fuel. It yields 4 bronze ingots in 20 seconds. Ingots, raw metals and ores work. Smelters and couriers automate it."),
+            new Card("wwmc:steel_ingot","Discover steel","After Iron Age, staff a smeltery with an Alloy Furnace and research Steelworking. Alloy 1 iron + 1 coal or charcoal, with separate fuel, into 1 steel ingot in 30 seconds. Steel equipment is forged by the blacksmith; it sits between iron and diamond."),
             new Card("wwmc:bronze_anvil","Build the first smithy","Bronze Age unlocks a copper-based Blacksmith Station and a bronze anvil. Add a furnace and a job barrel. Bronze anvils work 65% slower than iron, with normal anvil wear."),
-            new Card("minecraft:iron_sword","Order forged equipment","Bronze, copper, iron and later equipment must be made by your blacksmith. Set targets in Production > Forge. The smith repairs first, then uses real materials and coal/charcoal to forge. Found equipment can be stored until its age is researched."),
+            new Card("minecraft:iron_sword","Order forged equipment","Bronze, copper, iron and later equipment must be made by your blacksmith. Set targets in Production > Metalwork. The smith repairs first, then uses real materials and coal/charcoal to forge. Found equipment can be stored until its age is researched."),
             new Card("minecraft:blue_banner","Share progress","The owner and accepted members share research everywhere, including other dimensions. Allies and invitations alone do not grant it. Existing towns retain their old gear access.")
         ),List.of("Stone","Researcher","Tin + copper","Bronze","Iron"),"Research pauses during sleep, danger or blocked access. Check the banner's Research status for the reason. Progress and paid supplies survive saving."),
         new Topic("multiplayer","Settlement neighbours","Trade, supply requests and town news",List.of(

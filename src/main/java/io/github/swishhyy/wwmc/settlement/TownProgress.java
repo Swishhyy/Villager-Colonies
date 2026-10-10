@@ -44,7 +44,10 @@ public final class TownProgress {
         Codec.intRange(0,600).optionalFieldOf("scroll_ticks",0).forGetter(p -> p.scrollTicks),
         Codec.BOOL.optionalFieldOf("scroll_paid",false).forGetter(p -> p.scrollPaid),
         Codec.intRange(0,256).optionalFieldOf("scroll_target",32).forGetter(p -> p.scrollTarget),
-        Workshop.Order.CODEC.listOf().optionalFieldOf("forge_orders",List.of()).forGetter(p -> p.forgeOrders)
+        Workshop.Order.CODEC.listOf().optionalFieldOf("forge_orders",List.of()).forGetter(p -> p.forgeOrders),
+        Codec.intRange(0,1200).optionalFieldOf("birth_wait_ticks",1200).forGetter(p -> p.birthWaitTicks),
+        Codec.BOOL.optionalFieldOf("growth_enabled",true).forGetter(p -> p.growthEnabled),
+        Settlement.UUID_CODEC.listOf().optionalFieldOf("children",List.of()).forGetter(p -> List.copyOf(p.children))
     ).apply(i,TownProgress::new));
     public final Set<String> research=new LinkedHashSet<>(),schematics=new LinkedHashSet<>();
     public final List<Ping> pings=new ArrayList<>();
@@ -62,12 +65,18 @@ public final class TownProgress {
     public int scrollTicks,scrollTarget=32;
     public boolean scrollPaid;
     public final List<Workshop.Order> forgeOrders=new ArrayList<>();
+    /** Loaded-time attempts only. Persisting the next attempt prevents save/reload rerolls. */
+    public int birthWaitTicks=1200;
+    long lastGrowthTick=Long.MIN_VALUE;
+    public boolean growthEnabled=true;
+    public final Set<UUID> children=new LinkedHashSet<>();
     long lastResearchWork=Long.MIN_VALUE;
     public TownProgress() {}
     public static TownProgress legacy() { TownProgress p=new TownProgress(); p.legacyGearTier=4; return p; }
     private TownProgress(List<String> research,List<String> schematics,List<Ping> pings,int color,List<String> milestones,
             String project,int projectTicks,int legacyGearTier,List<TrapService.Entry> traps,
-            int scrollTicks,boolean scrollPaid,int scrollTarget,List<Workshop.Order> forgeOrders) {
+            int scrollTicks,boolean scrollPaid,int scrollTarget,List<Workshop.Order> forgeOrders,
+            int birthWaitTicks,boolean growthEnabled,List<UUID> children) {
         this.research.addAll(research); this.schematics.addAll(schematics);
         this.pings.addAll(pings.subList(Math.max(0,pings.size()-MAX_PINGS),pings.size()));
         this.color=color;
@@ -76,6 +85,7 @@ public final class TownProgress {
         this.projectTicks=project.isEmpty() ? 0 : projectTicks;
         this.legacyGearTier=legacyGearTier;
         this.scrollPaid=scrollPaid; this.scrollTicks=scrollPaid ? scrollTicks : 0; this.scrollTarget=scrollTarget;
+        this.birthWaitTicks=birthWaitTicks; this.growthEnabled=growthEnabled; this.children.addAll(children);
         Set<String> orders=new HashSet<>();
         for(var order:forgeOrders) if(this.forgeOrders.size()<Workshop.MAX_ORDERS && orders.add(order.item())) this.forgeOrders.add(order);
         Set<BlockPos> seen=new HashSet<>();

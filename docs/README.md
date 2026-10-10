@@ -34,3 +34,5 @@ Start with [installing Villager Colonies](../README.md#install) and [building yo
 - **I want recipes or commands:** open the [crafting table](settlement-guide.md#crafting) or [command reference](settlement-guide.md#commands).
 
 For bug reports, include your Villager Colonies, Minecraft, and NeoForge versions, the relevant `latest.log`, and the steps that caused the problem.
+
+- [Education design](education-design.md): proposed schooling and apprenticeships for later refinement.

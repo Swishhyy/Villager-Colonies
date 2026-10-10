@@ -47,18 +47,24 @@ public final class TownViews {
             var citizens=new ArrayList<PanelView.Row>();
             DefenseService.loadedCitizens(level,town).stream().sorted(Comparator.comparing(c -> c.getName().getString())).forEach(c -> citizens.add(Panels.person(town,c)));
             if(citizens.isEmpty()) citizens.add(row(WWMC.STATION_ITEMS.get(StructureRole.HOUSING).get(),"No loaded citizens","Provide housing beds, then recruit a citizen."));
+            var conditions=CitizenWellbeing.conditions(level,town); int happiness=CitizenWellbeing.average(level,town);
             var housing=List.of(row(WWMC.STATION_ITEMS.get(StructureRole.HOUSING).get(),"Population",town.citizens.size()+" / "+SettlementService.populationLimit(town)
                             +" citizens; "+SettlementService.housingBeds(level,town).size()+" usable housing beds"),
+                    row(Items.APPLE,"Happiness: "+happiness+" / 100",CitizenWellbeing.mood(happiness)+" · varied meals eaten, enough housing, safety and amenity types. Happiness changes gradually."),
+                    row(Items.BOOKSHELF,"Housing amenities",conditions.amenities().isEmpty() ? "Add a garden, bell, lit campfire or books to furnished housing. Each type counts once." : String.join(", ",conditions.amenities())+". Each type counts once."),
+                    new PanelView.Row(new ItemStack(Items.RED_BED),Component.literal("Children: "+town.progress.children.size()),
+                            Component.literal(PopulationGrowth.pause(level,town)+". A birth uses 6 meals; a child grows up in 20 loaded minutes."),0,-1,0,
+                            town.progress.growthEnabled ? "act:growth:pause" : "act:growth:resume"),
                     row(Items.PAPER,"Population research","+"+Research.populationBonus(town)+" places from housing discoveries"));
             tabs.add(new PanelView.Tab("Citizens",citizens)); tabs.add(new PanelView.Tab("Jobs",Panels.jobRows(town,TownJobs.assess(level,town))));
-            tabs.add(new PanelView.Tab("Housing",housing));
+            tabs.add(new PanelView.Tab("Wellbeing",housing));
             actions.add(new PanelView.Action(Panels.RECRUIT,"Recruit citizen",Panels.vacancies(level,town)>0));
             actions.add(Panels.grow(town,player)); actions.add(new PanelView.Action(Panels.PRIORITY,"Preset: "+town.priority,true));
         } else if(kind==PanelMenu.Kind.PRODUCTION) {
             var stock=new ArrayList<PanelView.Row>();
             stock.add(row(Items.CHEST,"Warehouse requests","Targets reserve your own supplies and guide incoming trade; workshop and forge targets make goods."));
             stock.add(row(Items.SUGAR_CANE,"Paper chain","Gatherer harvests cane; craftsman makes paper; researcher writes scrolls using paper and ink or charcoal."));
-            stock.add(row(Items.COAL,"Metal chain","Miners gather ore; smelters make ingots; blacksmiths alloy bronze and forge equipment using fuel."));
+            stock.add(row(Items.COAL,"Metal chain","Miners gather ore; smelters refine it and make bronze/steel in alloy furnaces. Blacksmiths forge equipment and repair it."));
             var requested=new LinkedHashSet<Item>(List.of(Items.BREAD,Items.OAK_LOG,Items.COBBLESTONE,Items.SAND,Items.GRAVEL,Items.CLAY_BALL,Items.SUGAR_CANE,Items.PAPER,Items.COAL,
                     Items.CHARCOAL,Items.COPPER_INGOT,WWMC.TIN_INGOT.get(),WWMC.BRONZE_INGOT.get(),Items.IRON_INGOT,WWMC.RESEARCH_SCROLL.get()));
             for(String id:town.campaign.requests.keySet()) { Item item=SupplyRequests.item(id); if(item!=Items.AIR) requested.add(item); }
@@ -73,6 +79,7 @@ public final class TownViews {
             for(var order:town.craftOrders) if(!ForgeWorkshop.forged(new ItemStack(order.resolve()))) items.add(order.resolve());
             items.add(Items.PAPER); items.add(Items.STONE_SHOVEL); items.add(Items.STONE_HOE); items.add(WWMC.BANNER_ITEM.get()); items.add(WWMC.BRONZE_ANVIL_ITEM.get());
             items.add(Items.FURNACE); items.add(Items.LECTERN); items.add(Items.BARREL); items.add(Items.CHEST);
+            items.add(WWMC.ALLOY_FURNACE_ITEM.get());
             for(var role:StructureRole.values()) items.add(WWMC.STATION_ITEMS.get(role).get());
             for(Item item:items) {
                 String id=BuiltInRegistries.ITEM.getKey(item).toString(); int index=Workshop.find(town,id),value=index<0 ? 0 : town.craftOrders.get(index).target();
@@ -80,7 +87,15 @@ public final class TownViews {
                 workshop.add(target(item,new ItemStack(item).getHoverName().getString(),InventoryOps.count(SettlementService.townStorage(level,town),s -> s.is(item))+" in town"+note,"craft:"+id,value));
             }
             var forge=new ArrayList<PanelView.Row>();
-            forge.add(row(WWMC.BRONZE_ANVIL_ITEM.get(),"Forge and metallurgy","A staffed smith needs an anvil, nearby furnace, job barrel and coal/charcoal. Repairs take priority. Bronze anvils work 65% slower than iron and wear normally."));
+            forge.add(row(WWMC.ALLOY_FURNACE_ITEM.get(),"Alloys at the smeltery","Use an alloy furnace with two material inputs and separate fuel. A smelter services it; couriers supply its job barrel. Bronze: 3 copper + 1 tin → 4 ingots. Steel: 1 iron + 1 coal/charcoal → 1 ingot."));
+            for(Item item:AlloyWorkshop.catalogue()) {
+                int value=AlloyWorkshop.target(town,item);
+                if(value==Integer.MAX_VALUE) continue;
+                String id=BuiltInRegistries.ITEM.getKey(item).toString();
+                String note=AgeProgression.allowed(town,new ItemStack(item)) ? "" : " · needs "+AgeProgression.requirement(new ItemStack(item));
+                forge.add(target(item,new ItemStack(item).getHoverName().getString(),InventoryOps.count(SettlementService.townStorage(level,town),s -> s.is(item))+" in town"+note,"alloy:"+id,value));
+            }
+            forge.add(row(WWMC.BRONZE_ANVIL_ITEM.get(),"Equipment at the blacksmith","Anvil, nearby furnace, job barrel and coal/charcoal required. Repairs take priority. Bronze anvils work 65% slower than iron and wear normally."));
             for(Item item:ForgeWorkshop.catalogue()) {
                 String id=BuiltInRegistries.ITEM.getKey(item).toString();
                 if(ForgeWorkshop.plans(level,new Workshop.Order(id,1)).isEmpty()) continue;
@@ -91,7 +106,7 @@ public final class TownViews {
             var stations=new ArrayList<PanelView.Row>();
             for(var station:town.stations) stations.add(Panels.summary(level,town,station));
             tabs.add(new PanelView.Tab("Stock",stock)); tabs.add(new PanelView.Tab("Workshop",workshop));
-            tabs.add(new PanelView.Tab("Forge",forge)); tabs.add(new PanelView.Tab("Stations",stations));
+            tabs.add(new PanelView.Tab("Metalwork",forge)); tabs.add(new PanelView.Tab("Stations",stations));
         } else {
             var research=new ArrayList<PanelView.Row>(); var completed=new ArrayList<PanelView.Row>();
             research.add(target(WWMC.RESEARCH_SCROLL.get(),"Research scrolls: "+Research.scrolls(level,town),"Set the warehouse target. Each scroll costs 2 paper + 1 ink sac or charcoal and 30 seconds of lectern work.","scroll:target",town.progress.scrollTarget));
@@ -115,7 +130,10 @@ public final class TownViews {
         var level=(ServerLevel)player.level(); Settlement town=SettlementData.get(level).at(pos);
         if(action==BACK) { if(pos.equals(town.center)) Panels.openTown(player,town); else Panels.openStation(player,town,town.station(pos)); return; }
         if(kind==PanelMenu.Kind.PEOPLE) {
-            if(action==Panels.RECRUIT) SettlementService.recruit(level,town,1);
+            if(action==ROW_ACTION && (town.progress.growthEnabled ? "act:growth:pause" : "act:growth:resume").equals(key)) {
+                town.progress.growthEnabled=!town.progress.growthEnabled; SettlementData.get(level).setDirty();
+            }
+            else if(action==Panels.RECRUIT) SettlementService.recruit(level,town,1);
             else if(action==Panels.GROW) SettlementService.upgradePopulation(level,player,town);
             else if(action==Panels.PRIORITY) SettlementService.applyPreset(level,town,JobBoard.PRESETS.get((JobBoard.PRESETS.indexOf(town.priority)+1)%JobBoard.PRESETS.size()));
             else if(action==ROW_ACTION && value>=JobBoard.OFF && value<=JobBoard.HIGH)
@@ -130,6 +148,7 @@ public final class TownViews {
         } else if(kind==PanelMenu.Kind.PRODUCTION) {
             if(key.startsWith("request:")) { if(!SupplyRequests.set(town,key.substring(8),value)) return; }
             else if(value<0 || value>256) return;
+            else if(key.startsWith("alloy:")) { if(!AlloyWorkshop.order(town,key.substring(6),value)) return; }
             else if(key.startsWith("forge:")) { if(!ForgeWorkshop.order(level,town,key.substring(6),value)) return; }
             else if(key.startsWith("craft:")) {
                 String id=key.substring(6); Item item=SupplyRequests.item(id); if(item==Items.AIR || ForgeWorkshop.forged(new ItemStack(item))) return;

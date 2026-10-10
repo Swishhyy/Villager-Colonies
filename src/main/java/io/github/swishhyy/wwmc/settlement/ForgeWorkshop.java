@@ -43,23 +43,11 @@ public final class ForgeWorkshop {
     }
     public static List<Item> catalogue() {
         var result=new ArrayList<Item>();
-        result.add(WWMC.BRONZE_INGOT.get()); result.add(WWMC.TIN_INGOT.get());
-        result.add(Items.COPPER_INGOT); result.add(Items.IRON_INGOT); result.add(Items.GOLD_INGOT);
         for(Item item:BuiltInRegistries.ITEM) if(forged(new ItemStack(item))) result.add(item);
         return result;
     }
     public static List<Plan> plans(ServerLevel level,Workshop.Order order) {
         Item item=order.resolve();
-        var ingredients=new ArrayList<Ingredient>();
-        if(item==WWMC.BRONZE_INGOT.get()) {
-            for(int i=0;i<3;i++) ingredients.add(Ingredient.of(Items.COPPER_INGOT));
-            ingredients.add(Ingredient.of(WWMC.TIN_INGOT.get()));
-        } else {
-            Item raw=item==WWMC.TIN_INGOT.get() ? WWMC.RAW_TIN.get() : item==Items.COPPER_INGOT ? Items.RAW_COPPER
-                    : item==Items.IRON_INGOT ? Items.RAW_IRON : item==Items.GOLD_INGOT ? Items.RAW_GOLD : null;
-            if(raw!=null) for(int i=0;i<4;i++) ingredients.add(Ingredient.of(raw));
-        }
-        if(!ingredients.isEmpty()) return List.of(new Plan(order,List.copyOf(ingredients),new ItemStack(item,4),null,null,160));
         if(!forged(new ItemStack(item))) return List.of();
         var result=new ArrayList<Plan>();
         for(Workshop.Plan recipe:Workshop.plans(Workshop.Recipes.of(level),order))

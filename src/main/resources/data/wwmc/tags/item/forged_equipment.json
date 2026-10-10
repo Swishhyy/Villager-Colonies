@@ -214,6 +214,15 @@
     "minecraft:shears",
     "minecraft:shield",
     "minecraft:crossbow",
-    "minecraft:mace"
+    "minecraft:mace",
+    "wwmc:steel_sword",
+    "wwmc:steel_pickaxe",
+    "wwmc:steel_axe",
+    "wwmc:steel_shovel",
+    "wwmc:steel_hoe",
+    "wwmc:steel_helmet",
+    "wwmc:steel_chestplate",
+    "wwmc:steel_leggings",
+    "wwmc:steel_boots"
   ]
 }

@@ -103,10 +103,10 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
             }
             if(row.key().startsWith("act:")) {
                 String label=row.key().startsWith("act:show:") ? "Show" : row.key().startsWith("act:research:") ? "Unlock" : row.key().startsWith("act:project:") ? "Build" : row.key().startsWith("act:accept:") ? "Accept" : row.key().startsWith("act:decline:") ? "Decline"
-                        : row.key().startsWith("act:unally:") ? "End / cancel" : row.key().startsWith("act:ally:") ? "Ally" : "Use";
+                        : row.key().startsWith("act:unally:") ? "End / cancel" : row.key().startsWith("act:ally:") ? "Ally" : row.key().equals("act:growth:pause") ? "Pause" : row.key().equals("act:growth:resume") ? "Resume" : "Use";
                 if(menu.kind==PanelMenu.Kind.MULTIPLAYER) label=row.key().contains("-accept") ? "Accept" : row.key().contains("-challenge") ? "Challenge" : row.key().contains("-deliver") ? "Deliver"
                         : row.key().contains("-release") ? "Release" : row.key().contains("-post") ? "Post" : row.key().contains("-decline") ? "Decline" : "Cancel";
-                int width=menu.kind==PanelMenu.Kind.RELATIONSHIPS || menu.kind==PanelMenu.Kind.MULTIPLAYER ? 76 : row.key().startsWith("act:research:") ? 44 : 32;
+                int width=menu.kind==PanelMenu.Kind.RELATIONSHIPS || menu.kind==PanelMenu.Kind.MULTIPLAYER ? 76 : row.key().startsWith("act:research:") || row.key().startsWith("act:growth:") ? 44 : 32;
                 Button use=Button.builder(Component.literal(label),b -> { b.active=false; send(index,1,row.key()); })
                         .bounds(right-width-1,rowY,width,15).build();
                 use.active=row.value()==0; use.setTooltip(Tooltip.create(row.detail())); addRenderableWidget(use); continue;
@@ -119,9 +119,9 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
                 lower.setTooltip(Tooltip.create(Component.literal("Lower by "+step))); raise.setTooltip(Tooltip.create(Component.literal("Raise by "+step)));
                 addRenderableWidget(lower); addRenderableWidget(raise); continue;
             }
-            boolean production=row.key().startsWith("craft:") || row.key().startsWith("forge:") || row.key().startsWith("scroll:");
+            boolean production=row.key().startsWith("craft:") || row.key().startsWith("forge:") || row.key().startsWith("alloy:") || row.key().startsWith("scroll:");
             boolean request=row.key().startsWith("request:") || production,member=row.key().startsWith("member:");
-            int step=production ? row.key().startsWith("scroll:") ? 4 : row.key().startsWith("forge:") && row.icon().getMaxStackSize()>1 ? 4 : 1
+            int step=production ? row.key().startsWith("scroll:") || row.key().startsWith("alloy:") ? 4 : row.key().startsWith("forge:") && row.icon().getMaxStackSize()>1 ? 4 : 1
                     : request ? row.icon().getMaxStackSize()==1 ? 1 : 16 : 1;
             int maximum=production ? 256 : request ? 4096 : member ? 1 : JobBoard.HIGH;
             // A row button works once per refresh, so a double click cannot also hit the row that moves into its place.
@@ -144,7 +144,7 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
     private boolean naming() { return menu.kind==PanelMenu.Kind.RELATIONSHIPS && tab==3; }
     private int listTop() { return naming() ? LIST_TOP+24 : LIST_TOP; }
     private List<PanelView.Action> footerActions() { return view().actions().stream().filter(a -> a.id()!=RelationshipViews.RENAME).toList(); }
-    private int controlWidth(PanelView.Row row) { return !control(row) ? 0 : row.key().startsWith("act:research:") ? 48 : menu.kind==PanelMenu.Kind.RELATIONSHIPS || menu.kind==PanelMenu.Kind.MULTIPLAYER && row.key().startsWith("act:") ? 80 : 34; }
+    private int controlWidth(PanelView.Row row) { return !control(row) ? 0 : row.key().startsWith("act:research:") || row.key().startsWith("act:growth:") ? 48 : menu.kind==PanelMenu.Kind.RELATIONSHIPS || menu.kind==PanelMenu.Kind.MULTIPLAYER && row.key().startsWith("act:") ? 80 : 34; }
     private void rename() { if(townName!=null) ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,RelationshipViews.RENAME,0,0,townName.getValue())); }
     @Override public boolean keyPressed(KeyEvent event) {
         if(townName!=null && townName.isFocused() && event.key()!=256) {

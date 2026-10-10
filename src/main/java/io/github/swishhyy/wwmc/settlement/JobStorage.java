@@ -33,7 +33,7 @@ public final class JobStorage {
     private record Demand(Predicate<ItemStack> accepts,int target) {}
     private JobStorage() {}
     public static boolean tool(StructureRole role,ItemStack stack) {
-        return role==StructureRole.GATHERER && stack.is(ItemTags.SHOVELS) || role==StructureRole.LUMBER && stack.is(ItemTags.AXES) || role.excavates() && stack.is(ItemTags.PICKAXES)
+        return role==StructureRole.FARM && stack.is(ItemTags.HOES) || role==StructureRole.GATHERER && stack.is(ItemTags.SHOVELS) || role==StructureRole.LUMBER && stack.is(ItemTags.AXES) || role.excavates() && stack.is(ItemTags.PICKAXES)
                 || (role==StructureRole.HUNTER || role==StructureRole.ANIMAL_KEEPER) && AnimalWork.weapon(stack)
                 || role==StructureRole.FISHERMAN && stack.is(Items.FISHING_ROD)
                 || role==StructureRole.BUTCHER && stack.is(ItemTags.AXES);
@@ -53,18 +53,18 @@ public final class JobStorage {
         List<Pickup> result=new ArrayList<>();
         List<Container> warehouse=role==StructureRole.BLACKSMITH && town!=null && supplies.level() instanceof ServerLevel level
                 ? SettlementService.storage(level,town) : List.of();
-        List<Demand> smithNeeds=role==StructureRole.BLACKSMITH ? demands(supplies,town,role,null,barrels,warehouse) : List.of();
+        List<Demand> smithNeeds=role==StructureRole.BLACKSMITH || role==StructureRole.SMELTERY ? demands(supplies,town,role,null,barrels,warehouse) : List.of();
         Map<Demand,Integer> reserved=new IdentityHashMap<>();
         for(Container barrel:barrels) for(int slot=0;slot<barrel.getContainerSize();slot++) {
             ItemStack stack=barrel.getItem(slot);
             if(stack.isEmpty() || tool(role,stack) && !GuardEquipment.worn(stack)
-                    || role!=StructureRole.BLACKSMITH && supply(supplies,town,role,stack)
+                    || role!=StructureRole.BLACKSMITH && !(role==StructureRole.SMELTERY && AlloyWorkshop.material(stack)) && supply(supplies,town,role,stack)
                         && !(role.processes() && supplies.fuel(stack) && !supplies.ingredient(role,stack)) || role==StructureRole.BLACKSMITH && BlacksmithRepair.damaged(stack)) continue;
             int keep=0;
             if(role.processes() && supplies.fuel(stack) && !supplies.ingredient(role,stack)) {
                 keep=Math.min(processingFuel,stack.getCount()); processingFuel-=keep;
             }
-            else if(role==StructureRole.BLACKSMITH) {
+            else if(role==StructureRole.BLACKSMITH || role==StructureRole.SMELTERY && AlloyWorkshop.material(stack)) {
                 for(var demand:smithNeeds) if(demand.accepts().test(stack)) keep=Math.max(keep,Math.min(stack.getCount(),Math.max(0,demand.target()-reserved.getOrDefault(demand,0))));
                 for(var demand:smithNeeds) if(demand.accepts().test(stack)) reserved.merge(demand,keep,Integer::sum);
                 if(FoodHealing.food(stack)) { keep=Math.max(keep,Math.min(meals,stack.getCount())); meals-=Math.min(meals,stack.getCount()); }
@@ -104,7 +104,7 @@ public final class JobStorage {
                 .flatMap(o -> ForgeWorkshop.plans(level,o).stream()).anyMatch(p -> p.uses(stack));
     }
     private static boolean repairMaterial(ItemStack stack) {
-        return stack.is(io.github.swishhyy.wwmc.WWMC.BRONZE_INGOT.get()) || stack.is(Items.IRON_INGOT) || stack.is(Items.COPPER_INGOT) || stack.is(Items.GOLD_INGOT) || stack.is(Items.DIAMOND)
+        return stack.is(io.github.swishhyy.wwmc.WWMC.STEEL_INGOT.get()) || stack.is(io.github.swishhyy.wwmc.WWMC.BRONZE_INGOT.get()) || stack.is(Items.IRON_INGOT) || stack.is(Items.COPPER_INGOT) || stack.is(Items.GOLD_INGOT) || stack.is(Items.DIAMOND)
                 || stack.is(Items.NETHERITE_INGOT) || stack.is(Items.LEATHER) || stack.is(ItemTags.PLANKS) || stack.is(Items.COBBLESTONE);
     }
     public static boolean input(Supplies supplies,StructureRole role,ItemStack stack) { return input(supplies,null,role,stack); }
@@ -119,7 +119,7 @@ public final class JobStorage {
         if(role==StructureRole.CRAFTSMAN && town!=null) return maintenanceInput(supplies,town,stack) || town.craftOrders.stream().filter(o -> o.target()>0)
                 .flatMap(o -> Workshop.plans(supplies.crafting(),o).stream()).anyMatch(p -> p.uses(stack));
         if(role.excavates() && ExcavationService.supportMaterial(stack) || role==StructureRole.LUMBER && stack.is(ItemTags.SAPLINGS)) return true;
-        return role.processes() && (supplies.fuel(stack) || role==StructureRole.COOK && stack.is(Items.WHEAT) || supplies.ingredient(role,stack));
+        return role.processes() && (supplies.fuel(stack) || role==StructureRole.SMELTERY && AlloyWorkshop.material(stack) || role==StructureRole.COOK && stack.is(Items.WHEAT) || supplies.ingredient(role,stack));
     }
     /** Supply one usable tool per assigned worker, counting tools already in their hands or bags. */
     private static int toolTarget(Supplies supplies,Settlement town,Station station,StructureRole role) {
@@ -135,14 +135,20 @@ public final class JobStorage {
     private static List<Demand> demands(Supplies supplies,Settlement town,StructureRole role,Station station,List<Container> barrels,List<Container> warehouse) {
         List<Demand> result=new ArrayList<>();
         Predicate<ItemStack> tools=s -> tool(role,s) && !GuardEquipment.worn(s);
-        if(role.excavates() || role==StructureRole.GATHERER || role==StructureRole.LUMBER || role.animalJob()) {
+        if(role.excavates() || role==StructureRole.FARM || role==StructureRole.GATHERER || role==StructureRole.LUMBER || role.animalJob()) {
             int target=toolTarget(supplies,town,station,role);
             if(target>0) result.add(new Demand(tools,target));
         }
         if(role.processes()) {
             result.add(new Demand(s -> !s.is(Items.WHEAT) && supplies.ingredient(role,s),ProcessingService.INPUT_LOAD*2));
-            result.add(new Demand(s -> supplies.fuel(s) && !supplies.ingredient(role,s),FUEL_RESERVE*2));
+            result.add(new Demand(s -> supplies.fuel(s) && (!supplies.ingredient(role,s) || role==StructureRole.SMELTERY && ForgeWorkshop.fuel(s)),FUEL_RESERVE*2));
             if(role==StructureRole.COOK) result.add(new Demand(s -> s.is(Items.WHEAT),WHEAT_RESERVE*2));
+            if(role==StructureRole.SMELTERY && town!=null && supplies.level() instanceof ServerLevel level
+                    && town.stations.stream().filter(s -> s.role()==StructureRole.SMELTERY).anyMatch(s -> SettlementService.processingDevices(level,town,s).stream()
+                            .anyMatch(p -> level.getBlockState(p).is(io.github.swishhyy.wwmc.WWMC.ALLOY_FURNACE.get())))) {
+                if(Research.has(town,"bronze_age")) { result.add(new Demand(AlloyWorkshop::copper,12)); result.add(new Demand(AlloyWorkshop::tin,4)); }
+                if(Research.has(town,"steel_working")) result.add(new Demand(AlloyWorkshop::iron,8));
+            }
         }
         if(role.excavates()) result.add(new Demand(ExcavationService::supportMaterial,SUPPORT_RESERVE));
         if(role==StructureRole.LUMBER) result.add(new Demand(s -> s.is(ItemTags.SAPLINGS),SAPLING_RESERVE));

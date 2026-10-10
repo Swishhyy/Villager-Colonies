@@ -96,6 +96,8 @@ public final class Panels {
         overview.add(new Row(icon(WWMC.BANNER_ITEM.get()),"Population",town.citizens.size()+" / "+limit+" citizens · "+beds+" housing beds · +"+Research.populationBonus(town)+" places from research"));
         overview.add(new Row(icon(Items.PAPER),"Jobs",TownJobs.assess(level,town).summary()));
         overview.add(new Row(icon(Items.BREAD),"Food",InventoryOps.count(SettlementService.townStorage(level,town),FoodHealing::food)+" meals in storage"));
+        int happiness=CitizenWellbeing.average(level,town);
+        overview.add(new Row(icon(Items.APPLE),"Happiness: "+happiness+" / 100",CitizenWellbeing.mood(happiness)+" · "+town.progress.children.size()+" children · details in People / Wellbeing").bar(happiness/100F,happiness>=75 ? GREEN : happiness>=50 ? AMBER : RED));
         overview.add(researchStatus(Research.status(level,town)));
         overview.addAll(needs.stream().filter(r -> r.color()!=GREEN).limit(1).toList());
         var more=List.of(
@@ -175,7 +177,8 @@ public final class Panels {
         Station job=home(town,citizen);
         float health=citizen.getHealth()/Math.max(1,citizen.getMaxHealth());
         return new Row(job==null ? icon(Items.PAPER) : stationIcon(job.role()),citizen.getName().getString(),
-                (job==null ? "No job" : CitizenSkill.title(citizen.skillLevel(job.role()))+" "+job.role().title().toLowerCase(Locale.ROOT))+": "+citizen.activity()).bar(health,health<0.5F ? RED : GREEN);
+                (citizen.isBaby() ? "Child · grows up in "+Math.max(1,(-citizen.getAge()+1199)/1200)+" min" : job==null ? "No job" : CitizenSkill.title(citizen.skillLevel(job.role()))+" "+job.role().title().toLowerCase(Locale.ROOT))
+                        +": "+citizen.activity()+" · happiness "+citizen.happiness()+"/100").bar(health,health<0.5F ? RED : GREEN);
     }
     private static Row storage(ItemStack icon,String name,List<Container> containers,String none) {
         if(containers.isEmpty()) return new Row(icon,name,none);
@@ -541,7 +544,7 @@ public final class Panels {
         List<Row> status=new ArrayList<>();
         StructureRole role=citizen.skillRole();
         int skill=citizen.skillLevel(role);
-        status.add(new Row(job==null ? icon(Items.PAPER) : stationIcon(job.role()),job==null ? "No job"
+        status.add(new Row(job==null ? icon(Items.PAPER) : stationIcon(job.role()),citizen.isBaby() ? "Child · grows up in "+Math.max(1,(-citizen.getAge()+1199)/1200)+" min" : job==null ? "No job"
                 : CitizenSkill.title(skill)+" "+job.role().title().toLowerCase(Locale.ROOT)+" at "+job.position().toShortString(),citizen.activity()));
         float health=citizen.getHealth()/Math.max(1,citizen.getMaxHealth());
         status.add(new Row(icon(Items.GOLDEN_APPLE),"Health",Math.round(citizen.getHealth())+" / "+Math.round(citizen.getMaxHealth())).bar(health,health<0.5F ? RED : GREEN));
@@ -552,8 +555,14 @@ public final class Panels {
         List<Row> skills=new ArrayList<>();
         List<String> meals=citizen.recentMeals();
         int morale=MealVariety.bonus(meals);
-        skills.add(new Row(icon(Items.EXPERIENCE_BOTTLE),(role==null ? "No job" : CitizenSkill.title(skill)+" "+role.title().toLowerCase(Locale.ROOT))+" · "+MealVariety.mood(meals),
+        skills.add(new Row(icon(Items.EXPERIENCE_BOTTLE),(citizen.isBaby() ? "Child" : role==null ? "No job" : CitizenSkill.title(skill)+" "+role.title().toLowerCase(Locale.ROOT))+" · happiness "+citizen.happiness()+"/100",
                 (role==null ? "" : CitizenSkill.perk(role,skill)+"; ")+(morale>0 ? "varied meals: "+morale+"% faster" : "varied meals would add up to 8% speed")));
+        if(town!=null) {
+            var outlook=CitizenWellbeing.outlook(citizen,CitizenWellbeing.conditions(level,town));
+            skills.add(new Row(icon(Items.APPLE),"Happiness: "+CitizenWellbeing.mood(citizen.happiness()),outlook.reason()+" · gradually moving toward "+outlook.target()+"/100"));
+        }
+        int toolBonus=WorkerTools.bonus(role,citizen.getMainHandItem());
+        if(toolBonus>0) skills.add(new Row(citizen.getMainHandItem().copy(),"Tool quality: +"+toolBonus+"% work speed","Better axes, hoes and shovels improve suitable gathering work. Mining already uses the pickaxe's actual break speed."));
         for(StructureRole known:StructureRole.values()) {
             int points=citizen.experience(known);
             if(points<=0 && known!=role) continue;

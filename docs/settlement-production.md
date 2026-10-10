@@ -1,62 +1,64 @@
-# Settlement production
+# Settlement production and wellbeing
 
 [Project overview](../README.md) · [All guides](README.md)
 
-These features are in the development branch. The public version remains **0.1.0.0**.
+The version remains **0.1.0.0**.
 
-## Start with a small town
+## Build the supply chain
 
-1. Build housing, a warehouse, a farm and a courier. Keep ready-to-eat meals available.
-2. Add a Researcher Station and a separate lectern. Set the job in **People → Jobs**.
-3. Add a Gatherer Station near cane or bamboo. Give it a shovel and its own barrel. It also collects dry, exposed sand, gravel and clay, avoiding protected construction.
-4. Set a paper target in **Production → Workshop**. Craftsmen follow the real crafting recipe; couriers move supplies and finished goods.
-5. Stock ink sacs or charcoal. Smelters can make charcoal from logs, glass from sand, bricks from clay balls and terracotta from clay blocks in normal furnaces. Blast furnaces still accept their normal recipes.
+1. Provide housing, a warehouse, a farm and a courier. Keep ready-to-eat meals available.
+2. Add a Researcher Station and lectern. Researchers write a scroll in **30 seconds**, spending **2 paper + 1 ink sac or charcoal**. Set the stock target in **Research**; zero pauses new scrolls.
+3. Gatherers collect cane, bamboo, sand, gravel and clay using shovels. Use **Production → Workshop** for paper, job blocks, furniture and supplies.
+4. Keep each job's barrel outside warehouse range. Couriers move ingredients out and finished goods home. Normal furnaces refine ore, charcoal, glass, bricks and terracotta.
 
-## Research with scrolls
+## Make bronze and steel
 
-A researcher spends **2 paper + 1 ink sac or charcoal** and works at its lectern for **30 seconds** to write one Research Scroll. The default warehouse target is 32; set a different target in **Research**, or zero to pause new scrolls. A paid scroll still finishes if its target is lowered. Paid work survives saving, stopped workers and full storage.
+After **Bronze Age**, craft an **Alloy Furnace** from a furnace, 6 cobblestone and 2 copper ingots. Place it inside the researched settlement, beside a Smeltery Station with a barrel. It has **two material inputs, a separate fuel slot and one output**. Ingots, raw metals and ores work; fuel is always extra.
 
-Spend earned scrolls and the listed materials to unlock a discovery. Scrolls can be traded between towns. Research still belongs to the settlement: every accepted member shares its unlocks, while allies retain their own progress.
+| Alloy | First input | Second input | Output | Loaded work time |
+| --- | --- | --- | --- | --- |
+| Bronze | 3 copper | 1 tin | 4 bronze ingots | 20 seconds |
+| Steel | 1 iron | 1 coal or charcoal | 1 steel ingot | 30 seconds |
 
-Bronze Age requires a staffed researcher and **3 citizens**. Iron Age requires Bronze Age and a **staffed blacksmith with an anvil and furnace**. Field Medicine requires a staffed hospital with a bed. Other prerequisites and expedition schematics remain visible in Research.
+Steel requires **Iron Age → Steelworking** and a staffed smeltery with an alloy furnace. Steel tools last 500 uses and mine faster than iron, while remaining below diamond in speed and mining tier. Steel armor improves iron's durability and protection without replacing diamond.
 
-Existing unlocks are retained. Projects paid under the earlier system still finish their saved lectern work without charging new supplies or scrolls.
+Smelters service real appliances; couriers deliver ingredients and fuel. Set alloy stock targets in **Production → Metalwork**; the default is 32 for each alloy and zero pauses new automated batches. Already loaded batches can finish. Hoppers feed both material slots from above, fuel from the sides, and extract output from below. Full output pauses new batches; inventory, fuel and partial progress survive saving. Outside a settlement or before research, the furnace explains its lock and does not consume new fuel or materials.
 
-## Build a bronze smithy
+New bronze no longer needs a crafted blend or a second smelting step. Previously made blends still smelt normally. Saved smith alloy/refining orders retain their targets and are serviced by smelters.
 
-Bronze Age unlocks the Blacksmith Station: **8 planks around 1 copper ingot**. Add a bronze anvil, a furnace and a job barrel within its range.
+## Forge and repair equipment
 
-A bronze anvil uses **3 bronze ingots across the top, 1 copper ingot in the centre, and 3 copper ingots across the bottom**. Repairs, metallurgy and forging work **65% slower than iron**, at **35% of iron's speed**. Both use normal anvil wear: a 12% chance per completed operation to advance from fresh to chipped to damaged, then break. Moving an anvil preserves its wear, including anvils from existing saves. The station screen shows its condition and speed. Iron anvils can also support gem and netherite forging.
+Bronze Age unlocks the copper-based Blacksmith Station. Supply an anvil, a nearby furnace, a barrel and coal/charcoal. A bronze anvil uses **3 bronze ingots across the top, 1 copper ingot in the centre and 3 copper ingots across the bottom**.
 
-The smith repairs damaged equipment first, using the matching material and preserving the original item, name and enchantments. It then fills stock orders in **Production → Forge**:
+Blacksmiths repair damaged gear first, keeping its original name, enchantments and components. They then fill equipment targets in **Production → Metalwork** using native recipe ingredients and one coal/charcoal per operation. Native netherite upgrading uses a template, the original diamond gear and a netherite ingot.
 
-| Work | Input | Output |
-| --- | --- | --- |
-| Bronze alloy | 3 copper ingots + 1 tin ingot | 4 bronze ingots |
-| Raw metal refining | 4 raw copper, tin, iron or gold | 4 matching ingots |
-| Equipment forging | The item's normal recipe ingredients | Its normal equipment result |
-| Netherite upgrading | Template + original diamond gear + netherite ingot | Native netherite upgrade, preserving components |
+Bronze anvils work **65% slower than iron**, at 35% of its speed, for repairs and forging. Both use normal anvil wear: a 12% chance per completed operation to advance a wear stage. Moving an anvil preserves its saved wear. Walking, meals and deliveries add time to each job.
 
-Each completed batch also consumes **1 coal or charcoal**. With an **iron anvil**, refining/alloying takes 8 seconds; equipment takes 12–18 seconds; netherite upgrades take 20 seconds, before modest worker skill bonuses. Bronze-anvil work takes about **2.86 times as long**: an 8-second alloy batch takes about 23 seconds. These are active work times; walking and supplies add time. If work is interrupted, unused ingredients stay with the worker. Restarting can require redoing the unfinished work time.
+Wood and stone equipment remain player-crafted. Bronze, copper, steel and later gear must come from a blacksmith. Blocked player crafting and redstone crafters keep ingredients intact. Found equipment can be stored until settlement research permits its use.
 
-Wood and stone gear remain player-crafted. Bronze, copper and later gear must be forged, including shields, buckets, shears, crossbows and maces. Blocked player recipes and vanilla redstone crafters leave their ingredients intact. Found gear becomes usable once its age is researched.
+## Happy homes and children
 
-## Automate job blocks
+**People → Wellbeing** shows happiness, housing amenities, children and growth requirements. Each citizen's profile shows why their happiness is changing. Happiness is saved from 0–100, starts at 50 and moves gradually toward the conditions around them.
 
-**Production → Workshop** offers job blocks, the banner, furniture, paper and basic supplies. Set a target without needing an example item. The craftsman makes shortages using actual materials; zero pauses an order. You can still teach other ordinary crafting recipes by example at its station.
+Variety counts meals **actually eaten**, not food sitting in storage. Citizens prefer less recently eaten available foods and keep bowl/bottle returns. Enough housing, safety and distinct amenities help; hunger, crowded housing, injuries and danger hurt. Furnished housing and barracks can provide four amenity types: a garden, meeting bell, lit campfire and books. Multiple flowers or shelves do not multiply the same amenity bonus.
 
-Stock targets count goods in town storage. Keep job barrels separate from warehouse storage and give couriers clear paths. Forge barrels retain working inputs and repair reserves; surplus alloys and finished equipment can be collected. Smeltery barrels retain a fuel reserve and release surplus charcoal.
+A town gets **one 5% birth chance per loaded minute**. It needs two healthy, fed adults with happiness at least 75 and three recently eaten food types, a spare housing bed, population room and safety. A birth uses **6 warehouse meals**, leaving at least two meals per resident including the newborn. Parents have a five-minute breeding cooldown. Growth can be paused at the banner; births appear in the town journal without chat spam.
 
-## Explore ruined town halls
+A newborn is an actual baby citizen. It plays near its housing, eats, shelters when frightened and rests at night. It takes **no job, guard post or squad role** until native adulthood after **20 loaded minutes**. Children count toward housing and the population cap, but not available workers. Native age, homes, happiness, child membership and the remaining birth cooldown survive saving. Unloaded towns do not accumulate birth rolls or offline aging. NPC towns use the same birth rules after their initial crew is founded.
 
-New expedition discoveries can include ruined town halls. They contain actual housing, warehouse, research, workshop, gatherer and blacksmith blocks, a bronze smithy, and finite scroll salvage. They demonstrate useful room layouts and can be salvaged. Discovery checks loaded natural terrain and protected construction; a saved ruin is never rebuilt or restocked.
+Better axes, hoes and shovels give bounded bonuses to lumberjacks, farmers and gatherers. Farmers can still work without hoes; available hoes improve speed and wear with actual harvests. Bronze and steel use their native tool components. Miners retain their existing pickaxe-based breaking and replenishment speed.
 
-## Find the right page
+## Research and exploration
+
+Spend researcher-made scrolls and the listed supplies once per discovery. Accepted settlement members share research; allies keep their own progress. Bronze Age needs three citizens, Iron Age a staffed furnished smithy, and Steelworking a staffed alloy smeltery. Existing unlocks and previously paid timed projects are retained.
+
+Ruined town halls demonstrate real station setups and contain salvageable settlement blocks, a bronze smithy and finite scroll loot. Saved ruins are never rebuilt or restocked.
 
 | Banner destination | Use it for |
 | --- | --- |
-| People | Citizens, jobs, housing, recruitment and population upgrades |
-| Production | Warehouse requests, workshop orders, forging and station status |
+| People | Citizens, jobs, wellbeing, children and population |
+| Production | Stock requests, workshops, alloy targets, equipment and stations |
 | Research | Scroll targets, pause reasons, prerequisites and discoveries |
 | Neighbours | Caravans, contracts, alliances and quiet town news |
-| Needs / More | Problems; alarm, projects, expeditions, settings and map |
+
+[Education design](education-design.md) refines the proposed schooling and apprenticeship progression. Education gates are not enabled in this update.

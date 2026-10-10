@@ -93,8 +93,8 @@ public final class SettlementProductionWorldTests {
     }
 
     @GameTest(timeoutTicks=2800) @EmptyTemplate
-    @TestHolder(description="A real early blacksmith repairs first, forges one bronze pickaxe and alloys four bronze ingots at the slower bronze-anvil speed, preserving the original gear and consuming actual materials and fuel.")
-    static void blacksmithRepairsForgesAndAlloys(DynamicTest test) {
+    @TestHolder(description="A real early blacksmith repairs first and forges one bronze pickaxe at the slower bronze-anvil speed, preserving the original gear and consuming actual alloy ingots and fuel.")
+    static void blacksmithRepairsThenForgesEquipment(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-15400));
             var smith=new Station(start.east(20),StructureRole.BLACKSMITH); var f=fixture(level,start,smith);
@@ -103,14 +103,14 @@ public final class SettlementProductionWorldTests {
             var repair=new ItemStack(WWMC.BRONZE_HOE.get()); repair.setDamageValue(24); repair.set(DataComponents.CUSTOM_NAME,Component.literal("Old hoe"));
             Container local=barrel(level,smith.position().south(2),repair,new ItemStack(WWMC.BRONZE_INGOT.get(),8),new ItemStack(Items.STICK,2),
                     new ItemStack(Items.COPPER_INGOT,3),new ItemStack(WWMC.TIN_INGOT.get()),new ItemStack(Items.COAL,4));
-            helper.assertTrue(ForgeWorkshop.order(level,f.town,"wwmc:bronze_pickaxe",1) && ForgeWorkshop.order(level,f.town,"wwmc:bronze_ingot",8),"Forge catalogue could not accept orders");
+            helper.assertTrue(ForgeWorkshop.order(level,f.town,"wwmc:bronze_pickaxe",1) && !ForgeWorkshop.order(level,f.town,"wwmc:bronze_ingot",8),"Forge catalogue could not accept orders");
             var worker=f.worker(smith,true);
             helper.succeedWhen(() -> {
                 helper.assertTrue(InventoryOps.count(List.of(local),s -> s.is(WWMC.BRONZE_PICKAXE.get()))==1,"The blacksmith has not delivered its pickaxe: "+worker.activity());
                 helper.assertTrue(InventoryOps.count(List.of(local),s -> s.is(WWMC.BRONZE_HOE.get()) && s.getDamageValue()==0
                         && s.get(DataComponents.CUSTOM_NAME).getString().equals("Old hoe"))==1,"Repair replaced or lost the original hoe");
-                helper.assertTrue(count(local,worker,WWMC.BRONZE_INGOT.get())==8 && count(local,worker,Items.COPPER_INGOT)==0
-                        && count(local,worker,WWMC.TIN_INGOT.get())==0 && count(local,worker,Items.COAL)==2,"Forging/alloying costs or real output are wrong");
+                helper.assertTrue(count(local,worker,WWMC.BRONZE_INGOT.get())==4 && count(local,worker,Items.COPPER_INGOT)==3
+                        && count(local,worker,WWMC.TIN_INGOT.get())==1 && count(local,worker,Items.COAL)==3,"Equipment forging changed unused alloy materials or charged the wrong costs");
                 helper.assertTrue(InventoryOps.count(List.of(local),s -> s.is(WWMC.BRONZE_PICKAXE.get()))==1,"Pickaxe was not physically delivered");
                 // Finished metallurgy output exceeds the active equipment reserve and can be hauled away.
                 var pickups=JobStorage.collectable(JobStorage.Supplies.of(level),f.town,StructureRole.BLACKSMITH,List.of(local));
@@ -121,7 +121,7 @@ public final class SettlementProductionWorldTests {
     }
 
     @GameTest(timeoutTicks=1600) @EmptyTemplate
-    @TestHolder(description="Two equally supplied newcomer blacksmiths make real alloy batches: iron finishes first, bronze cannot finish at iron speed, and both eventually deliver the same output for the same material and fuel costs.")
+    @TestHolder(description="Two equally supplied newcomer blacksmiths forge real pickaxes: iron finishes first, bronze cannot finish at iron speed, and both eventually deliver the same equipment for the same ingredient and fuel costs.")
     static void bronzeAnvilSlowsActualBlacksmithWork(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); var fixtures=new ArrayList<Fixture>();
@@ -132,21 +132,21 @@ public final class SettlementProductionWorldTests {
                 f.town.progress.research.add("bronze_age");
                 level.setBlockAndUpdate(station.position().north(2),i==0 ? Blocks.ANVIL.defaultBlockState() : WWMC.BRONZE_ANVIL.get().defaultBlockState());
                 level.setBlockAndUpdate(station.position().east(2),Blocks.FURNACE.defaultBlockState());
-                stock.add(barrel(level,station.position().south(2),new ItemStack(Items.COPPER_INGOT,3),new ItemStack(WWMC.TIN_INGOT.get()),new ItemStack(Items.COAL)));
-                helper.assertTrue(ForgeWorkshop.order(level,f.town,"wwmc:bronze_ingot",4),"Alloy order was rejected");
+                stock.add(barrel(level,station.position().south(2),new ItemStack(WWMC.BRONZE_INGOT.get(),3),new ItemStack(Items.STICK,2),new ItemStack(Items.COAL)));
+                helper.assertTrue(ForgeWorkshop.order(level,f.town,"wwmc:bronze_pickaxe",1),"Equipment order was rejected");
                 workers.add(f.worker(station,true));
             }
             boolean[] checked={false};
             helper.runAtTickTime(400,() -> {
-                helper.assertTrue(count(stock.get(0),workers.get(0),WWMC.BRONZE_INGOT.get())==4,"Iron anvil lost its normal work speed: "+workers.get(0).activity());
-                helper.assertTrue(count(stock.get(1),workers.get(1),WWMC.BRONZE_INGOT.get())==0,"Bronze alloying completed before the slower work time");
+                helper.assertTrue(count(stock.get(0),workers.get(0),WWMC.BRONZE_PICKAXE.get())==1,"Iron anvil lost its normal work speed: "+workers.get(0).activity());
+                helper.assertTrue(count(stock.get(1),workers.get(1),WWMC.BRONZE_PICKAXE.get())==0,"Bronze forging completed before the slower work time");
                 checked[0]=true;
             });
             helper.succeedWhen(() -> {
                 helper.assertTrue(checked[0],"Waiting for the speed comparison");
                 for(int i=0;i<2;i++) {
-                    helper.assertTrue(InventoryOps.count(List.of(stock.get(i)),s -> s.is(WWMC.BRONZE_INGOT.get()))==4,"Blacksmith has not delivered its real alloy: "+workers.get(i).activity());
-                    helper.assertTrue(count(stock.get(i),workers.get(i),Items.COPPER_INGOT)==0 && count(stock.get(i),workers.get(i),WWMC.TIN_INGOT.get())==0
+                    helper.assertTrue(InventoryOps.count(List.of(stock.get(i)),s -> s.is(WWMC.BRONZE_PICKAXE.get()))==1,"Blacksmith has not delivered its real pickaxe: "+workers.get(i).activity());
+                    helper.assertTrue(count(stock.get(i),workers.get(i),WWMC.BRONZE_INGOT.get())==0 && count(stock.get(i),workers.get(i),Items.STICK)==0
                             && count(stock.get(i),workers.get(i),Items.COAL)==0,"Slower work changed the batch costs");
                 }
                 fixtures.forEach(Fixture::close);

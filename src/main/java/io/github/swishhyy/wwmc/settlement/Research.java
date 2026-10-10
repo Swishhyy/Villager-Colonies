@@ -47,7 +47,7 @@ public final class Research {
     }
     private static TownProjects.Cost cost(String name,int count,net.minecraft.world.item.Item item) { return new TownProjects.Cost(name,count,s -> s.is(item)); }
     public static final List<Tech> ALL=List.of(
-        new Tech("bronze_age","Bronze Age","Unlocks copper and bronze forging, the bronze anvil, blacksmith and quarry stations",
+        new Tech("bronze_age","Bronze Age","Unlocks the alloy furnace, bronze forging, bronze anvil, blacksmith and quarry stations",
                 List.of(cost("copper ingots",24,Items.COPPER_INGOT),new TownProjects.Cost("tin ingots",8,s -> s.is(WWMC.TIN_INGOT.get())),
                         cost("coal",8,Items.COAL),cost("paper",8,Items.PAPER)),"","",3600),
         new Tech("iron_age","Iron Age","Unlocks iron and gold forging, buckets, shields and durable iron anvils",
@@ -55,6 +55,8 @@ public final class Research {
                         cost("coal",16,Items.COAL),cost("paper",16,Items.PAPER)),"","bronze_age",7200),
         new Tech("gemcraft","Gemcraft","Unlocks diamond equipment and enchanting after the Iron Age",
                 List.of(cost("diamonds",8,Items.DIAMOND),cost("lapis lazuli",24,Items.LAPIS_LAZULI),cost("paper",24,Items.PAPER)),"","iron_age",9600),
+        new Tech("steel_working","Steelworking","Alloy iron with coal or charcoal; blacksmiths forge durable steel tools and armor",
+                List.of(cost("iron ingots",24,Items.IRON_INGOT),cost("coal",16,Items.COAL)),"","iron_age",4800),
         new Tech("netherite_smithing","Netherite Smithing","Unlocks netherite equipment and upgrades after Gemcraft",
                 List.of(cost("netherite scraps",4,Items.NETHERITE_SCRAP),cost("gold ingots",16,Items.GOLD_INGOT),cost("paper",32,Items.PAPER)),"","gemcraft",12000),
         new Tech("housing_plans","Housing Plans","Raises the town's population limit by 10; housing beds are still required",
@@ -195,13 +197,16 @@ public final class Research {
         return town.jobs.level(station.role())!=JobBoard.OFF && SettlementService.active(level,station)
                 && town.jobs.crew(station.position()).stream().anyMatch(id -> town.citizens.contains(id)
                     && town.jobs.holdsPlace(id,station,SettlementService.workerLimit(town,station))
-                    && level.getEntity(id) instanceof CitizenEntity citizen && citizen.isAlive() && citizen.town(level)==town);
+                    && level.getEntity(id) instanceof CitizenEntity citizen && citizen.isAlive() && !citizen.isBaby() && citizen.town(level)==town);
     }
     public static String practical(ServerLevel level,Settlement town,Tech tech) {
         if(tech.id().equals("bronze_age") && town.citizens.size()<3) return "Grow to 3 citizens before the Bronze Age";
         if(tech.id().equals("iron_age") && town.stations.stream().noneMatch(s -> s.role()==StructureRole.BLACKSMITH && staffed(level,town,s)
                 && !SettlementService.anvils(level,town,s).isEmpty() && !ForgeWorkshop.heat(level,town,s).isEmpty()))
             return "Staff a blacksmith with an anvil and a furnace before the Iron Age";
+        if(tech.id().equals("steel_working") && town.stations.stream().noneMatch(s -> s.role()==StructureRole.SMELTERY && staffed(level,town,s)
+                && SettlementService.processingDevices(level,town,s).stream().anyMatch(p -> level.getBlockState(p).is(WWMC.ALLOY_FURNACE.get()))))
+            return "Staff a smeltery with an alloy furnace before Steelworking";
         if(tech.id().equals("field_medicine") && town.stations.stream().noneMatch(s -> s.role()==StructureRole.HOSPITAL && staffed(level,town,s)
                 && !SettlementService.beds(level,town,s).isEmpty())) return "Staff a hospital with a bed first";
         return "";

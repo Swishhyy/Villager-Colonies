@@ -71,26 +71,41 @@ public final class ProcessingService {
         return supply(level.fuelValues(),role,stack);
     }
     public static boolean supply(FuelValues fuels,StructureRole role,ItemStack stack) {
-        return role==StructureRole.SMELTERY && (rawMetal(stack) || buildingMaterial(stack) || fuel(fuels,stack))
+        return role==StructureRole.SMELTERY && (rawMetal(stack) || buildingMaterial(stack) || AlloyWorkshop.material(stack) || fuel(fuels,stack))
                 || role==StructureRole.COOK && (stack.is(Items.WHEAT) || fuel(fuels,stack)
                     || rawFood(stack) && !cookedFood(stack));
     }
     public static boolean hasInputs(ServerLevel level,StructureRole role,BlockPos pos,List<Container> sources) {
+        if(level.getBlockEntity(pos) instanceof io.github.swishhyy.wwmc.block.AlloyFurnaceEntity furnace) {
+            Settlement town=SettlementData.get(level).at(pos);
+            if(town==null) return false;
+            var all=new java.util.ArrayList<>(sources); all.add(furnace);
+            return AlloyWorkshop.choose(level,town,furnace,all)!=null;
+        }
         return InventoryOps.count(sources,s -> input(level,role,pos,s))>0;
     }
     public static boolean busy(ServerLevel level,BlockPos pos) {
+        if(level.getBlockEntity(pos) instanceof io.github.swishhyy.wwmc.block.AlloyFurnaceEntity furnace)
+            return !furnace.getItem(0).isEmpty() || !furnace.getItem(1).isEmpty() || !furnace.getItem(3).isEmpty();
         if(level.getBlockEntity(pos) instanceof AbstractFurnaceBlockEntity furnace) return !furnace.getItem(0).isEmpty();
         if(level.getBlockEntity(pos) instanceof CampfireBlockEntity campfire) return campfire.getItems().stream().anyMatch(s -> !s.isEmpty());
         return false;
     }
     public static boolean needsFuel(ServerLevel level,BlockPos pos) {
+        if(level.getBlockEntity(pos) instanceof io.github.swishhyy.wwmc.block.AlloyFurnaceEntity furnace)
+            return AlloyWorkshop.match(furnace.getItem(0),furnace.getItem(1))!=null && furnace.getItem(2).isEmpty() && furnace.data.get(0)==0;
         return level.getBlockEntity(pos) instanceof AbstractFurnaceBlockEntity furnace && !furnace.getItem(0).isEmpty()
                 && furnace.getItem(1).isEmpty() && !level.getBlockState(pos).getValue(net.minecraft.world.level.block.AbstractFurnaceBlock.LIT);
     }
     /** Haul a bounded load of ingredients and fuel, preserving any bag overflow. */
     public static void fetch(ServerLevel level,StructureRole role,BlockPos pos,List<Container> storage,CitizenInventory bag) {
+        Settlement town=SettlementData.get(level).at(pos);
+        if(level.getBlockEntity(pos) instanceof io.github.swishhyy.wwmc.block.AlloyFurnaceEntity furnace) {
+            if(town!=null) AlloyWorkshop.fetch(level,town,furnace,storage,bag);
+            return;
+        }
         ItemStack loaded=level.getBlockEntity(pos) instanceof AbstractFurnaceBlockEntity furnace ? furnace.getItem(0) : ItemStack.EMPTY;
-        Predicate<ItemStack> ingredients=s -> input(level,role,pos,s)
+        Predicate<ItemStack> ingredients=s -> input(level,role,pos,s) && belowTarget(level,town,role,pos,s)
                 && (loaded.isEmpty() || ItemStack.isSameItemSameComponents(loaded,s));
         carry(storage,bag,ingredients,INPUT_LOAD-InventoryOps.count(List.of(bag),ingredients));
         if(level.getBlockEntity(pos) instanceof AbstractFurnaceBlockEntity)
@@ -106,11 +121,14 @@ public final class ProcessingService {
     /** Return the number of finished items collected; never synthesize the recipe's result. */
     public static int service(ServerLevel level,StructureRole role,BlockPos pos,CitizenInventory bag,LivingEntity worker) {
         if(!level.hasChunkAt(pos) || !StationDetection.processingBlock(role,level.getBlockState(pos))) return 0;
+        Settlement town=SettlementData.get(level).at(pos);
+        if(level.getBlockEntity(pos) instanceof io.github.swishhyy.wwmc.block.AlloyFurnaceEntity furnace)
+            return town==null ? 0 : AlloyWorkshop.service(level,town,furnace,bag);
         if(level.getBlockEntity(pos) instanceof AbstractFurnaceBlockEntity furnace) {
             ItemStack output=furnace.removeItemNoUpdate(2);
             int collected=output.getCount();
             bag.offer(output);
-            InventoryOps.moveToSlot(List.of(bag),furnace,0,s -> input(level,role,pos,s),INPUT_LOAD);
+            InventoryOps.moveToSlot(List.of(bag),furnace,0,s -> input(level,role,pos,s) && belowTarget(level,town,role,pos,s),INPUT_LOAD);
             if(!furnace.getItem(0).isEmpty() && input(level,role,pos,furnace.getItem(0)))
                 InventoryOps.moveToSlot(List.of(bag),furnace,1,s -> fuel(level,s) && !ingredient(role,s),Math.max(0,FUEL_LOAD-furnace.getItem(1).getCount()));
             furnace.setChanged();
@@ -133,5 +151,13 @@ public final class ProcessingService {
             return collected;
         }
         return 0;
+    }
+    private static boolean belowTarget(ServerLevel level,Settlement town,StructureRole role,BlockPos pos,ItemStack ingredient) {
+        if(town==null || role!=StructureRole.SMELTERY) return true;
+        var recipe=level.getServer().getRecipeManager().getRecipeFor(type(level,pos),new SingleRecipeInput(ingredient),level);
+        if(recipe.isEmpty()) return false;
+        ItemStack output=recipe.get().value().assemble(new SingleRecipeInput(ingredient));
+        int target=AlloyWorkshop.target(town,output.getItem());
+        return InventoryOps.count(SettlementService.townStorage(level,town),s -> s.is(output.getItem()))<target;
     }
 }
