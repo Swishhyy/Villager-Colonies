@@ -170,19 +170,23 @@ public final class SettlementProductionWorldTests {
             helper.assertTrue(level.getBlockState(anvil).getValue(BronzeAnvilBlock.WEAR)==8,"Saved chipped wear did not advance to damaged");
             ForgeWorkshop.wear(level,anvil,RandomSource.create(wearSeed));
             helper.assertTrue(level.getBlockState(anvil).isAir(),"Damaged bronze anvil did not break on a wear roll");
-            level.setBlockAndUpdate(anvil,WWMC.BRONZE_ANVIL.get().defaultBlockState());
-            BlockPos iron=anvil.east(2); level.setBlockAndUpdate(iron,Blocks.ANVIL.defaultBlockState());
-            var bronzeRandom=RandomSource.create(42); var ironRandom=RandomSource.create(42); int operations=0;
-            do {
-                ForgeWorkshop.wear(level,anvil,bronzeRandom); ForgeWorkshop.wear(level,iron,ironRandom); operations++;
-                var bronzeState=level.getBlockState(anvil); var ironState=level.getBlockState(iron);
-                helper.assertTrue(bronzeState.isAir()==ironState.isAir(),"Bronze and iron broke on different wear rolls");
-                if(!bronzeState.isAir()) {
-                    int ironStage=ironState.is(Blocks.ANVIL) ? 0 : ironState.is(Blocks.CHIPPED_ANVIL) ? 1 : 2;
-                    helper.assertTrue(bronzeState.getValue(BronzeAnvilBlock.WEAR)/4==ironStage,"Bronze and iron have different wear stages");
-                }
-            } while(!level.getBlockState(anvil).isAir() && operations<200);
-            helper.assertTrue(level.getBlockState(anvil).isAir() && operations>12,"Bronze still has a fixed twelve-operation lifetime");
+            BlockPos iron=anvil.east(2);
+            // Normal wear may break before or after twelve jobs; both outcomes must match iron.
+            for(long seed:new long[]{0,42}) {
+                level.setBlockAndUpdate(anvil,WWMC.BRONZE_ANVIL.get().defaultBlockState());
+                level.setBlockAndUpdate(iron,Blocks.ANVIL.defaultBlockState());
+                var bronzeRandom=RandomSource.create(seed); var ironRandom=RandomSource.create(seed); int operations=0;
+                do {
+                    ForgeWorkshop.wear(level,anvil,bronzeRandom); ForgeWorkshop.wear(level,iron,ironRandom); operations++;
+                    var bronzeState=level.getBlockState(anvil); var ironState=level.getBlockState(iron);
+                    helper.assertTrue(bronzeState.isAir()==ironState.isAir(),"Bronze and iron broke on different wear rolls");
+                    if(!bronzeState.isAir()) {
+                        int ironStage=ironState.is(Blocks.ANVIL) ? 0 : ironState.is(Blocks.CHIPPED_ANVIL) ? 1 : 2;
+                        helper.assertTrue(bronzeState.getValue(BronzeAnvilBlock.WEAR)/4==ironStage,"Bronze and iron have different wear stages");
+                    }
+                } while(!level.getBlockState(anvil).isAir() && operations<200);
+                helper.assertTrue(level.getBlockState(anvil).isAir() && (seed==0 ? operations>12 : operations<12),"Bronze still has a fixed twelve-operation lifetime");
+            }
             var order=new Workshop.Order("minecraft:netherite_pickaxe",1); var plans=ForgeWorkshop.plans(level,order);
             helper.assertTrue(plans.size()==1 && plans.getFirst().upgrade()!=null,"Native netherite recipe is unavailable to the blacksmith");
             var original=new ItemStack(Items.DIAMOND_PICKAXE); original.setDamageValue(42); original.set(DataComponents.CUSTOM_NAME,Component.literal("Family pick"));
