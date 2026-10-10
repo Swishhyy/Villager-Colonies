@@ -155,6 +155,13 @@ public final class CitizenReachChecks {
         world.unloaded.add(leaf); assertFalse(ForestryService.clearableLeaf(world,tree,leaf)); world.unloaded.clear();
         world.blocks.put(leaf,Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,true));
         assertFalse(ForestryService.clearableLeaf(world,tree,leaf),"Decorative leaves cannot be cleared for access");
+        world.blocks.put(leaf,Blocks.BIRCH_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,false));
+        assertTrue(ForestryService.clearableLeaf(world,tree,leaf),"A neighboring tree's natural leaves must not block trunk access in a mixed forest");
+        world.protectedAt.add(leaf);
+        assertFalse(ForestryService.clearableLeaf(world,tree,leaf),"Mixed-species foliage cannot bypass player protection"); world.protectedAt.clear();
+        world.blocks.put(leaf,Blocks.BIRCH_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,true));
+        assertFalse(ForestryService.clearableLeaf(world,tree,leaf),"A neighboring tree's decorative leaves remain protected");
+        world.blocks.remove(leaf);
         world.blocks.entrySet().removeIf(e -> e.getValue().is(Blocks.OAK_LEAVES));
         assertNull(ForestryService.tree(world,root),"New log columns still require a natural canopy");
         assertNotNull(ForestryService.verify(world,tree),"A previously proven tree stays recognized after its obstructing leaves are removed");

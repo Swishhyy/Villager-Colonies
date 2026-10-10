@@ -57,8 +57,119 @@ public final class ProductionWorldTests {
                 helper.assertTrue(ForestryService.tree(level,f.town(),root)==null,"A job barrel authorized felling placed wood");
                 for(int y=0;y<4;y++) helper.assertTrue(level.getBlockState(root.above(y)).is(Blocks.OAK_LOG),"Protected wood was felled");
                 helper.assertTrue(citizen.activity().contains("No accessible natural tree"),"Retry pause hid the tree-search reason: "+citizen.activity());
+                helper.assertTrue(citizen.activity().contains("Player-placed logs"),"The idle reason did not explain the protected tree: "+citizen.activity());
                 f.close(); helper.succeed();
             });
+        });
+    }
+
+    @GameTest(timeoutTicks=100)
+    @EmptyTemplate
+    @TestHolder(description="Sapling placement accepts forest grass, flowers and natural overhead leaves while preserving protected plants, decorative leaves, water and buildings.")
+    static void forestPlantingPreservesProtectionAndSeeds(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-13000));
+            Station lumber=new Station(start.east(24),StructureRole.LUMBER);
+            var f=fixture(level,start,lumber); BlockPos root=lumber.position().east(2);
+            var site=new PlantingSite(lumber.position(),root,TreeSpecies.BIRCH,1);
+            BlockPos canopy=root.above(4);
+            var natural=Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,false);
+            level.setBlockAndUpdate(canopy,natural); level.setBlockAndUpdate(root,Blocks.SHORT_GRASS.defaultBlockState());
+            helper.assertTrue(ForestryService.canPlant(level,f.town(),lumber,site),"Harmless ground cover and a natural canopy rejected a planting plot");
+            level.setBlockAndUpdate(root,Blocks.DANDELION.defaultBlockState());
+            WorldWorkData.get(level).protect(root);
+            helper.assertTrue(!ForestryService.canPlant(level,f.town(),lumber,site),"A player-protected flower was replaced");
+            WorldWorkData.get(level).protectedBlocks.remove(root);
+            level.setBlockAndUpdate(canopy,natural.setValue(LeavesBlock.PERSISTENT,true));
+            helper.assertTrue(!ForestryService.canPlant(level,f.town(),lumber,site),"Decorative overhead leaves were treated as growing room");
+            level.setBlockAndUpdate(canopy,natural); level.setBlockAndUpdate(root,Blocks.WITHER_ROSE.defaultBlockState());
+            helper.assertTrue(!ForestryService.canPlant(level,f.town(),lumber,site),"A hazardous wither rose was treated as harmless ground cover");
+            level.setBlockAndUpdate(root,Blocks.WATER.defaultBlockState());
+            helper.assertTrue(!ForestryService.canPlant(level,f.town(),lumber,site),"A flooded plot was accepted");
+            level.setBlockAndUpdate(root,Blocks.DANDELION.defaultBlockState()); level.setBlockAndUpdate(root.above(),Blocks.STONE.defaultBlockState());
+            helper.assertTrue(!ForestryService.canPlant(level,f.town(),lumber,site),"A solid obstruction was accepted");
+            level.setBlockAndUpdate(root.above(),Blocks.AIR.defaultBlockState());
+            ItemStack seeds=new ItemStack(Items.BIRCH_SAPLING,2); WorldWorkData.get(level).queue(site);
+            helper.assertTrue(ForestryService.plant(level,f.town(),lumber,site,seeds),"The valid forest plot was not planted");
+            helper.assertTrue(seeds.getCount()==1 && level.getBlockState(root).is(Blocks.BIRCH_SAPLING),"Planting lost or duplicated a sapling");
+            helper.assertTrue(level.getBlockState(canopy).equals(natural),"Planting removed the neighboring tree's canopy");
+            helper.assertTrue(!WorldWorkData.get(level).plantings.contains(site),"The completed planting stayed queued");
+            helper.assertTrue(!ForestryService.plant(level,f.town(),lumber,site,seeds) && seeds.getCount()==1,"Retrying a completed plot consumed another sapling");
+            f.close(); helper.succeed();
+        });
+    }
+
+    @GameTest(timeoutTicks=1600)
+    @EmptyTemplate
+    @TestHolder(description="A real lumberjack collects one sapling from its job barrel and plants through a flower on the only suitable soil plot.")
+    static void lumberjackPlantsThroughForestGroundCover(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-13200));
+            Station lumber=new Station(start.east(24),StructureRole.LUMBER);
+            var f=fixture(level,start,lumber); BlockPos root=lumber.position().east(2);
+            for(BlockPos pos:SettlementService.cells(lumber)) if(pos.getY()==root.getY())
+                level.setBlockAndUpdate(pos.below(),Blocks.STONE.defaultBlockState());
+            level.setBlockAndUpdate(root.below(),Blocks.GRASS_BLOCK.defaultBlockState());
+            level.setBlockAndUpdate(root,Blocks.DANDELION.defaultBlockState());
+            Container stock=barrel(level,lumber.position().west(2),new ItemStack(Items.OAK_SAPLING,2));
+            var citizen=f.worker(lumber,lumber.position().west(3)); citizen.bag().offer(new ItemStack(Items.BREAD,2));
+            helper.succeedWhen(() -> {
+                helper.assertTrue(level.getBlockState(root).is(Blocks.OAK_SAPLING),"Lumberjack did not plant through the flower: "+describe(citizen));
+                helper.assertTrue(count(stock,Items.OAK_SAPLING)+citizen.bag().count(Items.OAK_SAPLING)+citizen.getOffhandItem().getCount()==1,"Planting consumed anything other than one actual sapling");
+                var pause=ForestryService.search(level,f.town(),lumber,p -> true,item -> citizen.bag().count(item)+(citizen.getOffhandItem().is(item) ? citizen.getOffhandItem().getCount() : 0));
+                helper.assertTrue(pause.task()==null && pause.reason().startsWith("Waiting for saplings") && !TownNeeds.asks(pause.reason()),"A growing sapling was reported as a stalled job: "+pause.reason());
+                f.close();
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=1600)
+    @EmptyTemplate
+    @TestHolder(description="A lumberjack can clear a neighboring species' natural leaves and fell an oak while leaving decorative foliage intact.")
+    static void lumberjackCutsInMixedForestCanopy(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-13400));
+            Station lumber=new Station(start.east(24),StructureRole.LUMBER);
+            var f=fixture(level,start,lumber); BlockPos root=lumber.position().east(2);
+            for(int y=0;y<4;y++) level.setBlockAndUpdate(root.above(y),Blocks.OAK_LOG.defaultBlockState());
+            for(int x=-1;x<=1;x++) for(int z=-1;z<=1;z++) if(x!=0 || z!=0)
+                level.setBlockAndUpdate(root.offset(x,3,z),Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,false));
+            BlockPos feet=root.west(2).south(),leaf=feet.above(),decorative=root.south(2).above();
+            level.setBlockAndUpdate(leaf,Blocks.BIRCH_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,false));
+            var decoration=Blocks.BIRCH_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,true);
+            level.setBlockAndUpdate(decorative,decoration);
+            barrel(level,lumber.position().west(2));
+            var citizen=f.worker(lumber,feet); citizen.bag().offer(new ItemStack(Items.BREAD));
+            citizen.setItemSlot(EquipmentSlot.MAINHAND,new ItemStack(Items.IRON_AXE));
+            helper.assertTrue(ForestryService.clearableLeaf(level,f.town(),ForestryService.tree(level,f.town(),root),leaf),"The neighboring birch leaf blocked oak access");
+            helper.succeedWhen(() -> {
+                helper.assertTrue(!level.getBlockState(root).is(Blocks.OAK_LOG),"Lumberjack did not fell the tree in mixed foliage: "+describe(citizen));
+                helper.assertTrue(!level.getBlockState(leaf).is(Blocks.BIRCH_LEAVES),"The leaf trapping the worker was left in place");
+                helper.assertTrue(level.getBlockState(decorative).equals(decoration),"Access clearing destroyed decorative foliage");
+                helper.assertTrue(citizen.bag().count(Items.OAK_LOG)==4,"The mixed-forest harvest lost or duplicated logs");
+                f.close();
+            });
+        });
+    }
+
+    @GameTest(timeoutTicks=100)
+    @EmptyTemplate
+    @TestHolder(description="Forestry does not reserve a planting task using saplings that are only in a warehouse; the idle reason points to the job barrel and reaches server diagnostics.")
+    static void forestryUsesFetchableSaplingsAndExplainsIdle(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-13600));
+            Station lumber=new Station(start.east(24),StructureRole.LUMBER),warehouse=new Station(start,StructureRole.WAREHOUSE);
+            var f=fixture(level,start,lumber,warehouse);
+            Container pantry=barrel(level,start.east(2),new ItemStack(Items.OAK_SAPLING,8));
+            Container job=barrel(level,lumber.position().west(2));
+            var idle=ForestryService.search(level,f.town(),lumber,p -> true,item -> 0);
+            helper.assertTrue(idle.task()==null && idle.reason().contains("job barrel"),"Unavailable warehouse stock was reserved or the supply reason was hidden");
+            helper.assertTrue(TownNeeds.asks(idle.reason()),"The forestry idle reason was excluded from needs and rate-limited server diagnostics");
+            helper.assertTrue(count(pantry,Items.OAK_SAPLING)==8 && WorldWorkData.get(level).plantings.stream().noneMatch(p -> p.station().equals(lumber.position())),"An idle search changed stock or queued an impossible planting");
+            job.setItem(0,new ItemStack(Items.OAK_SAPLING));
+            var ready=ForestryService.search(level,f.town(),lumber,p -> true,item -> 0);
+            helper.assertTrue(ready.task()!=null && ready.task().planting()!=null && count(job,Items.OAK_SAPLING)==1,"Real job-barrel stock did not make planting available");
+            f.close(); helper.succeed();
         });
     }
 

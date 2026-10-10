@@ -6,11 +6,15 @@ import io.github.swishhyy.wwmc.WWMC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.settlement.*;
+import java.nio.file.Path;
 import java.util.*;
+import net.minecraft.advancements.triggers.CriteriaTriggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.PlayerAdvancements;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -20,9 +24,11 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.testframework.DynamicTest;
 import net.neoforged.testframework.annotation.TestHolder;
@@ -31,6 +37,94 @@ import net.neoforged.testframework.gametest.GameTest;
 
 /** Real researchers, recipe clicks, armor, ore drops and generated ruin layouts on a dedicated server. */
 public final class ResearchAgeWorldTests {
+    private static ResourceKey<Recipe<?>> recipeKey(String name) {
+        return ResourceKey.create(Registries.RECIPE,Identifier.fromNamespaceAndPath("wwmc",name));
+    }
+    /** Keep the native discovery listener and recipe rewards; FakePlayer's default advancement tracker ignores them. */
+    private static final class RecipePlayer extends FakePlayer {
+        private PlayerAdvancements progress;
+        RecipePlayer(ServerLevel level,GameProfile profile) {
+            super(level,profile);
+            var server=level.getServer();
+            progress=new PlayerAdvancements(server.getFixerUpper(),server.getPlayerList(),server.getAdvancements(),
+                    Path.of("build","gametest-advancements",profile.id()+".json"),this);
+        }
+        @Override public PlayerAdvancements getAdvancements() { return progress==null ? super.getAdvancements() : progress; }
+    }
+
+    @GameTest(timeoutTicks=1000)
+    @EmptyTemplate
+    @TestHolder(description="Collecting metal materials discovers native recipes; Bronze Age gates a real 2x2 shift-click blend, and fueled furnaces turn every blend into an ingot for a real bronze pickaxe.")
+    static void bronzeDiscoveryCraftingAndSmelting(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-12600));
+            var chunks=CitizenNavigationTests.pinTicking(level,start,1); CitizenNavigationTests.meadow(level,start,-8,16,-8,8);
+            var owner=new RecipePlayer(level,new GameProfile(UUID.randomUUID(),"BronzeOwner"));
+            owner.setPos(start.getX()+.5,start.getY(),start.getZ()+.5);
+            var town=new Settlement(UUID.randomUUID(),owner.getUUID(),"Bronze production",start,32,List.of(),List.of(),"balanced");
+            SettlementData.get(level).settlements.add(town);
+            level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
+            helper.assertTrue(!owner.getRecipeBook().contains(recipeKey("bronze_blend")),"Blend recipe was known without discovery");
+            ItemStack copper=new ItemStack(Items.COPPER_INGOT);
+            owner.getInventory().setItem(9,copper);
+            CriteriaTriggers.INVENTORY_CHANGED.trigger(owner,owner.getInventory(),copper);
+            helper.assertTrue(owner.getRecipeBook().contains(recipeKey("bronze_blend")),"Collecting copper did not discover bronze blend");
+            ItemStack rawTin=new ItemStack(WWMC.RAW_TIN.get()); owner.getInventory().setItem(10,rawTin);
+            CriteriaTriggers.INVENTORY_CHANGED.trigger(owner,owner.getInventory(),rawTin);
+            helper.assertTrue(owner.getRecipeBook().contains(recipeKey("tin_from_raw_smelting"))
+                    && owner.getRecipeBook().contains(recipeKey("tin_from_raw_blasting")),"Raw tin did not discover both cooking recipes");
+            var menu=owner.inventoryMenu; owner.containerMenu=menu;
+            for(int slot=1;slot<=4;slot++) menu.getSlot(slot).setByPlayer(new ItemStack(slot==4 ? WWMC.TIN_INGOT.get() : Items.COPPER_INGOT,2));
+            menu.slotsChanged(menu.getSlot(1).container);
+            helper.assertTrue(menu.getSlot(0).getItem().is(WWMC.BRONZE_BLEND.get()) && menu.getSlot(0).getItem().getCount()==4,
+                    "Three separate copper slots and one tin slot did not match the 2x2 blend recipe");
+            menu.clicked(0,0,ContainerInput.QUICK_MOVE,owner);
+            for(int slot=1;slot<=4;slot++) helper.assertTrue(menu.getSlot(slot).getItem().getCount()==2,"Locked bronze blend spent a material");
+            helper.assertTrue(owner.getInventory().countItem(WWMC.BRONZE_BLEND.get())==0,"Discovery bypassed Bronze Age research");
+            town.progress.research.add("bronze_age"); menu.clicked(0,0,ContainerInput.QUICK_MOVE,owner);
+            helper.assertTrue(owner.getInventory().countItem(WWMC.BRONZE_BLEND.get())==8,"Unlocked shift-click did not yield four blends per batch");
+            for(int slot=1;slot<=4;slot++) helper.assertTrue(menu.getSlot(slot).getItem().isEmpty(),"Completed alloy batch left ingredients");
+            CriteriaTriggers.INVENTORY_CHANGED.trigger(owner,owner.getInventory(),new ItemStack(WWMC.BRONZE_BLEND.get()));
+            helper.assertTrue(owner.getRecipeBook().contains(recipeKey("bronze_from_blend_smelting"))
+                    && owner.getRecipeBook().contains(recipeKey("bronze_from_blend_blasting")),"Blend did not discover its cooking recipes");
+            BlockPos furnacePos=start.east(3),blastPos=start.east(6);
+            level.setBlockAndUpdate(furnacePos,Blocks.FURNACE.defaultBlockState()); level.setBlockAndUpdate(blastPos,Blocks.BLAST_FURNACE.defaultBlockState());
+            var furnace=(AbstractFurnaceBlockEntity)level.getBlockEntity(furnacePos);
+            var blast=(AbstractFurnaceBlockEntity)level.getBlockEntity(blastPos);
+            for(int slot=0;slot<owner.getInventory().getContainerSize();slot++) if(owner.getInventory().getItem(slot).is(WWMC.BRONZE_BLEND.get())) {
+                furnace.setItem(0,owner.getInventory().removeItem(slot,4)); blast.setItem(0,owner.getInventory().removeItem(slot,4)); break;
+            }
+            furnace.setItem(1,new ItemStack(Items.COAL)); blast.setItem(1,new ItemStack(Items.COAL));
+            helper.runAtTickTime(900,() -> {
+                helper.assertTrue(SettlementData.get(level).settlements.contains(town)
+                        && AgeProgression.allowed(owner,new ItemStack(WWMC.BRONZE_PICKAXE.get())),"Test settlement lost its researched equipment access while smelting");
+                helper.assertTrue(furnace.getItem(2).is(WWMC.BRONZE_INGOT.get()) && furnace.getItem(2).getCount()==4,"Furnace did not smelt every blend");
+                helper.assertTrue(blast.getItem(2).is(WWMC.BRONZE_INGOT.get()) && blast.getItem(2).getCount()==4,"Blast furnace did not smelt every blend");
+                helper.assertTrue(furnace.getItem(0).isEmpty() && blast.getItem(0).isEmpty()
+                        && owner.getInventory().countItem(WWMC.BRONZE_BLEND.get())==0,"Smelting duplicated or retained blend inputs");
+                owner.getInventory().add(furnace.removeItem(2,4)); owner.getInventory().add(blast.removeItem(2,4));
+                ItemStack ingot=new ItemStack(WWMC.BRONZE_INGOT.get());
+                CriteriaTriggers.INVENTORY_CHANGED.trigger(owner,owner.getInventory(),ingot);
+                for(String part:List.of("sword","pickaxe","axe","shovel","hoe","helmet","chestplate","leggings","boots"))
+                    helper.assertTrue(owner.getRecipeBook().contains(recipeKey("bronze_"+part)),"Bronze ingot did not discover equipment: "+part);
+                var table=new CraftingMenu(1,owner.getInventory(),ContainerLevelAccess.create(level,start)); owner.containerMenu=table;
+                for(int slot=0;slot<owner.getInventory().getContainerSize();slot++) if(owner.getInventory().getItem(slot).is(WWMC.BRONZE_INGOT.get())) {
+                    ItemStack metal=owner.getInventory().removeItem(slot,3);
+                    for(int input=1;input<=3;input++) table.getSlot(input).setByPlayer(metal.split(1));
+                    break;
+                }
+                table.getSlot(5).setByPlayer(new ItemStack(Items.STICK)); table.getSlot(8).setByPlayer(new ItemStack(Items.STICK));
+                table.slotsChanged(table.getSlot(1).container);
+                helper.assertTrue(table.getSlot(0).getItem().is(WWMC.BRONZE_PICKAXE.get()),"Smelted bronze did not match the real pickaxe recipe");
+                table.clicked(0,0,ContainerInput.QUICK_MOVE,owner);
+                helper.assertTrue(owner.getInventory().countItem(WWMC.BRONZE_PICKAXE.get())==1
+                        && owner.getInventory().countItem(WWMC.BRONZE_INGOT.get())==5,"Bronze pickaxe did not spend exactly three of the smelted ingots");
+                SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.releaseTicking(level,start,chunks);
+                helper.succeed();
+            });
+        });
+    }
+
     @GameTest(timeoutTicks=550)
     @EmptyTemplate
     @TestHolder(description="Paid research waits for a real citizen at a lectern, resumes its saved progress, pauses with the worker and finishes without paying twice.")

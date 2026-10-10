@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+- Make tin and bronze recipes discoverable in the vanilla recipe book, and show the bronze crafting grid and smelting step in the Settlement Guide. Keep Bronze Age research requirements.
+- Replace cod and salmon carcass shapes with whole fish: intact heads, visible eyes, fins and forked tails, with a sideways dropped-item pose.
+- Fix lumberjack planting through grass and flowers and beneath natural forest canopies. Let nearby natural leaves from other tree species be cleared when they obstruct a trunk.
+- Use reachable job-barrel or carried saplings when selecting new planting work, and show clearer forestry pause reasons in citizen screens, settlement needs and rate-limited server logs.
 - Recolor vanilla Minecraft textures for bronze tools, armor, ingots and blocks, and tin ores and materials. Preserve vanilla shapes, wooden handles, rock backgrounds and worn armor layouts.
 
 ## 0.1.0.0
