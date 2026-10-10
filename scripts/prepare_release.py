@@ -31,6 +31,12 @@ def prepare_release(artifact_dir: Path) -> None:
         if (len(mods) != 1 or mods[0]["modId"] != properties["mod_id"]
                 or mods[0]["version"] != version or mods[0]["displayName"] != properties["mod_name"]):
             raise ValueError("JAR metadata does not match the release ID, name and version")
+        for field in ("logoFile", "iconFile"):
+            image = mods[0].get(field)
+            if not isinstance(image, str) or image not in archive.namelist():
+                raise ValueError(f"The mod's {field} emblem is missing from the release JAR")
+            if not archive.read(image).startswith(b"\x89PNG\r\n\x1a\n"):
+                raise ValueError(f"The mod's {field} emblem is not a PNG")
         if archive.testzip() is not None:
             raise ValueError("The release JAR contains a corrupt entry")
 

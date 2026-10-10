@@ -7,6 +7,7 @@
 Villager Colonies starts at **0.1.0.0**. In development on a separate branch; not yet released.
 
 - Rename the mod and distributable to **Villager Colonies** and **`villager-colonies-0.1.0.0.jar`**. Reset the version while retaining the `wwmc` mod ID and existing saves.
+- Use the Villager Colonies emblem in the mod list, mod information panel and configuration menu.
 - Carry forward all **World War MC 0.1.0.1** bug fixes and the additions below. Update in-game titles, guides, downloads and release packaging for the new name.
 
 - Add five research-gated traps: wooden spikes, tangle nets, bronze snares, bronze caltrops and iron spring traps. Friendly traffic is safe; wear survives moving and saving.
