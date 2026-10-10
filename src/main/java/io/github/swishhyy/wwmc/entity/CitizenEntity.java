@@ -2435,11 +2435,12 @@ public final class CitizenEntity extends Villager {
                 BlockPos targetWarehouse=tradeWarehouse(destination);
                 if(targetWarehouse!=null) SupplyRequests.snapshotLoaded(level,destination);
                 boolean depot=home.campaign.projects.contains("depot"); tradeShipment.capacity=TradeSettings.MAX_EXPORTS*(depot ? 2 : 1);
-                int moved=TradeGoods.load(SettlementService.storageAt(level,home,warehouse),SupplyRequests.policy(home,destination,depot),tradeShipment);
+                int moved=PlayerContracts.load(level,home,destination,SettlementService.storageAt(level,home,warehouse),SupplyRequests.policy(home,destination,depot),tradeShipment,depot);
                 if(moved==0) { home.campaign.routeCursor++; SettlementData.get(level).setDirty(); tradeNote(home,"Waiting for requested goods above the home reserves; checking another route next"); nextTradeAt=level.getGameTime()+200; return; }
                 tradeShipment.destination=destination.id; tradeShipment.stage="checkpoint"; tradeNavigation.reset();
                 destination.campaign.incoming.put(getUUID(),CampaignContracts.counts(tradeShipment));
-                CampaignService.record(level,home,"Shipment departed for "+destination.name+" with "+moved+" items.");
+                CampaignService.journal(level,home,"Shipment departed for "+destination.name+" with "+moved+" items.");
+                WWMC.LOGGER.info("[WWMC] [trade] Carrier {} departed {} for {} with {} items",getUUID(),home.id,destination.id,moved);
             }
             case "checkpoint" -> {
                 tradeNote(home,"Taking "+tradeCargoCount()+" items to the home checkpoint");
@@ -2455,13 +2456,18 @@ public final class CitizenEntity extends Villager {
                 tradeNote(home,"Delivering to "+destination.name+"'s warehouse");
                 if(!tradeArrive(level,home,warehouse)) return;
                 var before=CampaignContracts.counts(tradeShipment);
+                var plainBefore=PlayerContracts.plainCounts(tradeShipment);
                 int moved=TradeGoods.unload(tradeShipment,SettlementService.storageAt(level,destination,warehouse));
                 var remaining=CampaignContracts.counts(tradeShipment);
                 if(remaining.isEmpty()) destination.campaign.incoming.remove(getUUID()); else destination.campaign.incoming.put(getUUID(),remaining);
                 before.replaceAll((key,count) -> count-remaining.getOrDefault(key,0)); before.values().removeIf(count -> count<=0);
+                var plainRemaining=PlayerContracts.plainCounts(tradeShipment);
+                plainBefore.replaceAll((key,count) -> count-plainRemaining.getOrDefault(key,0)); plainBefore.values().removeIf(count -> count<=0);
                 if(moved>0) {
                     CampaignContracts.delivered(level,home,destination,before,tradeShipment.rewards);
-                    CampaignService.record(level,destination,"Received "+moved+" items from "+home.name+".");
+                    PlayerContracts.delivered(level,home,destination,plainBefore);
+                    CampaignService.journal(level,destination,"Received "+moved+" items from "+home.name+".");
+                    WWMC.LOGGER.info("[WWMC] [trade] Carrier {} delivered {} items from {} to {}",getUUID(),moved,home.id,destination.id);
                     SupplyRequests.snapshotLoaded(level,destination);
                 }
                 home.trading.delivered+=moved;

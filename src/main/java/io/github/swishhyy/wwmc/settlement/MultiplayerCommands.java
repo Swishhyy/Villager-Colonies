@@ -5,7 +5,6 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.UuidArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -22,11 +21,8 @@ public final class MultiplayerCommands {
     private static boolean overworld(CommandSourceStack source) { return source.getEntity() instanceof ServerPlayer && source.getLevel().dimension().equals(Level.OVERWORLD); }
     @SubscribeEvent public void commands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("wwmc")
-            .then(Commands.literal("multiplayer").requires(MultiplayerCommands::overworld).executes(c -> {
-                var player=player(c); var town=SettlementData.get(level(c)).at(player.blockPosition());
-                if(town==null || !MultiplayerViews.valid(player,town.center)) return say(c,"Open Multiplayer at a player settlement banner, within eight blocks.");
-                MultiplayerViews.open(player,town); return 1;
-            }))
+            .then(Commands.literal("neighbours").requires(MultiplayerCommands::overworld).executes(MultiplayerCommands::open))
+            .then(Commands.literal("multiplayer").requires(MultiplayerCommands::overworld).executes(MultiplayerCommands::open))
             .then(Commands.literal("payment").requires(MultiplayerCommands::overworld)
                 .then(Commands.literal("collect").executes(c -> say(c,"Collected "+PlayerContracts.collect(level(c),player(c))+" emeralds. Remaining balance: "+MultiplayerData.get(level(c)).payments.getOrDefault(player(c).getUUID(),0L)+"."))))
             .then(Commands.literal("playercontract").requires(MultiplayerCommands::overworld)
@@ -45,13 +41,6 @@ public final class MultiplayerCommands {
                 .then(Commands.literal("deliver").then(Commands.argument("id",UuidArgument.uuid()).executes(c -> say(c,PlayerContracts.deliver(level(c),player(c),UuidArgument.getUuid(c,"id"))))))
                 .then(Commands.literal("cancel").then(Commands.argument("id",UuidArgument.uuid()).executes(c -> say(c,PlayerContracts.cancel(level(c),player(c),UuidArgument.getUuid(c,"id"))))))
                 .then(Commands.literal("release").then(Commands.argument("id",UuidArgument.uuid()).executes(c -> say(c,PlayerContracts.abandon(level(c),player(c),UuidArgument.getUuid(c,"id")))))))
-            .then(Commands.literal("duel").requires(MultiplayerCommands::overworld)
-                .then(Commands.literal("challenge").then(Commands.argument("player",EntityArgument.player())
-                    .executes(c -> say(c,PlayerDuels.challenge(level(c),player(c),EntityArgument.getPlayer(c,"player"),0)))
-                    .then(Commands.argument("stake",IntegerArgumentType.integer(0,64)).executes(c -> say(c,PlayerDuels.challenge(level(c),player(c),EntityArgument.getPlayer(c,"player"),IntegerArgumentType.getInteger(c,"stake")))))))
-                .then(Commands.literal("accept").executes(c -> say(c,PlayerDuels.accept(level(c),player(c)))))
-                .then(Commands.literal("decline").executes(c -> say(c,PlayerDuels.cancel(level(c),player(c)))))
-                .then(Commands.literal("surrender").executes(c -> say(c,PlayerDuels.cancel(level(c),player(c))))))
             .then(Commands.literal("outpost").then(Commands.literal("battle").requires(MultiplayerCommands::overworld)
                 .then(Commands.literal("challenge").then(Commands.argument("outpost",UuidArgument.uuid()).executes(c -> say(c,OutpostContests.challenge(level(c),MultiplayerViews.home(level(c),player(c)),player(c),UuidArgument.getUuid(c,"outpost"))))))
                 .then(Commands.literal("accept").then(Commands.argument("id",UuidArgument.uuid()).executes(c -> say(c,OutpostContests.accept(level(c),player(c),UuidArgument.getUuid(c,"id"))))))
@@ -62,6 +51,11 @@ public final class MultiplayerCommands {
                             .append(battle.accepted ? "accepted" : "awaiting consent").append(" · capture ").append(battle.progress/20).append("/60s");
                     return say(c,text.toString());
                 })))));
+    }
+    private static int open(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        var player=player(c); var town=SettlementData.get(level(c)).at(player.blockPosition());
+        if(town==null || !MultiplayerViews.valid(player,town.center)) return say(c,"Open Neighbours at a player settlement banner, within eight blocks.");
+        MultiplayerViews.open(player,town); return 1;
     }
     private static int post(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         return say(c,PlayerContracts.post(level(c),SettlementData.get(level(c)).at(player(c).blockPosition()),player(c),player(c).getMainHandItem(),IntegerArgumentType.getInteger(c,"amount"),IntegerArgumentType.getInteger(c,"emeralds")));

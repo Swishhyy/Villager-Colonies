@@ -58,10 +58,10 @@ public final class MultiplayerWorldTests {
         }
         Container stock(Settlement town) { return (Container)level.getBlockEntity(town.center.west(4)); }
         void close() {
-            var data=MultiplayerData.get(level); Set<UUID> ids=new HashSet<>(); towns.forEach(t -> ids.add(t.id));
+            var data=MultiplayerData.get(level); Set<UUID> ids=new HashSet<>(); towns.forEach(t -> { ids.add(t.id); TradeChunks.release(level,t.id); });
             data.contracts.removeIf(c -> ids.contains(c.issuer) || ids.contains(c.supplier));
             data.contests.removeIf(c -> ids.contains(c.outpost) || ids.contains(c.challenger) || ids.contains(c.defender));
-            for(var player:players) { data.duels.removeIf(d -> d.includes(player.getUUID())); data.payments.remove(player.getUUID()); level.removePlayerImmediately(player,Entity.RemovalReason.DISCARDED); }
+            for(var player:players) { data.retiredDuels.removeIf(d -> d.includes(player.getUUID())); data.payments.remove(player.getUUID()); level.removePlayerImmediately(player,Entity.RemovalReason.DISCARDED); }
             data.setDirty(); citizens.forEach(CitizenEntity::discard);
             SettlementData.get(level).settlements.removeAll(towns); SettlementData.get(level).setDirty();
             ExpeditionData.get(level).sites.removeAll(sites); ExpeditionData.get(level).setDirty();
@@ -111,52 +111,109 @@ public final class MultiplayerWorldTests {
             f.close(); helper.succeed();
         });
     }
-    @GameTest(timeoutTicks=220)
+    private static void checkpoint(Fixture f,Settlement town) {
+        var station=new Station(town.center.east(2),StructureRole.TRADER);
+        town.stations.add(station); f.level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+    }
+    private static CitizenEntity trader(Fixture f,Settlement town) {
+        var trader=new CitizenEntity(WWMC.CITIZEN.get(),f.level); trader.join(town.id);
+        trader.setPos(town.center.getX()+2.5,town.center.getY(),town.center.getZ()+1.5);
+        town.citizens.add(trader.getUUID()); town.jobs.assign(trader.getUUID(),TradeRoutes.checkpoint(town).position());
+        f.citizens.add(trader); f.level.addFreshEntity(trader); SettlementData.get(f.level).setDirty(); return trader;
+    }
+    @GameTest(timeoutTicks=12000)
     @EmptyTemplate
-    @TestHolder(description="A real player damage pipeline respects duel consent/countdown, permits only the paired visitors inside a claim, finishes nonlethally at one heart, prevents an immediate follow-up kill and pays both reserved stakes once.")
-    static void consensualDuelDamageAndStakes(DynamicTest test) {
+    @TestHolder(description="An accepted settlement contract is fulfilled by a real trader travelling between two warehouses. Partial capacity credits only three goods, paid escrow survives a codec round trip, plain-item and home-stock reserves hold, and completion pays once while the trader returns.")
+    static void settlementContractByCaravan(DynamicTest test) {
         test.onGameTest(helper -> {
-            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(16000,2,-4000)); var f=new Fixture(level,start);
-            TestPlayer a=f.player("DuelOwner",start.east()),b=f.player("DuelGuest",start.south(2)),c=f.player("DuelBystander",start.west(2));
-            f.town(a.getUUID(),start,"Duel Town");
-            a.getInventory().setItem(0,new ItemStack(Items.WOODEN_SWORD)); a.getInventory().setItem(1,new ItemStack(Items.EMERALD,5));
-            b.getInventory().setItem(0,new ItemStack(Items.WOODEN_SWORD)); b.getInventory().setItem(1,new ItemStack(Items.EMERALD,5));
-            PlayerDuels.challenge(level,a,b,5); var data=MultiplayerData.get(level); var duel=data.duel(a.getUUID());
-            helper.assertTrue(duel!=null && !duel.accepted && a.getInventory().countItem(Items.EMERALD)==0 && b.getInventory().countItem(Items.EMERALD)==5,"Duel proposal did not reserve only the challenger's stake");
-            helper.assertTrue(!MultiplayerCombat.claimException(level,b,a),"An unaccepted duel bypassed a claim");
-            PlayerDuels.accept(level,b);
-            helper.assertTrue(duel.accepted && b.getInventory().countItem(Items.EMERALD)==0 && !PlayerDuels.allows(level,b,a),"Acceptance did not match the stake or bypassed countdown");
-            a.hurtServer(level,level.damageSources().playerAttack(b),100); helper.assertTrue(a.getHealth()==a.getMaxHealth(),"Countdown allowed player damage");
-            helper.runAfterDelay(110,() -> {
-                helper.assertTrue(PlayerDuels.allows(level,b,a) && MultiplayerCombat.claimException(level,b,a) && ClaimProtection.denied(level,b,a.blockPosition()),"Active duel did not make a narrow player-only claim exception");
-                c.hurtServer(level,level.damageSources().playerAttack(a),5); helper.assertTrue(c.getHealth()==c.getMaxHealth(),"Duel participant could attack an unconsenting bystander");
-                b.hurtServer(level,level.damageSources().playerAttack(a),100);
-                helper.assertTrue(b.isAlive() && b.getHealth()==2 && data.duel(a.getUUID())==null,"Finishing duel hit killed the loser or failed to end the duel: "+b.getHealth());
-                b.invulnerableTime=0; b.hurtServer(level,level.damageSources().playerAttack(a),100);
-                helper.assertTrue(b.getHealth()==2 && data.payments.getOrDefault(a.getUUID(),0L)==10 && data.payments.getOrDefault(b.getUUID(),0L)==0,"Finishing grace or winner payment failed");
-                PlayerDuels.finish(level,duel,a.getUUID(),"Duplicate callback");
-                helper.assertTrue(PlayerContracts.collect(level,a)==10 && PlayerContracts.collect(level,a)==0 && a.getInventory().countItem(Items.WOODEN_SWORD)==1 && b.getInventory().countItem(Items.WOODEN_SWORD)==1,"Duel duplicated stakes or removed equipment");
-                f.close(); helper.succeed();
+            var level=helper.getLevel(); var start=helper.absolutePos(new BlockPos(26000,2,-4000)); var f=new Fixture(level,start);
+            TestPlayer a=f.player("CaravanIssuer",start.east()),b=f.player("CaravanSupplier",start.east(601));
+            CitizenNavigationTests.meadow(level,start,-10,610,-10,10);
+            Settlement issuer=f.town(a.getUUID(),start,"Caravan Customer"),supplier=f.town(b.getUUID(),start.east(600),"Caravan Supplier");
+            checkpoint(f,issuer); checkpoint(f,supplier);
+            a.getInventory().setItem(0,new ItemStack(Items.IRON_INGOT)); a.getInventory().setItem(1,new ItemStack(Items.EMERALD,4));
+            PlayerContracts.post(level,issuer,a,new ItemStack(Items.IRON_INGOT),10,4);
+            var data=MultiplayerData.get(level); var order=data.contracts.stream().filter(c -> c.issuer.equals(issuer.id)).findFirst().orElseThrow();
+            PlayerContracts.accept(level,supplier,b,order.id);
+            TradeRoutes.link(supplier,issuer,SettlementData.get(level).settlements,8192); TradeRoutes.link(issuer,supplier,SettlementData.get(level).settlements,8192);
+            f.stock(supplier).setItem(0,new ItemStack(Items.IRON_INGOT,48)); f.stock(supplier).setItem(1,new ItemStack(Items.BREAD,64));
+            var named=new ItemStack(Items.IRON_INGOT,12); named.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,net.minecraft.network.chat.Component.literal("Museum iron")); f.stock(supplier).setItem(2,named);
+            supplier.campaign.requests.put("minecraft:iron_ingot",48);
+            var probe=new TradeShipment();
+            helper.assertTrue(PlayerContracts.load(level,supplier,issuer,List.of(f.stock(supplier)),List.of(),probe,false)==0,"Contract loading ignored the supplier's own stock target");
+            supplier.campaign.requests.put("minecraft:iron_ingot",24);
+            supplier.trading.exports.add(new TradeSettings.Export("minecraft:iron_ingot",24,0));
+            helper.assertTrue(PlayerContracts.load(level,supplier,issuer,List.of(f.stock(supplier)),SupplyRequests.policy(supplier,issuer,false),probe,false)==0,"Contract loading resumed an explicitly paused export");
+            supplier.trading.exports.clear();
+            UUID incoming=UUID.randomUUID(); issuer.campaign.incoming.put(incoming,Map.of("minecraft:iron_ingot",10));
+            helper.assertTrue(PlayerContracts.load(level,supplier,issuer,List.of(f.stock(supplier)),List.of(),probe,false)==0,"Contract loading duplicated goods already on the way");
+            issuer.campaign.incoming.remove(incoming);
+            var destination=f.stock(issuer); for(int n=0;n<destination.getContainerSize();n++) destination.setItem(n,new ItemStack(Items.COBBLESTONE,64));
+            destination.setItem(0,new ItemStack(Items.IRON_INGOT,61)); var carrier=trader(f,supplier);
+            var opened=new java.util.concurrent.atomic.AtomicBoolean();
+            helper.succeedWhen(() -> {
+                if(order.delivered==3 && !opened.get()) {
+                    helper.assertTrue(!data.payments.containsKey(b.getUUID()) && carrier.tradeCargoCount()==7,"Partial caravan delivery paid early or lost retained cargo");
+                    var saved=MultiplayerData.CODEC.parse(JsonOps.INSTANCE,MultiplayerData.CODEC.encodeStart(JsonOps.INSTANCE,data).getOrThrow()).getOrThrow();
+                    helper.assertTrue(saved.contract(order.id).remaining()==7 && saved.contract(order.id).payment==4,"Partial caravan progress or escrow did not save");
+                    destination.setItem(1,ItemStack.EMPTY); opened.set(true);
+                }
+                helper.assertTrue(opened.get(),"Caravan has not made the partial warehouse handoff: "+supplier.trading.status);
+                helper.assertTrue(data.contract(order.id)==null && data.payments.getOrDefault(b.getUUID(),0L)==4,"Trader has not completed the accepted contract: "+supplier.trading.status);
+                helper.assertTrue(carrier.tradeCargoCount()==0 && carrier.blockPosition().distSqr(supplier.center)<64,"Carrier has not returned with an empty shipment");
+                helper.assertTrue(InventoryOps.count(SettlementService.townStorage(level,issuer),x -> x.is(Items.IRON_INGOT))==71,"Warehouse gained goods that were not delivered");
+                helper.assertTrue(f.stock(supplier).getItem(0).getCount()==38 && f.stock(supplier).getItem(2).getCount()==12,"Contract consumed protected home reserves or named items");
+                helper.assertTrue(PlayerContracts.collect(level,b)==4 && PlayerContracts.collect(level,b)==0,"Caravan contract paid twice");
+                f.close();
             });
         });
     }
-    @GameTest(timeoutTicks=120)
+    @GameTest(timeoutTicks=12000)
     @EmptyTemplate
-    @TestHolder(description="Leaving an accepted duel arena forfeits the matched stakes to the remaining player once; a declined pending invitation refunds only the paid challenger.")
-    static void duelLeavingAndDecline(DynamicTest test) {
+    @TestHolder(description="Loaded neighbouring NPC settlements arrange a saved reciprocal route without occupying their primary player checkpoint, then an existing citizen physically carries surplus iron to meet the neighbour's target. Paused towns remain disconnected and route news appears at their banner journal.")
+    static void npcNeighboursTradeRealSurplus(DynamicTest test) {
         test.onGameTest(helper -> {
-            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(20000,2,-4000)); var f=new Fixture(level,start);
-            TestPlayer a=f.player("DuelStay",start.east()),b=f.player("DuelLeave",start.south(2));
-            f.town(a.getUUID(),start,"Forfeit Town"); a.getInventory().setItem(1,new ItemStack(Items.EMERALD,8)); b.getInventory().setItem(1,new ItemStack(Items.EMERALD,4));
-            PlayerDuels.challenge(level,a,b,4); PlayerDuels.cancel(level,b);
-            helper.assertTrue(MultiplayerData.get(level).payments.getOrDefault(a.getUUID(),0L)==4 && b.getInventory().countItem(Items.EMERALD)==4,"Decline did not refund only the paid stake");
-            PlayerContracts.collect(level,a); PlayerDuels.challenge(level,a,b,4); PlayerDuels.accept(level,b);
+            var level=helper.getLevel(); var start=helper.absolutePos(new BlockPos(40000,2,-10000)); var f=new Fixture(level,start);
+            CitizenNavigationTests.meadow(level,start,-10,610,-10,10);
+            Settlement a=f.town(UUID.randomUUID(),start,"Iron Neighbour"),b=f.town(UUID.randomUUID(),start.east(600),"Timber Neighbour");
+            checkpoint(f,a); checkpoint(f,b);
+            a.trading.npc=true; b.trading.npc=true; a.trading.specialty="mining"; b.trading.specialty="timber"; b.trading.paused=true;
+            a.trading.exports.add(new TradeSettings.Export("minecraft:iron_ingot",16,16));
+            f.stock(a).setItem(0,new ItemStack(Items.IRON_INGOT,48)); f.stock(a).setItem(1,new ItemStack(Items.BREAD,64));
             helper.runAfterDelay(5,() -> {
-                b.setPos(start.getX()+40.5,start.getY(),start.getZ()+0.5); PlayerDuels.tick(level); PlayerDuels.tick(level);
-                var data=MultiplayerData.get(level);
-                helper.assertTrue(data.duel(a.getUUID())==null && data.payments.getOrDefault(a.getUUID(),0L)==8 && data.payments.getOrDefault(b.getUUID(),0L)==0,"Leaving the arena refunded or duplicated a forfeit instead of paying the remaining player");
-                f.close(); helper.succeed();
+                NeighbourTrade.update(level,a); helper.assertTrue(!TradeRoutes.agreed(a,b),"Paused NPC arranged a route"); b.trading.paused=false;
+                SupplyRequests.snapshotLoaded(level,a); SupplyRequests.snapshotLoaded(level,b); NeighbourTrade.update(level,a);
+                helper.assertTrue(TradeRoutes.agreed(a,b) && a.trading.partner==null && b.trading.partner==null,"Neighbour trade did not keep the primary checkpoints free");
+                var saved=Settlement.CODEC.parse(JsonOps.INSTANCE,Settlement.CODEC.encodeStart(JsonOps.INSTANCE,a).getOrThrow()).getOrThrow();
+                helper.assertTrue(TradeRoutes.agreed(saved,b) && saved.campaign.requests.get("minecraft:iron_ingot")==16,"NPC route or base demand did not survive save decoding");
+                var carrier=trader(f,a);
+                helper.succeedWhen(() -> {
+                    helper.assertTrue(InventoryOps.count(SettlementService.townStorage(level,b),x -> x.is(Items.IRON_INGOT))==16,"No physical iron delivery yet: "+a.trading.status);
+                    helper.assertTrue(carrier.tradeCargoCount()==0 && carrier.blockPosition().distSqr(a.center)<64,"Neighbour's trader has not returned");
+                    helper.assertTrue(f.stock(a).getItem(0).getCount()==32,"NPC trade created goods or exhausted home reserves");
+                    helper.assertTrue(a.campaign.journal.stream().anyMatch(e -> e.text().contains("Arranged neighbour trade")) && b.campaign.journal.stream().anyMatch(e -> e.text().contains("Received")),"Neighbour activity did not reach the quiet journal");
+                    f.close();
+                });
             });
+        });
+    }
+    @GameTest(timeoutTicks=40)
+    @EmptyTemplate
+    @TestHolder(description="The neighbours banner shows public needs and NPC news without exposing another player's private journal, granting claim access or letting a visitor change the host's route. Removed duels have no command or menu entry.")
+    static void neighbourBoardAndClaimPrivacy(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); var start=helper.absolutePos(new BlockPos(36000,2,-18000)); var f=new Fixture(level,start);
+            TestPlayer a=f.player("NewsOwner",start.east()),b=f.player("NewsVisitor",start.east(601));
+            Settlement home=f.town(a.getUUID(),start,"News Home"),other=f.town(b.getUUID(),start.east(600),"Private Neighbour"),npc=f.town(UUID.randomUUID(),start.east(1200),"Public Neighbour");
+            npc.trading.npc=true; npc.trading.specialty="timber"; NeighbourTrade.refreshRequests(npc);
+            home.campaign.log(level.getGameTime(),"Our own journal"); other.campaign.log(level.getGameTime(),"Private neighbour journal"); npc.campaign.log(level.getGameTime(),"Public trade news");
+            checkpoint(f,home); checkpoint(f,other); checkpoint(f,npc);
+            var view=MultiplayerViews.view(a,start); String text=view.tabs().toString();
+            helper.assertTrue(text.contains("Public trade news") && text.contains("Needs:") && !text.contains("Private neighbour journal") && view.tabs().stream().noneMatch(t -> t.name().getString().equals("Duels")),"Neighbour board leaked private journal data or retained duels");
+            helper.assertTrue(level.getServer().getCommands().getDispatcher().getRoot().getChild("wwmc").getChild("duel")==null,"Removed duel command remains registered");
+            b.setPos(start.getX()+1.5,start.getY(),start.getZ()+1.5); MultiplayerViews.act(b,start,MultiplayerViews.ROW_ACTION,0,"act:trade-link:"+npc.id);
+            helper.assertTrue(home.trading.partner==null && ClaimProtection.denied(level,b,start.west(4)) && !MultiplayerCombat.claimException(level,b,a),"Public board changed another town's trade or combat permissions");
+            f.close(); helper.succeed();
         });
     }
     @GameTest(timeoutTicks=2850)
@@ -205,19 +262,19 @@ public final class MultiplayerWorldTests {
     }
     @GameTest(timeoutTicks=30)
     @EmptyTemplate
-    @TestHolder(description="Save decoding preserves accepted partial contracts and pending payouts; restart recovery refunds both accepted duel stakes, only the pending challenger stake, cancels offline contests, and cannot refund twice.")
+    @TestHolder(description="Save decoding preserves accepted partial contracts and pending payouts; restart recovery migrates retired preview duels by refunding both paid accepted stakes and only a pending challenger stake, cancels offline contests, and cannot refund twice.")
     static void multiplayerRestartRecovery(DynamicTest test) {
         test.onGameTest(helper -> {
             UUID a=UUID.randomUUID(),b=UUID.randomUUID(),c=UUID.randomUUID(),d=UUID.randomUUID(),issuer=UUID.randomUUID(),supplier=UUID.randomUUID();
             var order=new MultiplayerData.Contract(UUID.randomUUID(),issuer,a,"minecraft:bread",10,3,4,Optional.of(supplier),Optional.of(b));
-            var duel=new MultiplayerData.Duel(UUID.randomUUID(),a,b,5,BlockPos.ZERO,true,100,6100);
-            var pending=new MultiplayerData.Duel(UUID.randomUUID(),c,d,4,BlockPos.ZERO,false,0,1200);
+            var duel=new MultiplayerData.LegacyDuel(UUID.randomUUID(),a,b,5,BlockPos.ZERO,true,100,6100);
+            var pending=new MultiplayerData.LegacyDuel(UUID.randomUUID(),c,d,4,BlockPos.ZERO,false,0,1200);
             var contest=new MultiplayerData.Contest(UUID.randomUUID(),UUID.randomUUID(),issuer,supplier,100,6100,true,600);
             var original=new MultiplayerData(List.of(order),List.of(duel,pending),List.of(contest),Map.of(a,2L));
             var saved=MultiplayerData.CODEC.parse(JsonOps.INSTANCE,MultiplayerData.CODEC.encodeStart(JsonOps.INSTANCE,original).getOrThrow()).getOrThrow(); saved.recover();
             var restored=saved.contract(order.id);
             helper.assertTrue(restored!=null && restored.remaining()==7 && restored.payment==4 && supplier.equals(restored.supplier) && b.equals(restored.recipient),"Restart discarded partial delivery, reserved payment or exclusive supplier");
-            helper.assertTrue(saved.duels.isEmpty() && saved.contests.isEmpty() && saved.payments.getOrDefault(a,0L)==7 && saved.payments.getOrDefault(b,0L)==5 && saved.payments.getOrDefault(c,0L)==4 && saved.payments.getOrDefault(d,0L)==0,"Restart awarded a forfeit, lost a paid stake, or invented an unpaid stake");
+            helper.assertTrue(saved.retiredDuels.isEmpty() && saved.contests.isEmpty() && saved.payments.getOrDefault(a,0L)==7 && saved.payments.getOrDefault(b,0L)==5 && saved.payments.getOrDefault(c,0L)==4 && saved.payments.getOrDefault(d,0L)==0,"Restart awarded a forfeit, lost a paid stake, or invented an unpaid stake");
             saved.recover(); helper.assertTrue(saved.payments.get(a)==7 && saved.payments.get(b)==5 && saved.payments.get(c)==4,"Repeated recovery duplicated refunds"); helper.succeed();
         });
     }

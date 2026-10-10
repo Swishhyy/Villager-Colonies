@@ -14,6 +14,7 @@ import net.minecraft.world.phys.Vec3;
 public final class OutpostContests {
     public static final int CAPTURE_TICKS=1200,ARENA=32;
     private OutpostContests() {}
+    private static ServerPlayer online(ServerLevel level,UUID id) { return level.getServer().getPlayerList().getPlayer(id); }
     public static boolean resourceOutpost(ServerLevel level,Settlement outpost) {
         return outpost!=null && !outpost.trading.npc && outpost.campaign.parent!=null
                 && ExpeditionData.get(level).sites.stream().anyMatch(s -> s.cleared && outpost.id.equals(s.claimed) && !s.kind.equals("raid"));
@@ -38,14 +39,14 @@ public final class OutpostContests {
         if(challenger==null || challenger.trading.npc || challenger.campaign.parent!=null || !TownAccess.owner(challenger,player.getUUID())) return "Only a main settlement owner can propose an outpost battle.";
         if(!resourceOutpost(level,outpost) || defender==null || challenger.owner.equals(defender.owner) || TownAccess.allied(challenger,defender)) return "Choose a non-allied settlement's expedition resource outpost.";
         if(!challenger.campaign.projects.contains("frontier") || challenger.campaign.extraRoutes.size()>=4) return "Complete a Frontier Charter and leave room for an outpost supply route.";
-        if(!playing(level,PlayerDuels.online(level,defender.owner)) || !playing(level,player)) return "Both owners must be online in the Overworld.";
+        if(!playing(level,online(level,defender.owner)) || !playing(level,player)) return "Both owners must be online in the Overworld.";
         if(!level.getGameRules().get(GameRules.PVP)) return "This server has player combat disabled.";
         var data=MultiplayerData.get(level);
         if(data.contests.size()>=32 || data.contests.stream().anyMatch(c -> c.outpost.equals(target))) return "This outpost already has a battle offer, or the battle list is full.";
         var contest=new MultiplayerData.Contest(UUID.randomUUID(),target,defender.id,challenger.id,0,level.getGameTime()+12000,false,0);
         data.contests.add(contest); data.setDirty();
-        CampaignService.record(level,defender,challenger.name+" offered a battle for "+outpost.name+". Accept or decline at the banner's Multiplayer tab; nothing changes without acceptance.");
-        SettlementService.notify(PlayerDuels.online(level,defender.owner),challenger.name+" challenged your outpost. Review at a banner's Multiplayer tab.");
+        CampaignService.record(level,defender,challenger.name+" offered a battle for "+outpost.name+". Accept or decline at the banner's Neighbours board; nothing changes without acceptance.");
+        SettlementService.notify(online(level,defender.owner),challenger.name+" challenged your outpost. Review at a banner's Neighbours board.");
         WWMC.LOGGER.info("[WWMC] [outposts] {} offered battle {} for {}, defender {}",challenger.id,contest.id,target,defender.id);
         return "Challenge offered for ten minutes. The defending owner must accept before any outpost PvP or capture begins.";
     }
@@ -70,7 +71,7 @@ public final class OutpostContests {
         return resourceOutpost(level,outpost) && defender!=null && challenger!=null && outpost.owner.equals(defender.owner)
                 && defender.id.equals(outpost.campaign.parent) && challenger.campaign.parent==null
                 && !TownAccess.allied(defender,challenger) && challenger.campaign.projects.contains("frontier") && challenger.campaign.extraRoutes.size()<4
-                && playing(level,PlayerDuels.online(level,defender.owner)) && playing(level,PlayerDuels.online(level,challenger.owner));
+                && playing(level,online(level,defender.owner)) && playing(level,online(level,challenger.owner));
     }
     public static boolean allows(ServerLevel level,Player attacker,Player target) {
         if(!playing(level,attacker) || !playing(level,target) || !level.getGameRules().get(GameRules.PVP)) return false;
@@ -117,7 +118,7 @@ public final class OutpostContests {
             }
             if(!contest.accepted || now<contest.starts || !level.hasChunkAt(outpost.center)) continue;
             boolean attacking=false,defending=false;
-            for(ServerPlayer player:level.players()) if(playing(level,player) && MultiplayerData.get(level).duel(player.getUUID())==null) {
+            for(ServerPlayer player:level.players()) if(playing(level,player)) {
                 double distance=player.distanceToSqr(Vec3.atCenterOf(outpost.center));
                 if(team(defender,challenger,player)==2 && distance<=6*6 && seesFlag(level,player,outpost)) attacking=true;
                 if(team(defender,challenger,player)==1 && distance<=16*16) defending=true;

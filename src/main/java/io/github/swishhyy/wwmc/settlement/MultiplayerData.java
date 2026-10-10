@@ -32,19 +32,20 @@ public final class MultiplayerData extends SavedData {
         }
         public int remaining() { return amount-delivered; }
     }
-    public static final class Duel {
-        public static final Codec<Duel> CODEC=RecordCodecBuilder.create(i -> i.group(
+    /** Decode old preview saves only, so removing duels refunds paid stakes. */
+    public static final class LegacyDuel {
+        public static final Codec<LegacyDuel> CODEC=RecordCodecBuilder.create(i -> i.group(
                 Settlement.UUID_CODEC.fieldOf("id").forGetter(d -> d.id),Settlement.UUID_CODEC.fieldOf("challenger").forGetter(d -> d.challenger),
                 Settlement.UUID_CODEC.fieldOf("opponent").forGetter(d -> d.opponent),Codec.intRange(0,64).fieldOf("stake").forGetter(d -> d.stake),
                 BlockPos.CODEC.fieldOf("arena").forGetter(d -> d.arena),Codec.BOOL.fieldOf("accepted").forGetter(d -> d.accepted),
                 Codec.LONG.fieldOf("starts").forGetter(d -> d.starts),Codec.LONG.fieldOf("deadline").forGetter(d -> d.deadline)
-        ).apply(i,Duel::new));
+        ).apply(i,LegacyDuel::new));
         public final UUID id,challenger,opponent;
         public final int stake;
         public final BlockPos arena;
         public boolean accepted;
         public long starts,deadline;
-        public Duel(UUID id,UUID challenger,UUID opponent,int stake,BlockPos arena,boolean accepted,long starts,long deadline) {
+        public LegacyDuel(UUID id,UUID challenger,UUID opponent,int stake,BlockPos arena,boolean accepted,long starts,long deadline) {
             this.id=id; this.challenger=challenger; this.opponent=opponent; this.stake=stake; this.arena=arena.immutable();
             this.accepted=accepted; this.starts=starts; this.deadline=deadline;
         }
@@ -69,36 +70,35 @@ public final class MultiplayerData extends SavedData {
     }
     public static final Codec<MultiplayerData> CODEC=RecordCodecBuilder.create(i -> i.group(
             Contract.CODEC.listOf().optionalFieldOf("contracts",List.of()).forGetter(d -> d.contracts),
-            Duel.CODEC.listOf().optionalFieldOf("duels",List.of()).forGetter(d -> d.duels),
+            LegacyDuel.CODEC.listOf().optionalFieldOf("duels",List.of()).forGetter(d -> d.retiredDuels),
             Contest.CODEC.listOf().optionalFieldOf("contests",List.of()).forGetter(d -> d.contests),
             Codec.unboundedMap(Settlement.UUID_CODEC,Codec.LONG).optionalFieldOf("payments",Map.of()).forGetter(d -> d.payments)
     ).apply(i,MultiplayerData::new));
     private static final SavedDataType<MultiplayerData> TYPE=new SavedDataType<>(Identifier.fromNamespaceAndPath(WWMC.MODID,"multiplayer"),MultiplayerData::new,CODEC);
     public final List<Contract> contracts;
-    public final List<Duel> duels;
+    public final List<LegacyDuel> retiredDuels;
     public final List<Contest> contests;
     public final Map<UUID,Long> payments;
     private boolean initialized;
     public MultiplayerData() { this(List.of(),List.of(),List.of(),Map.of()); }
-    public MultiplayerData(List<Contract> contracts,List<Duel> duels,List<Contest> contests,Map<UUID,Long> payments) {
-        this.contracts=new ArrayList<>(contracts); this.duels=new ArrayList<>(duels); this.contests=new ArrayList<>(contests); this.payments=new HashMap<>(payments);
+    public MultiplayerData(List<Contract> contracts,List<LegacyDuel> duels,List<Contest> contests,Map<UUID,Long> payments) {
+        this.contracts=new ArrayList<>(contracts); this.retiredDuels=new ArrayList<>(duels); this.contests=new ArrayList<>(contests); this.payments=new HashMap<>(payments);
     }
     public void pay(UUID player,long emeralds) {
         if(player!=null && emeralds>0) { payments.merge(player,emeralds,Math::addExact); setDirty(); }
     }
-    /** A restart never turns an offline player into a defeated duelist or transfers an unattended outpost. */
+    /** Retired duel payments are refunded once; a restart cannot transfer an unattended outpost. */
     public void recover() {
         if(initialized) return;
         initialized=true;
-        if(duels.isEmpty() && contests.isEmpty()) return;
-        for(Duel duel:duels) { pay(duel.challenger,duel.stake); if(duel.accepted) pay(duel.opponent,duel.stake); }
-        WWMC.LOGGER.info("[WWMC] [multiplayer] Restored reserved stakes for {} interrupted duels; cancelled {} outpost challenges",duels.size(),contests.size());
-        duels.clear(); contests.clear(); setDirty();
+        if(retiredDuels.isEmpty() && contests.isEmpty()) return;
+        for(LegacyDuel duel:retiredDuels) { pay(duel.challenger,duel.stake); if(duel.accepted) pay(duel.opponent,duel.stake); }
+        WWMC.LOGGER.info("[WWMC] [multiplayer] Restored reserved stakes for {} retired preview duels; cancelled {} outpost challenges",retiredDuels.size(),contests.size());
+        retiredDuels.clear(); contests.clear(); setDirty();
     }
     public static MultiplayerData get(ServerLevel level) {
         MultiplayerData data=level.getDataStorage().computeIfAbsent(TYPE); data.recover(); return data;
     }
     public Contract contract(UUID id) { return contracts.stream().filter(c -> c.id.equals(id)).findFirst().orElse(null); }
-    public Duel duel(UUID player) { return duels.stream().filter(d -> d.includes(player)).findFirst().orElse(null); }
     public Contest contest(UUID id) { return contests.stream().filter(c -> c.id.equals(id)).findFirst().orElse(null); }
 }

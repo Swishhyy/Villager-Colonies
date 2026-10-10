@@ -16,7 +16,7 @@ import net.minecraft.world.phys.Vec3;
 /** Public banner board. Every mutation checks its own settlement authority; reading this menu grants no claim access. */
 public final class MultiplayerViews {
     public static final int OPEN=90,ROW_ACTION=91,BACK=92,COLLECT=93;
-    private static final class Draft { int amount=32,payment=4,stake; }
+    private static final class Draft { int amount=32,payment=4; }
     private static final Map<ServerPlayer,Draft> DRAFTS=new WeakHashMap<>();
     private MultiplayerViews() {}
     private static ServerLevel level(ServerPlayer player) { return (ServerLevel)player.level(); }
@@ -46,8 +46,8 @@ public final class MultiplayerViews {
         if(!valid(player,pos)) return null;
         ServerLevel level=level(player); var data=MultiplayerData.get(level); var towns=SettlementData.get(level);
         Settlement board=towns.at(pos),home=home(level,player); Draft draft=draft(player);
-        List<PanelView.Row> contracts=new ArrayList<>(),duels=new ArrayList<>(),outposts=new ArrayList<>();
-        contracts.add(row(Items.PAPER,home==null ? "Join a settlement to supply contracts" : "Supplying for: "+home.name,"Deliver at the issuer's banner. Only plain, undamaged goods count; the accepting player receives the reserved payment.","",-1));
+        List<PanelView.Row> contracts=new ArrayList<>(),outposts=new ArrayList<>();
+        contracts.add(row(Items.PAPER,home==null ? "Join a settlement to supply contracts" : "Supplying for: "+home.name,"Connect a trade route or deliver at the issuer's banner. Only plain, undamaged goods count; the accepting player receives the reserved payment.","",-1));
         if(home==board && TownAccess.manages(board,player.getUUID())) {
             ItemStack held=player.getMainHandItem();
             contracts.add(row(held.isEmpty() ? Items.PAPER : held.getItem(),"Request: "+(held.isEmpty() ? "hold an example item" : held.getHoverName().getString()),"Hold a plain example before opening this board; the example stays yours.","",-1));
@@ -62,25 +62,15 @@ public final class MultiplayerViews {
             boolean supplying=TownAccess.manages(supplier,player.getUUID());
             contracts.add(row(item,issuer.name+": "+order.remaining()+" × "+new ItemStack(item).getHoverName().getString(),order.payment+" emeralds reserved · "+order.delivered+"/"+order.amount+" delivered · "+(supplier==null ? "available" : "accepted by "+supplier.name)+" · banner "+issuer.center.toShortString(),"",-1));
             if(order.supplier==null) {
-                contracts.add(action(Items.PAPER,"Accept: "+issuer.name,"Accept exclusively for "+(home==null ? "a main settlement you manage" : home.name)+". Payment goes to the player accepting; deliver the remaining goods at the issuer's banner.","contract-accept:"+order.id,home!=null && !home.owner.equals(issuer.owner)));
+                contracts.add(action(Items.PAPER,"Accept: "+issuer.name,"Accept exclusively for "+(home==null ? "a main settlement you manage" : home.name)+". Payment goes to the player accepting; your trader can deliver warehouse surplus on a connected route, or carry the remaining goods to the issuer's banner.","contract-accept:"+order.id,home!=null && !home.owner.equals(issuer.owner)));
                 if(own) contracts.add(action(Items.DYE.red(),"Cancel unaccepted offer","Refunds all reserved emeralds to the original publisher's payment balance","contract-cancel:"+order.id,true));
             } else if(supplying) {
+                contracts.add(row(Items.COMPASS,"Trader delivery: "+issuer.name,PlayerContracts.routeStatus(level,supplier,issuer),"",-1));
                 contracts.add(action(Items.CHEST,"Deliver requested goods","Move only matching plain items from your inventory into the issuer's loaded warehouse; full storage keeps your remaining goods and payment safe.","contract-deliver:"+order.id,board==issuer));
                 contracts.add(action(Items.DYE.red(),"Release accepted contract","Already delivered goods stay credited. The remaining request becomes available to another supplier; no payment is released yet.","contract-release:"+order.id,true));
             }
         }
         if(data.contracts.isEmpty()) contracts.add(row(Items.PAPER,"No player offers yet","Owners and stewards can post at their main settlement banner by holding an example and reserving emeralds.","",-1));
-        duels.add(row(Items.WOODEN_SWORD,"Consensual, nonlethal duels","Five-second countdown; finish at one heart. 24-block arena, five-minute limit. Leaving or disconnecting forfeits; normal equipment wear applies.","",-1));
-        duels.add(row(Items.EMERALD,"Stake each: "+draft.stake,"0–64 emeralds per player, reserved on offer and acceptance; winner receives both stakes","choice:stake",draft.stake));
-        var duel=data.duel(player.getUUID());
-        if(duel!=null) {
-            var other=PlayerDuels.online(level,duel.other(player.getUUID()));
-            duels.add(row(Items.WOODEN_SWORD,"Duel with "+(other==null ? "offline player" : other.getName().getString()),duel.accepted ? "Arena "+duel.arena.toShortString()+" · "+duel.stake+" emeralds each · "+Math.max(0,(duel.deadline-level.getGameTime())/20)+"s remaining" : "Invitation waiting · "+duel.stake+" emeralds each · arena "+duel.arena.toShortString(),"",-1));
-            if(!duel.accepted && duel.opponent.equals(player.getUUID())) duels.add(action(Items.WOODEN_SWORD,"Accept duel","Match the stake. Starts in five seconds; winner gets both stakes. Finish at one heart.","duel-accept",true));
-            duels.add(action(Items.DYE.red(),duel.accepted ? "Surrender duel" : "Decline / cancel invitation",duel.accepted ? "Forfeit your stake; the opponent wins" : "Closes the invitation and refunds the challenger","duel-cancel",true));
-        } else for(ServerPlayer other:level.players()) if(other!=player && player.distanceToSqr(other)<=16*16) {
-            duels.add(action(Items.WOODEN_SWORD,"Challenge "+other.getName().getString(),"Reserve "+draft.stake+" emeralds. Your opponent must explicitly accept and match the stake. Arena centered on your current position.","duel-challenge:"+other.getUUID(),data.duel(other.getUUID())==null));
-        }
         outposts.add(row(Items.BANNER.red(),"Agreed resource outpost battles","Both main settlement owners must accept. One-minute assembly, five-minute battle. Normal PvP death and drops apply within the 32-block battle area.","",-1));
         outposts.add(row(Items.COMPASS,"Capture the existing flag","Stand within six blocks for 60 seconds, with no defender within 16 blocks. Both owners must remain online; the existing miners and warehouse change hands.","",-1));
         for(var contest:data.contests) {
@@ -96,10 +86,43 @@ public final class MultiplayerViews {
             if(parent==null || parent.owner.equals(home.owner) || TownAccess.allied(home,parent)) continue;
             outposts.add(action(Items.BANNER.red(),"Challenge: "+target.name,"Send an offer to "+parent.name+"'s owner. Requires your Frontier Charter and a free supply route; flag at "+target.center.toShortString(),"outpost-challenge:"+target.id,data.contests.stream().noneMatch(c -> c.outpost.equals(target.id))));
         }
-        return new PanelView(Component.literal(board.name+" · Multiplayer"),Component.literal("Contracts, duels, outposts · payment balance: "+data.payments.getOrDefault(player.getUUID(),0L)+" emeralds"),
-                List.of(new PanelView.Tab("Contracts",contracts),new PanelView.Tab("Duels",duels),new PanelView.Tab("Outposts",outposts)),
+        return new PanelView(Component.literal(board.name+" · Neighbours"),Component.literal("Trade, contracts, outposts · payment balance: "+data.payments.getOrDefault(player.getUUID(),0L)+" emeralds"),
+                List.of(new PanelView.Tab("Neighbours",neighbours(level,board,home,player)),new PanelView.Tab("Contracts",contracts),new PanelView.Tab("News",news(level,board,home)),new PanelView.Tab("Outposts",outposts)),
                 List.of(new PanelView.Action(COLLECT,"Collect payment",data.payments.getOrDefault(player.getUUID(),0L)>0,"Full inventory leaves remaining emeralds in your saved payment balance"),
                         new PanelView.Action(BACK,"Town overview",TownAccess.manages(board,player.getUUID()))));
+    }
+    private static List<PanelView.Row> neighbours(ServerLevel level,Settlement board,Settlement home,ServerPlayer player) {
+        List<PanelView.Row> rows=new ArrayList<>();
+        rows.add(row(Items.COMPASS,"Towns around "+board.name,"Trade brings real goods and citizens along roads. NPC towns arrange their own routes; player towns agree at their banners.","",-1));
+        for(Settlement other:NeighbourTrade.nearby(level,board).stream().limit(20).toList()) {
+            String relation=other.trading.npc ? (other.trading.relations.getOrDefault(home==null ? player.getUUID() : home.owner,0)<0 ? "Hostile NPC" : "NPC "+other.trading.specialty)
+                    : TownAccess.allied(board,other) ? "Allied settlement" : "Player settlement";
+            rows.add(row(Items.BANNER.blue(),other.name,relation+" · "+Math.round(Math.sqrt(board.center.distSqr(other.center)))+" blocks · banner "+other.center.toShortString(),"",-1));
+            String needed=other.campaign.requests.keySet().stream().filter(item -> SupplyRequests.deficit(other,item)>0).limit(3)
+                    .map(item -> SupplyRequests.deficit(other,item)+" "+new ItemStack(SupplyRequests.item(item)).getHoverName().getString()).collect(java.util.stream.Collectors.joining(", "));
+            rows.add(row(Items.CHEST,needed.isEmpty() ? "Stock targets covered" : "Needs: "+needed,"Needs use last known stock and goods already on the way. Unloaded warehouses are not simulated.","",-1));
+            if(home!=null && TradeRoutes.agreed(home,other)) rows.add(row(Items.COMPASS,"Connected to "+home.name,PlayerContracts.routeStatus(level,home,other),"",-1));
+            else if(home==board) rows.add(action(Items.COMPASS,"Connect / propose trade: "+other.name,"Sets your primary partner; another player's town must confirm. An allied route can be added after a Depot. Both towns need Trader Blocks.","trade-link:"+other.id,TradeRoutes.checkpoint(home)!=null && TradeRoutes.checkpoint(other)!=null));
+            if(!other.trading.npc && home==board && !TownAccess.allied(home,other)) rows.add(action(Items.BANNER.blue(),home.campaign.allianceOffers.contains(other.id) ? "Accept alliance: "+other.name : "Propose alliance: "+other.name,"Owners agree to shared supply routes. Claim permissions and research stay with each town.","ally:"+other.id,TownAccess.owner(home,player.getUUID()) && !other.campaign.allianceOffers.contains(home.id)));
+            if(other.trading.npc) for(SupplyContract offer:other.campaign.contracts.stream().filter(c -> !c.complete() && (c.customer!=null || c.expires>level.getGameTime())).limit(3).toList()) {
+                if(home!=null && home.id.equals(offer.customer)) rows.add(row(Items.PAPER,"Supplying "+other.name+": "+offer.remaining()+" "+new ItemStack(SupplyRequests.item(offer.item)).getHoverName().getString(),"Reserved reward: "+offer.reward.getCount()+" "+offer.reward.getHoverName().getString()+" · "+PlayerContracts.routeStatus(level,home,other),"",-1));
+                else if(offer.customer==null) rows.add(action(Items.PAPER,"Supply "+other.name+": "+offer.remaining()+" "+new ItemStack(SupplyRequests.item(offer.item)).getHoverName().getString(),"Accept for your settlement. A connected trader delivers goods and carries the real reserved reward home.","npc-accept:"+offer.id,home!=null));
+            }
+        }
+        if(rows.size()==1) rows.add(row(Items.MAP,"No neighbouring towns discovered yet","Explore to find neutral towns, or invite another player to build a settlement nearby. Discovered towns appear here.","",-1));
+        return rows;
+    }
+    private record News(String town,CampaignState.Entry entry) {}
+    private static List<PanelView.Row> news(ServerLevel level,Settlement board,Settlement home) {
+        List<News> entries=new ArrayList<>();
+        if(home!=null) home.campaign.journal.forEach(e -> entries.add(new News(home.name,e)));
+        for(Settlement npc:NeighbourTrade.nearby(level,board)) if(npc.trading.npc) npc.campaign.journal.forEach(e -> entries.add(new News(npc.name,e)));
+        List<PanelView.Row> rows=new ArrayList<>();
+        rows.add(row(Items.PAPER,"News from neighbouring towns","Trade agreements, deliveries, requests and growing NPC towns appear here without repeated chat announcements.","",-1));
+        entries.stream().sorted(Comparator.comparingLong((News n) -> n.entry.time()).reversed()).limit(48)
+                .forEach(n -> rows.add(row(Items.PAPER,n.town,Math.max(0,(level.getGameTime()-n.entry.time())/1200)+" min ago · "+n.entry.text(),"",-1)));
+        if(entries.isEmpty()) rows.add(row(Items.PAPER,"No news yet","Discover towns and connect trade. Their activity will be recorded here.","",-1));
+        return rows;
     }
     public static void act(ServerPlayer player,BlockPos pos,int action,int value,String key) {
         if(!valid(player,pos) || key.length()>256) return;
@@ -109,21 +132,35 @@ public final class MultiplayerViews {
         if(action!=ROW_ACTION) return;
         if(key.startsWith("choice:")) {
             Draft draft=draft(player);
-            switch(key) { case "choice:amount" -> draft.amount=Math.clamp(value,1,256); case "choice:payment" -> draft.payment=Math.clamp(value,1,64); case "choice:stake" -> draft.stake=Math.clamp(value,0,64); default -> { return; } }
+            switch(key) { case "choice:amount" -> draft.amount=Math.clamp(value,1,256); case "choice:payment" -> draft.payment=Math.clamp(value,1,64); default -> { return; } }
             return;
         }
         if(!key.startsWith("act:")) return;
         String[] parts=key.substring(4).split(":",2); String op=parts[0],arg=parts.length==2 ? parts[1] : "";
         try {
             switch(op) {
+                case "trade-link" -> {
+                    if(home!=board || !TownAccess.manages(board,player.getUUID())) return;
+                    Settlement other=SettlementData.get(level).byId(UUID.fromString(arg)); if(other==null) return;
+                    if(home.trading.partner!=null && !home.trading.partner.equals(other.id) && TownAccess.allied(home,other) && home.campaign.projects.contains("depot")) message=CampaignService.extraRoute(level,home,other);
+                    else { message=TradeRoutes.link(home,other,SettlementData.get(level).settlements,io.github.swishhyy.wwmc.Config.TRADE_DISTANCE.get()); SettlementData.get(level).setDirty(); }
+                }
+                case "ally" -> {
+                    if(home!=board) return;
+                    Settlement other=SettlementData.get(level).byId(UUID.fromString(arg)); if(other==null) return;
+                    message=TownAccess.alliance(board,other,player.getUUID()); SettlementData.get(level).setDirty();
+                }
+                case "npc-accept" -> {
+                    if(home==null || !TownAccess.manages(home,player.getUUID())) return;
+                    UUID id=UUID.fromString(arg);
+                    Settlement issuer=SettlementData.get(level).settlements.stream().filter(t -> t.trading.npc && t.campaign.contracts.stream().anyMatch(c -> c.id.equals(id))).findFirst().orElse(null);
+                    if(issuer==null) return; message=CampaignContracts.accept(level,home,issuer,id);
+                }
                 case "contract-post" -> { Draft draft=draft(player); message=PlayerContracts.post(level,board,player,player.getMainHandItem(),draft.amount,draft.payment); }
                 case "contract-accept" -> message=PlayerContracts.accept(level,home,player,UUID.fromString(arg));
                 case "contract-deliver" -> message=PlayerContracts.deliver(level,player,UUID.fromString(arg));
                 case "contract-cancel" -> message=PlayerContracts.cancel(level,player,UUID.fromString(arg));
                 case "contract-release" -> message=PlayerContracts.abandon(level,player,UUID.fromString(arg));
-                case "duel-challenge" -> message=PlayerDuels.challenge(level,player,PlayerDuels.online(level,UUID.fromString(arg)),draft(player).stake);
-                case "duel-accept" -> message=PlayerDuels.accept(level,player);
-                case "duel-cancel" -> message=PlayerDuels.cancel(level,player);
                 case "outpost-challenge" -> message=OutpostContests.challenge(level,home,player,UUID.fromString(arg));
                 case "outpost-accept" -> message=OutpostContests.accept(level,player,UUID.fromString(arg));
                 case "outpost-decline" -> message=OutpostContests.decline(level,player,UUID.fromString(arg));

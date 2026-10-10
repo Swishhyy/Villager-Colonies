@@ -4,13 +4,15 @@
 
 ## Unreleased
 
-- Add a Multiplayer banner panel with player supply contracts, reserved emerald payments, partial deliveries and saved refunds/winnings.
-- Add agreed duels with matched stakes, a countdown, a one-heart finish and protection against immediate follow-up hits.
+- Add a Neighbours banner board with nearby-town needs, trade status, NPC requests, alliances and quiet news. Keep other player towns' journals private.
+- Let existing traders fulfil accepted player-settlement contracts with physical warehouse deliveries, home stock reserves, incoming demand reservations and saved emerald payments. Manual delivery remains available.
+- Let loaded NPC settlements arrange up to two neighbour trade routes and exchange real surplus. Leave their primary checkpoint available for player trade; record deliveries and food-funded growth at the banner.
+- Remove the duel feature. Refund previously reserved preview stakes when loading existing saves.
 - Add owner-approved battles for expedition resource outposts: hold the flag to capture its existing miners, storage and supply route. Both owners must stay online.
 - Fix guards swapping away their bows while drawing; use real arrows and fall back to melee when ammunition runs out. Let guards collect shields from stands or storage and block between attacks, with a visible raised-shield pose.
 - Use native melee range so guards keep approaching instead of stopping at their longer block-work reach and swinging too far away.
 - Apply normal shield durability wear to a guard's actual blocked damage; frontal blocks protect health while rear hits still land.
-- Log contract payments, duel results, outpost ownership changes and interrupted-battle recovery without recurring chat announcements.
+- Log caravan handoffs, contract payments, outpost ownership changes and interrupted-battle recovery without recurring chat announcements.
 - Make tin and bronze recipes discoverable in the vanilla recipe book, and show the bronze crafting grid and smelting step in the Settlement Guide. Keep Bronze Age research requirements.
 - Explain raw tin, tin ingots and Bronze Blend in item tooltips; verify that every alloy ingredient appears in the mod's creative tab.
 - Recolor the vanilla gunpowder sprite for Bronze Blend: copper powder with four pale blue tin flecks, preserving its exact shape and transparency.
