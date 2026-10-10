@@ -194,7 +194,8 @@ public final class Research {
     private static boolean staffed(ServerLevel level,Settlement town,Station station) {
         return town.jobs.level(station.role())!=JobBoard.OFF && SettlementService.active(level,station)
                 && town.jobs.crew(station.position()).stream().anyMatch(id -> town.citizens.contains(id)
-                    && town.jobs.holdsPlace(id,station,SettlementService.workerLimit(town,station)));
+                    && town.jobs.holdsPlace(id,station,SettlementService.workerLimit(town,station))
+                    && level.getEntity(id) instanceof CitizenEntity citizen && citizen.isAlive() && citizen.town(level)==town);
     }
     public static String practical(ServerLevel level,Settlement town,Tech tech) {
         if(tech.id().equals("bronze_age") && town.citizens.size()<3) return "Grow to 3 citizens before the Bronze Age";

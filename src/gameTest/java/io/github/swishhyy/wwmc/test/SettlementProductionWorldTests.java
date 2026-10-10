@@ -219,13 +219,16 @@ public final class SettlementProductionWorldTests {
             var owner=new FakePlayer(level,new GameProfile(f.town.owner,"ProductionOwner")); owner.setPos(start.getX()+1.5,start.getY(),start.getZ()+.5);
             var view=Panels.town(level,f.town,owner);
             helper.assertTrue(view.actions().size()==4 && view.actions().stream().map(a -> a.label().getString()).toList().equals(List.of("People","Production","Research","Neighbours")),"Banner is still overloaded with top-level actions");
-            TownViews.act(owner,start,PanelMenu.Kind.PRODUCTION,TownViews.ROW_ACTION,2,"forge:wwmc:bronze_pickaxe");
-            TownViews.act(owner,start,PanelMenu.Kind.PRODUCTION,TownViews.ROW_ACTION,3,"craft:wwmc:housing_station");
+            var production=new PanelMenu(1,PanelMenu.Kind.PRODUCTION,start,owner,TownViews.build(level,f.town,owner,PanelMenu.Kind.PRODUCTION));
+            production.act(owner,TownViews.ROW_ACTION,0,2,"forge:wwmc:bronze_pickaxe");
+            production.act(owner,TownViews.ROW_ACTION,0,3,"craft:wwmc:housing_station");
             helper.assertTrue(f.town.progress.forgeOrders.size()==1 && Workshop.find(f.town,"wwmc:housing_station")>=0,"Production needs an example item to place a stock order");
             var loaded=Settlement.CODEC.parse(JsonOps.INSTANCE,Settlement.CODEC.encodeStart(JsonOps.INSTANCE,f.town).getOrThrow()).getOrThrow();
             helper.assertTrue(loaded.progress.forgeOrders.getFirst().target()==2 && loaded.craftOrders.get(Workshop.find(loaded,"wwmc:housing_station")).target()==3,"Production orders lost their target after saving");
+            helper.assertTrue(TownViews.build(level,f.town,owner,PanelMenu.Kind.PRODUCTION).tabs().stream().flatMap(t -> t.rows().stream())
+                    .anyMatch(r -> r.key().equals("forge:wwmc:bronze_pickaxe") && r.detail().getString().startsWith("Target 2")),"Production hides the selected target");
             var builder=new FakePlayer(level,new GameProfile(UUID.randomUUID(),"ProductionBuilder")); builder.setPos(owner.position()); f.town.campaign.members.put(builder.getUUID(),"builder");
-            TownViews.act(builder,start,PanelMenu.Kind.PRODUCTION,TownViews.ROW_ACTION,200,"forge:wwmc:bronze_pickaxe");
+            production.act(builder,TownViews.ROW_ACTION,0,200,"forge:wwmc:bronze_pickaxe");
             helper.assertTrue(f.town.progress.forgeOrders.getFirst().target()==2 && InventoryOps.count(List.of(owner.getInventory()),s -> s.is(WWMC.BRONZE_PICKAXE.get()))==0,"Unauthorized management or GUI clicking produced free gear");
             f.close(); helper.succeed();
         });

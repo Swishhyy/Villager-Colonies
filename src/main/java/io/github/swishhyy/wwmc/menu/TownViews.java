@@ -22,7 +22,7 @@ public final class TownViews {
     private TownViews() {}
     private static PanelView.Row row(ItemLike item,String title,String detail) { return new PanelView.Row(new ItemStack(item),title,detail); }
     private static PanelView.Row target(Item item,String title,String detail,String key,int target) {
-        return new PanelView.Row(new ItemStack(item),Component.literal(title),Component.literal(detail),0,-1,target,key);
+        return new PanelView.Row(new ItemStack(item),Component.literal(title),Component.literal("Target "+target+" · "+detail),0,-1,target,key);
     }
     public static boolean focused(PanelMenu.Kind kind) { return kind==PanelMenu.Kind.PEOPLE || kind==PanelMenu.Kind.PRODUCTION || kind==PanelMenu.Kind.RESEARCH; }
     public static void open(ServerPlayer player,Settlement town,PanelMenu.Kind kind) { open(player,town,kind,town.center); }
@@ -59,10 +59,12 @@ public final class TownViews {
             stock.add(row(Items.CHEST,"Warehouse requests","Targets reserve your own supplies and guide incoming trade; workshop and forge targets make goods."));
             stock.add(row(Items.SUGAR_CANE,"Paper chain","Gatherer harvests cane; craftsman makes paper; researcher writes scrolls using paper and ink or charcoal."));
             stock.add(row(Items.COAL,"Metal chain","Miners gather ore; smelters make ingots; blacksmiths alloy bronze and forge equipment using fuel."));
-            for(Item item:List.of(Items.BREAD,Items.OAK_LOG,Items.COBBLESTONE,Items.SAND,Items.GRAVEL,Items.CLAY_BALL,Items.SUGAR_CANE,Items.PAPER,Items.COAL,
-                    Items.CHARCOAL,Items.COPPER_INGOT,WWMC.TIN_INGOT.get(),WWMC.BRONZE_INGOT.get(),Items.IRON_INGOT,WWMC.RESEARCH_SCROLL.get())) {
+            var requested=new LinkedHashSet<Item>(List.of(Items.BREAD,Items.OAK_LOG,Items.COBBLESTONE,Items.SAND,Items.GRAVEL,Items.CLAY_BALL,Items.SUGAR_CANE,Items.PAPER,Items.COAL,
+                    Items.CHARCOAL,Items.COPPER_INGOT,WWMC.TIN_INGOT.get(),WWMC.BRONZE_INGOT.get(),Items.IRON_INGOT,WWMC.RESEARCH_SCROLL.get()));
+            for(String id:town.campaign.requests.keySet()) { Item item=SupplyRequests.item(id); if(item!=Items.AIR) requested.add(item); }
+            for(Item item:requested) {
                 String id=BuiltInRegistries.ITEM.getKey(item).toString();
-                stock.add(target(item,item.getName().getString(),InventoryOps.count(SettlementService.storage(level,town),s -> s.is(item))+" in warehouse · trade reserve",
+                stock.add(target(item,new ItemStack(item).getHoverName().getString(),InventoryOps.count(SettlementService.storage(level,town),s -> s.is(item))+" in warehouse · trade reserve",
                         "request:"+id,town.campaign.requests.getOrDefault(id,0)));
             }
             var workshop=new ArrayList<PanelView.Row>();
@@ -75,7 +77,7 @@ public final class TownViews {
             for(Item item:items) {
                 String id=BuiltInRegistries.ITEM.getKey(item).toString(); int index=Workshop.find(town,id),value=index<0 ? 0 : town.craftOrders.get(index).target();
                 String note=AgeProgression.allowed(town,new ItemStack(item)) ? "" : " · needs "+AgeProgression.requirement(new ItemStack(item));
-                workshop.add(target(item,item.getName().getString(),InventoryOps.count(SettlementService.townStorage(level,town),s -> s.is(item))+" in town"+note,"craft:"+id,value));
+                workshop.add(target(item,new ItemStack(item).getHoverName().getString(),InventoryOps.count(SettlementService.townStorage(level,town),s -> s.is(item))+" in town"+note,"craft:"+id,value));
             }
             var forge=new ArrayList<PanelView.Row>();
             forge.add(row(WWMC.BRONZE_ANVIL_ITEM.get(),"Forge and metallurgy","A staffed smith needs an anvil, nearby furnace, job barrel and coal/charcoal. Repairs take priority. Bronze anvils last 12 completed operations."));
@@ -84,7 +86,7 @@ public final class TownViews {
                 if(ForgeWorkshop.plans(level,new Workshop.Order(id,1)).isEmpty()) continue;
                 int value=town.progress.forgeOrders.stream().filter(o -> o.item().equals(id)).mapToInt(Workshop.Order::target).findFirst().orElse(0);
                 String note=AgeProgression.allowed(town,new ItemStack(item)) ? "" : " · needs "+AgeProgression.requirement(new ItemStack(item));
-                forge.add(target(item,item.getName().getString(),InventoryOps.count(SettlementService.townStorage(level,town),s -> s.is(item))+" in town"+note,"forge:"+id,value));
+                forge.add(target(item,new ItemStack(item).getHoverName().getString(),InventoryOps.count(SettlementService.townStorage(level,town),s -> s.is(item))+" in town"+note,"forge:"+id,value));
             }
             var stations=new ArrayList<PanelView.Row>();
             for(var station:town.stations) stations.add(Panels.summary(level,town,station));

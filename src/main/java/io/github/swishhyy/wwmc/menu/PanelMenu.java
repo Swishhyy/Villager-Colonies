@@ -45,6 +45,7 @@ public final class PanelMenu extends SettlementMenu {
         else if(kind==Kind.STATION) Panels.stationAction(player,pos,action);
         else if(kind==Kind.RELATIONSHIPS) RelationshipViews.act(player,pos,action,value,key);
         else if(kind==Kind.MULTIPLAYER) MultiplayerViews.act(player,pos,action,value,key);
+        else if(TownViews.focused(kind)) TownViews.act(player,pos,kind,action,value,key);
         else CampaignViews.act(player,pos,kind==Kind.ARMY,action,value,key);
         refresh();
     }

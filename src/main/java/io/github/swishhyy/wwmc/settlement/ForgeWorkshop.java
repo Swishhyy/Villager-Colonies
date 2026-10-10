@@ -154,7 +154,7 @@ public final class ForgeWorkshop {
         var next=state;
         if(state.getBlock() instanceof BronzeAnvilBlock)
             next=state.getValue(BronzeAnvilBlock.WEAR)==11 ? null : state.setValue(BronzeAnvilBlock.WEAR,state.getValue(BronzeAnvilBlock.WEAR)+1);
-        else if(state.getBlock() instanceof AnvilBlock && level.random.nextFloat()<0.12F) next=AnvilBlock.damage(state);
+        else if(state.getBlock() instanceof AnvilBlock && level.getRandom().nextFloat()<0.12F) next=AnvilBlock.damage(state);
         if(next==null) { level.removeBlock(anvil,false); level.levelEvent(1029,anvil,0); }
         else if(!next.equals(state)) level.setBlockAndUpdate(anvil,next);
     }
