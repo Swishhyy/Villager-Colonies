@@ -40,7 +40,11 @@ public final class TownProgress {
         Codec.STRING.optionalFieldOf("research_project","").forGetter(p -> p.project),
         Codec.intRange(0,1200000).optionalFieldOf("research_ticks",0).forGetter(p -> p.projectTicks),
         Codec.intRange(0,4).optionalFieldOf("legacy_gear_tier",4).forGetter(p -> p.legacyGearTier),
-        TrapService.Entry.CODEC.listOf().optionalFieldOf("traps",List.of()).forGetter(p -> p.traps)
+        TrapService.Entry.CODEC.listOf().optionalFieldOf("traps",List.of()).forGetter(p -> p.traps),
+        Codec.intRange(0,600).optionalFieldOf("scroll_ticks",0).forGetter(p -> p.scrollTicks),
+        Codec.BOOL.optionalFieldOf("scroll_paid",false).forGetter(p -> p.scrollPaid),
+        Codec.intRange(0,256).optionalFieldOf("scroll_target",32).forGetter(p -> p.scrollTarget),
+        Workshop.Order.CODEC.listOf().optionalFieldOf("forge_orders",List.of()).forGetter(p -> p.forgeOrders)
     ).apply(i,TownProgress::new));
     public final Set<String> research=new LinkedHashSet<>(),schematics=new LinkedHashSet<>();
     public final List<Ping> pings=new ArrayList<>();
@@ -54,11 +58,16 @@ public final class TownProgress {
     public int projectTicks;
     /** Older settlements retain the equipment they could already use. Newly founded towns start at zero. */
     public int legacyGearTier;
+    /** A paid scroll stays in progress if storage fills or the researcher stops. */
+    public int scrollTicks,scrollTarget=32;
+    public boolean scrollPaid;
+    public final List<Workshop.Order> forgeOrders=new ArrayList<>();
     long lastResearchWork=Long.MIN_VALUE;
     public TownProgress() {}
     public static TownProgress legacy() { TownProgress p=new TownProgress(); p.legacyGearTier=4; return p; }
     private TownProgress(List<String> research,List<String> schematics,List<Ping> pings,int color,List<String> milestones,
-            String project,int projectTicks,int legacyGearTier,List<TrapService.Entry> traps) {
+            String project,int projectTicks,int legacyGearTier,List<TrapService.Entry> traps,
+            int scrollTicks,boolean scrollPaid,int scrollTarget,List<Workshop.Order> forgeOrders) {
         this.research.addAll(research); this.schematics.addAll(schematics);
         this.pings.addAll(pings.subList(Math.max(0,pings.size()-MAX_PINGS),pings.size()));
         this.color=color;
@@ -66,6 +75,9 @@ public final class TownProgress {
         this.project=project.length()<=64 ? project : "";
         this.projectTicks=project.isEmpty() ? 0 : projectTicks;
         this.legacyGearTier=legacyGearTier;
+        this.scrollPaid=scrollPaid; this.scrollTicks=scrollPaid ? scrollTicks : 0; this.scrollTarget=scrollTarget;
+        Set<String> orders=new HashSet<>();
+        for(var order:forgeOrders) if(this.forgeOrders.size()<Workshop.MAX_ORDERS && orders.add(order.item())) this.forgeOrders.add(order);
         Set<BlockPos> seen=new HashSet<>();
         for(var trap:traps) if(this.traps.size()<1024 && seen.add(trap.pos())) this.traps.add(trap);
     }

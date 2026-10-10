@@ -17,15 +17,21 @@ Formerly **World War MC**. The internal `wwmc` namespace keeps existing worlds, 
 ## Features
 
 - **A working town:** named citizens, dedicated job stations, housing, warehouses, and couriers.
-- **Production:** farms, lumber work, mines, quarries, cooking, crafting, smelting, enchanting, and equipment repair.
+- **Production:** farms, forests, gatherers, mines, quarries, cooking, workshops, metallurgy, forging, enchanting, and repairs.
 - **Friends and trade:** town permissions, alliances, and traders who carry goods between settlements.
 - **Settlement neighbours:** real caravans, paid supply contracts, nearby-town needs and quiet news at the banner. NPC towns arrange their own trade routes. See [settlement interactions](docs/multiplayer-campaign.md#settlement-neighbours).
 - **Defense and exploration:** guards, patrols, raids, bandit camps, and supplied outposts.
 - **Visible progress:** job outfits and work effects, town colors, upgrades, research, a visual handbook, and tutorial advancements.
-- **Settlement ages:** Stone → Bronze → Iron, with researchers, tin, bronze equipment, and shared unlocks for town members.
+- **Settlement ages:** Stone → Bronze → Iron. Researchers make tradeable scrolls; towns unlock discoveries together, and blacksmiths forge advanced equipment.
 - **Traps:** spikes, nets, snares, caltrops and spring traps, with saved wear, paid maintenance and waves arriving beyond the town's stations and traps. See [trap defenses](docs/defenses.md).
 
 Larger warfare systems, countries, automatic building, and distant settlement simulation remain [planned features](docs/ROADMAP.md).
+
+## Current development branch
+
+The next update adds **settlement forging, researcher-made scrolls, gatherers, and ruined town halls**. The banner now opens a short overview with **People, Production, Research, and Neighbours**. Set workshop and forge stock targets in Production, including automatic job block orders. Wood and stone gear remain player-crafted; bronze and later equipment comes from a blacksmith.
+
+These changes are under testing on a separate branch. The public version stays **0.1.0.0**. See [settlement production](docs/settlement-production.md) for the new progression loop.
 
 ## Install
 

@@ -31,7 +31,7 @@ public final class StationDetection {
             default -> false;
         };
     }
-    public static boolean anvil(BlockState state) { return state.is(BlockTags.ANVIL); }
+    public static boolean anvil(BlockState state) { return state.is(BlockTags.ANVIL) || state.getBlock() instanceof io.github.swishhyy.wwmc.block.BronzeAnvilBlock; }
     public static boolean enchantingTable(BlockState state) { return state.getBlock() instanceof EnchantingTableBlock; }
     public static boolean workBlock(StructureRole role, BlockState state) {
         return switch(role) {

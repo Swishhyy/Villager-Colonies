@@ -165,5 +165,9 @@
   "block.wwmc.bronze_caltrops": "Bronze Caltrops",
   "block.wwmc.iron_spring_trap": "Iron Spring Trap",
   "wwmc.configuration.maxSettlementTraps": "Traps per settlement",
-  "wwmc.configuration.maxSettlementTraps.tooltip": "Maximum placed traps per town. Only traps in ticking chunks activate; each activation spends durability."
+  "wwmc.configuration.maxSettlementTraps.tooltip": "Maximum placed traps per town. Only traps in ticking chunks activate; each activation spends durability.",
+  "block.wwmc.bronze_anvil": "Bronze Anvil",
+  "item.wwmc.research_scroll": "Research Scroll",
+  "block.wwmc.gatherer_station": "Gatherer Station",
+  "tooltip.wwmc.research_scroll": "Written by researchers at lecterns. Spend at your town banner or trade with another settlement."
 }

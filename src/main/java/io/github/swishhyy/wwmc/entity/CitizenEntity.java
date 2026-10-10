@@ -76,7 +76,7 @@ public final class CitizenEntity extends Villager {
     }
     public boolean feedbackPulse(long now) { if(now<nextFeedbackPulse) return false; nextFeedbackPulse=now+20; return true; }
     public boolean feedbackSound(long now) { if(now<nextFeedbackSound) return false; nextFeedbackSound=now+80; return true; }
-    private enum Action { HARVEST,FELL,PLANT,EXCAVATE,SUPPORT,CAVE,VEIN }
+    private enum Action { HARVEST,FELL,PLANT,EXCAVATE,SUPPORT,CAVE,VEIN,GATHER }
     private Action action=Action.HARVEST;
     private ForestryService.Task forestTask;
     private String forestIdleReason="No accessible natural tree; needs saplings and clear soil in range";
@@ -97,7 +97,9 @@ public final class CitizenEntity extends Villager {
     private ItemStack repairItem=ItemStack.EMPTY;
     private UUID repairStand;
     private EquipmentSlot repairSlot;
-    private BlockPos repairAnvil;
+    private BlockPos repairAnvil,smithStand;
+    private ForgeWorkshop.Plan forgeJob;
+    private boolean forgeDelivery;
     private boolean repairDelivery;
     private long nextFoodTripAt,lastMealAt;
     private BlockPos pantryTarget,pantryStand;
@@ -691,6 +693,7 @@ public final class CitizenEntity extends Villager {
         if(role==StructureRole.HUNTER) return AnimalWork.weapon(stack) && !GuardEquipment.worn(stack);
         if(role==StructureRole.FISHERMAN) return stack.is(Items.FISHING_ROD) && !GuardEquipment.worn(stack);
         if(role==StructureRole.BUTCHER) return stack.is(ItemTags.AXES) && !GuardEquipment.worn(stack);
+        if(role==StructureRole.GATHERER && target!=null) return stack.is(ItemTags.SHOVELS) && !GuardEquipment.worn(stack);
         if(target==null || action==Action.PLANT || action==Action.SUPPORT || role==StructureRole.FARM) return true;
         if((role==StructureRole.LUMBER || role.excavates()) && GuardEquipment.worn(stack)) return false;
         if(role==StructureRole.LUMBER) return stack.is(ItemTags.AXES) && ForestryService.durability(stack)>=minimumAxeDurability;
@@ -845,7 +848,8 @@ public final class CitizenEntity extends Villager {
     /** Citizens keep only what their current job uses; everything else, including finished craft goods, goes to the warehouse. */
     private boolean retainSupply(ItemStack stack) {
         StructureRole role=role();
-        if(role==StructureRole.BLACKSMITH && !repairItem.isEmpty() && BlacksmithRepair.material(repairItem,stack)) return true;
+        if(role==StructureRole.BLACKSMITH && (!repairItem.isEmpty() && BlacksmithRepair.material(repairItem,stack)
+                || forgeJob!=null && forgeJob.uses(stack))) return true;
         if(role==StructureRole.CRAFTSMAN && trapWork!=null && level() instanceof ServerLevel server) {
             var material=TrapService.material(server.getBlockState(trapWork));
             if(material!=null && material.accepts().test(stack)) return true;
@@ -854,7 +858,7 @@ public final class CitizenEntity extends Villager {
         if(level() instanceof ServerLevel level && role!=null && role.processes() && ProcessingService.supply(level,role,stack)) return true;
         if(role!=null && role.animalJob() && AnimalWork.supply(role,stack)) return true;
         boolean guard=role==StructureRole.GUARD;
-        return stack.is(ItemTags.AXES) && role==StructureRole.LUMBER
+        return stack.is(ItemTags.SHOVELS) && role==StructureRole.GATHERER || stack.is(ItemTags.AXES) && role==StructureRole.LUMBER
                 || stack.is(ItemTags.PICKAXES) && role!=null && role.excavates()
                 || guard && (GuardWeapons.melee(stack) && GuardWeapons.score(stack)>=bestMelee() || GuardWeapons.bow(stack) || GuardWeapons.arrow(stack) || stack.is(Items.SHIELD)
                     || armor(stack) && Arrays.stream(GuardEquipment.ARMOR).anyMatch(slot -> GuardEquipment.upgrade(stack,getItemBySlot(slot),slot)))
@@ -874,10 +878,11 @@ public final class CitizenEntity extends Villager {
     }
     /** Tools, weapons and armor that belong to particular jobs. */
     private static boolean gear(ItemStack stack) {
-        return stack.is(Items.FISHING_ROD) || GuardWeapons.weapon(stack) || GuardWeapons.arrow(stack) || stack.is(Items.SHIELD) || stack.is(ItemTags.AXES) || stack.is(ItemTags.PICKAXES) || armor(stack);
+        return stack.is(ItemTags.SHOVELS) || stack.is(Items.FISHING_ROD) || GuardWeapons.weapon(stack) || GuardWeapons.arrow(stack) || stack.is(Items.SHIELD) || stack.is(ItemTags.AXES) || stack.is(ItemTags.PICKAXES) || armor(stack);
     }
     /** A new job: put away the previous one's equipment and return it before starting. */
     private void changeRole(StructureRole role) {
+        forgeJob=null; forgeDelivery=false; smithStand=null;
         if(role!=StructureRole.BLACKSMITH && !repairItem.isEmpty()) { cargo.offer(repairItem); repairItem=ItemStack.EMPTY; repairStand=null; repairSlot=null; repairAnvil=null; }
         if(role!=StructureRole.ENCHANTER && !enchantItem.isEmpty()) { cargo.offer(enchantItem); enchantItem=ItemStack.EMPTY; enchantTicks=0; enchantLevel=0; enchantDone=false; }
         if(role!=StructureRole.BLACKSMITH) { repairStand=null; repairSlot=null; repairAnvil=null; repairDelivery=false; }
@@ -1070,7 +1075,7 @@ public final class CitizenEntity extends Villager {
             if(!held.isEmpty()) { activity="Needs storage space to change tools"; return false; }
             ItemStack tool=InventoryOps.takeOne(storage,s -> toolFits(role,s));
             setItemSlot(EquipmentSlot.MAINHAND,tool);
-            if(tool.isEmpty()) { activity="Needs an "+(role==StructureRole.LUMBER ? "axe with at least "+minimumAxeDurability+" durability" : role==StructureRole.HUNTER ? "sword or axe" : role==StructureRole.FISHERMAN ? "fishing rod" : role==StructureRole.BUTCHER ? "axe for butchering" : "appropriate pickaxe")+" in the job barrel"; return false; }
+            if(tool.isEmpty()) { activity="Needs an "+(role==StructureRole.LUMBER ? "axe with at least "+minimumAxeDurability+" durability" : role==StructureRole.HUNTER ? "sword or axe" : role==StructureRole.FISHERMAN ? "fishing rod" : role==StructureRole.BUTCHER ? "axe for butchering" : role==StructureRole.GATHERER ? "shovel" : "appropriate pickaxe")+" in the job barrel"; return false; }
         }
         if(needsSupply()) {
             ItemStack supply=getOffhandItem();
@@ -1092,6 +1097,7 @@ public final class CitizenEntity extends Villager {
         if(!level.hasChunkAt(pos) || !town.contains(pos) || SettlementService.protectedFurniture(town,pos)
                 || level.getBlockEntity(pos)!=null) return false;
         BlockState state=level.getBlockState(pos);
+        if(role==StructureRole.GATHERER) return Gathering.harvestable(level,town,pos);
         return role==StructureRole.FARM && state.getBlock() instanceof CropBlock crop && crop.isMaxAge(state) && seed(state)!=null;
     }
     private Item seed(BlockState state) {
@@ -1135,12 +1141,12 @@ public final class CitizenEntity extends Villager {
             action=excavation.support() ? Action.SUPPORT : Action.EXCAVATE;
             targetLease=excavation.lease(); return excavation.target();
         }
-        action=Action.HARVEST;
+        action=station.role()==StructureRole.GATHERER ? Action.GATHER : Action.HARVEST;
         List<BlockPos> candidates=new ArrayList<>();
         for(BlockPos pos:SettlementService.cells(station)) if(!failedTargets.containsKey(pos)
                 && SettlementService.ownsBlock(level,town,station,pos) && harvestable(level,town,station.role(),pos)) candidates.add(pos.immutable());
         candidates.sort(Comparator.comparingDouble(p -> distanceToSqr(Vec3.atCenterOf(p))));
-        for(BlockPos pos:candidates) if(book.claim(pos,getUUID(),level.getGameTime(),200)) return pos;
+        for(BlockPos pos:candidates) if(workAccessible(level,town,pos) && book.claim(pos,getUUID(),level.getGameTime(),200)) return pos;
         return null;
     }
     private String idleReason(ServerLevel level,Settlement town,Station station) {
@@ -1151,7 +1157,8 @@ public final class CitizenEntity extends Villager {
                     : "Another miner is already working this vein";
         }
         return station.role().excavates() ? ExcavationService.status(level,town,station)
-                : station.role()==StructureRole.LUMBER ? forestIdleReason : "No mature accessible crops";
+                : station.role()==StructureRole.LUMBER ? forestIdleReason : station.role()==StructureRole.GATHERER
+                    ? "No accessible cane, bamboo or unprotected dry surface sand, gravel or clay" : "No mature accessible crops";
     }
     private void cancelTarget(ServerLevel level,boolean failed) {
         if(target!=null) {
@@ -1168,7 +1175,7 @@ public final class CitizenEntity extends Villager {
     }
     private boolean validTarget(ServerLevel level,Settlement town,Station station) {
         return switch(action) {
-            case HARVEST -> SettlementService.ownsBlock(level,town,station,target) && harvestable(level,town,station.role(),target);
+            case HARVEST,GATHER -> SettlementService.ownsBlock(level,town,station,target) && harvestable(level,town,station.role(),target);
             // The complete construction/provenance check runs again inside fell before any block changes.
             // While walking or swinging, checking the root avoids retraversing an entire tree twice a second.
             case FELL -> forestTask!=null && forestTask.tree()!=null && level.hasChunkAt(target)
@@ -1206,6 +1213,11 @@ public final class CitizenEntity extends Villager {
             wearTool();
             level.levelEvent(2001,target,Block.getId(ore));
             storeDrops(level,ProductionYield.apply(station,ore,drops,getRandom())); workProgress=0; gainExperience(station.role(),1); return;
+        }
+        if(action==Action.GATHER && Gathering.plant(level.getBlockState(target))) {
+            var cut=Gathering.cut(level,town,target,this);
+            if(cut!=null) { storeDrops(level,cut.drops()); for(int i=0;i<cut.blocks();i++) wearTool(); gainExperience(station.role(),1); }
+            cancelTarget(level,cut==null); return;
         }
         BlockState state=level.getBlockState(target);
         List<ItemStack> drops=new ArrayList<>(Block.getDrops(state,level,target,null,this,getMainHandItem()));
@@ -1701,6 +1713,7 @@ public final class CitizenEntity extends Villager {
     private void craftsman(ServerLevel level,Settlement town,Station station) {
         BlockPos bench=station.position();
         if(craftJob==null && maintainTraps(level,town,station)) return;
+        if(craftJob!=null && ForgeWorkshop.forged(craftJob.plan().result())) { craftJob=null; workProgress=0; }
         if(craftJob!=null && !AgeProgression.allowed(town,craftJob.plan().result())) {
             activity="Workshop order requires "+AgeProgression.requirement(craftJob.plan().result())+" research";
             getNavigation().stop(); return;
@@ -1714,7 +1727,7 @@ public final class CitizenEntity extends Villager {
             List<Container> local=SettlementService.jobStorage(level,town,station);
             var permitted=town.craftOrders.stream().filter(o -> {
                 var item=o.resolve();
-                return item!=Items.AIR && AgeProgression.allowed(town,new ItemStack(item));
+                return item!=Items.AIR && !ForgeWorkshop.forged(new ItemStack(item)) && AgeProgression.allowed(town,new ItemStack(item));
             }).toList();
             Workshop.Job next=barrel==null ? null : Workshop.choose(Workshop.Recipes.of(level),permitted,stock,local);
             if(barrel==null) return;
@@ -2000,6 +2013,8 @@ public final class CitizenEntity extends Villager {
         if(returningGear) return Research.Status.waiting("Researcher is returning equipment from their previous job.");
         if(pantryTarget!=null && wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0)
             return Research.Status.paused("Researcher is fetching a meal from the pantry.");
+        String supplies=Research.scrollPause(level,town);
+        if(!supplies.isEmpty()) return Research.Status.paused(supplies);
         if(station.position().equals(researchStation) && town.progress.project.equals(researchProject)
                 && researchStateAt!=Long.MIN_VALUE && level.getGameTime()>=researchStateAt && level.getGameTime()-researchStateAt<=30)
             return researchState;
@@ -2087,6 +2102,7 @@ public final class CitizenEntity extends Villager {
     }
     private void blacksmith(ServerLevel level,Settlement town,Station station) {
         eatFrom(List.of(cargo));
+        if(forgeJob!=null || forgeDelivery) { forge(level,town,station); return; }
         if(!repairItem.isEmpty() && (repairDelivery || !BlacksmithRepair.damaged(repairItem))) { finishRepair(level,town); return; }
         if(level.getGameTime()<nextSmithAt) return;
         List<BlockPos> anvils=SettlementService.anvils(level,town,station);
@@ -2132,8 +2148,7 @@ public final class CitizenEntity extends Villager {
                                 activity="Collecting retired guard armor"; return;
                             }
                         }
-                    activity="Waiting for couriers to bring damaged equipment and matching repair materials";
-                    nextSmithAt=level.getGameTime()+100; return;
+                    forge(level,town,station); return;
                 }
             }
             int needed=BlacksmithRepair.materialsNeeded(repairItem)-InventoryOps.count(List.of(cargo),s -> BlacksmithRepair.material(repairItem,s));
@@ -2144,16 +2159,80 @@ public final class CitizenEntity extends Villager {
             }
             if(!BlacksmithRepair.supplied(repairItem,List.of(cargo))) { activity="Waiting for this item's matching repair material"; nextSmithAt=level.getGameTime()+100; return; }
         }
-        if(!canUse(level,repairAnvil)) { activity="Carrying equipment to the anvil"; walk(repairAnvil); return; }
+        if(!approachAnvil(level,town)) return;
         getNavigation().stop(); activity="Repairing equipment at the anvil";
         WorkFeedback.pulse(level,this,repairAnvil,WorkFeedback.SMITHING); workProgress+=workStep();
         if(workProgress>=BlacksmithRepair.WORK_TICKS) {
-            if(BlacksmithRepair.repair(repairItem,cargo)) { swing(InteractionHand.MAIN_HAND); playSound(SoundEvents.ANVIL_USE,0.4F,1.0F); gainExperience(StructureRole.BLACKSMITH,2); }
+            if(BlacksmithRepair.repair(repairItem,cargo)) { swing(InteractionHand.MAIN_HAND); playSound(SoundEvents.ANVIL_USE,0.4F,1.0F);
+                ForgeWorkshop.wear(level,repairAnvil); gainExperience(StructureRole.BLACKSMITH,2); }
             workProgress=0;
         }
         if(!BlacksmithRepair.damaged(repairItem)
                 || !BlacksmithRepair.supplied(repairItem,List.of(cargo)) && !BlacksmithRepair.supplied(repairItem,storage)) {
             repairDelivery=true; finishRepair(level,town);
+        }
+    }
+    /** A solid anvil is an interaction target. Approach visible standing room beside it. */
+    private boolean approachAnvil(ServerLevel level,Settlement town) {
+        if(canUse(level,repairAnvil)) { smithStand=null; return true; }
+        if(!standingSpotUsable(level,town,smithStand,repairAnvil)) {
+            smithStand=null;
+            for(BlockPos stand:CitizenReach.stands(standingView(level,town),repairAnvil,position(),getEyeHeight())) {
+                if(!standingSpotUsable(level,town,stand,repairAnvil)) continue;
+                if(reachableStand(stand)) { smithStand=stand; break; }
+                if(reachBudget.deferred()) { activity="Checking a route to the anvil"; return false; }
+            }
+        }
+        activity=smithStand==null ? "Cannot reach the anvil: clear standing room beside it" : "Walking to the anvil";
+        if(smithStand!=null) walk(smithStand,0.65,0);
+        else { repairAnvil=null; nextSmithAt=level.getGameTime()+100; }
+        return false;
+    }
+    /** The smith takes one paid batch, works at a real anvil, then returns the actual result to its barrel. */
+    private void forge(ServerLevel level,Settlement town,Station station) {
+        if(forgeDelivery) {
+            if(!visitDepot(level,town,station)) return;
+            forgeDelivery=false; forgeJob=null; workProgress=0; nextSmithAt=level.getGameTime()+20; return;
+        }
+        if(level.getGameTime()<nextSmithAt) return;
+        var anvils=SettlementService.anvils(level,town,station);
+        if(repairAnvil==null || !anvils.contains(repairAnvil)) {
+            repairAnvil=anvils.stream().sorted(Comparator.comparingDouble(p -> p.distSqr(blockPosition())))
+                    .filter(p -> handNear(p) || canReach(p)).findFirst().orElse(null);
+            smithStand=null;
+        }
+        if(repairAnvil==null) { activity="Forging needs an accessible bronze or iron anvil"; nextSmithAt=level.getGameTime()+100; return; }
+        if(ForgeWorkshop.heat(level,town,station).isEmpty()) { activity="Forging needs a furnace or blast furnace in the Blacksmith Station's range"; nextSmithAt=level.getGameTime()+100; return; }
+        if(forgeJob!=null && (town.progress.forgeOrders.stream().noneMatch(o -> o.item().equals(forgeJob.order().item()) && o.target()>0)
+                || !ForgeWorkshop.ready(forgeJob,List.of(cargo)))) { forgeJob=null; workProgress=0; }
+        if(forgeJob==null) {
+            BlockPos barrel=jobBarrel(level,town,station);
+            if(barrel==null) return;
+            List<Container> local=SettlementService.jobStorage(level,town,station);
+            if(!visitStorage(level,town,StructureRole.BLACKSMITH,barrel,local,true)) return;
+            forgeJob=ForgeWorkshop.choose(level,town,SettlementService.townStorage(level,town),local,
+                    level.getBlockState(repairAnvil).getBlock() instanceof io.github.swishhyy.wwmc.block.BronzeAnvilBlock);
+            if(forgeJob==null || !ForgeWorkshop.fetch(forgeJob,local,cargo)) {
+                forgeJob=null; activity=town.progress.forgeOrders.stream().noneMatch(o -> o.target()>0)
+                        ? "Set forging or metallurgy orders in Production / Forge; repairs run automatically"
+                        : "Forge orders are stocked, locked by research, or missing materials and coal/charcoal";
+                nextSmithAt=level.getGameTime()+100; return;
+            }
+            workProgress=0;
+        }
+        if(!AgeProgression.allowed(town,forgeJob.result())) { activity="Forge order needs "+AgeProgression.requirement(forgeJob.result())+" research"; return; }
+        if(level.getBlockState(repairAnvil).getBlock() instanceof io.github.swishhyy.wwmc.block.BronzeAnvilBlock
+                && AgeProgression.required(forgeJob.result())>2) { activity="Gem and netherite forging needs an iron anvil"; return; }
+        if(!approachAnvil(level,town)) return;
+        getNavigation().stop(); getLookControl().setLookAt(repairAnvil.getX()+.5,repairAnvil.getY()+.8,repairAnvil.getZ()+.5);
+        activity="Forging "+forgeJob.result().getHoverName().getString();
+        WorkFeedback.pulse(level,this,repairAnvil,WorkFeedback.SMITHING); workProgress+=workStep();
+        if(workProgress>=forgeJob.ticks()) {
+            if(ForgeWorkshop.craft(level,forgeJob,cargo)) {
+                swing(InteractionHand.MAIN_HAND); playSound(SoundEvents.ANVIL_USE,.4F,1.0F); ForgeWorkshop.wear(level,repairAnvil);
+                gainExperience(StructureRole.BLACKSMITH,2); forgeDelivery=true;
+            } else { forgeJob=null; activity="Forge materials changed; returning the remaining supplies"; }
+            workProgress=0;
         }
     }
     private int lapisCarried() { return InventoryOps.count(List.of(cargo),Enchanting::lapis); }
@@ -2192,7 +2271,8 @@ public final class CitizenEntity extends Villager {
         if(wantsMeal() && InventoryOps.count(List.of(cargo),this::food)==0 && !visitPantry(level,town)) {
             researchState=Research.Status.paused("Researcher is fetching a meal from the pantry."); return;
         }
-        if(Research.project(town)==null) { activity="Waiting for a research project in Campaign / Research"; getNavigation().stop(); return; }
+        String supplies=Research.scrollPause(level,town);
+        if(!supplies.isEmpty()) { activity=supplies; researchState=Research.Status.paused(supplies); getNavigation().stop(); return; }
         List<BlockPos> desks=Research.desks(level,town,station);
         if(researchDesk==null && level.getGameTime()<nextResearchRouteAt) {
             researchBlocked(level,desks); return;
@@ -2235,7 +2315,7 @@ public final class CitizenEntity extends Villager {
         }
         getNavigation().stop();
         getLookControl().setLookAt(researchDesk.getX()+0.5,researchDesk.getY()+0.8,researchDesk.getZ()+0.5);
-        activity="Researching "+Research.progress(town);
+        activity=Research.project(town)==null ? "Writing research scrolls at the lectern" : "Researching "+Research.progress(town);
         WorkFeedback.pulse(level,this,researchDesk,WorkFeedback.RESEARCHING);
         if(Research.work(level,town,station,researchDesk)) {
             clearBlockedJob();
@@ -2665,6 +2745,7 @@ public final class CitizenEntity extends Villager {
             case SUPPORT -> excavation.quarry() ? "Rebuilding a quarry step" : "Supporting the tunnel floor";
             case EXCAVATE -> excavation.remote() ? "Operating the quarry from its control block" : excavation.quarry() ? "Quarrying" : "Excavating a tunnel";
             case HARVEST -> "Harvesting crops";
+            case GATHER -> "Gathering "+level.getBlockState(target).getBlock().getName().getString();
             case CAVE -> "Mining accessible cave ore";
             case VEIN -> "Mining the "+OreVeins.name(level.getBlockState(target))+" vein";
         };

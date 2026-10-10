@@ -624,6 +624,7 @@ public final class SettlementService {
         StationResourceCache scans=RESOURCE_SCANS.get(level);
         if(scans!=null) scans.prune(level.getGameTime());
         for(Settlement s:data.settlements) {
+            if(ForgeWorkshop.migrate(level,s)) data.setDirty();
             if(s.widenTo(Settlement.MIN_RADIUS,data.settlements)) {
                 // Old corner banners are no longer the border; they stay in the world as ordinary blocks.
                 s.borderBanners.clear(); data.setDirty();

@@ -55,6 +55,8 @@
       "required": false
     },
     "wwmc:bronze_snare",
-    "wwmc:bronze_caltrops"
+    "wwmc:bronze_caltrops",
+    "wwmc:bronze_anvil",
+    "wwmc:blacksmith_station"
   ]
 }

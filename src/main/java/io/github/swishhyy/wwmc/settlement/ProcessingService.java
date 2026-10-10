@@ -29,6 +29,10 @@ public final class ProcessingService {
         return stack.is(Tags.Items.RAW_MATERIALS) || stack.is(Tags.Items.ORES)
                 || stack.is(Items.RAW_IRON) || stack.is(Items.RAW_COPPER) || stack.is(Items.RAW_GOLD);
     }
+    public static boolean buildingMaterial(ItemStack stack) {
+        return stack.is(Items.SAND) || stack.is(Items.RED_SAND) || stack.is(Items.CLAY_BALL) || stack.is(Items.CLAY)
+                || stack.is(net.minecraft.tags.ItemTags.LOGS);
+    }
     public static boolean rawFood(ItemStack stack) {
         return stack.has(DataComponents.FOOD) || stack.is(Items.KELP);
     }
@@ -52,7 +56,7 @@ public final class ProcessingService {
                 && level.getServer().getRecipeManager().getRecipeFor(type,new SingleRecipeInput(stack),level).isPresent();
     }
     public static boolean ingredient(StructureRole role,ItemStack stack) {
-        return !stack.isEmpty() && (role==StructureRole.SMELTERY ? rawMetal(stack) : role==StructureRole.COOK && rawFood(stack));
+        return !stack.isEmpty() && (role==StructureRole.SMELTERY ? rawMetal(stack) || buildingMaterial(stack) : role==StructureRole.COOK && rawFood(stack));
     }
     public static boolean fuel(ServerLevel level,ItemStack stack) {
         return fuel(level.fuelValues(),stack);
@@ -67,7 +71,7 @@ public final class ProcessingService {
         return supply(level.fuelValues(),role,stack);
     }
     public static boolean supply(FuelValues fuels,StructureRole role,ItemStack stack) {
-        return role==StructureRole.SMELTERY && (rawMetal(stack) || fuel(fuels,stack))
+        return role==StructureRole.SMELTERY && (rawMetal(stack) || buildingMaterial(stack) || fuel(fuels,stack))
                 || role==StructureRole.COOK && (stack.is(Items.WHEAT) || fuel(fuels,stack)
                     || rawFood(stack) && !cookedFood(stack));
     }
@@ -90,7 +94,7 @@ public final class ProcessingService {
                 && (loaded.isEmpty() || ItemStack.isSameItemSameComponents(loaded,s));
         carry(storage,bag,ingredients,INPUT_LOAD-InventoryOps.count(List.of(bag),ingredients));
         if(level.getBlockEntity(pos) instanceof AbstractFurnaceBlockEntity)
-            carry(storage,bag,s -> fuel(level,s),FUEL_LOAD-InventoryOps.count(List.of(bag),s -> fuel(level,s)));
+            carry(storage,bag,s -> fuel(level,s),FUEL_LOAD-InventoryOps.count(List.of(bag),s -> fuel(level,s) && !ingredients.test(s)));
     }
     private static void carry(List<Container> sources,CitizenInventory bag,Predicate<ItemStack> eligible,int maximum) {
         for(int i=0;i<maximum && !bag.needsDelivery();i++) {

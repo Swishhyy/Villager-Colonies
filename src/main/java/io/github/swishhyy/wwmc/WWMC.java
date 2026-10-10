@@ -57,6 +57,10 @@ public final class WWMC {
     public static final DeferredBlock<SettlementBannerBlock> BANNER=BLOCKS.registerBlock("settlement_banner",SettlementBannerBlock::new,
             p -> p.mapColor(MapColor.COLOR_BLUE).strength(2,3_600_000).pushReaction(PushReaction.BLOCK).noOcclusion());
     public static final DeferredItem<BlockItem> BANNER_ITEM=ITEMS.registerSimpleBlockItem(BANNER);
+    public static final DeferredBlock<io.github.swishhyy.wwmc.block.BronzeAnvilBlock> BRONZE_ANVIL=BLOCKS.registerBlock("bronze_anvil",
+            io.github.swishhyy.wwmc.block.BronzeAnvilBlock::new,p -> p.mapColor(MapColor.COLOR_ORANGE).strength(3,6).noOcclusion().requiresCorrectToolForDrops());
+    public static final DeferredItem<BlockItem> BRONZE_ANVIL_ITEM=ITEMS.registerSimpleBlockItem(BRONZE_ANVIL);
+    public static final DeferredItem<Item> RESEARCH_SCROLL=material("research_scroll","tooltip.wwmc.research_scroll");
     public static final DeferredBlock<Block> TIN_ORE=BLOCKS.registerBlock("tin_ore",Block::new,p -> p.mapColor(MapColor.STONE).strength(3,3).requiresCorrectToolForDrops());
     public static final DeferredBlock<Block> DEEPSLATE_TIN_ORE=BLOCKS.registerBlock("deepslate_tin_ore",Block::new,p -> p.mapColor(MapColor.DEEPSLATE).strength(4.5F,3).requiresCorrectToolForDrops());
     public static final DeferredBlock<Block> TIN_BLOCK=BLOCKS.registerBlock("tin_block",Block::new,p -> p.mapColor(MapColor.METAL).strength(3,6).requiresCorrectToolForDrops());
@@ -109,7 +113,7 @@ public final class WWMC {
     public static final DeferredHolder<CreativeModeTab,CreativeModeTab> TAB=TABS.register("settlement",() -> CreativeModeTab.builder()
         .title(Component.translatable("itemGroup.wwmc")).withTabsBefore(CreativeModeTabs.COMBAT)
         .icon(() -> BANNER_ITEM.get().getDefaultInstance()).displayItems((p,out) -> {
-            out.accept(BANNER_ITEM.get()); out.accept(SURVEYOR.get()); out.accept(GUIDE.get());
+            out.accept(BANNER_ITEM.get()); out.accept(SURVEYOR.get()); out.accept(GUIDE.get()); out.accept(BRONZE_ANVIL_ITEM.get()); out.accept(RESEARCH_SCROLL.get());
             for(var item:java.util.List.of(TIN_ORE_ITEM,DEEPSLATE_TIN_ORE_ITEM,TIN_BLOCK_ITEM,RAW_TIN_BLOCK_ITEM,BRONZE_BLOCK_ITEM,
                     RAW_TIN,TIN_INGOT,BRONZE_BLEND,BRONZE_INGOT,BRONZE_SWORD,BRONZE_PICKAXE,BRONZE_AXE,BRONZE_SHOVEL,BRONZE_HOE,
                     BRONZE_HELMET,BRONZE_CHESTPLATE,BRONZE_LEGGINGS,BRONZE_BOOTS)) out.accept(item.get());

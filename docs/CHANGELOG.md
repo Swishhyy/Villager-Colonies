@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+- Simplify the banner to an overview and four main destinations: People, Production, Research and Neighbours.
+- Add stock orders for automatic job block production and blacksmith forging, without requiring example items.
+- Require blacksmith forging for bronze, copper and later equipment. Keep wood and stone player-crafted; protect ingredients when blocked, including vanilla redstone crafters.
+- Add blacksmith metallurgy and a bronze anvil that lasts 12 completed operations. Repairs take priority, preserve the original gear, and wear anvils normally.
+- Replace new research timers with tradeable researcher-made scrolls, paid discoveries, and practical settlement requirements. Preserve existing unlocks and already-paid projects.
+- Add Gatherers for cane, bamboo, sand, gravel and clay. Preserve plant bases and protected construction.
+- Let smelters make charcoal, glass, bricks and terracotta. Let couriers collect surplus fuel and alloys while retaining production reserves.
+- Add ruined town halls containing salvageable settlement blocks, a bronze smithy and finite scroll loot.
+
 - Add a Neighbours banner board with nearby-town needs, trade status, NPC requests, alliances and quiet news. Keep other player towns' journals private.
 - Let existing traders fulfil accepted player-settlement contracts with physical warehouse deliveries, home stock reserves, incoming demand reservations and saved emerald payments. Manual delivery remains available.
 - Let loaded NPC settlements arrange up to two neighbour trade routes and exchange real surplus. Leave their primary checkpoint available for player trade; record deliveries and food-funded growth at the banner.

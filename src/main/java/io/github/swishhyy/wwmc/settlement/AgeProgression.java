@@ -65,6 +65,14 @@ public final class AgeProgression {
                 || menu instanceof SmithingMenu && slot==3 || menu instanceof AnvilMenu && slot==2;
         if(!output) return false;
         ItemStack result=menu.getSlot(slot).getItem();
+        if(!player.isCreative() && !player.isSpectator() && !(menu instanceof AnvilMenu) && ForgeWorkshop.forged(result)) {
+            long now=player.level().getGameTime();
+            if(now-NOTICES.getOrDefault(player,now-60)>=60) {
+                NOTICES.put(player,now);
+                SettlementService.notify(player,"This equipment must be forged by your blacksmith. Set an order in Production / Forge.");
+            }
+            return true;
+        }
         if(allowed(player,result)) return false;
         notice(player,result); return true;
     }

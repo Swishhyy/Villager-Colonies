@@ -124,8 +124,9 @@ public final class ResearchAgeWorldTests {
                 table.slotsChanged(table.getSlot(1).container);
                 helper.assertTrue(table.getSlot(0).getItem().is(WWMC.BRONZE_PICKAXE.get()),"Smelted bronze did not match the real pickaxe recipe");
                 table.clicked(0,0,ContainerInput.QUICK_MOVE,owner);
-                helper.assertTrue(owner.getInventory().countItem(WWMC.BRONZE_PICKAXE.get())==1
-                        && owner.getInventory().countItem(WWMC.BRONZE_INGOT.get())==5,"Bronze pickaxe did not spend exactly three of the smelted ingots");
+                helper.assertTrue(owner.getInventory().countItem(WWMC.BRONZE_PICKAXE.get())==0
+                        && table.getSlot(1).getItem().getCount()==1 && table.getSlot(5).getItem().getCount()==1,
+                        "Researched bronze equipment bypassed the blacksmith or consumed blocked crafting ingredients");
                 SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.releaseTicking(level,start,chunks);
                 helper.succeed();
             });
@@ -151,8 +152,9 @@ public final class ResearchAgeWorldTests {
             var worker=new CitizenEntity(WWMC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(true);
             worker.setPos(station.position().getX()+.5,station.position().getY(),station.position().getZ()+1.5);
             worker.bag().offer(new ItemStack(Items.BREAD)); town.citizens.add(worker.getUUID()); town.jobs.assign(worker.getUUID(),station.position()); level.addFreshEntity(worker);
-            String result=Research.study(level,town,"bronze_age");
-            helper.assertTrue(town.progress.project.equals("bronze_age") && !Research.has(town,"bronze_age"),"Research instantly unlocked: "+result);
+            // This fixture represents a project paid before the scroll update.
+            for(int slot=0;slot<4;slot++) stock.setItem(slot,ItemStack.EMPTY);
+            town.progress.project="bronze_age"; town.progress.projectTicks=0;
             helper.assertTrue(Research.study(level,town,"bronze_age").contains("first"),"Starting twice must retain the original paid project");
             helper.runAtTickTime(80,() -> {
                 helper.assertTrue(town.progress.projectTicks==0,"Research advanced without active AI");
@@ -224,7 +226,8 @@ public final class ResearchAgeWorldTests {
             TownAccess.accept(town,friend.getUUID()); helper.assertTrue(AgeProgression.allowed(friend,sword),"Accepted member did not share research");
             town.campaign.members.remove(friend.getUUID()); helper.assertTrue(!AgeProgression.allowed(friend,sword),"Former member kept settlement research");
             menu.clicked(0,0,ContainerInput.QUICK_MOVE,owner);
-            helper.assertTrue(owner.getInventory().countItem(Items.IRON_SWORD)==2 && menu.getSlot(2).getItem().isEmpty(),"Unlocked recipe did not craft normally");
+            helper.assertTrue(owner.getInventory().countItem(Items.IRON_SWORD)==1 && menu.getSlot(2).getItem().getCount()==1,
+                    "Research incorrectly enabled hand-crafting forged equipment");
             helper.assertTrue(!AgeProgression.allowed(owner,new ItemStack(Items.DIAMOND_PICKAXE)),"Iron Age skipped Gemcraft");
             SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.release(level,start,chunks); helper.succeed();
         });
