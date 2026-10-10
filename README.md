@@ -83,4 +83,6 @@ On Windows, use `gradlew.bat build` and `gradlew.bat runClient`. The mod JAR is 
 
 Original mod code is [MIT licensed](LICENSE). The NeoForge starter notice is preserved in [TEMPLATE_LICENSE.txt](TEMPLATE_LICENSE.txt).
 
-Inspired by [Colony Survival](https://store.steampowered.com/app/366090/Colony_Survival/). Villager Colonies uses original code and assets and does not include Colony Survival content.
+Bronze and tin textures recolor Minecraft's vanilla assets by Mojang. See [texture sources and regeneration](docs/development.md#metal-texture-recolors).
+
+Inspired by [Colony Survival](https://store.steampowered.com/app/366090/Colony_Survival/). Villager Colonies uses original mod code and does not include Colony Survival content.

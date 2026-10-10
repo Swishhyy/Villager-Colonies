@@ -1,15 +1,44 @@
-"""Generate WWMC's original pixel textures, models and data for tin, bronze and research.
+"""Generate progression assets; recolor vanilla iron textures for bronze and tin.
 
-Run from any directory with Python and Pillow. Minecraft assets are not copied or recolored.
+Requires Python, Pillow and the official Minecraft 26.2 client JAR. Colors change;
+pixel positions, tool handles, rock backgrounds, transparency and armor UVs stay intact.
 """
+import argparse
+import hashlib
+from io import BytesIO
 from pathlib import Path
 import json
-import random
-from PIL import Image, ImageDraw
+import zipfile
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1] / 'src/main/resources'
 ASSETS = ROOT / 'assets/wwmc'
 DATA = ROOT / 'data'
+CLIENT_SHA1 = '2dc72797acbc1b63fc16a11c4ac393605f453754'
+PALETTES = {
+    'bronze': [(24, (24, 24, 24)), (68, (73, 46, 24)), (107, (117, 73, 32)),
+               (150, (167, 106, 48)), (190, (201, 140, 65)), (216, (223, 167, 84)), (255, (255, 220, 146))],
+    'tin': [(24, (24, 24, 24)), (68, (55, 70, 78)), (107, (90, 112, 120)),
+            (150, (140, 164, 173)), (190, (181, 204, 213)), (216, (208, 225, 232)), (255, (240, 249, 255))],
+}
+# destination, vanilla source, palette, optional pixels to preserve
+TEXTURE_SOURCES = [
+    ('item/raw_tin', 'item/raw_iron', 'tin', None),
+    ('item/tin_ingot', 'item/iron_ingot', 'tin', None),
+    ('item/bronze_blend', 'item/raw_iron', 'bronze', None),
+    ('item/bronze_ingot', 'item/iron_ingot', 'bronze', None),
+] + [
+    ('item/bronze_' + part, 'item/iron_' + part, 'bronze', 'wood' if part in ('sword', 'pickaxe', 'axe', 'shovel', 'hoe') else None)
+    for part in ('sword', 'pickaxe', 'axe', 'shovel', 'hoe', 'helmet', 'chestplate', 'leggings', 'boots')
+] + [
+    ('block/tin_ore', 'block/iron_ore', 'tin', 'block/stone'),
+    ('block/deepslate_tin_ore', 'block/deepslate_iron_ore', 'tin', 'block/deepslate'),
+    ('block/raw_tin_block', 'block/raw_iron_block', 'tin', None),
+    ('block/tin_block', 'block/iron_block', 'tin', None),
+    ('block/bronze_block', 'block/iron_block', 'bronze', None),
+    ('entity/equipment/humanoid/bronze', 'entity/equipment/humanoid/iron', 'bronze', None),
+    ('entity/equipment/humanoid_leggings/bronze', 'entity/equipment/humanoid_leggings/iron', 'bronze', None),
+]
 
 def write(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -40,53 +69,46 @@ def save_texture(name, image, folder='item'):
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path)
 
-def pixel_item(name, metal):
-    im = Image.new('RGBA',(16,16)); d=ImageDraw.Draw(im)
-    dark=tuple(int(c*.48) for c in metal); bright=tuple(min(255,int(c*1.2)+10) for c in metal)
-    wood=(104,70,40); edge=(48,35,25)
-    if name.endswith('ingot'):
-        d.polygon([(2,8),(5,4),(13,4),(14,8),(11,12),(3,12)],fill=dark)
-        d.polygon([(3,8),(6,5),(12,5),(12,8),(10,10),(4,10)],fill=metal); d.line([(4,7),(6,5),(11,5)],fill=bright)
-    elif name=='raw_tin':
-        d.polygon([(2,8),(4,4),(9,2),(13,5),(14,10),(10,14),(4,12)],fill=dark)
-        for box,col in [((4,5,8,10),metal),((8,4,11,7),bright),((8,9,12,12),metal)]:d.rectangle(box,fill=col)
-    elif name=='bronze_blend':
-        for x,y in [(4,6),(8,4),(10,8),(5,11)]:
-            d.rectangle((x-2,y-1,x+2,y+1),fill=dark); d.rectangle((x-1,y-2,x+1,y),fill=metal)
-        d.rectangle((8,8,10,10),fill=(204,214,218))
-    elif name.endswith(('sword','pickaxe','axe','shovel','hoe')):
-        d.line((3,13,10,6), fill=edge, width=3); d.line((3,13,10,6), fill=wood, width=1)
-        tool=name.split('_')[-1]
-        points={'sword':[(6,8),(11,3),(13,2),(13,5),(8,10)],'pickaxe':[(3,5),(6,2),(10,2),(14,5),(14,8),(12,6),(9,5),(6,4)],
-                'axe':[(7,2),(11,2),(14,5),(13,8),(9,7),(7,5)],'shovel':[(9,2),(13,2),(14,5),(11,8),(8,5)],
-                'hoe':[(3,3),(10,3),(13,6),(11,8),(9,6),(4,6)]}[tool]
-        d.polygon(points,fill=dark); d.line(points[:-1], fill=metal, width=2)
-        d.line((points[0],points[1]), fill=bright, width=1)
-        if tool=='sword':d.line((5,7,9,11),fill=dark,width=2)
-    else:
-        armor=name.split('_')[-1]
-        points={'helmet':[(3,3),(12,3),(14,6),(14,11),(11,12),(11,8),(5,8),(5,12),(2,11),(2,6)],
-                'chestplate':[(2,3),(5,2),(6,5),(9,5),(10,2),(13,3),(15,7),(12,8),(12,14),(3,14),(3,8),(0,7)],
-                'leggings':[(3,2),(12,2),(12,14),(8,14),(8,7),(7,7),(7,14),(3,14)],
-                'boots':[(3,3),(6,3),(6,10),(7,11),(7,14),(1,14),(1,10),(3,10)]}[armor]
-        d.polygon(points, fill=dark); d.line(points,fill=metal,width=2)
-        d.line((points[0],points[1]),fill=bright)
-        if armor=='boots':im.alpha_composite(im.copy(),(8,0))
-    return im
+def tinted(rgb, palette):
+    light = round(rgb[0] * .299 + rgb[1] * .587 + rgb[2] * .114)
+    if light <= palette[0][0]:
+        return rgb  # Retain vanilla's dark outlines, including those around wooden handles.
+    for (low, shadow), (high, highlight) in zip(palette, palette[1:]):
+        if light <= high:
+            fraction = (light - low) / (high - low)
+            return tuple(round(a + (b - a) * fraction) for a, b in zip(shadow, highlight))
+    return palette[-1][1]
 
-def tile(name, base, ore=False):
-    rng=random.Random(name); im=Image.new('RGB',(16,16),base)
-    for y in range(16):
-        for x in range(16):
-            shade=rng.randint(-13,13)
-            im.putpixel((x,y), tuple(max(0,min(255,c+shade)) for c in base))
-    d=ImageDraw.Draw(im)
-    if ore:
-        for x,y in [(2,3),(10,2),(6,7),(12,10),(2,12)]:
-            d.rectangle((x,y,x+2,y+2),fill=(120,139,146)); d.point((x,y),fill=(220,228,225)); d.point((x+1,y+1),fill=(175,193,196))
-    else:
-        d.rectangle((0,0,15,15),outline=tuple(max(0,c-35) for c in base)); d.line((1,1,14,1),fill=tuple(min(255,c+30) for c in base))
-    save_texture(name, im, 'block')
+def generate_textures(client_jar):
+    """Swap colors only; the client hash fixes the exact vanilla source textures."""
+    if hashlib.sha1(client_jar.read_bytes()).hexdigest() != CLIENT_SHA1:
+        raise ValueError('Use the official Minecraft 26.2 client JAR; its SHA-1 must be ' + CLIENT_SHA1)
+    with zipfile.ZipFile(client_jar) as archive:
+        def source(name):
+            return Image.open(BytesIO(archive.read('assets/minecraft/textures/' + name + '.png'))).convert('RGBA')
+        for destination, vanilla, material, preserve in TEXTURE_SOURCES:
+            original = source(vanilla)
+            image = original.copy()
+            rock_colors = set()
+            if preserve and preserve != 'wood':
+                rock = source(preserve)
+                rock_colors = {rock.getpixel((x, y)) for y in range(rock.height) for x in range(rock.width)}
+            changed = 0
+            for y in range(image.height):
+                for x in range(image.width):
+                    red, green, blue, alpha = original.getpixel((x, y))
+                    if not alpha or (red, green, blue, alpha) in rock_colors:
+                        continue
+                    if preserve == 'wood' and not red == green == blue:
+                        continue
+                    pixel = tinted((red, green, blue), PALETTES[material]) + (alpha,)
+                    image.putpixel((x, y), pixel)
+                    changed += pixel != original.getpixel((x, y))
+            if not changed or image.getchannel('A').tobytes() != original.getchannel('A').tobytes():
+                raise ValueError('Invalid vanilla recolor: ' + destination)
+            folder, name = destination.rsplit('/', 1)
+            save_texture(name, image, folder)
+    print('Recolored 20 vanilla textures; shapes, handles, rock backgrounds and armor UVs preserved.')
 
 def cube(lo, hi, texture):
     return {'from':lo,'to':hi,'faces':{face:{'texture':'#'+texture} for face in ('down','up','north','south','west','east')}}
@@ -115,13 +137,15 @@ def carcass(kind, skin):
                       'firstperson_righthand':{'rotation':[0,-30,0],'translation':[0,2,0],'scale':[.75,.75,.75]}}}
     write(ASSETS / 'models/item' / (kind+'_carcass.json'),model)
 
-def main():
-    bronze=(189,124,57); tin=(171,188,193)
+def main(client_jar, textures_only=False):
+    generate_textures(client_jar)
+    if textures_only:
+        return
     names=['raw_tin','tin_ingot','bronze_blend','bronze_ingot']+['bronze_'+part for part in ['sword','pickaxe','axe','shovel','hoe','helmet','chestplate','leggings','boots']]
     for name in names:
-        save_texture(name,pixel_item(name,tin if 'tin' in name else bronze)); item_model(name)
-    for name,base,ore in [('tin_ore',(113,114,111),True),('deepslate_tin_ore',(70,71,73),True),('raw_tin_block',(137,155,156),True),('tin_block',tin,False),('bronze_block',bronze,False)]:
-        tile(name,base,ore); block(name)
+        item_model(name)
+    for name in ('tin_ore','deepslate_tin_ore','raw_tin_block','tin_block','bronze_block'):
+        block(name)
         entry={'type':'minecraft:item','name':'wwmc:'+name}
         if name.endswith('ore'):
             entry={'type':'minecraft:alternatives','children':[
@@ -156,19 +180,12 @@ def main():
     item_model('researcher_station',parent='wwmc:block/researcher_station')
     write(DATA/'wwmc/loot_table/blocks/researcher_station.json',json.loads((DATA/'wwmc/loot_table/blocks/enchanter_station.json').read_text().replace('enchanter_station','researcher_station')))
     for kind,skin in [('cow','brown_wool'),('pig','pink_wool'),('sheep','white_wool'),('chicken','white_wool'),('rabbit','brown_wool'),('cod','brown_terracotta'),('salmon','pink_terracotta')]:carcass(kind,'minecraft:block/'+skin)
-    for name in ('humanoid','humanoid_leggings'):
-        armor=Image.new('RGBA',(64,32)); d=ImageDraw.Draw(armor)
-        for y in range(32):
-            for x in range(64):
-                shade=(-24 if x%8==0 or y%8==0 else 18 if x%8==1 or y%8==1 else 0)
-                d.point((x,y),fill=tuple(max(0,min(255,c+shade)) for c in bronze)+(255,))
-        save_texture('bronze',armor,'entity/equipment/'+name)
     write(ASSETS/'equipment/bronze.json',{'layers':{'humanoid':[{'texture':'wwmc:bronze'}],'humanoid_leggings':[{'texture':'wwmc:bronze'}]}})
     for namespace,kind,name,values in [('c','item','ingots/tin',['wwmc:tin_ingot']),('c','item','ingots/bronze',['wwmc:bronze_ingot']),
          ('c','item','ingots',['#c:ingots/tin','#c:ingots/bronze']),('c','block','ores/tin',['wwmc:tin_ore','wwmc:deepslate_tin_ore']),
          ('c','block','ores',['#c:ores/tin']),('c','item','ores/tin',['wwmc:tin_ore','wwmc:deepslate_tin_ore']),('c','item','ores',['#c:ores/tin']),
          ('c','item','raw_materials/tin',['wwmc:raw_tin']),('c','item','raw_materials',['#c:raw_materials/tin'])]:tag(namespace,kind,name,values)
-    tag('minecraft','block','mineable/pickaxe',['wwmc:'+n for n in ['tin_ore','deepslate_tin_ore','raw_tin_block','tin_block','bronze_block']])
+    tag('minecraft','block','mineable/pickaxe',['wwmc:'+n for n in ['tin_ore','deepslate_tin_ore','raw_tin_block','tin_block','bronze_block','bronze_snare','bronze_caltrops','iron_spring_trap']])
     tag('minecraft','block','needs_stone_tool',['wwmc:tin_ore','wwmc:deepslate_tin_ore','wwmc:tin_block','wwmc:raw_tin_block','wwmc:bronze_block'])
     for part,group in [('sword','swords'),('pickaxe','pickaxes'),('axe','axes'),('shovel','shovels'),('hoe','hoes')]:tag('minecraft','item',group,['wwmc:bronze_'+part])
     for enchant,parts in [('sword',['sword']),('sharp_weapon',['sword','axe']),('mining',['pickaxe','axe','shovel','hoe']),('mining_loot',['pickaxe','axe','shovel','hoe']),('durability',list(patterns)),
@@ -176,7 +193,7 @@ def main():
         tag('minecraft','item','enchantable/'+enchant,['wwmc:bronze_'+p for p in parts])
     gear=['sword','pickaxe','axe','shovel','hoe','helmet','chestplate','leggings','boots','spear']
     def optional(id):return {'id':id,'required':False}
-    tag('wwmc','item','requires_bronze',['wwmc:bronze_'+p for p in list(patterns)]+['wwmc:bronze_blend','wwmc:bronze_ingot','wwmc:bronze_block','wwmc:quarry_station','wwmc:bronze_snare','wwmc:bronze_caltrops']+[optional('minecraft:copper_'+p) for p in gear])
+    tag('wwmc','item','requires_bronze',['wwmc:bronze_'+p for p in list(patterns)]+['wwmc:bronze_blend','wwmc:bronze_ingot','wwmc:bronze_block','wwmc:quarry_station']+[optional('minecraft:copper_'+p) for p in gear]+['wwmc:bronze_snare','wwmc:bronze_caltrops'])
     tag('wwmc','item','requires_iron',[optional('minecraft:'+m+'_'+p) for m in ('iron','golden') for p in gear]+['minecraft:chainmail_'+p for p in ['helmet','chestplate','leggings','boots']]
         +['minecraft:bucket','minecraft:water_bucket','minecraft:lava_bucket','minecraft:milk_bucket','minecraft:powder_snow_bucket','minecraft:cod_bucket','minecraft:salmon_bucket','minecraft:pufferfish_bucket','minecraft:tropical_fish_bucket','minecraft:axolotl_bucket','minecraft:tadpole_bucket',
           'minecraft:shears','minecraft:flint_and_steel','minecraft:shield','minecraft:crossbow','minecraft:trident','minecraft:anvil','minecraft:chipped_anvil','minecraft:damaged_anvil','minecraft:blast_furnace','minecraft:smithing_table','wwmc:blacksmith_station','wwmc:iron_spring_trap'])
@@ -194,4 +211,9 @@ def main():
     for name in ['tin_ore','deepslate_tin_ore','raw_tin_block','tin_block','bronze_block','researcher_station']:lang['block.wwmc.'+name]=name.replace('_',' ').title()
     write(lang_path,lang)
 
-if __name__=='__main__':main()
+if __name__=='__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--client-jar', type=Path, required=True, help='Official Minecraft 26.2 client JAR')
+    parser.add_argument('--textures-only', action='store_true', help='Recolor textures without regenerating models or gameplay data')
+    args = parser.parse_args()
+    main(args.client_jar, args.textures_only)

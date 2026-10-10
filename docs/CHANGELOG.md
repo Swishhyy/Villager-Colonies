@@ -2,6 +2,10 @@
 
 [Project overview](../README.md) · [All guides](README.md) · [Versioning rules](curseforge.md#public-version-format)
 
+## Unreleased
+
+- Recolor vanilla Minecraft textures for bronze tools, armor, ingots and blocks, and tin ores and materials. Preserve vanilla shapes, wooden handles, rock backgrounds and worn armor layouts.
+
 ## 0.1.0.0
 
 Villager Colonies starts at **0.1.0.0**, with settlement ages, research, traps and villager fixes. The mod remains playable and in development.
