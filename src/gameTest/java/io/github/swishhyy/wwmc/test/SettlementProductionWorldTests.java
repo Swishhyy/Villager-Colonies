@@ -197,17 +197,24 @@ public final class SettlementProductionWorldTests {
             var smith=new Station(start.offset(20,0,8),StructureRole.BLACKSMITH); var f=fixture(level,start,warehouse,research,smith);
             level.setBlockAndUpdate(research.position().north(2),Blocks.LECTERN.defaultBlockState());
             var stock=barrel(level,warehouse.position().south(2),new ItemStack(Items.COPPER_INGOT,24),new ItemStack(WWMC.TIN_INGOT.get(),8),new ItemStack(Items.COAL,24));
-            f.worker(research,false); helper.assertTrue(Research.missing(level,f.town,Research.byId("bronze_age")).contains("3 citizens"),"Bronze Age has no population requirement");
-            f.worker(smith,false); var citizen=f.worker(research,false);
-            helper.assertTrue(Research.study(level,f.town,"bronze_age").contains("scrolls") && stock.getItem(0).getCount()==24,"Missing scrolls consumed research supplies");
-            stock.setItem(3,new ItemStack(WWMC.RESEARCH_SCROLL.get(),18)); helper.assertTrue(Research.study(level,f.town,"bronze_age").contains("researched"),"Earned scrolls did not unlock Bronze Age");
-            stock.setItem(4,new ItemStack(WWMC.BRONZE_INGOT.get(),16)); stock.setItem(5,new ItemStack(Items.IRON_INGOT,16));
-            helper.assertTrue(Research.missing(level,f.town,Research.byId("iron_age")).contains("blacksmith"),"Iron Age ignored infrastructure");
-            level.setBlockAndUpdate(smith.position().east(2),WWMC.BRONZE_ANVIL.get().defaultBlockState());
-            level.setBlockAndUpdate(smith.position().west(2),Blocks.FURNACE.defaultBlockState());
-            helper.assertTrue(Research.study(level,f.town,"iron_age").contains("researched") && Research.has(f.town,"iron_age"),"Bronze forge could not bootstrap the Iron Age");
-            helper.assertTrue(Research.scrolls(level,f.town)==0 && Research.study(level,f.town,"iron_age").startsWith("Already"),"Research duplicated scroll costs");
-            f.close(); helper.succeed();
+            f.worker(research,false);
+            // Entity registration completes on the server's following tick, just as it does during normal recruitment.
+            helper.runAtTickTime(5,() -> {
+                String missing=Research.missing(level,f.town,Research.byId("bronze_age"));
+                helper.assertTrue(missing.contains("3 citizens"),"Bronze Age has no population requirement: "+missing);
+                f.worker(smith,false); f.worker(research,false);
+            });
+            helper.runAtTickTime(10,() -> {
+                helper.assertTrue(Research.study(level,f.town,"bronze_age").contains("scrolls") && stock.getItem(0).getCount()==24,"Missing scrolls consumed research supplies");
+                stock.setItem(3,new ItemStack(WWMC.RESEARCH_SCROLL.get(),18)); helper.assertTrue(Research.study(level,f.town,"bronze_age").contains("researched"),"Earned scrolls did not unlock Bronze Age");
+                stock.setItem(4,new ItemStack(WWMC.BRONZE_INGOT.get(),16)); stock.setItem(5,new ItemStack(Items.IRON_INGOT,16));
+                helper.assertTrue(Research.missing(level,f.town,Research.byId("iron_age")).contains("blacksmith"),"Iron Age ignored infrastructure");
+                level.setBlockAndUpdate(smith.position().east(2),WWMC.BRONZE_ANVIL.get().defaultBlockState());
+                level.setBlockAndUpdate(smith.position().west(2),Blocks.FURNACE.defaultBlockState());
+                helper.assertTrue(Research.study(level,f.town,"iron_age").contains("researched") && Research.has(f.town,"iron_age"),"Bronze forge could not bootstrap the Iron Age");
+                helper.assertTrue(Research.scrolls(level,f.town)==0 && Research.study(level,f.town,"iron_age").startsWith("Already"),"Research duplicated scroll costs");
+                f.close(); helper.succeed();
+            });
         });
     }
 
