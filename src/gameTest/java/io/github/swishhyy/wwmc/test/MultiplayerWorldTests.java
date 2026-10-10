@@ -36,6 +36,7 @@ public final class MultiplayerWorldTests {
         TestPlayer(ServerLevel level,String name,BlockPos pos) {
             super(level,new GameProfile(UUID.randomUUID(),name)); setInvulnerable(false); setHealth(getMaxHealth());
             setPos(pos.getX()+0.5,pos.getY(),pos.getZ()+0.5); level.addNewPlayer(this);
+            connection.handleAcceptPlayerLoad(new net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket());
         }
         @Override public boolean canHarmPlayer(Player other) { return getTeam()==null || getTeam()!=other.getTeam() || getTeam().isAllowFriendlyFire(); }
     }

@@ -101,7 +101,7 @@ public final class VillagerAIWorldTests {
                 helper.assertTrue(guard.getOffhandItem().is(Items.SHIELD) && guard.getOffhandItem().getDamageValue()==7 && stand.getOffhandItem().isEmpty(),"Guard did not collect the actual shield from the stand: "+guard.activity());
                 var enemy=zombie(level,guard.blockPosition().south(3)); enemy.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200); enemy.setHealth(200);
                 helper.succeedWhen(() -> {
-                    helper.assertTrue(guard.isBlocking() && guard.getTicksUsingItem()>=5 && enemy.getHealth()<190,"Shield guard did not attack and raise its shield between attacks: "+guard.activity());
+                    helper.assertTrue(guard.isBlocking() && guard.getTicksUsingItem()>=5 && enemy.getHealth()<190,"Shield guard did not attack and raise its shield between attacks: "+guard.activity()+", blocking="+guard.isBlocking()+", useTicks="+guard.getTicksUsingItem()+", enemyHealth="+enemy.getHealth()+", distance="+guard.distanceTo(enemy));
                     guard.setYRot(0); guard.setYHeadRot(0);
                     enemy.setPos(guard.getX(),guard.getY(),guard.getZ()+3); float health=guard.getHealth();
                     guard.hurtServer(level,level.damageSources().mobAttack(enemy),6);

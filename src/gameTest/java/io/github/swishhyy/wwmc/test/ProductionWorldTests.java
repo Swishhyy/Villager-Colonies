@@ -53,7 +53,7 @@ public final class ProductionWorldTests {
             for(int y=0;y<4;y++) level.setBlockAndUpdate(root.above(y),Blocks.OAK_LOG.defaultBlockState());
             for(int x=-2;x<=2;x++) for(int z=-2;z<=2;z++) if(x!=0 || z!=0)
                 level.setBlockAndUpdate(root.offset(x,3,z),Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,false));
-            Container supplies=barrel(level,lumber.position().west(2),new ItemStack(Items.IRON_AXE),new ItemStack(Items.OAK_SAPLING,8));
+            Container supplies=barrel(level,lumber.position().north(2),new ItemStack(Items.IRON_AXE),new ItemStack(Items.OAK_SAPLING,8));
             helper.assertTrue(SettlementService.protectedFurniture(f.town(),root),"Fixture did not reproduce the old station-volume rejection");
             helper.assertTrue(ForestryService.tree(level,f.town(),root)!=null,"An overlapping warehouse scan range or banner rejected a natural tree");
             BlockPos wall=root.south().above(); level.setBlockAndUpdate(wall,Blocks.OAK_PLANKS.defaultBlockState());

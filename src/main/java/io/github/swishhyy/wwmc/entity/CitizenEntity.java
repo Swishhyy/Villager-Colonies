@@ -1481,7 +1481,8 @@ public final class CitizenEntity extends Villager {
             else if(getTicksUsingItem()>=20) { stopUsingItem(); shoot(level,enemy); guardAttackTicks=CitizenSkill.guardCooldown(skillLevel(StructureRole.GUARD),getRandom().nextInt(100)); }
             return;
         }
-        boolean inReach=CitizenReach.within(getEyePosition(),enemy.getBoundingBox()) && hasLineOfSight(enemy);
+        // Tool-work reach is wider than a native melee swing. Keep approaching until an attack can land.
+        boolean inReach=isWithinMeleeAttackRange(enemy) && hasLineOfSight(enemy);
         if(shield && (!inReach || guardAttackTicks>0)) {
             if(isUsingItem() && getUsedItemHand()!=InteractionHand.OFF_HAND) stopUsingItem();
             if(!isUsingItem()) startUsingItem(InteractionHand.OFF_HAND);

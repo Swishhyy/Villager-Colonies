@@ -131,6 +131,8 @@ public final class ForestryService {
                 // Truncating a tree at an unloaded chunk would leave floating trunks.
                 if(!world.available(adjacent)) return rejected("Trees extend outside the claim or into unloaded terrain");
                 BlockState state=world.state(adjacent);
+                if(state.is(BlockTags.LOGS) && world.protectedAt(adjacent))
+                    return rejected("Player-placed logs protect the trunk at "+adjacent.toShortString());
                 if(state.is(BlockTags.PLANKS) || !world.workFixtureAt(adjacent) && (world.blockEntityAt(adjacent)
                         || world.furnitureAt(adjacent) || world.protectedAt(adjacent) && !state.isAir() && !soil(state)))
                     return rejected("Nearby construction at "+adjacent.toShortString()+" ("+state.getBlock().getName().getString()+") protects this tree");
