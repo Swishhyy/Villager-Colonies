@@ -43,7 +43,7 @@ public final class GuideBook {
             new Card("minecraft:enchanting_table","Enchant gear","Put an enchanting table and bookshelves near Enchanter. Supply lapis and plain gear or books. Runes and hand motions show active work.")
         ),List.of(),"No swings or work particles? The worker may be walking, resting or waiting. Open Needs to see why."),
         new Topic("defense","Defense & recovery","Prepare before the next wave",List.of(
-            new Card("wwmc:guard_station","Equip a guard","Place usable armor on nearby stands. Put weapons and arrows in the guard barrel. One post has one guard."),
+            new Card("wwmc:guard_station","Equip a guard","Place usable armor and shields on nearby stands. Put weapons, shields and arrows in the guard barrel. Archers shoot real arrows; shield guards raise a shield between attacks. One post has one guard."),
             new Card("minecraft:shield","Posts & patrols","Choose a swordsman, shield guard or archer role at Guard. Use the Inspector to mark posts and patrol points."),
             new Card("minecraft:bell","Sound the alarm","Ring a bell to call guards. Keep some home when borrowing guards for a squad or expedition."),
             new Card("wwmc:hospital_station","Make patient beds","Put beds beside Hospital. They heal slowly. Fund Field Hospital and stock meals plus paper to let a medic assist."),
@@ -61,10 +61,17 @@ public final class GuideBook {
             new Card("wwmc:researcher_station","Hire a researcher","Place Researcher beside a lectern. Give a citizen this job in Jobs and keep ready-to-eat food available."),
             new Card("minecraft:paper","Choose a project","Open Campaign > Research at the flag. Supplies are paid from the warehouse once; research advances only while a researcher works at the lectern."),
             new Card("wwmc:tin_ore","Find tin","Tin occurs from Y -32 to 64 in new Overworld terrain. A stone pickaxe can mine it. Smelt raw tin into ingots."),
-            new Card("wwmc:bronze_ingot","Enter the Bronze Age","Research Bronze Age first. The recipe book discovers bronze blend when you collect copper or tin. Put copper in 3 separate crafting slots and tin in a fourth, then smelt the 4 blends into ingots."),
+            new Card("wwmc:bronze_blend","Make Bronze Blend","Research Bronze Age first. Bronze Blend is the brown lump beside Tin Ingot in the mod tab. Craft 3 Copper Ingots in separate slots with 1 Tin Ingot to get 4 blends, then smelt them into bronze ingots."),
             new Card("minecraft:iron_sword","Unlock equipment","Iron Age unlocks iron and gold equipment. Gemcraft and Netherite Smithing follow. Found equipment can be stored but cannot be used before its research."),
             new Card("minecraft:blue_banner","Share progress","The owner and accepted members share research everywhere, including other dimensions. Allies and invitations alone do not grant it. Existing towns retain their old gear access.")
         ),List.of("Stone","Researcher","Tin + copper","Bronze","Iron"),"Research pauses during sleep, danger or blocked access. Check the banner's Research status for the reason. Progress and paid supplies survive saving."),
+        new Topic("multiplayer","Player interactions","Contracts, duels and outpost battles",List.of(
+            new Card("minecraft:emerald","Post a supply contract","At your main banner, hold a plain example and open Multiplayer. Choose the amount and emerald payment; Post reserves real emeralds from your inventory."),
+            new Card("minecraft:chest","Deliver for another town","Accept exclusively for your settlement. Carry plain goods to the issuer's banner and click Deliver. Full storage keeps remaining items with you. Collect saved payment after completion."),
+            new Card("minecraft:wooden_sword","Agree to a duel","Choose a nearby survival player and matching stakes. Both accept, wait five seconds and fight within 24 blocks. Finish at one heart; leaving or disconnecting forfeits. Equipment wear remains."),
+            new Card("minecraft:red_banner","Challenge a resource outpost","Both main settlement owners must agree and remain online. Assemble for one minute; then hold within six blocks of the flag for 60 seconds with no defender within 16. Normal PvP death and drops apply."),
+            new Card("minecraft:paper","Keep payments safe","Refunds and winnings stay in your saved balance until Collect payment can fit them. Restart refunds interrupted duel stakes and cancels outpost battles. Ordinary claims and shared research permissions remain.")
+        ),List.of(),"Duels are nonlethal; outpost battles use normal PvP. Read the action tooltip before accepting. Settlement wars are future work."),
         new Topic("frontier","Projects & exploration","Expand after the town is stable",List.of(
             new Card("minecraft:iron_ingot","Fund projects","Open Campaign > Projects. Furnish the required stations, then pay with real warehouse goods."),
             new Card("minecraft:compass","Explore together","Camps have captives or stolen supplies. Ruined castles have captains and schematics; castles and mining workshops show real station, furniture and storage setups. Clear sites with equipped guards."),
