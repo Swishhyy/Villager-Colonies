@@ -52,7 +52,7 @@ public final class TownViews {
                             +" citizens; "+SettlementService.housingBeds(level,town).size()+" usable housing beds"),
                     row(Items.APPLE,"Happiness: "+happiness+" / 100",CitizenWellbeing.mood(happiness)+" · varied meals eaten, enough housing, safety and amenity types. Happiness changes gradually."),
                     row(Items.BOOKSHELF,"Housing amenities",conditions.amenities().isEmpty() ? "Add a garden, bell, lit campfire or books to furnished housing. Each type counts once." : String.join(", ",conditions.amenities())+". Each type counts once."),
-                    new PanelView.Row(new ItemStack(Items.RED_BED),Component.literal("Children: "+town.progress.children.size()),
+                    new PanelView.Row(new ItemStack(Items.BED.red()),Component.literal("Children: "+town.progress.children.size()),
                             Component.literal(PopulationGrowth.pause(level,town)+". A birth uses 6 meals; a child grows up in 20 loaded minutes."),0,-1,0,
                             town.progress.growthEnabled ? "act:growth:pause" : "act:growth:resume"),
                     row(Items.PAPER,"Population research","+"+Research.populationBonus(town)+" places from housing discoveries"));

@@ -63,8 +63,8 @@ public final class WellbeingAlloyWorldTests {
         for(int i=0;i<stacks.length;i++) box.setItem(i,stacks[i]); return box;
     }
     private static BlockPos bed(ServerLevel level,BlockPos foot) {
-        level.setBlockAndUpdate(foot,Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING,Direction.NORTH).setValue(BedBlock.PART,BedPart.FOOT));
-        BlockPos head=foot.north(); level.setBlockAndUpdate(head,Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING,Direction.NORTH).setValue(BedBlock.PART,BedPart.HEAD)); return head;
+        level.setBlockAndUpdate(foot,Blocks.BED.red().defaultBlockState().setValue(BedBlock.FACING,Direction.NORTH).setValue(BedBlock.PART,BedPart.FOOT));
+        BlockPos head=foot.north(); level.setBlockAndUpdate(head,Blocks.BED.red().defaultBlockState().setValue(BedBlock.FACING,Direction.NORTH).setValue(BedBlock.PART,BedPart.HEAD)); return head;
     }
     private static CompoundTag save(CitizenEntity c) {
         var out=TagValueOutput.createWithContext(ProblemReporter.DISCARDING,c.level().registryAccess()); c.saveWithoutId(out); return out.buildResult();
