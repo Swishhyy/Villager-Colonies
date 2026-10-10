@@ -57,10 +57,10 @@ Replace the previous WWMC or Villager Colonies JAR; keep only one copy in the fo
 2. **Found your town.** Place a **Settlement Banner** on open, solid ground and right-click it with an empty hand.
 3. **Add housing and supplies.** Put beds near a **Housing Station** and chests or barrels near a **Warehouse Station**. Ordinary stations detect furniture within **three blocks on each axis**.
 4. **Set up your first jobs.** Add a **Farm Station**, a **Lumber Station**, and a **Courier Station**. Put barrels beside the work stations and stock food, tools, and saplings in the warehouse.
-5. **Recruit citizens.** Use the settlement banner's screen to recruit and manage jobs. Add a **Cook Station** and the other jobs you need as the town grows.
-6. **Research the next age.** Add a **Researcher Station** and a nearby lectern, then choose a project under **Campaign → Research**. Supply the warehouse and let the researcher work. See [ages and research](docs/settlement-guide.md#ages-and-research).
+5. **Recruit citizens.** Open **People** at the banner to recruit and manage jobs. Add a **Cook Station** and the other jobs you need as the town grows.
+6. **Research the next age.** Add a **Researcher Station** and a nearby lectern. Supply paper and ink sacs or charcoal in the warehouse so researchers can write scrolls, then spend them under **Research** to unlock discoveries. See [ages and research](docs/settlement-guide.md#ages-and-research).
 
-Right-click a banner, station, or citizen to open its screen. The banner's **Needs** tab helps you find shortages; **Relationships** manages player access and town alliances. Press **?** on a town or station screen for relevant help.
+Right-click a banner, station, or citizen to open its screen. The banner leads to **People**, **Production**, **Research** and **Neighbours**. **Needs** shows shortages; **More** contains projects, settings and the map. Press **?** for relevant help.
 
 Most job blocks employ **one citizen**; quarries support a crew. Injured citizens recover in **Hospital Station beds**, rather than by eating.
 
@@ -69,6 +69,7 @@ Most job blocks employ **one citizen**; quarries support a crew. Injured citizen
 | I want to... | Read this |
 | --- | --- |
 | Learn stations, recipes, jobs, and storage | [Settlement guide](docs/settlement-guide.md) |
+| Automate job blocks, forge equipment, or make research scrolls | [Settlement production](docs/settlement-production.md) |
 | Fix cooking, improve yields, or heal citizens | [Production and recovery](docs/production-recovery.md) |
 | Invite friends, trade, lead squads, and build outposts | [Multiplayer and campaign](docs/multiplayer-campaign.md) |
 | Recover a server with missing Overworld settings | [Server startup help](docs/server-startup.md) |
