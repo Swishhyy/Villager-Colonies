@@ -223,7 +223,7 @@ public final class ForestryService {
                 }
             }
         }
-        if(growing && !stocked) return new Search(null,"Waiting for saplings in the Lumber Station's range to grow");
+        if(growing && (roots.isEmpty() || !stocked)) return new Search(null,"Waiting for saplings in the Lumber Station's range to grow");
         String plantingReason=!stocked ? "Needs saplings in the Lumber Station's job barrel or my bag (four for dark or pale oak)"
                 : !plantable ? "Needs suitable soil and growing room in the Lumber Station's range"
                 : "Planting spots are crowded or unreachable; leave space between saplings and clear a walking path";

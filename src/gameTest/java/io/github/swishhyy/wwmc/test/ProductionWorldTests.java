@@ -116,6 +116,8 @@ public final class ProductionWorldTests {
             helper.succeedWhen(() -> {
                 helper.assertTrue(level.getBlockState(root).is(Blocks.OAK_SAPLING),"Lumberjack did not plant through the flower: "+describe(citizen));
                 helper.assertTrue(count(stock,Items.OAK_SAPLING)+citizen.bag().count(Items.OAK_SAPLING)+citizen.getOffhandItem().getCount()==1,"Planting consumed anything other than one actual sapling");
+                var pause=ForestryService.search(level,f.town(),lumber,p -> true,item -> citizen.bag().count(item)+(citizen.getOffhandItem().is(item) ? citizen.getOffhandItem().getCount() : 0));
+                helper.assertTrue(pause.task()==null && pause.reason().startsWith("Waiting for saplings") && !TownNeeds.asks(pause.reason()),"A growing sapling was reported as a stalled job: "+pause.reason());
                 f.close();
             });
         });
@@ -132,11 +134,12 @@ public final class ProductionWorldTests {
             for(int y=0;y<4;y++) level.setBlockAndUpdate(root.above(y),Blocks.OAK_LOG.defaultBlockState());
             for(int x=-1;x<=1;x++) for(int z=-1;z<=1;z++) if(x!=0 || z!=0)
                 level.setBlockAndUpdate(root.offset(x,3,z),Blocks.OAK_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,false));
-            BlockPos feet=root.west(2),leaf=feet.above(),decorative=root.south(2).above();
+            BlockPos feet=root.west(2).south(),leaf=feet.above(),decorative=root.south(2).above();
             level.setBlockAndUpdate(leaf,Blocks.BIRCH_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,false));
             var decoration=Blocks.BIRCH_LEAVES.defaultBlockState().setValue(LeavesBlock.PERSISTENT,true);
             level.setBlockAndUpdate(decorative,decoration);
-            var citizen=f.worker(lumber,feet); citizen.bag().offer(new ItemStack(Items.BREAD,2));
+            barrel(level,lumber.position().west(2));
+            var citizen=f.worker(lumber,feet); citizen.bag().offer(new ItemStack(Items.BREAD));
             citizen.setItemSlot(EquipmentSlot.MAINHAND,new ItemStack(Items.IRON_AXE));
             helper.assertTrue(ForestryService.clearableLeaf(level,f.town(),ForestryService.tree(level,f.town(),root),leaf),"The neighboring birch leaf blocked oak access");
             helper.succeedWhen(() -> {
