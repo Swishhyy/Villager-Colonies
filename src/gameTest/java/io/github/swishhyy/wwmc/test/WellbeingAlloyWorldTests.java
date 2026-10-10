@@ -252,7 +252,8 @@ public final class WellbeingAlloyWorldTests {
             var f=fixture(level,start,warehouse,courier,smelter,smith); f.town.progress.research.addAll(List.of("bronze_age","iron_age","steel_working"));
             AlloyWorkshop.order(f.town,"wwmc:steel_ingot",3); AlloyWorkshop.order(f.town,"wwmc:bronze_ingot",0);
             helper.assertTrue(ForgeWorkshop.order(level,f.town,"wwmc:steel_pickaxe",1),"Real steel forge order rejected");
-            Container stock=barrel(level,warehouse.position().south(2),new ItemStack(Items.IRON_INGOT,10),new ItemStack(Items.COAL,16),new ItemStack(Items.STICK,2));
+            // Supply one pickaxe's metal; stock targets normally replenish ingots after the smith uses them.
+            Container stock=barrel(level,warehouse.position().south(2),new ItemStack(Items.IRON_INGOT,3),new ItemStack(Items.COAL,16),new ItemStack(Items.STICK,2));
             Container alloyBarrel=barrel(level,smelter.position().south(2)),forgeBarrel=barrel(level,smith.position().south(2));
             BlockPos pos=smelter.position().north(2); level.setBlockAndUpdate(pos,WWMC.ALLOY_FURNACE.get().defaultBlockState()); var furnace=(AlloyFurnaceEntity)level.getBlockEntity(pos);
             level.setBlockAndUpdate(smith.position().north(2),Blocks.ANVIL.defaultBlockState()); level.setBlockAndUpdate(smith.position().east(2),Blocks.FURNACE.defaultBlockState());
@@ -260,7 +261,7 @@ public final class WellbeingAlloyWorldTests {
             helper.succeedWhen(() -> {
                 var all=List.of(stock,alloyBarrel,forgeBarrel,maker.bag(),carrier.bag(),forger.bag(),furnace);
                 helper.assertTrue(InventoryOps.count(List.of(stock),s -> s.is(WWMC.STEEL_PICKAXE.get()))==1,"Steel chain unfinished: smelter="+maker.activity()+", courier="+carrier.activity()+", blacksmith="+forger.activity());
-                helper.assertTrue(InventoryOps.count(all,s -> s.is(Items.IRON_INGOT))==7 && InventoryOps.count(all,s -> s.is(WWMC.STEEL_INGOT.get()))==0
+                helper.assertTrue(InventoryOps.count(all,s -> s.is(Items.IRON_INGOT))==0 && InventoryOps.count(all,s -> s.is(WWMC.STEEL_INGOT.get()))==0
                         && InventoryOps.count(all,s -> s.is(Items.STICK))==0,"Steel pickaxe did not consume exactly three alloyed iron ingots and two sticks");
                 helper.assertTrue(InventoryOps.count(all,s -> s.is(Items.COAL))==10,"Steel carbon, furnace fuel or forge fuel was synthesized or incorrectly charged");
                 f.close();
