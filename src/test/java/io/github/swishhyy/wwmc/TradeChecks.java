@@ -114,6 +114,18 @@ public final class TradeChecks {
         assertEquals(12,beds); assertEquals(1,NpcSettlements.stations(town).stream().filter(s -> s.role()==StructureRole.TRADER).count());
         assertEquals(8,NpcSettlements.stations(town).stream().filter(s -> s.role().providesWork()).count());
     }
+    @Test void nearbyNpcPlotsUseExistingRegionsAndNearestFirstOrder() {
+        BlockPos origin=new BlockPos(-1740,140,-1820);
+        var plots=NpcTownPlan.nearbyPlots(42,origin,1408);
+        assertEquals(plots,NpcTownPlan.nearbyPlots(42,origin,1408));
+        assertEquals(81,plots.size()); assertEquals(9,plots.stream().map(p -> p.candidate().id()).distinct().count());
+        BlockPos horizontal=new BlockPos(origin.getX(),0,origin.getZ()); double previous=-1;
+        for(var plot:plots) {
+            double distance=plot.site().distSqr(horizontal); assertTrue(distance>=previous,"A farther NPC plot precedes a nearer one"); previous=distance;
+            assertTrue(NpcTownPlan.sites(plot.candidate()).contains(plot.site()),"Bootstrap created an unrelated town layout or ID");
+        }
+        assertEquals(plots,NpcTownPlan.nearbyPlots(42,new BlockPos(origin.getX(),-60,origin.getZ()),1408),"Player altitude changes nearest-town discovery");
+    }
     @Test void routeRowsKeepStableIdentityAcrossNetwork(MinecraftServer server) {
         String key=UUID.randomUUID().toString();
         PanelView.Row row=new PanelView.Row(new ItemStack(Items.COMPASS),Component.literal("Neighbor"),Component.literal("Neutral"),0,-1,0,key);

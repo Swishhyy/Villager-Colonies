@@ -15,6 +15,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /** An illustrated, searchable handbook with actual item icons, recipe grids and short setup cards. */
 public final class GuideScreen extends Screen {
@@ -127,23 +128,22 @@ public final class GuideScreen extends Screen {
     private int bronzeRecipe(GuiGraphicsExtractor g,int top) {
         int left=left(),cw=contentWidth(),gridX=left+Math.max(0,(cw-108)/2);
         top=text(g,"Make bronze after Bronze Age research",left,top,cw,INK)+4;
-        top=text(g,"1. Use three separate copper slots and one tin slot. Either crafting grid works.",left,top,cw,MUTED)+6;
-        for(int row=0;row<2;row++) for(int col=0;col<2;col++) {
-            int sx=gridX+col*19,sy=top+row*19;
-            Ui.slot(g,sx,sy); g.item(icon(row==1 && col==1 ? "wwmc:tin_ingot" : "minecraft:copper_ingot"),sx,sy);
+        top=text(g,"Use an Alloy Furnace inside your researched settlement. Add 3 copper, 1 tin and separate fuel.",left,top,cw,MUTED)+6;
+        ItemStack copper=new ItemStack(Items.COPPER_INGOT,3),tin=new ItemStack(WWMC.TIN_INGOT.get());
+        ItemStack bronze=new ItemStack(WWMC.BRONZE_INGOT.get(),4);
+        ItemStack[] inputs={copper,tin,new ItemStack(Items.COAL)};
+        for(int i=0;i<inputs.length;i++) {
+            int sx=gridX+i*24;
+            Ui.slot(g,sx,top); g.item(inputs[i],sx,top);
+            if(inputs[i].getCount()>1) g.text(font,Integer.toString(inputs[i].getCount()),sx+12,top+12,INK,false);
         }
-        g.text(font,">",gridX+48,top+13,ACCENT,false);
-        ItemStack blend=new ItemStack(WWMC.BRONZE_BLEND.get(),4);
-        Ui.slot(g,gridX+66,top+9); g.item(blend,gridX+66,top+9);
-        g.text(font,"4",gridX+80,top+23,INK,false);
-        top+=45;
-        top=text(g,"2. Smelt each bronze blend in a furnace with fuel to make one bronze ingot. A blast furnace also works.",left,top,cw,MUTED)+6;
-        for(int i=0;i<3;i++) {
-            int sx=gridX+i*33;
-            Ui.slot(g,sx,top); g.item(icon(i==0 ? "wwmc:bronze_blend" : i==1 ? "minecraft:furnace" : "wwmc:bronze_ingot"),sx,top);
-            if(i<2) g.text(font,">",sx+23,top+4,ACCENT,false);
-        }
-        return top+28;
+        top+=27;
+        Ui.slot(g,gridX+12,top); g.item(icon("wwmc:alloy_furnace"),gridX+12,top);
+        g.text(font,">",gridX+40,top+4,ACCENT,false);
+        Ui.slot(g,gridX+60,top); g.item(bronze,gridX+60,top); g.text(font,"4",gridX+72,top+12,INK,false);
+        top+=28;
+        top=text(g,"A batch makes 4 bronze ingots in 20 seconds. Smelters and couriers can automate it.",left,top,cw,MUTED)+5;
+        return text(g,"Bronze Blend remains available in creative and can still be smelted. New survival bronze uses the Alloy Furnace.",left,top,cw,MUTED);
     }
     @Override public void extractBackground(GuiGraphicsExtractor g,int mouseX,int mouseY,float partialTick) {
         super.extractBackground(g,mouseX,mouseY,partialTick);

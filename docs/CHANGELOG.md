@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+- Add `/locate settlement` to find the nearest completed NPC town, with clickable coordinates and distance. Use vanilla locate permissions and saved town locations without loading chunks.
+- Establish a nearby NPC neighbour automatically when none is available within two town regions. Search safe plots nearest-first, keep at most nine temporary chunks loaded, resume saved construction and release the window when done. Respect town limits, claims, protected blocks and disabled generation.
+- Restore Bronze Blend to the creative tab and replace the visual handbook's old blend-crafting instructions with direct Alloy Furnace production.
+- Fix missing trap particle textures and add recipe-book packet round-trip checks to catch client decoding failures.
 - Add saved citizen happiness from actual meals, housing, safety and distinct housing amenities. Rotate available meals for variety; keep bowl and bottle returns.
 - Add food-funded births from happy adults with spare housing, population room and parent cooldowns. Babies play near home, shelter and rest, and take no jobs until native adulthood. Pause growth in People → Wellbeing; no chat spam or unloaded catch-up births.
 - Improve farmer, lumberjack and gatherer speed with better native tools, including bronze and steel. Keep mining's existing pickaxe timing; farmers can work without a hoe and use available hoes for a bonus.

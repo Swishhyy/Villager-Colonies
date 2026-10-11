@@ -132,7 +132,7 @@ public final class WWMC {
         .icon(() -> BANNER_ITEM.get().getDefaultInstance()).displayItems((p,out) -> {
             out.accept(BANNER_ITEM.get()); out.accept(SURVEYOR.get()); out.accept(GUIDE.get()); out.accept(BRONZE_ANVIL_ITEM.get()); out.accept(RESEARCH_SCROLL.get()); out.accept(ALLOY_FURNACE_ITEM.get());
             for(var item:java.util.List.of(TIN_ORE_ITEM,DEEPSLATE_TIN_ORE_ITEM,TIN_BLOCK_ITEM,RAW_TIN_BLOCK_ITEM,BRONZE_BLOCK_ITEM,
-                    RAW_TIN,TIN_INGOT,BRONZE_INGOT,BRONZE_SWORD,BRONZE_PICKAXE,BRONZE_AXE,BRONZE_SHOVEL,BRONZE_HOE,
+                    RAW_TIN,TIN_INGOT,BRONZE_BLEND,BRONZE_INGOT,BRONZE_SWORD,BRONZE_PICKAXE,BRONZE_AXE,BRONZE_SHOVEL,BRONZE_HOE,
                     BRONZE_HELMET,BRONZE_CHESTPLATE,BRONZE_LEGGINGS,BRONZE_BOOTS,STEEL_INGOT,STEEL_SWORD,STEEL_PICKAXE,STEEL_AXE,STEEL_SHOVEL,STEEL_HOE,
                     STEEL_HELMET,STEEL_CHESTPLATE,STEEL_LEGGINGS,STEEL_BOOTS)) out.accept(item.get());
             for(StructureRole role:StructureRole.values()) out.accept(STATION_ITEMS.get(role).get());
@@ -145,6 +145,7 @@ public final class WWMC {
         bus.addListener(this::attributes);
         bus.addListener(WwmcNetwork::register);
         bus.addListener(TradeChunks::register);
+        bus.addListener(io.github.swishhyy.wwmc.settlement.NearbyNpcTown::register);
         bus.addListener(io.github.swishhyy.wwmc.settlement.CitizenRecall::register);
         NeoForge.EVENT_BUS.register(new SettlementService());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.ClaimProtection());
@@ -161,6 +162,8 @@ public final class WWMC {
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CitizenRecall());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.TradeAtlas.Survey());
         NeoForge.EVENT_BUS.register(new NpcSettlements());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.NearbyNpcTown());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.SettlementLocate());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CampaignService());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CampaignCommands());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.ExpeditionService());
