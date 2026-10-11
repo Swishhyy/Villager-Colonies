@@ -55,7 +55,7 @@ Replace the previous WWMC or Villager Colonies JAR; keep only one copy in the fo
 
 ## Get started
 
-1. **Open the guide.** Craft a **Settlement Guide** from **one book and one blue dye**, then right-click it. Press **L** for the tutorial advancements.
+1. **Open your starter guide.** Each player receives **one Settlement Banner and one Settlement Guide** on their first login to a world. Right-click the guide; press **L** for tutorial advancements. Craft a replacement guide from **one book and one blue dye** if needed.
 2. **Found your town.** Place a **Settlement Banner** on open, solid ground and right-click it with an empty hand.
 3. **Add housing and supplies.** Put beds near a **Housing Station** and chests or barrels near a **Warehouse Station**. Ordinary stations detect furniture within **three blocks on each axis**.
 4. **Set up your first jobs.** Add a **Farm Station**, a **Lumber Station**, and a **Courier Station**. Put barrels beside the work stations and stock food, tools, and saplings in the warehouse.

@@ -170,6 +170,7 @@ public final class WWMC {
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CitizenCombat());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.SettlementMap());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.TutorialProgress());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.StarterPack());
         container.registerConfig(ModConfig.Type.SERVER,Config.SPEC);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent event) -> LOGGER.info(
                 "[WWMC][server-start] version={} diagnostics={} stallSeconds={} repeatSeconds={}",
