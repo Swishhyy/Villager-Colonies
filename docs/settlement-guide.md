@@ -19,7 +19,7 @@ This is the detailed reference for the playable settlement systems. For a shorte
 
 ## Start a settlement
 
-Install the same mod JAR on the NeoForge 26.2 client and server. Use a new test world for this development build. Craft a **Settlement Guide** from one book and one blue dye, or run `/wwmc guide`, then right-click it to read the instructions.
+Install the same mod JAR on the NeoForge 26.2 client and server. Each player automatically receives **one Settlement Banner and one Settlement Guide** on their first login to each world. This is always enabled; reconnects, deaths and changing dimensions do not grant another pack. If the inventory is full, the items drop at the player's feet. Right-click the guide to read the instructions. Craft a replacement from one book and one blue dye, or run `/wwmc guide`.
 
 1. Craft or obtain a **Settlement Banner**, place it on solid ground with open space around it, and right-click it with an empty hand to found your town. New towns extend **240 blocks in each horizontal direction**, a 481×481 block footprint including the center. Banners matching your town color appear at the four corners when those chunks are loaded and the ground can support a banner. The mod does not load distant chunks to place them or replace obstructing blocks.
 2. Build a small camp with beds. Place a **Housing Station** or **Barracks Station** inside it.

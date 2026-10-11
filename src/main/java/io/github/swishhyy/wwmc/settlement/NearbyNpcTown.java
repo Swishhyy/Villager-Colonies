@@ -120,7 +120,8 @@ public final class NearbyNpcTown {
                     || data.settlements.stream().anyMatch(t -> t.overlaps(pos,Config.SETTLEMENT_RADIUS.get()))
                     || !level.getWorldBorder().isWithinBounds(pos.offset(-NpcSettlements.EXTENT,0,-NpcSettlements.EXTENT))
                     || !level.getWorldBorder().isWithinBounds(pos.offset(NpcSettlements.EXTENT,0,NpcSettlements.EXTENT))) continue;
-            search.plot=plot; search.select(pos); return true;
+            search.plot=plot; search.select(pos);
+            WWMC.LOGGER.debug("[WWMC][npc-search] Checking plot={} region={}",pos,plot.candidate().region()); return true;
         }
         return false;
     }

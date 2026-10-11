@@ -16,7 +16,7 @@ public final class GuideBook {
     private GuideBook() {}
     public static final List<Topic> TOPICS=List.of(
         new Topic("start","Start here","Your first town in six steps",List.of(
-            new Card("wwmc:settlement_banner","1. Found a town","Craft a flag with blue wool and 8 planks. Place it and right-click with an empty hand.","stations"),
+            new Card("wwmc:settlement_banner","1. Found a town","You start with a Settlement Banner and guide. Place the banner and right-click with an empty hand.","stations"),
             new Card("minecraft:red_bed","2. Add beds","Place Housing beside complete beds. Both halves must fit inside its range.","stations"),
             new Card("minecraft:chest","3. Stock a warehouse","Place Warehouse beside chests. Add ready-to-eat food, tools and fuel.","food"),
             new Card("minecraft:bell","4. Recruit citizens","Open the town flag, select People and press Recruit. Each citizen needs a housing bed.","people"),
@@ -71,7 +71,7 @@ public final class GuideBook {
             new Card("minecraft:blue_banner","Share progress","The owner and accepted members share research everywhere, including other dimensions. Allies and invitations alone do not grant it. Existing towns retain their old gear access.")
         ),List.of("Stone","Researcher","Tin + copper","Bronze","Iron"),"Research pauses during sleep, danger or blocked access. Check the banner's Research status for the reason. Progress and paid supplies survive saving."),
         new Topic("multiplayer","Settlement neighbours","Trade, supply requests and town news",List.of(
-            new Card("minecraft:compass","Meet your neighbours","Open Neighbours at your main banner. Nearby towns show what they need, their relationships and their trade status. Explore to discover NPC towns."),
+            new Card("minecraft:compass","Meet your neighbours","An NPC town is established on suitable nearby ground by default. Open Neighbours at your main banner for town needs and trade. With cheats, /locate settlement shows the nearest completed NPC town."),
             new Card("minecraft:emerald","Post a supply contract","Hold a plain example at your main banner. Choose an amount and emerald payment; Post reserves real emeralds from your inventory for the supplying settlement."),
             new Card("minecraft:chest","Send a caravan","Accept another town's contract and connect a trade route. Assign your Trader Block and put plain requested goods in your warehouse. Your trader carries surplus after home reserves; manual delivery also works."),
             new Card("minecraft:carrot","Help an NPC neighbour","Accept its request on Neighbours, then connect trade. The trader carries the reserved reward home. NPC towns also arrange routes with each other while keeping a checkpoint open for player trade."),

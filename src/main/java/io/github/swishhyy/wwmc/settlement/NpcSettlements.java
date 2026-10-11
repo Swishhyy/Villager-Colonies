@@ -81,19 +81,26 @@ public final class NpcSettlements {
         for(int x=-EXTENT;x<=EXTENT;x++) for(int z=-EXTENT;z<=EXTENT;z++) {
             int px=probe.getX()+x,pz=probe.getZ()+z;
             int y=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,px,pz);
-            if(y<level.getSeaLevel() || y+6>=level.getMaxY()) return null;
+            if(y<level.getSeaLevel() || y+6>=level.getMaxY()) return rejected(probe,new BlockPos(px,y,pz),"surface height outside safe range");
             low=Math.min(low,y); high=Math.max(high,y);
-            if(high-low>2) return null;
+            if(high-low>2) return rejected(probe,new BlockPos(px,y,pz),"slope exceeds two blocks");
             BlockPos ground=new BlockPos(px,y-1,pz); var state=level.getBlockState(ground);
-            if(!state.is(BlockTags.DIRT) && !state.is(Blocks.SAND) && !state.is(Blocks.GRAVEL) && !state.is(BlockTags.BASE_STONE_OVERWORLD)) return null;
+            if(!state.is(BlockTags.DIRT) && !state.is(Blocks.SAND) && !state.is(Blocks.GRAVEL) && !state.is(BlockTags.BASE_STONE_OVERWORLD)) return rejected(probe,ground,"unsupported ground "+state);
             for(int dy=-3;dy<=6;dy++) {
                 BlockPos p=ground.above(dy);
-                if(!level.getWorldBorder().isWithinBounds(p) || protectedBlocks.contains(p) || level.getBlockEntity(p)!=null || !level.getFluidState(p).isEmpty()) return null;
+                if(!level.getWorldBorder().isWithinBounds(p)) return rejected(probe,p,"outside world border");
+                if(protectedBlocks.contains(p)) return rejected(probe,p,"protected block");
+                if(level.getBlockEntity(p)!=null) return rejected(probe,p,"block entity");
+                if(!level.getFluidState(p).isEmpty()) return rejected(probe,p,"fluid");
                 var block=level.getBlockState(p);
-                if(dy>0 && !block.isAir() && !block.canBeReplaced()) return null;
+                if(dy>0 && !block.isAir() && !block.canBeReplaced()) return rejected(probe,p,"obstruction "+block);
             }
         }
         return new BlockPos(probe.getX(),high,probe.getZ());
+    }
+    private static BlockPos rejected(BlockPos probe,BlockPos blocked,String reason) {
+        WWMC.LOGGER.debug("[WWMC][npc-search] Rejected plot={} position={} reason={}",probe,blocked,reason);
+        return null;
     }
     private void build(ServerLevel level,Settlement town) {
         List<Placement> plan=PLANS.computeIfAbsent(level,l -> new HashMap<>()).computeIfAbsent(town.id,id -> blueprint(town));
