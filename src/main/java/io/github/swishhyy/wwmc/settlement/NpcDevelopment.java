@@ -25,5 +25,16 @@ public final class NpcDevelopment {
         this.enabled=enabled; this.phase=phase; this.completed=Math.clamp(completed,0,8);
         this.nextProject=nextProject; this.nextImmigrant=nextImmigrant; this.construction=work.orElse(null);
     }
-    public String description() { return phase.name().toLowerCase(java.util.Locale.ROOT)+" · "+completed+" additions"; }
+    public String description() {
+        String action=switch(phase) {
+            case SUPPLY -> "building food reserves";
+            case RECOVER -> "recovering from danger";
+            case GROW -> "planning a building";
+            case BUILD -> "building";
+            case CONNECT -> "trading with neighbours";
+            case STABLE -> "settled";
+            case PAUSED -> "construction paused";
+        };
+        return action+" · "+completed+" additions";
+    }
 }

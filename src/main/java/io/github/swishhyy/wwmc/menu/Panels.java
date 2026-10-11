@@ -377,20 +377,24 @@ public final class Panels {
             case BUTCHER -> rows.add(new Row(icon(Items.BEEF),"Butchery","Prepares carcasses from its barrel into raw portions; needs an axe; couriers take meat to cooks"));
             case LUMBER -> rows.add(new Row(icon(Items.OAK_SAPLING),"Forest","Fells whole natural trees and replants saplings in range"));
             case MINE -> {
-                BlockPos vein=OreVeins.find(level,town,station);
-                if(vein!=null) {
-                    var ore=level.getBlockState(vein);
-                    long wait=Math.max(0,OreVeins.readyAt(level,vein)-level.getGameTime());
-                    rows.add(new Row(new ItemStack(ore.getBlock()),ore.getBlock().getName(),Component.literal("Endless vein at "+vein.toShortString()
-                            +(wait>0 ? ", replenishes in "+(wait+19)/20+"s" : ", ready")),0,PanelView.NO_BAR,PanelView.NO_VALUE));
+                var veins=OreVeins.candidates(level::hasChunkAt,level::getBlockState,town,station);
+                if(!veins.isEmpty()) {
+                    long ready=veins.stream().filter(p -> OreVeins.readyAt(level,p)<=level.getGameTime()).count();
+                    rows.add(new Row(icon(Items.CLOCK),"Ore veins",ready+" ready / "+veins.size()+" exposed; each block replenishes separately"));
                     CitizenEntity miner=SettlementService.workers(level).members(station.position(),level.getGameTime()).stream().map(level::getEntity)
                             .filter(CitizenEntity.class::isInstance).map(CitizenEntity.class::cast).findFirst().orElse(null);
                     ItemStack pickaxe=miner==null ? ItemStack.EMPTY : miner.getMainHandItem();
+                    for(BlockPos vein:veins.stream().limit(8).toList()) {
+                        var ore=level.getBlockState(vein); long wait=Math.max(0,OreVeins.readyAt(level,vein)-level.getGameTime());
+                        rows.add(new Row(new ItemStack(ore.getBlock()),ore.getBlock().getName(),Component.literal(vein.toShortString()
+                                +(wait>0 ? " · ready in "+(wait+19)/20+"s" : " · ready")),0,PanelView.NO_BAR,PanelView.NO_VALUE));
+                    }
+                    var ore=level.getBlockState(veins.getFirst());
                     rows.add(new Row(pickaxe.isEmpty() ? icon(Items.IRON_PICKAXE) : pickaxe.copyWithCount(1),"Replenishment",
                             "About "+(OreVeins.interval(ore,Config.ORE_VEIN_SECONDS.get(),pickaxe)+19)/20+"s with "
                             +(pickaxe.isEmpty() ? "a stone pickaxe (baseline)" : pickaxe.getHoverName().getString())+"; needs a pickaxe that can mine this ore"));
                 } else rows.add(new Row(icon(Items.STONE_PICKAXE),"Tunnels",ExcavationService.status(level,town,station)));
-                if(vein==null) rows.add(new Row(icon(Items.RAW_IRON),"Ore vein","Place the station within "+OreVeins.REACH+" blocks of an exposed ore to mine it forever instead"));
+                if(veins.isEmpty()) rows.add(new Row(icon(Items.RAW_IRON),"Ore veins","Place exposed ores within "+OreVeins.REACH+" blocks; the miner rotates between ready blocks with a suitable pickaxe"));
             }
             case QUARRY -> rows.add(new Row(icon(Items.IRON_PICKAXE),"Excavation",ExcavationService.status(level,town,station)));
             case GUARD -> {

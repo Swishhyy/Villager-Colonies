@@ -56,7 +56,7 @@
   "wwmc.configuration.enchanterMaxLevel": "Enchant level cap",
   "wwmc.configuration.enchanterMaxLevel.tooltip": "Highest enchanting-table level an enchanter can reach, regardless of bookshelves. This is the table level, not the enchantment numeral on an item. Default: 25; level 30 remains for players.",
   "wwmc.configuration.oreVeinSeconds": "Ore vein delay (sec)",
-  "wwmc.configuration.oreVeinSeconds.tooltip": "Vein replenishment with a stone pickaxe. Better pickaxes shorten the delay, capped at 1.5 times stone speed. Gold ore takes twice as long, diamond and emerald six times, ancient debris eight.",
+  "wwmc.configuration.oreVeinSeconds.tooltip": "Each ore block has its own saved replenishment delay. Miners rotate between ready ores. Better pickaxes shorten the delay, capped at 1.5 times stone speed. Gold ore takes twice as long, diamond and emerald six times, ancient debris eight.",
   "wwmc.configuration.mineMinY": "Minimum mine Y",
   "wwmc.configuration.mineMinY.tooltip": "Lowest floor Y a new tunnel mine can randomly choose. Default: -30. Existing mine plans keep their saved depth.",
   "wwmc.configuration.mineMaxY": "Maximum mine Y",

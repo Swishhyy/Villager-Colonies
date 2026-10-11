@@ -1147,8 +1147,9 @@ public final class CitizenEntity extends Villager {
         }
         if(station.role()==StructureRole.MINE) {
             if(OreVeins.find(level,town,station)!=null) {
+                var tools=veinTools(level,town,station);
                 BlockPos vein=OreVeins.ready(level,town,station,p -> !reachBudget.deferred() && !failedTargets.containsKey(p)
-                        && book.available(p,getUUID(),level.getGameTime()) && workAccessible(level,town,p));
+                        && veinTool(tools,level.getBlockState(p)) && book.available(p,getUUID(),level.getGameTime()) && workAccessible(level,town,p));
                 if(vein==null || !book.claim(vein,getUUID(),level.getGameTime(),200)) return null;
                 action=Action.VEIN; return vein;
             }
@@ -1174,9 +1175,26 @@ public final class CitizenEntity extends Villager {
         for(BlockPos pos:candidates) if(workAccessible(level,town,pos) && book.claim(pos,getUUID(),level.getGameTime(),200)) return pos;
         return null;
     }
+    private List<ItemStack> veinTools(ServerLevel level,Settlement town,Station station) {
+        var tools=new ArrayList<ItemStack>(); tools.add(getMainHandItem());
+        var boxes=new ArrayList<Container>(SettlementService.jobStorage(level,town,station));
+        boxes.add(cargo); boxes.addAll(SettlementService.storage(level,town));
+        for(var box:boxes) for(int n=0;n<box.getContainerSize();n++) {
+            ItemStack tool=box.getItem(n); if(tool.is(ItemTags.PICKAXES) && !GuardEquipment.worn(tool)) tools.add(tool);
+        }
+        return tools;
+    }
+    private static boolean veinTool(List<ItemStack> tools,BlockState ore) {
+        return tools.stream().anyMatch(t -> t.is(ItemTags.PICKAXES) && !GuardEquipment.worn(t)
+                && (!ore.requiresCorrectToolForDrops() || t.isCorrectToolForDrops(ore)));
+    }
     private String idleReason(ServerLevel level,Settlement town,Station station) {
         if(station.role()==StructureRole.MINE) {
             var veins=OreVeins.candidates(level::hasChunkAt,level::getBlockState,town,station);
+            if(!veins.isEmpty()) {
+                var tools=veinTools(level,town,station);
+                if(veins.stream().noneMatch(p -> veinTool(tools,level.getBlockState(p)))) return "Needs a pickaxe that can mine the nearby ore veins";
+            }
             if(!veins.isEmpty() && veins.stream().allMatch(p -> OreVeins.readyAt(level,p)>level.getGameTime())) {
                 long wait=veins.stream().mapToLong(p -> OreVeins.readyAt(level,p)).min().orElse(0)-level.getGameTime();
                 return "All nearby veins are replenishing; next ore in "+(wait+19)/20+"s";

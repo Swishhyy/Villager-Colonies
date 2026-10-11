@@ -41,7 +41,8 @@ public final class NpcConstruction {
     private static boolean natural(BlockState s) {
         return s.isAir() || s.canBeReplaced() || s.is(Blocks.GRASS_BLOCK) || s.is(Blocks.PODZOL) || s.is(Blocks.MYCELIUM)
                 || s.is(BlockTags.DIRT) || s.is(BlockTags.BASE_STONE_OVERWORLD)
-                || s.is(Blocks.SAND) || s.is(Blocks.RED_SAND) || s.is(Blocks.GRAVEL) || s.is(Blocks.DIRT_PATH) || s.is(Blocks.SNOW_BLOCK);
+                || s.is(Blocks.SAND) || s.is(Blocks.RED_SAND) || s.is(Blocks.GRAVEL) || s.is(Blocks.DIRT_PATH) || s.is(Blocks.SNOW_BLOCK)
+                || s.is(Blocks.MUD) || s.is(Blocks.CLAY) || s.is(Blocks.TERRACOTTA);
     }
     private static boolean unchanged(BlockState expected,BlockState current) {
         return current.equals(expected) || (expected.is(Blocks.GRASS_BLOCK) || expected.is(Blocks.DIRT))

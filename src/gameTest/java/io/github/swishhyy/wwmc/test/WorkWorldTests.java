@@ -48,6 +48,7 @@ public final class WorkWorldTests {
             BlockPos mine=start.east(12),cooling=mine.east(),coal=mine.north(),iron=mine.south();
             level.setBlockAndUpdate(cooling,Blocks.GOLD_ORE.defaultBlockState()); level.setBlockAndUpdate(coal,Blocks.COAL_ORE.defaultBlockState());
             level.setBlockAndUpdate(iron,Blocks.IRON_ORE.defaultBlockState());
+            level.setBlockAndUpdate(mine.west(),Blocks.ANCIENT_DEBRIS.defaultBlockState());
             var work=mineTown(level,start,mine); work.citizen().bag().offer(new ItemStack(Items.BREAD,2));
             level.setBlockAndUpdate(mine.west(2),Blocks.BARREL.defaultBlockState());
             var output=(Container)level.getBlockEntity(mine.west(2));
@@ -56,6 +57,7 @@ public final class WorkWorldTests {
             helper.succeedWhen(() -> {
                 helper.assertTrue(OreVeins.readyAt(level,coal)>0 && OreVeins.readyAt(level,iron)>0,"Miner did not rotate between ready ore blocks: "+work.citizen().activity());
                 helper.assertTrue(OreVeins.readyAt(level,cooling)==blockedUntil,"Mining a different block changed the cooling ore");
+                helper.assertTrue(OreVeins.readyAt(level,mine.west())==0,"Miner harvested an ore too hard for its pickaxe");
                 helper.assertTrue(InventoryOps.count(List.of(output,work.citizen().bag()),s -> s.is(Items.COAL))>0
                         && InventoryOps.count(List.of(output,work.citizen().bag()),s -> s.is(Items.RAW_IRON))>0,"Rotating veins lost their normal drops");
                 helper.assertTrue(level.getBlockState(coal).is(Blocks.COAL_ORE) && level.getBlockState(iron).is(Blocks.IRON_ORE),"Renewable ore was removed");
