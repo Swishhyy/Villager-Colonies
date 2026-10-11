@@ -162,6 +162,7 @@ public final class VC {
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CitizenRecall());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.TradeAtlas.Survey());
         NeoForge.EVENT_BUS.register(new NpcSettlements());
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.NpcDirector());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.NearbyNpcTown());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.SettlementLocate());
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.CampaignService());

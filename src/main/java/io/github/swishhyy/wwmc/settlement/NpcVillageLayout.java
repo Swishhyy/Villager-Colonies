@@ -6,17 +6,19 @@ import java.util.Collections;
 import java.util.List;
 
 /** Original terrain is saved before the first block changes, so construction resumes identically. */
-public record NpcVillageLayout(String palette,List<Integer> ground,List<Integer> surface) {
+public record NpcVillageLayout(String palette,List<Integer> ground,List<Integer> surface,int design) {
     public static final int EXTENT=23,SIDE=2*EXTENT+1,CELLS=SIDE*SIDE;
     public static final Codec<NpcVillageLayout> CODEC=RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.optionalFieldOf("palette","oak").forGetter(NpcVillageLayout::palette),
             Codec.INT.listOf().fieldOf("ground").forGetter(NpcVillageLayout::ground),
-            Codec.INT.listOf().fieldOf("surface").forGetter(NpcVillageLayout::surface)
+            Codec.INT.listOf().fieldOf("surface").forGetter(NpcVillageLayout::surface),
+            Codec.INT.optionalFieldOf("design",1).forGetter(NpcVillageLayout::design)
     ).apply(i,NpcVillageLayout::new));
     public NpcVillageLayout {
         if(ground.size()!=CELLS || surface.size()!=CELLS) throw new IllegalArgumentException("Invalid NPC village terrain snapshot");
         ground=List.copyOf(ground); surface=List.copyOf(surface);
     }
+    public NpcVillageLayout(String palette,List<Integer> ground,List<Integer> surface) { this(palette,ground,surface,2); }
     public static NpcVillageLayout flat(String palette) {
         return new NpcVillageLayout(palette,Collections.nCopies(CELLS,0),Collections.nCopies(CELLS,0));
     }

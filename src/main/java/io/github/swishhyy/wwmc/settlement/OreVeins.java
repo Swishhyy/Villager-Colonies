@@ -2,9 +2,9 @@ package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.Config;
 import io.github.swishhyy.wwmc.core.StructureRole;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.WeakHashMap;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
@@ -20,8 +20,6 @@ import net.neoforged.neoforge.common.Tags;
  * over and over without removing the block. Players mining it break it as usual. Rarer ores replenish more slowly.
  */
 public final class OreVeins {
-    /** Game time each vein can yield again; a restart simply lets every vein yield once more. */
-    private static final Map<ServerLevel,Map<BlockPos,Long>> READY=new WeakHashMap<>();
     /** How many blocks from its station, along each axis, a vein may be. */
     public static final int REACH=2;
     private OreVeins() {}
@@ -31,13 +29,29 @@ public final class OreVeins {
      */
     public static BlockPos find(ServerLevel level,Settlement town,Station station) { return find(level::hasChunkAt,level::getBlockState,town,station); }
     public static BlockPos find(Predicate<BlockPos> loaded,Function<BlockPos,BlockState> blocks,Settlement town,Station station) {
-        if(station.role()!=StructureRole.MINE) return null;
-        BlockPos center=station.position(),best=null;
-        for(BlockPos pos:BlockPos.betweenClosed(center.offset(-REACH,-REACH,-REACH),center.offset(REACH,REACH,REACH))) {
+        return candidates(loaded,blocks,town,station).stream().findFirst().orElse(null);
+    }
+    /** Every exposed ore in the mine's bounded vein area, ordered consistently by distance. */
+    public static List<BlockPos> candidates(Predicate<BlockPos> loaded,Function<BlockPos,BlockState> blocks,Settlement town,Station station) {
+        if(station.role()!=StructureRole.MINE) return List.of();
+        BlockPos center=station.position(); int reach=REACH+station.range();
+        List<BlockPos> found=new ArrayList<>();
+        for(BlockPos pos:BlockPos.betweenClosed(center.offset(-reach,-reach,-reach),center.offset(reach,reach,reach))) {
             if(pos.equals(center) || !town.contains(pos) || !loaded.test(pos) || !CaveMining.ore(blocks.apply(pos)) || !exposed(loaded,blocks,pos)) continue;
-            if(best==null || pos.distSqr(center)<best.distSqr(center)) best=pos.immutable();
+            found.add(pos.immutable());
         }
-        return best;
+        found.sort(Comparator.comparingDouble(p -> p.distSqr(center)));
+        return List.copyOf(found);
+    }
+    public static BlockPos ready(ServerLevel level,Settlement town,Station station,Predicate<BlockPos> usable) {
+        return candidates(level::hasChunkAt,level::getBlockState,town,station).stream()
+                .filter(p -> readyAt(level,p)<=level.getGameTime() && usable.test(p)).findFirst().orElse(null);
+    }
+    public static boolean valid(ServerLevel level,Settlement town,Station station,BlockPos pos) {
+        int reach=REACH+station.range(); BlockPos center=station.position();
+        return station.role()==StructureRole.MINE && !pos.equals(center) && town.contains(pos) && level.hasChunkAt(pos)
+                && Math.abs(pos.getX()-center.getX())<=reach && Math.abs(pos.getY()-center.getY())<=reach && Math.abs(pos.getZ()-center.getZ())<=reach
+                && CaveMining.ore(level.getBlockState(pos)) && exposed(level::hasChunkAt,level::getBlockState,pos);
     }
     /** At least one side opens onto a block with no collision, such as air, a torch or water. */
     private static boolean exposed(Predicate<BlockPos> loaded,Function<BlockPos,BlockState> blocks,BlockPos ore) {
@@ -61,16 +75,15 @@ public final class OreVeins {
         return (int)Math.ceil(interval(ore,seconds)/boost);
     }
     public static long readyAt(ServerLevel level,BlockPos vein) {
-        Map<BlockPos,Long> veins=READY.get(level);
-        return veins==null ? 0 : veins.getOrDefault(vein,0L);
+        return WorldWorkData.get(level).veins.getOrDefault(vein,0L);
     }
     public static void worked(ServerLevel level,BlockPos vein,BlockState ore,ItemStack pickaxe) { worked(level,vein,ore,pickaxe,false); }
     /** Deep Mining research makes the vein ready a quarter sooner. */
     public static void worked(ServerLevel level,BlockPos vein,BlockState ore,ItemStack pickaxe,boolean deep) {
-        Map<BlockPos,Long> veins=READY.computeIfAbsent(level,l -> new HashMap<>());
-        veins.values().removeIf(time -> time<=level.getGameTime());
+        WorldWorkData data=WorldWorkData.get(level);
+        data.veins.values().removeIf(time -> time<=level.getGameTime());
         int wait=interval(ore,Config.ORE_VEIN_SECONDS.get(),pickaxe);
-        veins.put(vein.immutable(),level.getGameTime()+(deep ? wait*3/4 : wait));
+        data.veins.put(vein.immutable(),level.getGameTime()+(deep ? wait*3/4 : wait)); data.setDirty();
     }
     /** "Iron Ore" for a vein's block. */
     public static String name(BlockState ore) { return ore.getBlock().getName().getString(); }

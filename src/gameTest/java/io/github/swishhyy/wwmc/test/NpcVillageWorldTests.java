@@ -56,7 +56,8 @@ public final class NpcVillageWorldTests {
             });
             helper.succeedWhen(() -> {
                 helper.assertTrue(town.trading.buildIndex<0,"Village construction is incomplete: "+town.trading.buildIndex+" "+town.trading.status);
-                helper.assertTrue(level.getBlockState(town.center).is(VC.BANNER.get()) && town.citizens.size()==6,"Village lacks its banner or native crew");
+                helper.assertTrue(level.getBlockState(town.center).is(VC.BANNER.get()) && town.citizens.size()==NpcSettlements.startingPopulation(town),"Village lacks its banner or native crew");
+                helper.assertTrue(town.stations.stream().filter(s -> s.role().providesWork()).allMatch(s -> town.jobs.assigned(s.position())==1),"Founding crew leaves a workstation unstaffed");
                 helper.assertTrue(town.stations.stream().filter(s -> s.role()==StructureRole.HOUSING).count()==3,"Village did not build three cottages");
                 helper.assertTrue(SettlementService.populationLimit(town)>=10,"Separate cottages do not provide population capacity");
                 helper.assertTrue(InventoryOps.count(SettlementService.storage(level,town),s -> s.is(net.minecraft.world.item.Items.BREAD))>0,"Warehouse has no real starter supplies");

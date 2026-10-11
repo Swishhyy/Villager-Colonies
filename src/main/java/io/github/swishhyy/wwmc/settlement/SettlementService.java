@@ -495,7 +495,8 @@ public final class SettlementService {
                 BlockPos trial=settlement.center.offset(x,0,z);
                 if(!level.hasChunkAt(trial)) continue;
                 citizen.setPos(trial.getX()+0.5,trial.getY(),trial.getZ()+0.5);
-                if(level.noCollision(citizen) && !level.getBlockState(trial.below()).isAir()) { spawn=trial; break; }
+                if(level.noCollision(citizen) && !level.getBlockState(trial.below()).isAir()
+                        && level.getEntitiesOfClass(CitizenEntity.class,new net.minecraft.world.phys.AABB(trial).inflate(0.25)).isEmpty()) { spawn=trial; break; }
             }
             if(spawn==null) break;
             citizen.join(settlement.id);

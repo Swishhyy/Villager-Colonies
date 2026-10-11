@@ -88,7 +88,13 @@ public final class NpcVillagePlan {
             b.block(p[0],well+1,p[1],b.palette.log()); b.block(p[0],well+2,p[1],b.palette.log());
         }
         b.block(-4,well-1,4,Blocks.WATER,false);
-        for(int x=-5;x<=-3;x++) for(int z=3;z<=5;z++) b.slab(x,well+3,z,b.palette.slab(),SlabType.BOTTOM);
+        if(b.layout.design()>=2) {
+            for(int x=-6;x<=-2;x++) for(int z=2;z<=6;z++) b.slab(x,well+3,z,b.palette.slab(),SlabType.BOTTOM);
+            for(int x=-5;x<=-3;x++) b.block(x,well+2,3,b.palette.log());
+            for(int x=-5;x<=-3;x++) b.block(x,well+2,5,b.palette.log());
+            for(int x=-1;x<=1;x++) b.block(x,2,3,b.palette.log());
+            b.block(-1,1,3,b.palette.log()); b.block(1,1,3,b.palette.log());
+        } else for(int x=-5;x<=-3;x++) for(int z=3;z<=5;z++) b.slab(x,well+3,z,b.palette.slab(),SlabType.BOTTOM);
         b.block(0,0,0,VC.BANNER.get());
         b.block(3,1,2,b.palette.log()); b.block(3,2,2,Blocks.OAK_PLANKS);
         b.block(2,1,2,Blocks.OAK_PLANKS); b.block(4,1,2,Blocks.OAK_PLANKS);
@@ -202,7 +208,7 @@ public final class NpcVillagePlan {
                 floor(x,z,y,Blocks.STONE_BRICKS);
                 if(x==-23 || x==-19 || z==-15 || z==-11) for(int h=0;h<=3;h++) block(x,y+h,z,
                         (x==-23 || x==-19) && (z==-15 || z==-11) ? Blocks.STONE_BRICKS : palette.wall());
-                slab(x,y+4,z,Blocks.STONE_BRICK_SLAB,SlabType.BOTTOM);
+                slab(x,y+4,z,Blocks.STONE_BRICK_SLAB,layout.design()>=2 ? x==-21 && z==-13 ? SlabType.DOUBLE : SlabType.TOP : SlabType.BOTTOM);
                 if((x==-23 || x==-19 || z==-15 || z==-11) && ((x+z)&1)==0) block(x,y+5,z,Blocks.STONE_BRICK_WALL);
             }
             put(-19,y,-13,Blocks.OAK_DOOR.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING,Direction.EAST)
@@ -333,5 +339,34 @@ public final class NpcVillagePlan {
                 block(-2,0,4,Blocks.POTTED_DANDELION); block(2,0,4,Blocks.POTTED_POPPY);
             }
         }
+    }
+
+    /** Small additions use the same furnished architecture as the founding village. */
+    public static List<NpcSettlements.Placement> addition(Settlement town,BlockPos center,String kind) {
+        return addition(town,center,kind,Direction.SOUTH);
+    }
+    public static List<NpcSettlements.Placement> addition(Settlement town,BlockPos center,String kind,Direction front) {
+        var preview=new Settlement(town.id,town.owner,town.name,center,town.radius,List.of(),List.of(),"balanced");
+        preview.trading.layout=NpcVillageLayout.flat(town.trading.layout==null ? "oak" : town.trading.layout.palette());
+        var b=new Builder(preview);
+        if(kind.equals("cottage")) b.cottage(0,0,front,nativeBlock("green_bed"));
+        else {
+            var room=b.room(0,0,front); room.shell();
+            room.block(-2,0,-2,Blocks.BARREL); room.block(2,0,-2,Blocks.BARREL);
+            if(kind.equals("workshop")) {
+                room.block(-2,0,0,Blocks.CRAFTING_TABLE); room.block(2,0,0,Blocks.SMITHING_TABLE);
+                room.block(-2,0,2,Blocks.STONECUTTER); room.block(2,0,2,Blocks.GRINDSTONE);
+            } else {
+                room.block(-2,0,0,Blocks.SMOKER); room.block(2,0,0,Blocks.CRAFTING_TABLE);
+                room.slab(-2,0,2,Blocks.OAK_SLAB,SlabType.TOP); room.slab(2,0,2,Blocks.OAK_SLAB,SlabType.TOP);
+                room.block(-2,1,2,Blocks.CAKE); room.block(2,1,2,Blocks.POTTED_POPPY);
+            }
+        }
+        var orientation=b.room(0,0,front);
+        for(int x=-1;x<=1;x++) for(int z=4;z<=6;z++) b.path(orientation.px(x,z),orientation.pz(x,z));
+        b.lamp(orientation.px(-4,6),orientation.pz(-4,6)); b.planter(orientation.px(4,6),orientation.pz(4,6));
+        StructureRole role=kind.equals("cottage") ? StructureRole.HOUSING : kind.equals("workshop") ? StructureRole.CRAFTSMAN : StructureRole.COOK;
+        b.put(0,0,0,VC.STATIONS.get(role).get().defaultBlockState().setValue(StationBlock.FACING,front),true);
+        return b.finish();
     }
 }

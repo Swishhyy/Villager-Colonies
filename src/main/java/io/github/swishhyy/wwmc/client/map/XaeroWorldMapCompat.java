@@ -18,13 +18,16 @@ import xaero.map.gui.GuiMap;
 /** World Map also works alone, without Xaero's Minimap or its waypoint manager. */
 public final class XaeroWorldMapCompat implements ExternalMaps.Provider {
     private final Markers context=new Markers();
+    private final XaeroMapOverlays overlays=new XaeroMapOverlays();
     private boolean registered;
     @Override public String id() { return "xaeroworldmap"; }
     @Override public void sync(MapData map) {
         context.dimension=map.dimension(); context.markers=MapMarkers.from(map);
+        overlays.sync(map);
         // With Minimap installed, its native third-party waypoints already appear on World Map.
-        if(!registered && !ModList.get().isLoaded("xaerominimap") && WorldMap.mapElementRenderHandler!=null) {
-            WorldMap.mapElementRenderHandler.add(new Renderer(context)); registered=true;
+        if(!registered && WorldMap.mapElementRenderHandler!=null) {
+            if(!ModList.get().isLoaded("xaerominimap")) WorldMap.mapElementRenderHandler.add(new Renderer(context));
+            overlays.register(); registered=true;
         }
     }
     @Override public boolean open() {
@@ -32,7 +35,7 @@ public final class XaeroWorldMapCompat implements ExternalMaps.Provider {
         if(session==null || !session.isUsable() || mc.player==null) return false;
         mc.gui.setScreen(new GuiMap(null,null,session.getMapProcessor(),mc.getCameraEntity())); return true;
     }
-    @Override public void clear() { context.markers=List.of(); context.dimension=""; }
+    @Override public void clear() { context.markers=List.of(); context.dimension=""; overlays.clear(); }
     private static final class Markers {
         String dimension="",renderDimension="";
         List<MapMarkers.Marker> markers=List.of();
@@ -79,7 +82,7 @@ public final class XaeroWorldMapCompat implements ExternalMaps.Provider {
                 MapElementGraphics graphics,XaeroBufferProvider buffer,MultiTextureRenderTypeRendererProvider textures) {
             graphics.fill(-6,-6,6,6,0xFF202020); graphics.fill(-5,-5,5,5,0xFF000000|marker.color());
             graphics.drawCenteredString(Minecraft.getInstance().font,marker.symbol(),0,-4,0xFF202020);
-            if(hovered) graphics.drawCenteredString(Minecraft.getInstance().font,marker.label(),0,-18,0xFFFFFFFF);
+            if(hovered && !marker.symbol().equals("T")) graphics.drawCenteredString(Minecraft.getInstance().font,marker.label(),0,-18,0xFFFFFFFF);
             return false;
         }
     }

@@ -58,7 +58,7 @@ public final class NearbyNpcWorldTests {
                 helper.assertTrue(service.heldChunks(level)<=9,"NPC generation exceeded its temporary chunk budget");
                 var town=SettlementData.get(level).byId(candidate.id());
                 helper.assertTrue(town!=null && town.trading.buildIndex<0,"NPC town has not finished construction: "+(town==null ? "not discovered; held="+service.heldChunks(level)+", maximum="+maximum.get() : town.trading.buildIndex+" "+town.trading.status));
-                helper.assertTrue(level.getBlockState(town.center).is(VC.BANNER.get()) && town.citizens.size()==6,"NPC town lacks its banner or real starting crew");
+                helper.assertTrue(level.getBlockState(town.center).is(VC.BANNER.get()) && town.citizens.size()==NpcSettlements.startingPopulation(town),"NPC town lacks its banner or real starting crew");
                 helper.assertTrue(service.heldChunks(level)==0 && maximum.get()>0,"NPC search did not release its temporary chunks");
                 helper.assertTrue(!service.ensureNearby(player),"A completed neighbour started duplicate generation");
             });

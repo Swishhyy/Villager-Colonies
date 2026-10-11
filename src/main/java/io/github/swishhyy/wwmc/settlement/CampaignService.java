@@ -59,7 +59,7 @@ public final class CampaignService {
         SupplyRequests.snapshotLoaded(level,town);
         data.setDirty();
         if(!town.trading.npc || town.trading.buildIndex>=0) return;
-        NeighbourTrade.update(level,town);
+        if(!town.trading.development.enabled || !io.github.swishhyy.wwmc.Config.NPC_GROWTH.get()) NeighbourTrade.update(level,town);
         CampaignContracts.expire(level,town);
         if(town.campaign.nextEvent==0) { town.campaign.nextEvent=level.getGameTime()+6000; return; }
         if(level.getGameTime()<town.campaign.nextEvent) return;

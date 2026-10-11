@@ -19,7 +19,7 @@ public final class MapChecks {
     private static MapData map() {
         return new MapData("minecraft:overworld",-512,1024,
                 List.of(new MapData.Town("town-id","River Town",-500,87,1000,240,MapData.NEUTRAL)),
-                List.of(new MapData.Route(-500,1000,-700,1200,false)),
+                List.of(new MapData.Route(-500,1000,-700,1200,false,List.of(new MapData.Point(-500,1000),new MapData.Point(-550,1150),new MapData.Point(-700,1200)))),
                 List.of(new MapData.Site("site-id",-700,61,1200,"Ruins","Recover stolen supplies",MapData.UNCLEARED)),
                 List.of(new MapData.Mark("ping-id",-800,94,1250,"bridge","Cross here","Dylan of River Town",true)));
     }

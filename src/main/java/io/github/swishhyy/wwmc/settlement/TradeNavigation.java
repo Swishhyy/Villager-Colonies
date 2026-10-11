@@ -35,6 +35,7 @@ public final class TradeNavigation {
     private int next,failedLegs;
     private long replanAt,movingAt;
     private boolean failedPlan;
+    private boolean highway;
 
     public void reset() {
         resetLeg();
@@ -57,7 +58,8 @@ public final class TradeNavigation {
         BlockPos aim=target;
         if(flat(mob.blockPosition(),target)>ROUTE_RANGE*ROUTE_RANGE) {
             if(route.isEmpty() || now>=replanAt) {
-                route=TradeAtlas.get(level).route(level,mob.blockPosition(),target,ROUTE_REACH);
+                route=SharedRoads.route(level,mob.blockPosition(),target); highway=!route.isEmpty();
+                if(!highway) route=TradeAtlas.get(level).route(level,mob.blockPosition(),target,ROUTE_REACH);
                 next=0; replanAt=now+REPLAN_TICKS;
             }
             while(next<route.size()-1 && flat(mob.blockPosition(),route.get(next))<=PASSED*PASSED) next++;
@@ -68,7 +70,10 @@ public final class TradeNavigation {
         else if(failedPlan) {
             failedPlan=false;
             // A waypoint the trader cannot reach twice running is avoided, and the route planned around it.
-            if(!aim.equals(target) && ++failedLegs>=2) { TradeAtlas.get(level).block(level,aim); failedLegs=0; replanAt=now; }
+            if(!aim.equals(target) && ++failedLegs>=2) {
+                TradeAtlas.get(level).block(level,aim); if(highway) SharedRoads.blocked(level,aim);
+                failedLegs=0; replanAt=now;
+            }
         }
         return moving;
     }

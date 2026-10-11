@@ -42,7 +42,8 @@ public final class TradeSettings {
         Codec.LONG.optionalFieldOf("delivered",0L).forGetter(t -> t.delivered),
         Codec.INT.optionalFieldOf("build_index",-1).forGetter(t -> t.buildIndex),
         Codec.unboundedMap(Codec.STRING.xmap(UUID::fromString,UUID::toString),Codec.INT).optionalFieldOf("relations",Map.of()).forGetter(t -> t.relations),
-        NpcVillageLayout.CODEC.optionalFieldOf("npc_layout").forGetter(t -> Optional.ofNullable(t.layout))
+        NpcVillageLayout.CODEC.optionalFieldOf("npc_layout").forGetter(t -> Optional.ofNullable(t.layout)),
+        NpcDevelopment.CODEC.optionalFieldOf("npc_development").forGetter(t -> Optional.of(t.development))
     ).apply(i,TradeSettings::new));
     public boolean npc,paused;
     public String specialty;
@@ -53,18 +54,20 @@ public final class TradeSettings {
     public int buildIndex;
     /** Absent in old towns: their original construction plan and buildings are retained. */
     public NpcVillageLayout layout;
+    public NpcDevelopment development;
     public final List<Export> exports;
     /** Starts neutral; deliveries build goodwill and attacks make this town refuse that owner's routes. */
     public final Map<UUID,Integer> relations;
     public String status="Choose a destination town";
-    public TradeSettings() { this(false,"",Optional.empty(),List.of(),false,Optional.empty(),Optional.empty(),0,-1,Map.of(),Optional.empty()); }
+    public TradeSettings() { this(false,"",Optional.empty(),List.of(),false,Optional.empty(),Optional.empty(),0,-1,Map.of(),Optional.empty(),Optional.empty()); }
     private TradeSettings(boolean npc,String specialty,Optional<UUID> partner,List<Export> exports,boolean paused,
-            Optional<UUID> runner,Optional<BlockPos> runnerPos,long delivered,int buildIndex,Map<UUID,Integer> relations,Optional<NpcVillageLayout> layout) {
+            Optional<UUID> runner,Optional<BlockPos> runnerPos,long delivered,int buildIndex,Map<UUID,Integer> relations,Optional<NpcVillageLayout> layout,Optional<NpcDevelopment> development) {
         this.npc=npc; this.specialty=specialty; this.partner=partner.orElse(null); this.paused=paused;
         this.exports=new ArrayList<>(exports.stream().limit(MAX_EXPORTS).toList());
         this.runner=runner.orElse(null); this.runnerPos=runnerPos.map(BlockPos::immutable).orElse(null);
         this.delivered=Math.max(0,delivered); this.buildIndex=Math.max(-1,buildIndex);
         this.relations=new HashMap<>(relations);
         this.layout=layout.orElse(null);
+        this.development=development.orElseGet(() -> { var d=new NpcDevelopment(); d.enabled=npc; return d; });
     }
 }

@@ -54,7 +54,7 @@ public final class VcNetwork {
         @Override public Type<MapPayload> type() { return TYPE; }
     }
     public static void register(RegisterPayloadHandlersEvent event) {
-        var registrar=event.registrar("6");
+        var registrar=event.registrar("7");
         registrar.playToClient(GuidePayload.TYPE,GuidePayload.STREAM_CODEC);
         registrar.playToClient(ViewPayload.TYPE,ViewPayload.STREAM_CODEC);
         registrar.playToClient(HighlightPayload.TYPE,HighlightPayload.STREAM_CODEC);

@@ -43,6 +43,7 @@ public final class TraderPanel {
             boolean agreed=TradeRoutes.agreed(town,other),ours=other.owner.equals(town.owner);
             int goodwill=other.trading.relations.getOrDefault(town.owner,0);
             String relationship=agreed ? "Connected" : other.trading.npc ? (goodwill<0 ? "Hostile" : goodwill>=64 ? "Friendly" : "Neutral")+" · "+other.trading.specialty : ours ? "Your town" : "Needs both owners' consent";
+            if(other.trading.npc && other.trading.development.enabled) relationship+=" · "+other.citizens.size()+" citizens · "+other.trading.development.description();
             routes.add(new PanelView.Row(new ItemStack(Items.COMPASS),Component.literal(other.name),Component.literal(
                     relationship+" · "+Math.round(Math.sqrt(town.center.distSqr(other.center)))+" blocks"),0,-1,agreed ? 1 : 0,other.id.toString()));
         }

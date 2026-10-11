@@ -67,6 +67,7 @@ public final class NpcSettlements {
                 candidate.specialty().equals("farming") ? "food" : "materials");
         town.populationLevel=0; town.trading.npc=true; town.trading.specialty=candidate.specialty(); town.trading.buildIndex=0;
         town.trading.layout=terrain.layout();
+        town.trading.development.enabled=true;
         switch(candidate.specialty()) {
             case "farming" -> town.trading.exports.add(new TradeSettings.Export("minecraft:carrot",64,32));
             case "timber" -> town.trading.exports.add(new TradeSettings.Export("minecraft:oak_log",16,32));
@@ -94,11 +95,24 @@ public final class NpcSettlements {
         for(Station station:stations(town)) town.stations.add(station);
         stock(level,town);
         town.trading.buildIndex=-1;
-        SettlementService.recruit(level,town,Math.min(6,SettlementService.populationLimit(town)));
+        SettlementService.recruit(level,town,startingPopulation(town));
+        assignCrew(town);
         town.trading.status="Neutral town: ready to accept a supply route";
         NeighbourTrade.refreshRequests(town);
         CampaignService.journal(level,town,"Our settlement is ready for neighbours and trade.");
         PLANS.get(level).remove(town.id); SettlementData.get(level).setDirty();
+    }
+    /** A founding village staffs its eight workstations, subject to the world's population cap. */
+    public static int startingPopulation(Settlement town) {
+        return Math.min((int)town.stations.stream().filter(s -> s.role().providesWork()).count(),SettlementService.populationLimit(town));
+    }
+    public static void assignCrew(Settlement town) {
+        var available=town.stations.stream().filter(s -> s.role().providesWork() && town.jobs.level(s.role())>0)
+                .sorted(town.jobs.openOrder()).toList();
+        for(UUID id:town.citizens) if(town.jobs.home(id)==null && !town.progress.children.contains(id)) {
+            Station job=available.stream().filter(s -> town.jobs.assigned(s.position())<SettlementService.workerLimit(town,s)).findFirst().orElse(null);
+            if(job!=null) town.jobs.assign(id,job.position());
+        }
     }
     private static Station station(Settlement t,int x,int z,StructureRole role) { return new Station(t.center.offset(x,0,z),role,Direction.NORTH); }
     public static List<Station> stations(Settlement t) {
@@ -163,6 +177,7 @@ public final class NpcSettlements {
     private static void stock(ServerLevel level,Settlement town) {
         var containers=SettlementService.storage(level,town);
         List<ItemStack> starter=new ArrayList<>(List.of(new ItemStack(Items.BREAD,64),new ItemStack(Items.BREAD,64),new ItemStack(Items.CARROT,64),
+                new ItemStack(Items.BAKED_POTATO,32),new ItemStack(Items.APPLE,32),
                 new ItemStack(Items.COAL,64),new ItemStack(Items.OAK_SAPLING,16),new ItemStack(Items.COBBLESTONE,64),new ItemStack(Items.STONE_AXE),
                 new ItemStack(Items.STONE_AXE),new ItemStack(Items.STONE_PICKAXE),new ItemStack(Items.STONE_PICKAXE),new ItemStack(Items.IRON_SWORD),
                 new ItemStack(Items.LEATHER_HELMET),new ItemStack(Items.LEATHER_CHESTPLATE),new ItemStack(Items.LEATHER_LEGGINGS),new ItemStack(Items.LEATHER_BOOTS)));

@@ -1146,11 +1146,10 @@ public final class CitizenEntity extends Villager {
             return forestTask.target();
         }
         if(station.role()==StructureRole.MINE) {
-            // A mine near an exposed ore works only that vein, one miner at a time.
-            BlockPos vein=OreVeins.find(level,town,station);
-            if(vein!=null) {
-                if(!book.available(vein,getUUID(),level.getGameTime()) || failedTargets.containsKey(vein)
-                        || !workAccessible(level,town,vein) || !book.claim(vein,getUUID(),level.getGameTime(),200)) return null;
+            if(OreVeins.find(level,town,station)!=null) {
+                BlockPos vein=OreVeins.ready(level,town,station,p -> !reachBudget.deferred() && !failedTargets.containsKey(p)
+                        && book.available(p,getUUID(),level.getGameTime()) && workAccessible(level,town,p));
+                if(vein==null || !book.claim(vein,getUUID(),level.getGameTime(),200)) return null;
                 action=Action.VEIN; return vein;
             }
         }
@@ -1177,6 +1176,11 @@ public final class CitizenEntity extends Villager {
     }
     private String idleReason(ServerLevel level,Settlement town,Station station) {
         if(station.role()==StructureRole.MINE) {
+            var veins=OreVeins.candidates(level::hasChunkAt,level::getBlockState,town,station);
+            if(!veins.isEmpty() && veins.stream().allMatch(p -> OreVeins.readyAt(level,p)>level.getGameTime())) {
+                long wait=veins.stream().mapToLong(p -> OreVeins.readyAt(level,p)).min().orElse(0)-level.getGameTime();
+                return "All nearby veins are replenishing; next ore in "+(wait+19)/20+"s";
+            }
             BlockPos vein=OreVeins.find(level,town,station);
             if(vein!=null) return SettlementService.reservations(level).available(vein,getUUID(),level.getGameTime())
                     ? "Cannot reach the "+OreVeins.name(level.getBlockState(vein))+" vein: it needs open standing room beside it"
@@ -1211,7 +1215,7 @@ public final class CitizenEntity extends Villager {
                     && SettlementService.ownsBlock(level,town,station,target);
             case EXCAVATE,SUPPORT -> excavation!=null && ExcavationService.valid(level,town,station,excavation);
             case CAVE -> CaveMining.ore(level.getBlockState(target)) && ExcavationService.safeBlock(level,town,target);
-            case VEIN -> target.equals(OreVeins.find(level,town,station));
+            case VEIN -> OreVeins.valid(level,town,station,target);
         };
     }
     private void harvest(ServerLevel level,Settlement town,Station station) {
@@ -1232,13 +1236,15 @@ public final class CitizenEntity extends Villager {
             cancelTarget(level,drops==null); return;
         }
         if(action==Action.VEIN) {
+            if(level.getGameTime()<OreVeins.readyAt(level,target)) { cancelTarget(level,false); return; }
             // The ore yields its normal drops, then stays in place for the next yield.
             BlockState ore=level.getBlockState(target);
             List<ItemStack> drops=Block.getDrops(ore,level,target,null,this,getMainHandItem());
             OreVeins.worked(level,target,ore,getMainHandItem(),Research.has(town,"deep_mining"));
             wearTool();
             level.levelEvent(2001,target,Block.getId(ore));
-            storeDrops(level,ProductionYield.apply(station,ore,drops,getRandom())); workProgress=0; gainExperience(station.role(),1); return;
+            storeDrops(level,ProductionYield.apply(station,ore,drops,getRandom())); gainExperience(station.role(),1);
+            cancelTarget(level,false); return;
         }
         if(action==Action.GATHER && Gathering.plant(level.getBlockState(target))) {
             var cut=Gathering.cut(level,town,target,this);
@@ -2782,9 +2788,8 @@ public final class CitizenEntity extends Villager {
             case VEIN -> "Mining the "+OreVeins.name(level.getBlockState(target))+" vein";
         };
         if(action==Action.VEIN && level.getGameTime()<OreVeins.readyAt(level,target)) {
-            workProgress=0;
-            activity="Waiting for the "+OreVeins.name(level.getBlockState(target))+" vein to replenish ("
-                    +(OreVeins.readyAt(level,target)-level.getGameTime()+19)/20+"s)";
+            cancelTarget(level,false);
+            activity="Looking for another ready ore vein";
             return;
         }
         WorkFeedback.pulse(level,this,visibleAt,switch(action) {

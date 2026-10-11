@@ -4,6 +4,11 @@
 
 ## Unreleased
 
+- Rotate miners between ready exposed ores beside their station; each physical ore block has its own saved cooldown across restarts.
+- Staff new NPC villages with one citizen per workstation (normally eight), spread recruitment spawns and provide varied starter meals. Repair unchanged old watchpost/well/bell details while retaining saved construction.
+- Add a shared saved NPC director for food and safety priorities, material-funded cottages, workshops and inns, and food-funded immigration. Resume paid construction and pause near players, unloaded terrain and protected edits.
+- Draw square town borders, names and authorized logistics paths in JourneyMap and Xaero World Map. Include public NPC trade while preserving private player/alliance routes and pings.
+- Build shared dirt highways along agreed trade connections in surveyed, already loaded land. Preserve player claims and construction, resume saved budgets and let NPC/player traders use the same road graph.
 - Replace sparse NPC town layouts with terraced, biome-themed villages: three furnished cottages, warehouse, bakery, smithy, market, watchpost, farm and covered work yards, with roofs, windows, lights, flowers and a village square. Preserve existing towns and saved construction.
 - Allow dry superflat and below-sea-level terrain, clear natural trees, check only the occupied footprint and accept ordinary slopes. Search more candidate plots and retry after exploring a new area; preserve water, cliffs, construction, player blocks, claims and the nine-chunk budget.
 - Replace the built-in map screen with optional JourneyMap and Xaero integrations. Automatically update dimension-specific town, expedition and shared-ping markers; open the installed map from More → Settlement map. Keep both maps optional on clients and unnecessary on servers, with no map API bundled in the JAR.

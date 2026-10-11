@@ -49,16 +49,17 @@ public final class SettlementMap {
         var data=SettlementData.get(level);
         for(Settlement town:data.settlements) {
             int kind=relation.getOrDefault(town.id,MapData.OTHER);
-            if(kind!=MapData.OWN && kind!=MapData.ALLY) continue;
             List<UUID> partners=new ArrayList<>();
             if(town.trading.partner!=null) partners.add(town.trading.partner);
             partners.addAll(town.campaign.extraRoutes);
             for(UUID partnerId:partners) {
                 Settlement partner=data.byId(partnerId);
-                if(partner==null) continue;
+                if(partner==null || !TradeRoutes.agreed(town,partner) || partner.trading.buildIndex>=0) continue;
+                if(kind!=MapData.OWN && kind!=MapData.ALLY && !(town.trading.npc && partner.trading.npc)) continue;
                 String key=town.id.compareTo(partnerId)<0 ? town.id+"|"+partnerId : partnerId+"|"+town.id;
                 if(!drawn.add(key)) continue;
-                routes.add(new MapData.Route(town.center.getX(),town.center.getZ(),partner.center.getX(),partner.center.getZ(),!partnerId.equals(town.trading.partner)));
+                routes.add(new MapData.Route(town.center.getX(),town.center.getZ(),partner.center.getX(),partner.center.getZ(),!partnerId.equals(town.trading.partner),
+                        SharedRoads.get(level).mapPath(town,partner)));
             }
         }
         List<MapData.Site> sites=new ArrayList<>();
