@@ -1,6 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.VC;
+import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -53,7 +54,7 @@ public final class NpcVillagePlan {
                 b.station(-21,-13,StructureRole.GUARD,Direction.EAST),
                 b.station(-13,0,StructureRole.COOK,Direction.EAST),
                 b.station(13,20,StructureRole.FARM,Direction.WEST),
-                b.station(-13,20,StructureRole.LUMBER,Direction.EAST),
+                b.station(-13,20,StructureRole.LUMBER,Direction.EAST).withRange(4),
                 b.station(21,-13,StructureRole.MINE,Direction.WEST),
                 b.station(13,0,StructureRole.SMELTERY,Direction.WEST),
                 b.station(3,2,StructureRole.COURIER,Direction.NORTH));
@@ -99,7 +100,8 @@ public final class NpcVillagePlan {
         for(int[] p:new int[][]{{-8,-8},{8,-8},{-8,8},{8,8},{-3,-10},{3,-10}}) b.planter(p[0],p[1]);
         for(Station station:stations(town)) b.put(station.position().getX()-town.center.getX(),
                 station.position().getY()-town.center.getY(),station.position().getZ()-town.center.getZ(),
-                VC.STATIONS.get(station.role()).get().defaultBlockState(),true);
+                VC.STATIONS.get(station.role()).get().defaultBlockState().setValue(StationBlock.FACING,station.facing())
+                        .setValue(StationBlock.RANGE,station.range()),true);
         return b.finish();
     }
 
@@ -208,6 +210,14 @@ public final class NpcVillagePlan {
             }
             block(-12,y,19,Blocks.BARREL); block(-14,y,19,Blocks.CRAFTING_TABLE);
             for(int x:new int[]{-20,-19}) { int h=walk(x,20); floor(x,20,h,Blocks.GRASS_BLOCK); block(x,h,20,Blocks.OAK_SAPLING,false); }
+            // A real tree starts the forester's work even in a superflat village; the stored log pile is scenery.
+            int root=walk(-20,13); floor(-20,13,root,Blocks.GRASS_BLOCK);
+            for(int h=0;h<5;h++) block(-20,root+h,13,Blocks.OAK_LOG,false);
+            for(int h=3;h<=5;h++) for(int dx=-2;dx<=2;dx++) for(int dz=-2;dz<=2;dz++) {
+                if(dx==0 && dz==0 && h<5 || Math.abs(dx)==2 && Math.abs(dz)==2) continue;
+                put(-20+dx,root+h,13+dz,Blocks.OAK_LEAVES.defaultBlockState()
+                        .setValue(net.minecraft.world.level.block.LeavesBlock.DISTANCE,Math.abs(dx)+Math.abs(dz)+(h==5 ? 1 : 0)),false);
+            }
         }
         void mine() {
             int y=lot(21,-13); shed(21,-13,2,3,y);

@@ -26,11 +26,11 @@ public final class NpcVillageWorldTests {
     }
     @GameTest(timeoutTicks=1200,batch="npcVillage")
     @EmptyTemplate
-    @TestHolder(description="A seven-block natural slope with trees, below sea level, builds a furnished village with separate cottages, real housing, warehouse stock and reachable doors. Its terrain plan survives serialization during construction.")
+    @TestHolder(description="A seven-block natural slope with trees on low-altitude ground builds a furnished village with separate cottages, real housing, warehouse stock and reachable doors. Its terrain plan survives serialization during construction.")
     static void buildsOnSlopesAndNaturalTrees(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); var candidate=NpcTownPlan.candidate(level.getSeed(),710,710,1408);
-            var base=new BlockPos(candidate.center().getX(),level.getSeaLevel()-6,candidate.center().getZ());
+            var base=new BlockPos(candidate.center().getX(),Math.max(level.getMinY()+8,level.getSeaLevel()-6),candidate.center().getZ());
             int extent=NpcSettlements.EXTENT;
             var chunks=CitizenNavigationTests.pinArea(level,base,-extent,extent,-extent,extent);
             terrain(level,base,true);
@@ -60,6 +60,10 @@ public final class NpcVillageWorldTests {
                 helper.assertTrue(town.stations.stream().filter(s -> s.role()==StructureRole.HOUSING).count()==3,"Village did not build three cottages");
                 helper.assertTrue(SettlementService.populationLimit(town)>=10,"Separate cottages do not provide population capacity");
                 helper.assertTrue(InventoryOps.count(SettlementService.storage(level,town),s -> s.is(net.minecraft.world.item.Items.BREAD))>0,"Warehouse has no real starter supplies");
+                var lumber=town.stations.stream().filter(s -> s.role()==StructureRole.LUMBER).findFirst().orElseThrow();
+                var treeRoot=plan.stream().filter(p -> p.pos().getX()==town.center.getX()-20 && p.pos().getZ()==town.center.getZ()+13
+                        && p.state().is(Blocks.OAK_LOG)).map(NpcSettlements.Placement::pos).min(java.util.Comparator.comparingInt(BlockPos::getY)).orElseThrow();
+                helper.assertTrue(lumber.contains(treeRoot) && ForestryService.tree(level,town,treeRoot)!=null,"Lumber yard has no usable natural tree");
                 for(var p:plan) if(p.protect()) helper.assertTrue(level.getBlockState(p.pos()).getBlock()==p.state().getBlock(),"Furnished building lost "+p.state()+" at "+p.pos());
                 var walker=new io.github.swishhyy.wwmc.entity.CitizenEntity(VC.CITIZEN.get(),level);
                 walker.setPos(town.center.getX()-0.5,town.center.getY(),town.center.getZ()-0.5);
