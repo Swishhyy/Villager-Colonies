@@ -22,7 +22,7 @@ import net.neoforged.testframework.gametest.GameTest;
 
 public final class BarbarianWorldTests {
     private static BarbarianEntity raider(ServerLevel level,BlockPos pos,WavePlan.Attacker role) {
-        var raider=new BarbarianEntity(VC.BARBARIAN.get(),level); raider.equip(role);
+        var raider=new BarbarianEntity(VC.BARBARIAN.get(),level); raider.equip(role); raider.setPersistenceRequired();
         raider.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5); level.addFreshEntity(raider); return raider;
     }
     private static CitizenEntity target(ServerLevel level,BlockPos pos) {
@@ -69,8 +69,8 @@ public final class BarbarianWorldTests {
             var bow=raider(level,start.south(8),WavePlan.Attacker.ARCHER);
             melee.setTarget(meleeTarget); bow.setTarget(rangedTarget);
             helper.succeedWhen(() -> {
-                helper.assertTrue(meleeTarget.getHealth()<meleeTarget.getMaxHealth(),"Foot soldier did not reach and hit its target");
-                helper.assertTrue(rangedTarget.getHealth()<rangedTarget.getMaxHealth(),"Archer did not aim and hit its target");
+                helper.assertTrue(meleeTarget.getHealth()<meleeTarget.getMaxHealth(),"Foot soldier did not reach and hit its target; alive="+melee.isAlive()+", ticks="+melee.tickCount+", distance="+melee.distanceTo(meleeTarget));
+                helper.assertTrue(rangedTarget.getHealth()<rangedTarget.getMaxHealth(),"Archer did not aim and hit its target; alive="+bow.isAlive()+", ticks="+bow.tickCount+", distance="+bow.distanceTo(rangedTarget));
                 helper.assertTrue(bow.distanceToSqr(rangedTarget)>4*4,"Archer only dealt melee damage");
                 melee.discard(); bow.discard(); meleeTarget.discard(); rangedTarget.discard(); CitizenNavigationTests.releaseTicking(level,start,chunks);
             });

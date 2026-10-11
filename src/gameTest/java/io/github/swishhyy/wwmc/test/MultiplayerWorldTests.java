@@ -210,7 +210,7 @@ public final class MultiplayerWorldTests {
             checkpoint(f,home); checkpoint(f,other); checkpoint(f,npc);
             var view=MultiplayerViews.view(a,start); String text=view.tabs().toString();
             helper.assertTrue(text.contains("Public trade news") && text.contains("Needs:") && !text.contains("Private neighbour journal") && view.tabs().stream().noneMatch(t -> t.name().getString().equals("Duels")),"Neighbour board leaked private journal data or retained duels");
-            helper.assertTrue(level.getServer().getCommands().getDispatcher().getRoot().getChild("wwmc").getChild("duel")==null,"Removed duel command remains registered");
+            helper.assertTrue(level.getServer().getCommands().getDispatcher().getRoot().getChild("vc").getChild("duel")==null,"Removed duel command remains registered");
             b.setPos(start.getX()+1.5,start.getY(),start.getZ()+1.5); MultiplayerViews.act(b,start,MultiplayerViews.ROW_ACTION,0,"act:trade-link:"+npc.id);
             helper.assertTrue(home.trading.partner==null && ClaimProtection.denied(level,b,start.west(4)) && !MultiplayerCombat.claimException(level,b,a),"Public board changed another town's trade or combat permissions");
             f.close(); helper.succeed();
