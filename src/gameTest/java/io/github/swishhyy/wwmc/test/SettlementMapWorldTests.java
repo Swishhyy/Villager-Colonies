@@ -25,8 +25,8 @@ public final class SettlementMapWorldTests {
             var level=helper.getLevel(); var data=SettlementData.get(level); var saved=new ArrayList<>(data.settlements);
             var visitor=FakePlayerFactory.get(level,new GameProfile(UUID.randomUUID(),"MapManager"));
             var outsider=FakePlayerFactory.get(level,new GameProfile(UUID.randomUUID(),"MapOutsider"));
-            var own=town(visitor.getUUID(),1_250_000),ally=town(UUID.randomUUID(),1_251_000),stranger=town(outsider.getUUID(),1_252_000);
-            var complete=town(UUID.randomUUID(),1_253_000),pending=town(UUID.randomUUID(),1_254_000);
+            Settlement own=town(visitor.getUUID(),1_250_000),ally=town(UUID.randomUUID(),1_251_000),stranger=town(outsider.getUUID(),1_252_000);
+            Settlement complete=town(UUID.randomUUID(),1_253_000),pending=town(UUID.randomUUID(),1_254_000);
             complete.trading.npc=true; complete.trading.buildIndex=-1; pending.trading.npc=true; pending.trading.buildIndex=128;
             own.campaign.allies.add(ally.id); ally.campaign.allies.add(own.id); own.trading.partner=ally.id;
             ally.trading.partner=own.id; stranger.trading.partner=complete.id;

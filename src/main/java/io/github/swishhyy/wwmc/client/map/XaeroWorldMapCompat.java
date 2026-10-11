@@ -62,6 +62,7 @@ public final class XaeroWorldMapCompat implements ExternalMaps.Provider {
         @Override public int getMenuTextFillLeftPadding(MapMarkers.Marker m) { return 0; }
         @Override public int getRightClickTitleBackgroundColor(MapMarkers.Marker m) { return 0xFF000000|m.color(); }
         @Override public boolean shouldScaleBoxWithOptionalScale() { return false; }
+        @Override public boolean isInteractable(ElementRenderLocation location,MapMarkers.Marker m) { return location==ElementRenderLocation.WORLD_MAP; }
         @Override public boolean isRightClickValid(MapMarkers.Marker m) { return false; }
     }
     private static final class Renderer extends ElementRenderer<MapMarkers.Marker,Markers,Renderer> {
