@@ -85,7 +85,9 @@ public final class NpcSettlements {
             low=Math.min(low,y); high=Math.max(high,y);
             if(high-low>2) return rejected(probe,new BlockPos(px,y,pz),"slope exceeds two blocks");
             BlockPos ground=new BlockPos(px,y-1,pz); var state=level.getBlockState(ground);
-            if(!state.is(BlockTags.DIRT) && !state.is(Blocks.SAND) && !state.is(Blocks.GRAVEL) && !state.is(BlockTags.BASE_STONE_OVERWORLD)) return rejected(probe,ground,"unsupported ground "+state);
+            // Since 26.2, the dirt tag contains dirt variants rather than all natural soil surfaces.
+            if(!state.is(BlockTags.DIRT) && !state.is(Blocks.GRASS_BLOCK) && !state.is(Blocks.PODZOL) && !state.is(Blocks.MYCELIUM)
+                    && !state.is(Blocks.SAND) && !state.is(Blocks.GRAVEL) && !state.is(BlockTags.BASE_STONE_OVERWORLD)) return rejected(probe,ground,"unsupported ground "+state);
             for(int dy=-3;dy<=6;dy++) {
                 BlockPos p=ground.above(dy);
                 if(!level.getWorldBorder().isWithinBounds(p)) return rejected(probe,p,"outside world border");
