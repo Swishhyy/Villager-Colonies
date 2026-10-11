@@ -182,7 +182,8 @@ public final class TrapWorldTests {
     @TestHolder(description="A real craftsman waits through an alarm, collects repair supplies, walks to a worn trap and restores it without remote repairs.")
     static void craftsmanMaintainsAfterCombat(DynamicTest test) {
         test.onGameTest(helper -> {
-            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-12600));
+            // Claims extend far beyond the empty template; keep this work area away from other trap/research fixtures.
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(96000,2,-12600));
             var chunks=CitizenNavigationTests.pinTicking(level,start,2); CitizenNavigationTests.meadow(level,start,-16,36,-12,12);
             var town=town(level,start,UUID.randomUUID()); Station craft=new Station(start.east(6),StructureRole.CRAFTSMAN);
             Station warehouse=new Station(start.west(7),StructureRole.WAREHOUSE); town.stations.addAll(List.of(craft,warehouse));
@@ -191,6 +192,7 @@ public final class TrapWorldTests {
             Container supplies=(Container)level.getBlockEntity(barrel); supplies.setItem(0,new ItemStack(Items.OAK_PLANKS,2));
             level.setBlockAndUpdate(warehouse.position().north(2),Blocks.CHEST.defaultBlockState());
             BlockPos pos=start.east(24); place(level,pos,TrapKind.WOODEN_SPIKES);
+            helper.assertTrue(SettlementData.get(level).at(pos)==town,"Maintenance fixture is inside another town's claim");
             level.setBlockAndUpdate(pos,level.getBlockState(pos).setValue(TrapBlock.WEAR,12).setValue(TrapBlock.ARMED,false));
             var worker=new CitizenEntity(VC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(true);
             worker.setPos(craft.position().getX()+.5,craft.position().getY(),craft.position().getZ()+1.5);

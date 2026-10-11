@@ -58,7 +58,8 @@ public final class ResearchAgeWorldTests {
     @TestHolder(description="Copper discovers the alloy furnace; bronze comes directly from copper and tin after research. Previously made blends still smelt, and native equipment discovery cannot bypass the blacksmith.")
     static void bronzeDiscoveryCraftingAndSmelting(DynamicTest test) {
         test.onGameTest(helper -> {
-            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-12600));
+            // A furnace reads its containing town's research; never overlap another fixture's claim.
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(-96000,2,-12600));
             var chunks=CitizenNavigationTests.pinTicking(level,start,1); CitizenNavigationTests.meadow(level,start,-8,16,-8,8);
             var owner=new RecipePlayer(level,new GameProfile(UUID.randomUUID(),"BronzeOwner"));
             VC.TAB.get().buildContents(new CreativeModeTab.ItemDisplayParameters(level.enabledFeatures(),false,level.registryAccess()));
@@ -77,6 +78,7 @@ public final class ResearchAgeWorldTests {
             for(int slot=1;slot<=4;slot++) menu.getSlot(slot).setByPlayer(new ItemStack(slot==4 ? VC.TIN_INGOT.get() : Items.COPPER_INGOT));
             menu.slotsChanged(menu.getSlot(1).container); helper.assertTrue(menu.getSlot(0).getItem().isEmpty(),"Manual blend crafting is still enabled");
             BlockPos alloyPos=start.east(3),legacyPos=start.east(6);
+            helper.assertTrue(SettlementData.get(level).at(alloyPos)==town,"Alloy fixture is inside another town's claim");
             level.setBlockAndUpdate(alloyPos,VC.ALLOY_FURNACE.get().defaultBlockState()); level.setBlockAndUpdate(legacyPos,Blocks.FURNACE.defaultBlockState());
             var alloy=(io.github.swishhyy.wwmc.block.AlloyFurnaceEntity)level.getBlockEntity(alloyPos);
             alloy.setItem(0,new ItemStack(Items.COPPER_INGOT,3)); alloy.setItem(1,new ItemStack(VC.TIN_INGOT.get())); alloy.setItem(2,new ItemStack(Items.COAL));
