@@ -108,8 +108,8 @@ public final class NpcDevelopmentWorldTests {
                 var route=SharedRoads.route(level,inside,b.stations.getFirst().position()); helper.assertTrue(!route.isEmpty(),"Player trader cannot use the shared highway");
                 var path=data.mapPath(a,b); helper.assertTrue(path.size()>=3 && path.size()<=64,"Map route lost the actual highway or exceeded its packet budget");
                 // Do not touch the distant chunk: construct only saved metadata for an unvisited destination.
-                var far=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Unvisited",start.east(10000),96,List.of(),
-                        List.of(new Station(start.east(10000),StructureRole.TRADER)),"balanced"); far.trading.npc=true;
+                var far=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Unvisited",start.east(1024),96,List.of(),
+                        List.of(new Station(start.east(1024),StructureRole.TRADER)),"balanced"); far.trading.npc=true;
                 a.trading.partner=far.id; far.trading.partner=a.id;
                 helper.assertTrue(!level.hasChunkAt(far.center) && data.plan(level,a,far)==null && !level.hasChunkAt(far.center),"Highway planning loaded unvisited terrain");
                 helper.assertTrue(data.roads.size()==oldRoads+1,"Highway planning duplicated the route");

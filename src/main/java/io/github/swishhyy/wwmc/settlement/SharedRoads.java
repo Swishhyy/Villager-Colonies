@@ -129,6 +129,10 @@ public final class SharedRoads extends SavedData {
             BlockPos center=road.line.get(road.cursor);
             if(!level.hasChunkAt(center)) break;
             int height=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,center.getX(),center.getZ());
+            BlockPos changedFloor=new BlockPos(center.getX(),height-1,center.getZ());
+            if(height!=center.getY() && WorldWorkData.get(level).protectedBlocks.contains(changedFloor)) {
+                road.blockedUntil=level.getGameTime()+1200; setDirty(); break;
+            }
             if(Math.abs(height-center.getY())>4 || road.cursor>0 && Math.abs(height-road.line.get(road.cursor-1).getY())>1) {
                 road.blockedUntil=level.getGameTime()+1200; setDirty(); break;
             }
