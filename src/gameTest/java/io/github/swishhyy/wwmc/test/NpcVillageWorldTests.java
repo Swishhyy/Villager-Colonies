@@ -73,6 +73,8 @@ public final class NpcVillageWorldTests {
                 }
                 var walker=new io.github.swishhyy.wwmc.entity.CitizenEntity(VC.CITIZEN.get(),level);
                 walker.setPos(town.center.getX()-0.5,town.center.getY(),town.center.getZ()-0.5);
+                // This unspawned probe stands on the plaza; navigation requires a grounded mob.
+                walker.setOnGround(true);
                 try {
                     for(var station:town.stations) if(station.role()==StructureRole.HOUSING || station.role()==StructureRole.WAREHOUSE
                             || station.role()==StructureRole.COOK || station.role()==StructureRole.SMELTERY) {
