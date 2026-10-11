@@ -92,6 +92,8 @@
   "wwmc.configuration.maxActiveTraders.tooltip": "Maximum towns with an active trader chunk window in this dimension. Each uses a moving 3x3 area (9 chunks), rather than loading the entire route. Default: 8. Extra traders wait.",
   "wwmc.configuration.tradeRouteDistance": "Route limit (blocks)",
   "wwmc.configuration.tradeRouteDistance.tooltip": "Maximum distance between town banners for a trader route. Routes need walkable terrain or roads and remain in the Overworld. Default: 8192 blocks.",
+  "wwmc.configuration.ensureNearbyNpcTown": "Nearby NPC town",
+  "wwmc.configuration.ensureNearbyNpcTown.tooltip": "Establish a nearby NPC neighbour on safe terrain when none is available. Temporarily holds one 3x3 chunk window, then releases it. Respects random settlements, town limits and existing claims.",
   "wwmc.configuration.randomSettlements": "Generate neutral towns",
   "wwmc.configuration.randomSettlements.tooltip": "Discover small working NPC towns in suitable loaded Overworld terrain. Existing NPC towns remain when this is disabled. They begin neutral, produce real goods, and can accept supply routes.",
   "wwmc.configuration.npcTownSpacing": "NPC town spacing (blocks)",
