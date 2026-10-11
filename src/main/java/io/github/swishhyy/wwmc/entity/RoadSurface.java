@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.entity;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -11,7 +11,7 @@ import net.minecraft.world.level.block.Block;
 
 /** Route preference is a block tag; waterlogged solid decks still count as safe support. */
 public final class RoadSurface {
-    public static final TagKey<Block> PAVING=TagKey.create(Registries.BLOCK,Identifier.fromNamespaceAndPath(WWMC.MODID,"paved_paths"));
+    public static final TagKey<Block> PAVING=TagKey.create(Registries.BLOCK,Identifier.fromNamespaceAndPath(VC.MODID,"paved_paths"));
     private RoadSurface() {}
 
     public static boolean openWater(BlockGetter level,BlockPos feet) {

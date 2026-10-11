@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.item;
 
-import io.github.swishhyy.wwmc.menu.WwmcNetwork;
+import io.github.swishhyy.wwmc.menu.VcNetwork;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -14,7 +14,7 @@ public final class GuideItem extends Item {
     public GuideItem(Properties properties) { super(properties); }
     @Override public InteractionResult use(Level level,Player player,InteractionHand hand) {
         if(player instanceof ServerPlayer server) {
-            PacketDistributor.sendToPlayer(server,new WwmcNetwork.GuidePayload("start"));
+            PacketDistributor.sendToPlayer(server,new VcNetwork.GuidePayload("start"));
             io.github.swishhyy.wwmc.settlement.TutorialProgress.award(server,"read_guide");
         }
         return InteractionResult.SUCCESS;

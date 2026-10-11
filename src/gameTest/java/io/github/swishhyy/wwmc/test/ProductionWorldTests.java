@@ -1,7 +1,7 @@
 package io.github.swishhyy.wwmc.test;
 
 import io.github.swishhyy.wwmc.Config;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
@@ -68,8 +68,8 @@ public final class ProductionWorldTests {
                 helper.assertTrue(level.getBlockState(root).is(Blocks.OAK_SAPLING),"The overlapping-range tree was not cut and replanted: "+describe(citizen));
                 for(int y=1;y<4;y++) helper.assertTrue(!level.getBlockState(root.above(y)).is(Blocks.OAK_LOG),"The upper trunk was left behind");
                 helper.assertTrue(citizen.bag().count(Items.OAK_LOG)+count(supplies,Items.OAK_LOG)==4,"Tree harvesting lost or duplicated logs");
-                helper.assertTrue(level.getBlockState(banner).getBlock()==WWMC.BANNER.get()
-                        && level.getBlockState(warehouse.position()).getBlock()==WWMC.STATIONS.get(StructureRole.WAREHOUSE).get(),"Forestry changed a protected fixture");
+                helper.assertTrue(level.getBlockState(banner).getBlock()==VC.BANNER.get()
+                        && level.getBlockState(warehouse.position()).getBlock()==VC.STATIONS.get(StructureRole.WAREHOUSE).get(),"Forestry changed a protected fixture");
                 f.close();
             });
         });
@@ -231,7 +231,7 @@ public final class ProductionWorldTests {
                     for(int y=1;y<4;y++) helper.assertTrue(!level.getBlockState(root.above(y)).is(Blocks.OAK_LOG),"Tree was only partly felled");
                     helper.assertTrue(citizen.bag().count(Items.OAK_LOG)+count(supplies,Items.OAK_LOG)==4,"Whole-tree log drops were lost or duplicated");
                     helper.assertTrue(level.getBlockState(storage).is(Blocks.BARREL) && level.getBlockEntity(storage)==supplies,"The job barrel was changed");
-                    helper.assertTrue(level.getBlockState(lumber.position()).getBlock()==WWMC.STATIONS.get(StructureRole.LUMBER).get(),"The Lumber Station was changed");
+                    helper.assertTrue(level.getBlockState(lumber.position()).getBlock()==VC.STATIONS.get(StructureRole.LUMBER).get(),"The Lumber Station was changed");
                     f.close();
                 });
             });
@@ -240,7 +240,7 @@ public final class ProductionWorldTests {
 
     private record Fixture(ServerLevel level,BlockPos start,List<ChunkPos> chunks,Settlement town,List<CitizenEntity> workers) {
         CitizenEntity worker(Station station,BlockPos feet) {
-            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level); citizen.join(town.id);
+            var citizen=new CitizenEntity(VC.CITIZEN.get(),level); citizen.join(town.id);
             citizen.setPos(feet.getX()+0.5,feet.getY(),feet.getZ()+0.5);
             town.citizens.add(citizen.getUUID()); town.jobs.assign(citizen.getUUID(),station.position());
             level.addFreshEntity(citizen); workers.add(citizen); return citizen;
@@ -258,8 +258,8 @@ public final class ProductionWorldTests {
         CitizenNavigationTests.meadow(level,start,-8,48,-14,14);
         var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Production regression",center,64,List.of(),List.of(stations),"balanced");
         SettlementData.get(level).settlements.add(town); SettlementData.get(level).setDirty();
-        level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState());
-        for(var s:stations) level.setBlockAndUpdate(s.position(),WWMC.STATIONS.get(s.role()).get().defaultBlockState()
+        level.setBlockAndUpdate(town.center,VC.BANNER.get().defaultBlockState());
+        for(var s:stations) level.setBlockAndUpdate(s.position(),VC.STATIONS.get(s.role()).get().defaultBlockState()
                 .setValue(StationBlock.RANGE,s.range()).setValue(StationBlock.CREW,s.crew()).setValue(StationBlock.YIELD,s.yieldLevel()));
         return new Fixture(level,start,chunks,town,new ArrayList<>());
     }

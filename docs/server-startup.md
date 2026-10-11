@@ -2,7 +2,7 @@
 
 [Project overview](../README.md) · [All guides](README.md)
 
-The supplied 26.2 NeoForge log loads WWMC successfully, then fails before world startup with:
+The supplied 26.2 NeoForge log loads VC successfully, then fails before world startup with:
 
 ```text
 Unable to read or access the world gen settings file!
@@ -10,7 +10,7 @@ Unable to read or access the world gen settings file!
 IllegalStateException: Overworld settings missing
 ```
 
-This concerns the world's generation metadata. Changing WWMC versions does not recreate that file safely. The message about WWMC changing from 0.11.3 to 0.12.0 is an upgrade warning; it is not the reported exception.
+This concerns the world's generation metadata. Changing VC versions does not recreate that file safely. The version-change message is an upgrade warning, separate from the reported exception.
 
 For an existing NeoForge world:
 

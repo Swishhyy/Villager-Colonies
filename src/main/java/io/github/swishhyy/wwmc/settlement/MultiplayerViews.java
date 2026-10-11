@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.menu.*;
 import java.util.*;
 import net.minecraft.core.BlockPos;
@@ -30,7 +30,7 @@ public final class MultiplayerViews {
     public static boolean valid(ServerPlayer player,BlockPos pos) {
         ServerLevel level=level(player); Settlement town=SettlementData.get(level).at(pos);
         return player.isAlive() && !player.isSpectator() && town!=null && !town.trading.npc && town.center.equals(pos)
-                && player.distanceToSqr(Vec3.atCenterOf(pos))<=64 && level.hasChunkAt(pos) && level.getBlockState(pos).is(WWMC.BANNER.get());
+                && player.distanceToSqr(Vec3.atCenterOf(pos))<=64 && level.hasChunkAt(pos) && level.getBlockState(pos).is(VC.BANNER.get());
     }
     public static Settlement home(ServerLevel level,ServerPlayer player) {
         return SettlementData.get(level).settlements.stream().filter(t -> !t.trading.npc && t.campaign.parent==null && TownAccess.manages(t,player.getUUID()))

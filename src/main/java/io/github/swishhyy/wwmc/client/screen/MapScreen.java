@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.client.screen;
 
 import io.github.swishhyy.wwmc.menu.MapData;
 import io.github.swishhyy.wwmc.menu.MapMenu;
-import io.github.swishhyy.wwmc.menu.WwmcNetwork;
+import io.github.swishhyy.wwmc.menu.VcNetwork;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -161,14 +161,14 @@ public final class MapScreen extends AbstractContainerScreen<MapMenu> {
         if(inside(x,y)) {
             if(event.button()==1) {
                 for(MapData.Mark ping:map().pings()) if(ping.removable() && Math.abs(sx(ping.x())-x)<=4 && Math.abs(sz(ping.z())-y)<=4) {
-                    ClientPacketDistributor.sendToServer(new WwmcNetwork.MapActionPayload(2,0,0,"",ping.id()));
+                    ClientPacketDistributor.sendToServer(new VcNetwork.MapActionPayload(2,0,0,"",ping.id()));
                     return true;
                 }
                 return true;
             }
             if(event.button()==0) {
                 int worldX=(int)Math.round(viewX+(x-(left()+size()/2.0))/scale()),worldZ=(int)Math.round(viewZ+(y-(top()+size()/2.0))/scale());
-                ClientPacketDistributor.sendToServer(new WwmcNetwork.MapActionPayload(1,worldX,worldZ,KINDS.get(kind),""));
+                ClientPacketDistributor.sendToServer(new VcNetwork.MapActionPayload(1,worldX,worldZ,KINDS.get(kind),""));
                 return true;
             }
         }

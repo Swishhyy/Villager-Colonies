@@ -25,6 +25,6 @@ public abstract class SettlementMenu extends AbstractContainerMenu implements Vi
     public void refresh() {
         if(viewer==null) return;
         PanelView next=build();
-        if(next!=null) { view=next; PacketDistributor.sendToPlayer(viewer,new WwmcNetwork.ViewPayload(containerId,next)); }
+        if(next!=null) { view=next; PacketDistributor.sendToPlayer(viewer,new VcNetwork.ViewPayload(containerId,next)); }
     }
 }

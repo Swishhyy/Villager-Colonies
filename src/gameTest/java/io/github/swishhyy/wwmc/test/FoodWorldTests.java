@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.test;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
@@ -39,7 +39,7 @@ public final class FoodWorldTests {
             CitizenNavigationTests.release(level,start,chunks);
         }
         CitizenEntity worker(Station station,BlockPos feet) {
-            var worker=new CitizenEntity(WWMC.CITIZEN.get(),level);
+            var worker=new CitizenEntity(VC.CITIZEN.get(),level);
             worker.join(town.id); worker.setPos(feet.getX()+0.5,feet.getY(),feet.getZ()+0.5);
             town.citizens.add(worker.getUUID()); town.jobs.assign(worker.getUUID(),station.position());
             level.addFreshEntity(worker); entities.add(worker); return worker;
@@ -56,8 +56,8 @@ public final class FoodWorldTests {
         CitizenNavigationTests.meadow(level,start,-8,88,-16,16);
         var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Food regression",start.west(4),96,List.of(),List.of(stations),"food");
         var data=SettlementData.get(level); data.settlements.add(town); data.setDirty();
-        level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState());
-        for(Station station:stations) level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+        level.setBlockAndUpdate(town.center,VC.BANNER.get().defaultBlockState());
+        for(Station station:stations) level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
         return new Fixture(level,start,chunks,town,new ArrayList<>());
     }
     private static Container barrel(ServerLevel level,BlockPos pos,ItemStack... contents) {

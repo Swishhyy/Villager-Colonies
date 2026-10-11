@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.settlement;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
@@ -63,7 +63,7 @@ public final class ExpeditionData extends SavedData {
         }
     }
     private static final Codec<ExpeditionData> CODEC=Site.CODEC.listOf().xmap(ExpeditionData::new,d -> d.sites);
-    private static final SavedDataType<ExpeditionData> TYPE=new SavedDataType<>(Identifier.fromNamespaceAndPath(WWMC.MODID,"expeditions"),ExpeditionData::new,CODEC);
+    private static final SavedDataType<ExpeditionData> TYPE=new SavedDataType<>(Identifier.fromNamespaceAndPath(VC.MODID,"expeditions"),ExpeditionData::new,CODEC);
     public final List<Site> sites;
     public ExpeditionData() { this(List.of()); }
     private ExpeditionData(List<Site> sites) { this.sites=new ArrayList<>(sites); }

@@ -3,7 +3,7 @@ package io.github.swishhyy.wwmc.client.screen;
 import io.github.swishhyy.wwmc.menu.CraftsmanMenu;
 import io.github.swishhyy.wwmc.menu.Panels;
 import io.github.swishhyy.wwmc.menu.PanelView;
-import io.github.swishhyy.wwmc.menu.WwmcNetwork;
+import io.github.swishhyy.wwmc.menu.VcNetwork;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,10 +79,10 @@ public final class CraftsmanScreen extends AbstractContainerScreen<CraftsmanMenu
     }
     private void send(int action,int index,String key) {
         flush();
-        ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,action,index,0,key));
+        ClientPacketDistributor.sendToServer(new VcNetwork.ActionPayload(menu.containerId,action,index,0,key));
     }
     private void flush() {
-        pending.forEach((index,change) -> ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,Panels.TARGET,index,change.target(),change.key())));
+        pending.forEach((index,change) -> ClientPacketDistributor.sendToServer(new VcNetwork.ActionPayload(menu.containerId,Panels.TARGET,index,change.target(),change.key())));
         pending.clear();
     }
     /** The rows' items and targets; the widgets are rebuilt when the server reports a different list. */

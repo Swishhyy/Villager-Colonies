@@ -1,7 +1,7 @@
 package io.github.swishhyy.wwmc.entity;
 
 import io.github.swishhyy.wwmc.Config;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.DiagnosticWindow;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.core.CitizenNames;
@@ -319,11 +319,11 @@ public final class CitizenEntity extends Villager {
             case WARNING -> {
                 int slots=0;
                 for(int slot=0;slot<cargo.getContainerSize();slot++) if(!cargo.getItem(slot).isEmpty()) slots++;
-                WWMC.LOGGER.warn("[WWMC][worker-stalled] {} blockedSeconds={} activity=\"{}\" target={} depot={} pantry={} pantryStand={} pathDestination={} navigationDone={} pathTicks={} failedTargets={} health={}/{} mealTicks={} bagSlots={}/{} pendingStacks={}",
+                VC.LOGGER.warn("[VC][worker-stalled] {} blockedSeconds={} activity=\"{}\" target={} depot={} pantry={} pantryStand={} pathDestination={} navigationDone={} pathTicks={} failedTargets={} health={}/{} mealTicks={} bagSlots={}/{} pendingStacks={}",
                         diagnosticContext(level,town),diagnosticWindow.blockedTicks(now)/20,activity,target,depotTarget,pantryTarget,pantryStand,pathDestination,getNavigation().isDone(),pathTicks,failedTargets.size(),
                         getHealth(),getMaxHealth(),mealTicks,slots,cargo.getContainerSize(),cargo.pendingItems().size());
             }
-            case RESOLVED -> WWMC.LOGGER.info("[WWMC][worker-resumed] {} activity=\"{}\"",diagnosticContext(level,town),activity);
+            case RESOLVED -> VC.LOGGER.info("[VC][worker-resumed] {} activity=\"{}\"",diagnosticContext(level,town),activity);
             default -> {}
         }
     }
@@ -361,7 +361,7 @@ public final class CitizenEntity extends Villager {
         if(spot==null) spot=rescueSpot(level,town);
         clearBlockedJob();
         if(Config.SERVER_DIAGNOSTICS.get() && now>=nextRescueWarning) {
-            WWMC.LOGGER.warn("[WWMC][stuck-rescue] {} result={} destination={} activity=\"{}\" target={} pathDestination={}",
+            VC.LOGGER.warn("[VC][stuck-rescue] {} result={} destination={} activity=\"{}\" target={} pathDestination={}",
                     diagnosticContext(level,town),spot==null ? "no-standing-room" : atJob ? "returned-to-job" : "returned-to-banner",spot,activity,target,pathDestination);
             nextRescueWarning=now+Config.DIAGNOSTIC_REPEAT.get()*20L;
         }
@@ -2551,7 +2551,7 @@ public final class CitizenEntity extends Villager {
                 tradeShipment.destination=destination.id; tradeShipment.stage="checkpoint"; tradeNavigation.reset();
                 destination.campaign.incoming.put(getUUID(),CampaignContracts.counts(tradeShipment));
                 CampaignService.journal(level,home,"Shipment departed for "+destination.name+" with "+moved+" items.");
-                WWMC.LOGGER.info("[WWMC] [trade] Carrier {} departed {} for {} with {} items",getUUID(),home.id,destination.id,moved);
+                VC.LOGGER.info("[VC] [trade] Carrier {} departed {} for {} with {} items",getUUID(),home.id,destination.id,moved);
             }
             case "checkpoint" -> {
                 tradeNote(home,"Taking "+tradeCargoCount()+" items to the home checkpoint");
@@ -2578,7 +2578,7 @@ public final class CitizenEntity extends Villager {
                     CampaignContracts.delivered(level,home,destination,before,tradeShipment.rewards);
                     PlayerContracts.delivered(level,home,destination,plainBefore);
                     CampaignService.journal(level,destination,"Received "+moved+" items from "+home.name+".");
-                    WWMC.LOGGER.info("[WWMC] [trade] Carrier {} delivered {} items from {} to {}",getUUID(),moved,home.id,destination.id);
+                    VC.LOGGER.info("[VC] [trade] Carrier {} delivered {} items from {} to {}",getUUID(),moved,home.id,destination.id);
                     SupplyRequests.snapshotLoaded(level,destination);
                 }
                 home.trading.delivered+=moved;

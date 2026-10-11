@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.block.AlloyFurnaceEntity;
 import java.util.*;
 import net.minecraft.server.level.ServerLevel;
@@ -14,22 +14,22 @@ public final class AlloyWorkshop {
     public record Plan(String id,String research,int firstCount,int secondCount,ItemStack firstInput,ItemStack secondInput,ItemStack result,int ticks) {}
     private AlloyWorkshop() {}
     public static boolean copper(ItemStack s) { return s.is(Items.COPPER_INGOT) || s.is(Items.RAW_COPPER) || s.is(Items.COPPER_ORE) || s.is(Items.DEEPSLATE_COPPER_ORE); }
-    public static boolean tin(ItemStack s) { return s.is(WWMC.TIN_INGOT.get()) || s.is(WWMC.RAW_TIN.get()) || s.is(WWMC.TIN_ORE_ITEM.get()) || s.is(WWMC.DEEPSLATE_TIN_ORE_ITEM.get()); }
+    public static boolean tin(ItemStack s) { return s.is(VC.TIN_INGOT.get()) || s.is(VC.RAW_TIN.get()) || s.is(VC.TIN_ORE_ITEM.get()) || s.is(VC.DEEPSLATE_TIN_ORE_ITEM.get()); }
     public static boolean iron(ItemStack s) { return s.is(Items.IRON_INGOT) || s.is(Items.RAW_IRON) || s.is(Items.IRON_ORE) || s.is(Items.DEEPSLATE_IRON_ORE); }
     public static boolean first(ItemStack s) { return copper(s) || iron(s); }
     public static boolean second(ItemStack s) { return tin(s) || ForgeWorkshop.fuel(s); }
     public static boolean material(ItemStack s) { return first(s) || second(s); }
     public static Plan match(ItemStack first,ItemStack second) {
         if(copper(first) && first.getCount()>=3 && tin(second) && second.getCount()>=1)
-            return new Plan("bronze","bronze_age",3,1,first.copyWithCount(3),second.copyWithCount(1),new ItemStack(WWMC.BRONZE_INGOT.get(),4),400);
+            return new Plan("bronze","bronze_age",3,1,first.copyWithCount(3),second.copyWithCount(1),new ItemStack(VC.BRONZE_INGOT.get(),4),400);
         if(iron(first) && first.getCount()>=1 && ForgeWorkshop.fuel(second) && second.getCount()>=1)
-            return new Plan("steel","steel_working",1,1,first.copyWithCount(1),second.copyWithCount(1),new ItemStack(WWMC.STEEL_INGOT.get()),600);
+            return new Plan("steel","steel_working",1,1,first.copyWithCount(1),second.copyWithCount(1),new ItemStack(VC.STEEL_INGOT.get()),600);
         return null;
     }
-    public static List<Item> catalogue() { return List.of(WWMC.BRONZE_INGOT.get(),WWMC.STEEL_INGOT.get(),WWMC.TIN_INGOT.get(),Items.COPPER_INGOT,Items.IRON_INGOT,Items.GOLD_INGOT); }
+    public static List<Item> catalogue() { return List.of(VC.BRONZE_INGOT.get(),VC.STEEL_INGOT.get(),VC.TIN_INGOT.get(),Items.COPPER_INGOT,Items.IRON_INGOT,Items.GOLD_INGOT); }
     public static int target(Settlement town,Item item) {
         return town.progress.forgeOrders.stream().filter(o -> o.resolve()==item).mapToInt(Workshop.Order::target).findFirst()
-                .orElse(item==WWMC.BRONZE_INGOT.get() || item==WWMC.STEEL_INGOT.get() ? 32 : Integer.MAX_VALUE);
+                .orElse(item==VC.BRONZE_INGOT.get() || item==VC.STEEL_INGOT.get() ? 32 : Integer.MAX_VALUE);
     }
     public static boolean order(Settlement town,String id,int target) {
         Item item=SupplyRequests.item(id); if(!catalogue().contains(item) || target<0 || target>256) return false;
@@ -45,8 +45,8 @@ public final class AlloyWorkshop {
         // A courier handoff changes the location of stock, not the amount already produced.
         for(UUID id:town.citizens) if(level.getEntity(id) instanceof io.github.swishhyy.wwmc.entity.CitizenEntity citizen && citizen.isAlive()) unique.add(citizen.bag());
         var stored=new ArrayList<>(unique);
-        for(Item item:List.of(WWMC.BRONZE_INGOT.get(),WWMC.STEEL_INGOT.get())) {
-            boolean bronze=item==WWMC.BRONZE_INGOT.get();
+        for(Item item:List.of(VC.BRONZE_INGOT.get(),VC.STEEL_INGOT.get())) {
+            boolean bronze=item==VC.BRONZE_INGOT.get();
             if(!Research.has(town,bronze ? "bronze_age" : "steel_working") || InventoryOps.count(stored,s -> s.is(item))>=target(town,item)) continue;
             var a=furnace.getItem(0).isEmpty() ? InventoryOps.takeBest(List.of(copy(supplies)),bronze ? AlloyWorkshop::copper : AlloyWorkshop::iron,s -> s.getCount()) : furnace.getItem(0).copy();
             var b=furnace.getItem(1).isEmpty() ? InventoryOps.takeBest(List.of(copy(supplies)),bronze ? AlloyWorkshop::tin : ForgeWorkshop::fuel,s -> s.getCount()) : furnace.getItem(1).copy();

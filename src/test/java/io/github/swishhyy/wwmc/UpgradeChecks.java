@@ -115,12 +115,16 @@ public final class UpgradeChecks {
         check(WavePlan.size(20,2,0.5,40,2,2)==16,"Each population upgrade adds attackers");
         check(WavePlan.size(500,2,0.5,40,3,2)==46,"Upgrades also raise the largest wave");
         var first=WavePlan.compose(20,20,1);
-        check(first.get(WavePlan.Attacker.PILLAGER)==2 && first.get(WavePlan.Attacker.VINDICATOR)==0,"The first upgrade brings pillagers");
-        var third=WavePlan.compose(30,30,3);
-        check(third.get(WavePlan.Attacker.VINDICATOR)>=1 && third.get(WavePlan.Attacker.PILLAGER)<=30/4,"The third upgrade brings vindicators");
+        check(first.get(WavePlan.Attacker.FOOT_SOLDIER)==20 && first.get(WavePlan.Attacker.ARMORED)==0,"Population upgrades do not skip the first melee raids");
+        var third=WavePlan.compose(30,30,3,5);
+        check(third.get(WavePlan.Attacker.ARMORED)>=1 && third.get(WavePlan.Attacker.ARCHER)<=30/4,"Developed towns eventually face armored veterans");
         for(int size=1;size<=60;size++) for(int population=0;population<=40;population+=5) for(int threat=0;threat<=12;threat++) {
-            var wave=WavePlan.compose(size,population,threat);
-            check(wave.values().stream().mapToInt(Integer::intValue).sum()==size && wave.values().stream().allMatch(count -> count>=0),"Every wave keeps its size: "+size+"/"+population+"/"+threat);
+            for(int raids:new int[]{0,1,2,4,5,12}) {
+                var wave=WavePlan.compose(size,population,threat,raids);
+                check(wave.values().stream().mapToInt(Integer::intValue).sum()==size && wave.values().stream().allMatch(count -> count>=0),"Every raid keeps its size: "+size+"/"+population+"/"+threat+"/"+raids);
+                check(raids>=2 || wave.get(WavePlan.Attacker.ARCHER)==0,"Archers never join the first two raids");
+                check(raids>=5 || wave.get(WavePlan.Attacker.ARMORED)==0,"Armor never joins the first five raids");
+            }
         }
         System.out.println("Passed "+checks+" threat checks.");
     }

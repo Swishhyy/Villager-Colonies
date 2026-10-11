@@ -1,5 +1,4 @@
 package io.github.swishhyy.wwmc;
-import com.mojang.logging.LogUtils;
 import io.github.swishhyy.wwmc.block.SettlementBannerBlock;
 import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.block.TrapBlock;
@@ -13,8 +12,8 @@ import io.github.swishhyy.wwmc.item.SurveyorItem;
 import io.github.swishhyy.wwmc.item.GuideBook;
 import io.github.swishhyy.wwmc.settlement.Carcasses;
 import net.minecraft.world.item.Item;
-import io.github.swishhyy.wwmc.menu.WwmcMenus;
-import io.github.swishhyy.wwmc.menu.WwmcNetwork;
+import io.github.swishhyy.wwmc.menu.VcMenus;
+import io.github.swishhyy.wwmc.menu.VcNetwork;
 import io.github.swishhyy.wwmc.settlement.SettlementService;
 import io.github.swishhyy.wwmc.settlement.WorkProtection;
 import io.github.swishhyy.wwmc.settlement.GuardService;
@@ -45,10 +44,10 @@ import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.registries.*;
 import org.slf4j.Logger;
 
-@Mod(WWMC.MODID)
-public final class WWMC {
+@Mod(VC.MODID)
+public final class VC {
     public static final String MODID="wwmc";
-    public static final Logger LOGGER=LogUtils.getLogger();
+    public static final Logger LOGGER=org.slf4j.LoggerFactory.getLogger("VC");
     public static final DeferredRegister.Blocks BLOCKS=DeferredRegister.createBlocks(MODID);
     public static final DeferredRegister.Items ITEMS=DeferredRegister.createItems(MODID);
     public static final DeferredRegister.Entities ENTITIES=DeferredRegister.createEntities(MODID);
@@ -127,6 +126,7 @@ public final class WWMC {
     public static final DeferredItem<GuideItem> GUIDE=ITEMS.registerItem("settlement_guide",GuideItem::new,
             p -> p.stacksTo(1).component(DataComponents.WRITTEN_BOOK_CONTENT,GuideBook.content()));
     public static final DeferredHolder<EntityType<?>,EntityType<CitizenEntity>> CITIZEN=ENTITIES.registerEntityType("citizen",CitizenEntity::new,MobCategory.CREATURE,b -> b.sized(0.6F,1.95F).clientTrackingRange(10));
+    public static final DeferredHolder<EntityType<?>,EntityType<io.github.swishhyy.wwmc.entity.BarbarianEntity>> BARBARIAN=ENTITIES.registerEntityType("barbarian",io.github.swishhyy.wwmc.entity.BarbarianEntity::new,MobCategory.MONSTER,b -> b.sized(0.6F,1.95F).clientTrackingRange(10));
     public static final DeferredHolder<CreativeModeTab,CreativeModeTab> TAB=TABS.register("settlement",() -> CreativeModeTab.builder()
         .title(Component.translatable("itemGroup.wwmc")).withTabsBefore(CreativeModeTabs.COMBAT)
         .icon(() -> BANNER_ITEM.get().getDefaultInstance()).displayItems((p,out) -> {
@@ -139,11 +139,11 @@ public final class WWMC {
             for(TrapKind kind:TrapKind.values()) out.accept(TRAP_ITEMS.get(kind).get());
             for(var kind:Carcasses.Kind.values()) out.accept(CARCASSES.get(kind).get());
         }).build());
-    public WWMC(IEventBus bus, ModContainer container) {
+    public VC(IEventBus bus, ModContainer container) {
         BLOCKS.register(bus); ITEMS.register(bus); ENTITIES.register(bus); TABS.register(bus); BLOCK_ENTITIES.register(bus);
-        WwmcMenus.MENUS.register(bus);
+        VcMenus.MENUS.register(bus);
         bus.addListener(this::attributes);
-        bus.addListener(WwmcNetwork::register);
+        bus.addListener(VcNetwork::register);
         bus.addListener(TradeChunks::register);
         bus.addListener(io.github.swishhyy.wwmc.settlement.NearbyNpcTown::register);
         bus.addListener(io.github.swishhyy.wwmc.settlement.CitizenRecall::register);
@@ -173,10 +173,11 @@ public final class WWMC {
         NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.settlement.StarterPack());
         container.registerConfig(ModConfig.Type.SERVER,Config.SPEC);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStartedEvent event) -> LOGGER.info(
-                "[WWMC][server-start] version={} diagnostics={} stallSeconds={} repeatSeconds={}",
+                "[VC][server-start] version={} diagnostics={} stallSeconds={} repeatSeconds={}",
                 container.getModInfo().getVersion(),Config.SERVER_DIAGNOSTICS.get(),Config.DIAGNOSTIC_DELAY.get(),Config.DIAGNOSTIC_REPEAT.get()));
     }
     private void attributes(EntityAttributeCreationEvent event) {
         event.put(CITIZEN.get(),Villager.createAttributes().add(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE,2.0).build());
+        event.put(BARBARIAN.get(),io.github.swishhyy.wwmc.entity.BarbarianEntity.attributes().build());
     }
 }

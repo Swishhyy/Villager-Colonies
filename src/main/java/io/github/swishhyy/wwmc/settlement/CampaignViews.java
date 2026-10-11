@@ -67,7 +67,7 @@ public final class CampaignViews {
                 String state=order.customer==null ? "Open offer" : order.customer.equals(town.id) ? order.complete() ? "Complete; collect any remaining reward" : "Accepted: "+order.delivered+" / "+order.amount+" delivered" : "Accepted by another town";
                 supply.add(action(Items.EMERALD,npc.name+": "+order.amount+" "+order.item.replace("minecraft:",""),state+"; reward "+order.reward.getCount()+" "+order.reward.getHoverName().getString(),
                         "contract:"+order.id,order.customer==null && order.expires>level.getGameTime()));
-                if(town.id.equals(order.customer)) supply.add(row(Items.PAPER,"Manual delivery / reward collection","/wwmc contract deliver "+order.id+" at "+npc.name,"",-1));
+                if(town.id.equals(order.customer)) supply.add(row(Items.PAPER,"Manual delivery / reward collection","/vc contract deliver "+order.id+" at "+npc.name,"",-1));
             }
         for(var project:TownProjects.ALL) {
             boolean complete=town.campaign.projects.contains(project.id()); String missing=complete ? "Complete" : TownProjects.missing(level,town,project);
@@ -82,7 +82,7 @@ public final class CampaignViews {
                 List.of(new PanelView.Tab("Supply",supply),new PanelView.Tab("Projects",projects),new PanelView.Tab("Research",research),
                         new PanelView.Tab("Army",army(level,town,viewer)),new PanelView.Tab("Sites",sites(level,town)),new PanelView.Tab("Journal",journal)),
                 List.of(new PanelView.Action(BACK,"Town overview",true),new PanelView.Action(RelationshipViews.OPEN,"Relationships",true),
-                        new PanelView.Action(MAP,"Map",true,"Claims, trade routes, expedition sites and pings shared with your allies; also /wwmc map")));
+                        new PanelView.Action(MAP,"Map",true,"Claims, trade routes, expedition sites and pings shared with your allies; also /vc map")));
     }
     private static List<PanelView.Row> army(ServerLevel level,Settlement town,ServerPlayer viewer) {
         List<PanelView.Row> rows=new ArrayList<>(); boolean led=town.campaign.squads.stream().anyMatch(s -> s.leader().equals(viewer.getUUID()));
@@ -128,7 +128,7 @@ public final class CampaignViews {
         List<PanelView.Row> rows=new ArrayList<>();
         for(var site:ExpeditionData.get(level).sites) {
             String status=site.claimed!=null ? "Claimed as an outpost" : site.kind.equals("raid") ? (site.cleared ? "Raiders driven off" : site.guards.size()+" raiders remain")
-                    : site.cleared ? "Cleared: walk here and use /wwmc outpost claim with a Frontier Charter" : site.spawned ? site.guards.size()+" defenders remain" : "Uncleared; defenders gather when approached";
+                    : site.cleared ? "Cleared: walk here and use /vc outpost claim with a Frontier Charter" : site.spawned ? site.guards.size()+" defenders remain" : "Uncleared; defenders gather when approached";
             Regions.Region land=Regions.byId(site.resource);
             Settlement victim=site.kind.equals("raid") && site.victim!=null ? SettlementData.get(level).byId(site.victim) : null;
             String goal=victim!=null ? "Defend "+victim.name : site.goal();
@@ -159,7 +159,7 @@ public final class CampaignViews {
                 switch(op) {
                     case "invite" -> {
                         UUID id=UUID.fromString(arg); message=TownAccess.invite(town,player.getUUID(),id,"steward");
-                        var friend=level.getServer().getPlayerList().getPlayer(id); if(friend!=null && town.campaign.invitations.containsKey(id)) SettlementService.tell(friend,"Invited to "+town.name+" as steward. Use /wwmc town accept.");
+                        var friend=level.getServer().getPlayerList().getPlayer(id); if(friend!=null && town.campaign.invitations.containsKey(id)) SettlementService.tell(friend,"Invited to "+town.name+" as steward. Use /vc town accept.");
                     }
                     case "cancel" -> { if(TownAccess.owner(town,player.getUUID())) town.campaign.invitations.remove(UUID.fromString(arg)); }
                     case "ally","unally" -> {

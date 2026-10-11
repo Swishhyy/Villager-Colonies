@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.test;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.serialization.JsonOps;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.settlement.StarterPack;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -26,11 +26,11 @@ public final class StarterPackWorldTests {
             var level=helper.getLevel(); var profile=new GameProfile(UUID.randomUUID(),"NewColonist");
             var player=new FakePlayer(level,profile);
             NeoForge.EVENT_BUS.post(new PlayerEvent.PlayerLoggedInEvent(player));
-            helper.assertTrue(player.getInventory().countItem(WWMC.BANNER_ITEM.get())==1
-                    && player.getInventory().countItem(WWMC.GUIDE.get())==1,"First login did not give exactly one banner and guide");
+            helper.assertTrue(player.getInventory().countItem(VC.BANNER_ITEM.get())==1
+                    && player.getInventory().countItem(VC.GUIDE.get())==1,"First login did not give exactly one banner and guide");
             NeoForge.EVENT_BUS.post(new PlayerEvent.PlayerLoggedInEvent(player));
-            helper.assertTrue(player.getInventory().countItem(WWMC.BANNER_ITEM.get())==1
-                    && player.getInventory().countItem(WWMC.GUIDE.get())==1,"Reconnect duplicated the starter pack");
+            helper.assertTrue(player.getInventory().countItem(VC.BANNER_ITEM.get())==1
+                    && player.getInventory().countItem(VC.GUIDE.get())==1,"Reconnect duplicated the starter pack");
             var respawned=new FakePlayer(level,profile);
             helper.assertTrue(!StarterPack.give(respawned) && respawned.getInventory().isEmpty(),"A replacement player entity received a second pack");
             var receipts=StarterPack.Receipts.get(level);
@@ -44,8 +44,8 @@ public final class StarterPackWorldTests {
             helper.assertTrue(StarterPack.give(full),"First pack with a full inventory was rejected");
             var drops=level.getEntitiesOfClass(ItemEntity.class,new AABB(pos).inflate(3));
             try {
-                helper.assertTrue(drops.stream().filter(e -> e.getItem().is(WWMC.BANNER_ITEM.get())).mapToInt(e -> e.getItem().getCount()).sum()==1
-                        && drops.stream().filter(e -> e.getItem().is(WWMC.GUIDE.get())).mapToInt(e -> e.getItem().getCount()).sum()==1,
+                helper.assertTrue(drops.stream().filter(e -> e.getItem().is(VC.BANNER_ITEM.get())).mapToInt(e -> e.getItem().getCount()).sum()==1
+                        && drops.stream().filter(e -> e.getItem().is(VC.GUIDE.get())).mapToInt(e -> e.getItem().getCount()).sum()==1,
                         "A full inventory lost the starter items");
                 helper.assertTrue(!StarterPack.give(full),"Full-inventory delivery duplicated on retry");
             } finally { drops.forEach(ItemEntity::discard); }

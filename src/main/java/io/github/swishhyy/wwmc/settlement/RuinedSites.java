@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -18,7 +18,7 @@ public final class RuinedSites {
         level.setBlock(pos,state,3); WorldWorkData.get(level).protect(pos);
     }
     private static void station(ServerLevel level,BlockPos c,int x,int z,StructureRole role) {
-        put(level,c.offset(x,0,z),WWMC.STATIONS.get(role).get().defaultBlockState());
+        put(level,c.offset(x,0,z),VC.STATIONS.get(role).get().defaultBlockState());
     }
     private static void bed(ServerLevel level,BlockPos foot) {
         var state=Blocks.BED.red().defaultBlockState().setValue(BedBlock.FACING,Direction.NORTH);
@@ -42,13 +42,13 @@ public final class RuinedSites {
         }
         for(int x=-7;x<=7;x++) for(int z=-7;z<=0;z++) if(Math.floorMod(x*7+z*11,5)>1)
             put(level,c.offset(x,4,z),Blocks.OAK_PLANKS.defaultBlockState());
-        put(level,c.north(3),WWMC.BANNER.get().defaultBlockState());
+        put(level,c.north(3),VC.BANNER.get().defaultBlockState());
         station(level,c,0,-5,StructureRole.RESEARCHER); put(level,c.north(4),Blocks.LECTERN.defaultBlockState());
         station(level,c,-5,1,StructureRole.HOUSING); bed(level,c.offset(-6,0,3)); bed(level,c.offset(-5,0,3));
         station(level,c,5,1,StructureRole.WAREHOUSE); put(level,c.offset(6,0,2),Blocks.BARREL.defaultBlockState());
         station(level,c,-4,-4,StructureRole.CRAFTSMAN); put(level,c.offset(-5,0,-4),Blocks.CRAFTING_TABLE.defaultBlockState());
         put(level,c.offset(-4,0,-6),Blocks.BARREL.defaultBlockState());
-        station(level,c,4,-4,StructureRole.BLACKSMITH); put(level,c.offset(5,0,-4),WWMC.BRONZE_ANVIL.get().defaultBlockState());
+        station(level,c,4,-4,StructureRole.BLACKSMITH); put(level,c.offset(5,0,-4),VC.BRONZE_ANVIL.get().defaultBlockState());
         put(level,c.offset(5,0,-6),Blocks.FURNACE.defaultBlockState()); put(level,c.offset(3,0,-6),Blocks.BARREL.defaultBlockState());
         station(level,c,5,4,StructureRole.GATHERER); put(level,c.offset(6,0,5),Blocks.BARREL.defaultBlockState());
         for(BlockPos p:java.util.List.of(c.offset(-2,0,5),c.offset(2,0,5),c.offset(-2,0,-1),c.offset(2,0,-1)))
@@ -77,7 +77,7 @@ public final class RuinedSites {
         station(level,c,8,-7,StructureRole.RESEARCHER); put(level,c.offset(8,0,-9),Blocks.LECTERN.defaultBlockState());
         put(level,c.offset(7,0,-8),Blocks.BARREL.defaultBlockState());
         station(level,c,8,7,StructureRole.WAREHOUSE); put(level,c.offset(8,0,9),Blocks.BARREL.defaultBlockState()); put(level,c.offset(7,0,8),Blocks.BARREL.defaultBlockState());
-        station(level,c,-8,7,StructureRole.MINE); put(level,c.offset(-8,0,9),WWMC.TIN_ORE.get().defaultBlockState()); put(level,c.offset(-7,0,8),Blocks.BARREL.defaultBlockState());
+        station(level,c,-8,7,StructureRole.MINE); put(level,c.offset(-8,0,9),VC.TIN_ORE.get().defaultBlockState()); put(level,c.offset(-7,0,8),Blocks.BARREL.defaultBlockState());
         station(level,c,-4,0,StructureRole.COOK); put(level,c.offset(-5,0,0),Blocks.SMOKER.defaultBlockState()); put(level,c.offset(-4,0,2),Blocks.BARREL.defaultBlockState());
         station(level,c,4,0,StructureRole.CRAFTSMAN); put(level,c.offset(5,0,0),Blocks.CRAFTING_TABLE.defaultBlockState()); put(level,c.offset(4,0,2),Blocks.BARREL.defaultBlockState());
         station(level,c,0,-4,StructureRole.GUARD);
@@ -91,7 +91,7 @@ public final class RuinedSites {
         }
         for(int x=-6;x<=6;x++) for(int z=-6;z<=6;z++) if(Math.floorMod(x*13+z*3,7)>1)
             put(level,c.offset(x,3,z),Blocks.OAK_PLANKS.defaultBlockState());
-        station(level,c,-4,0,StructureRole.MINE); put(level,c.offset(-5,0,0),WWMC.TIN_ORE.get().defaultBlockState()); put(level,c.offset(-4,0,2),Blocks.BARREL.defaultBlockState());
+        station(level,c,-4,0,StructureRole.MINE); put(level,c.offset(-5,0,0),VC.TIN_ORE.get().defaultBlockState()); put(level,c.offset(-4,0,2),Blocks.BARREL.defaultBlockState());
         station(level,c,4,0,StructureRole.WAREHOUSE); put(level,c.offset(4,0,2),Blocks.BARREL.defaultBlockState());
         station(level,c,0,-4,StructureRole.RESEARCHER); put(level,c.offset(0,0,-5),Blocks.LECTERN.defaultBlockState());
         station(level,c,0,4,StructureRole.HOUSING); bed(level,c.offset(1,0,4)); bed(level,c.offset(2,0,4));

@@ -1,7 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.Config;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
@@ -124,12 +124,12 @@ public final class ExpeditionService {
         cache.setItem(0,new ItemStack(Items.IRON_INGOT,site.kind.equals("fort") ? 24 : 12));
         cache.setItem(1,new ItemStack(Items.BREAD,16)); cache.setItem(2,new ItemStack(Items.EMERALD,4));
         cache.setItem(3,new ItemStack(Items.STONE_PICKAXE)); cache.setItem(4,new ItemStack(Items.PAPER,16)); cache.setChanged();
-        cache.setItem(6,new ItemStack(WWMC.GUIDE.get())); cache.setItem(7,new ItemStack(WWMC.TIN_INGOT.get(),8));
+        cache.setItem(6,new ItemStack(VC.GUIDE.get())); cache.setItem(7,new ItemStack(VC.TIN_INGOT.get(),8));
         cache.setChanged();
         if(site.kind.equals("townhall")) {
             cache.setItem(0,new ItemStack(Items.COPPER_INGOT,12)); cache.setItem(2,new ItemStack(Items.CHARCOAL,4));
             cache.setItem(3,new ItemStack(Items.STONE_SHOVEL)); cache.setItem(4,new ItemStack(Items.PAPER,24));
-            cache.setItem(5,new ItemStack(WWMC.RESEARCH_SCROLL.get(),2)); cache.setChanged();
+            cache.setItem(5,new ItemStack(VC.RESEARCH_SCROLL.get(),2)); cache.setChanged();
         }
         if(site.kind.equals("mine")) for(int y=0;y<2;y++) level.setBlock(c.offset(-4,y,-1),ore(site).defaultBlockState(),3);
         if(ExpeditionData.Site.RESCUE.equals(site.objective)) {
@@ -153,7 +153,7 @@ public final class ExpeditionService {
         if(!ExpeditionData.Site.RESCUE.equals(site.objective) || !site.captives.isEmpty()) return;
         List<BlockPos> spots=List.of(site.pos.offset(3,0,2),site.pos.offset(3,0,3));
         for(int n=0;n<spots.size();n++) {
-            CitizenEntity captive=WWMC.CITIZEN.get().create(level,EntitySpawnReason.EVENT);
+            CitizenEntity captive=VC.CITIZEN.get().create(level,EntitySpawnReason.EVENT);
             if(captive==null) continue;
             BlockPos spot=spots.get(n);
             captive.setPos(spot.getX()+0.5,spot.getY(),spot.getZ()+0.5);
@@ -255,7 +255,7 @@ public final class ExpeditionService {
     }
     /** A neighbor's grateful volunteer: a new citizen beside its banner who joins the defending town and walks home in time. */
     private static boolean volunteer(ServerLevel level,Settlement neighbor,Settlement town) {
-        CitizenEntity citizen=WWMC.CITIZEN.get().create(level,EntitySpawnReason.EVENT);
+        CitizenEntity citizen=VC.CITIZEN.get().create(level,EntitySpawnReason.EVENT);
         if(citizen==null) return false;
         for(int x=-3;x<=3;x++) for(int z=-3;z<=3;z++) {
             BlockPos trial=neighbor.center.offset(x,0,z);
@@ -330,7 +330,7 @@ public final class ExpeditionService {
         if(!parent.campaign.projects.contains("frontier")) return "Complete the Frontier Charter project first.";
         if(parent.campaign.extraRoutes.size()>=4) return "Disconnect an extra supply route before claiming another outpost.";
         if(site==null || !site.cleared || site.claimed!=null || site.kind.equals("raid")) return "Choose an unclaimed, cleared expedition site.";
-        if(player.distanceToSqr(Vec3.atCenterOf(site.pos))>12*12) return "Walk to the cleared site to claim it; use /wwmc outpost claim there.";
+        if(player.distanceToSqr(Vec3.atCenterOf(site.pos))>12*12) return "Walk to the cleared site to claim it; use /vc outpost claim there.";
         var data=SettlementData.get(level);
         if(data.settlements.stream().anyMatch(t -> t.overlaps(site.pos,Settlement.MIN_RADIUS))) return "This site overlaps a newer settlement claim.";
         List<Station> furnished=furnishedStations(level,site);
@@ -355,10 +355,10 @@ public final class ExpeditionService {
         outpost.campaign.requests.put("minecraft:oak_planks",16);
         Regions.Region land=Regions.byId(site.resource);
         outpost.trading.exports.add(new TradeSettings.Export(land==null ? "minecraft:raw_iron" : land.product(),4,32));
-        put(level,site.pos,WWMC.BANNER.get().defaultBlockState());
+        put(level,site.pos,VC.BANNER.get().defaultBlockState());
         for(var role:List.of(StructureRole.WAREHOUSE,StructureRole.TRADER,StructureRole.MINE,StructureRole.HOUSING,StructureRole.COURIER)) {
             BlockPos p=positions.get(role);
-            if(level.getBlockState(p).isAir()) { put(level,p,WWMC.STATIONS.get(role).get().defaultBlockState()); outpost.stations.add(new Station(p,role)); }
+            if(level.getBlockState(p).isAir()) { put(level,p,VC.STATIONS.get(role).get().defaultBlockState()); outpost.stations.add(new Station(p,role)); }
         }
         outpost.stations.addAll(furnished);
         // Every outpost's mine works its region's ore as an endless vein.

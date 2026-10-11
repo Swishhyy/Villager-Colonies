@@ -20,7 +20,7 @@ public final class MultiplayerCommands {
     private static int say(CommandContext<CommandSourceStack> c,String text) { c.getSource().sendSuccess(() -> Component.literal(text),false); return 1; }
     private static boolean overworld(CommandSourceStack source) { return source.getEntity() instanceof ServerPlayer && source.getLevel().dimension().equals(Level.OVERWORLD); }
     @SubscribeEvent public void commands(RegisterCommandsEvent event) {
-        event.getDispatcher().register(Commands.literal("wwmc")
+        event.getDispatcher().register(Commands.literal("vc")
             .then(Commands.literal("neighbours").requires(MultiplayerCommands::overworld).executes(MultiplayerCommands::open))
             .then(Commands.literal("multiplayer").requires(MultiplayerCommands::overworld).executes(MultiplayerCommands::open))
             .then(Commands.literal("payment").requires(MultiplayerCommands::overworld)

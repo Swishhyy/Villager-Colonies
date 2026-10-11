@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.block.BronzeAnvilBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import java.util.*;

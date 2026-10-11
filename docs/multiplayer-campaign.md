@@ -24,7 +24,7 @@ On **Settlements**, propose, accept, decline or cancel alliances. Mutual consent
 
 Settlement flags have high blast resistance, are removed from explosion destruction lists, and cannot be pushed by pistons. Owners can still deliberately remove an empty town's flag. An occupied town's flag remains its fixed rally point.
 
-If a flag disappeared in an older build, its occupied town keeps the original identity and claim. Place a Settlement Banner at the saved flag coordinates and right-click it to reopen the same town. Alternatively, right-click another Settlement Banner inside that claim to open Relationships, read the original coordinates on **Town**, and use **Restore flag** while carrying one replacement in your inventory. Recovery consumes that item only after success, never overwrites another block, and preserves population, stations, assignments, memberships and routes. `/wwmc town recover` remains an optional shortcut while standing inside that claim.
+If a flag disappeared in an older build, its occupied town keeps the original identity and claim. Place a Settlement Banner at the saved flag coordinates and right-click it to reopen the same town. Alternatively, right-click another Settlement Banner inside that claim to open Relationships, read the original coordinates on **Town**, and use **Restore flag** while carrying one replacement in your inventory. Recovery consumes that item only after success, never overwrites another block, and preserves population, stations, assignments, memberships and routes. `/vc town recover` remains an optional shortcut while standing inside that claim.
 
 ## Settlement neighbours
 
@@ -42,9 +42,9 @@ Another settlement's owner or steward clicks **Accept**. The board shows which m
 
 The publisher can cancel an **unaccepted** offer and collect the refund. An accepted supplier can **Release** an order; delivered goods remain credited and another supplier can finish the remaining request. Accepted contracts survive logout and restart without an offline deadline. If an issuing settlement disappears, the original publisher's reserved payment is refunded.
 
-Completed payments and refunds appear in your banner payment balance. **Collect payment** moves only what fits in your inventory; the remainder stays saved. `/wwmc payment collect` also works in the Overworld. Orders and transfers are logged in the server console; normal board actions use the hotbar instead of repeated chat messages.
+Completed payments and refunds appear in your banner payment balance. **Collect payment** moves only what fits in your inventory; the remainder stays saved. `/vc payment collect` also works in the Overworld. Orders and transfers are logged in the server console; normal board actions use the hotbar instead of repeated chat messages.
 
-Optional commands: `/wwmc neighbours` (or the existing `/wwmc multiplayer` alias), `/wwmc playercontract list`, `/wwmc playercontract post <amount> <emeralds>` while holding the example at your banner, and `/wwmc playercontract accept|deliver|cancel|release <id>`.
+Optional commands: `/vc neighbours` (or the existing `/vc multiplayer` alias), `/vc playercontract list`, `/vc playercontract post <amount> <emeralds>` while holding the example at your banner, and `/vc playercontract accept|deliver|cancel|release <id>`.
 
 ## Contested resource outposts
 
@@ -54,11 +54,11 @@ After acceptance, there is **one minute to assemble**, followed by a **five-minu
 
 Attackers capture by standing within **six blocks of the flag for 60 seconds**, with no defender within **16 blocks**. Both sides present pauses progress; no attacker present reduces it. Defenders win if time runs out. Offline owners, changed alliances/authority or a server restart cancel the battle without transferring ownership.
 
-Capture changes the **existing outpost**: its miners, stored goods and ore vein remain, the former parent's route is removed, and a supply route connects it to the winning settlement. Permissions and equipment progression follow the new parent; capture does not award the defeated town's research. Review offers and outcomes in **Campaign > Journal**. Commands: `/wwmc outpost battle list`, `challenge <outpost-id>`, `accept <battle-id>` and `decline <battle-id>`.
+Capture changes the **existing outpost**: its miners, stored goods and ore vein remain, the former parent's route is removed, and a supply route connects it to the winning settlement. Permissions and equipment progression follow the new parent; capture does not award the defeated town's research. Review offers and outcomes in **Campaign > Journal**. Commands: `/vc outpost battle list`, `challenge <outpost-id>`, `accept <battle-id>` and `decline <battle-id>`.
 
 ## Stock targets and routes
 
-Use the Supply board's +/- controls, or `/wwmc request minecraft:bread 32`. A target of zero removes the request. Tools change by one, stackable targets by sixteen; commands allow any target from 0 to 4096 and up to 24 requested item types.
+Use the Supply board's +/- controls, or `/vc request minecraft:bread 32`. A target of zero removes the request. Tools change by one, stackable targets by sixteen; commands allow any target from 0 to 4096 and up to 24 requested item types.
 
 The trader sends goods toward the destination's shortage, using last known stock when its warehouses are unloaded. Loaded warehouses refresh the snapshot before departure. Goods already on their way reserve the shortage across all allied carriers. Partial deliveries update that reservation; a returning or killed carrier releases it. The source's own requested stock and configured export reserves are retained. A deliberately paused export remains paused.
 
@@ -80,7 +80,7 @@ All costs come from loaded warehouse containers. Materials are checked before an
 
 Supply and equip your normal guards first. The squad system borrows them; it does not create extra population, equipment or supplies. Each Guard Station has one guard, active through both shifts. Original assignments are retained during deployment, so each guard you take leaves its post unstaffed. Build additional Guard Stations and leave some equipped guards home.
 
-Open **Army** on Campaign or run `/wwmc squad` anywhere for field controls. Muster one, two or four nearby healthy, armed guards; Officer School also allows six. `/wwmc squad muster 2` works directly. One player can lead one squad per town, with up to eight deployed squads in a town.
+Open **Army** on Campaign or run `/vc squad` anywhere for field controls. Muster one, two or four nearby healthy, armed guards; Officer School also allows six. `/vc squad muster 2` works directly. One player can lead one squad per town, with up to eight deployed squads in a town.
 
 | Order | Behavior |
 | --- | --- |
@@ -113,7 +113,7 @@ Occupied sites close to a trader can issue a 30-second ambush warning. Small con
 
 ## Outposts and recovery
 
-After a Frontier Charter, walk to a cleared, unclaimed site and use `/wwmc outpost claim`. Clear any blocks you added at the center or new station positions first. Furnished ruins keep their existing stations, upgrades, beds and stored supplies; missing starting roles are added only on clear ground. A new outpost keeps the parent's owner and current memberships, starts with housing, warehouse, mine, courier and trader stations, and recruits up to four citizens if its beds are still present. It has its own population limit and research projects.
+After a Frontier Charter, walk to a cleared, unclaimed site and use `/vc outpost claim`. Clear any blocks you added at the center or new station positions first. Furnished ruins keep their existing stations, upgrades, beds and stored supplies; missing starting roles are added only on clear ground. A new outpost keeps the parent's owner and current memberships, starts with housing, warehouse, mine, courier and trader stations, and recruits up to four citizens if its beds are still present. It has its own population limit and research projects.
 
 A reciprocal extra route connects the outpost to its parent without replacing the parent's main trading partner. Requests start at 32 bread, two stone pickaxes and 16 oak planks; raw iron exports keep four at the outpost. Couriers remain the only internal haulers. Mining and other production wait when both local food stock and the worker's food bag are empty. Traders and couriers continue so a shortage can recover through deliveries. Players can expand or change the outpost like another town.
 
@@ -159,7 +159,7 @@ Couriers supply one usable tool per assigned worker and count tools already in w
 
 ## Shared map and pings
 
-Campaign -> **Map**, or `/wwmc map`, opens a top-down map centered on you. It shows:
+Campaign -> **Map**, or `/vc map`, opens a top-down map centered on you. It shows:
 
 - Every claim, colored by its relation to you: yours, allied, neutral, hostile or another player's.
 - The trade routes of your own and allied towns.
@@ -168,7 +168,7 @@ Campaign -> **Map**, or `/wwmc map`, opens a top-down map centered on you. It sh
 
 Scroll or use - and + to zoom from 256 to 16,384 blocks across. N, S, E and W pan the map, and Me centers it on you. Hover anything for details.
 
-Choose a ping kind with the Ping button: meet here, build a bridge, build here, danger or resources. Then click the map to place it. Right-click your own ping to remove it; a town's managers can remove any of its pings. `/wwmc ping <kind> [note]` marks where you stand.
+Choose a ping kind with the Ping button: meet here, build a bridge, build here, danger or resources. Then click the map to place it. Right-click your own ping to remove it; a town's managers can remove any of its pings. `/vc ping <kind> [note]` marks where you stand.
 
 A ping belongs to the managed town you stand in, or your nearest one. That town's managers and its allies' managers see it, and placing it is written in the town journal. Each town keeps its 16 newest pings.
 
@@ -176,36 +176,36 @@ A ping belongs to the managed town you stand in, or your nearest one. That town'
 
 Loaded NPC towns continue their existing real production and food-funded growth. They occasionally offer shortages as **supply contracts**, or report a free trade checkpoint. Offers escrow existing goods from their warehouse as payment. Accept on your Supply board, then deliver by a normal trader route. Only accepted goods physically inserted into the destination warehouse count; only the accepting town receives credit. Rewards return with the carrier and remain on the board if its return compartment cannot accept them. Accepted contracts have no offline deadline.
 
-For personal deliveries or remaining reward collection, bring goods to the requesting town and run `/wwmc contract deliver <contract UUID>`. The accepting town's owner or steward must be there in person. The operation transfers inventory items into NPC storage; completed rewards go into that player's inventory or remain safely escrowed if it is full. Other players cannot claim the contract payment.
+For personal deliveries or remaining reward collection, bring goods to the requesting town and run `/vc contract deliver <contract UUID>`. The accepting town's owner or steward must be there in person. The operation transfers inventory items into NPC storage; completed rewards go into that player's inventory or remain safely escrowed if it is full. Other players cannot claim the contract payment.
 
-**Journal** records shipment arrivals/departures, contracts, projects, losses, cleared sites, outposts and alarms. `/wwmc journal` shows the latest twelve entries. Each town retains 64 entries. Ordinary workers advance only in ticking chunks on a running server; trader windows remain capped. Campaign opportunities do not simulate distant block access or spawn destructive offline assaults.
+**Journal** records shipment arrivals/departures, contracts, projects, losses, cleared sites, outposts and alarms. `/vc journal` shows the latest twelve entries. Each town retains 64 entries. Ordinary workers advance only in ticking chunks on a running server; trader windows remain capped. Campaign opportunities do not simulate distant block access or spawn destructive offline assaults.
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
 | `/locate settlement` | Nearest generated NPC town, banner coordinates and distance; vanilla locate permissions, Overworld only |
-| `/wwmc town invite <player> [builder\|steward]` | Owner invites a currently online player; default steward |
-| `/wwmc town accept [town UUID]` | Accept an invitation; without a UUID chooses the nearest waiting invitation |
-| `/wwmc town remove <player>` | Owner revokes membership/invitation; offline members can be removed on the board |
-| `/wwmc town leave` | Leave a town you joined while standing inside it |
-| `/wwmc town list` | Town names and IDs for alliance/route commands |
-| `/wwmc town recover` | Optional shortcut to restore that claim's lost flag with one replacement item |
-| `/wwmc town ally <town UUID>` | Propose or accept a reciprocal alliance |
-| `/wwmc town unally <town UUID>` | End an alliance |
-| `/wwmc request <item ID> <0–4096>` | Set a stock target |
-| `/wwmc industry <balanced\|farming\|fishing\|timber\|mining>` | Choose an industry |
-| `/wwmc project <armory\|hospital\|depot\|frontier\|training>` | Fund a project from warehouse materials |
-| `/wwmc squad` | Open field orders |
-| `/wwmc squad muster <1–6>` | Gather equipped guards within 64 blocks, subject to project limits |
-| `/wwmc squad <follow\|hold\|defend\|retreat\|escort\|release>` | Give a squad order |
-| `/wwmc route add/remove <town UUID>` | Manage an extra allied/same-owner route |
-| `/wwmc outpost claim` | Claim the cleared site you are standing at |
-| `/wwmc contract accept/deliver <contract UUID>` | Accept an offer or make a personal delivery/collect payment |
-| `/wwmc journal` | Read recent town history |
-| `/wwmc needs` | List the town's needs, most urgent first |
-| `/wwmc map` | Open the shared settlement map |
-| `/wwmc ping <kind> [note]` | Share a ping where you stand: meet, bridge, build, danger or resource |
+| `/vc town invite <player> [builder\|steward]` | Owner invites a currently online player; default steward |
+| `/vc town accept [town UUID]` | Accept an invitation; without a UUID chooses the nearest waiting invitation |
+| `/vc town remove <player>` | Owner revokes membership/invitation; offline members can be removed on the board |
+| `/vc town leave` | Leave a town you joined while standing inside it |
+| `/vc town list` | Town names and IDs for alliance/route commands |
+| `/vc town recover` | Optional shortcut to restore that claim's lost flag with one replacement item |
+| `/vc town ally <town UUID>` | Propose or accept a reciprocal alliance |
+| `/vc town unally <town UUID>` | End an alliance |
+| `/vc request <item ID> <0–4096>` | Set a stock target |
+| `/vc industry <balanced\|farming\|fishing\|timber\|mining>` | Choose an industry |
+| `/vc project <armory\|hospital\|depot\|frontier\|training>` | Fund a project from warehouse materials |
+| `/vc squad` | Open field orders |
+| `/vc squad muster <1–6>` | Gather equipped guards within 64 blocks, subject to project limits |
+| `/vc squad <follow\|hold\|defend\|retreat\|escort\|release>` | Give a squad order |
+| `/vc route add/remove <town UUID>` | Manage an extra allied/same-owner route |
+| `/vc outpost claim` | Claim the cleared site you are standing at |
+| `/vc contract accept/deliver <contract UUID>` | Accept an offer or make a personal delivery/collect payment |
+| `/vc journal` | Read recent town history |
+| `/vc needs` | List the town's needs, most urgent first |
+| `/vc map` | Open the shared settlement map |
+| `/vc ping <kind> [note]` | Share a ping where you stand: meet, bridge, build, danger or resource |
 
 Town commands select the managed town you stand inside, then a town whose squad you lead, then your nearest managed town. Membership and alliance changes always require the immutable owner. Campaign board actions require being within eight blocks of the banner; field orders remain available away from it. All authority and item movement are checked on the server.
 

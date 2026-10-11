@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.test;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.serialization.JsonOps;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.block.BronzeAnvilBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
@@ -32,7 +32,7 @@ import net.neoforged.testframework.gametest.GameTest;
 public final class SettlementProductionWorldTests {
     private record Fixture(ServerLevel level,BlockPos start,List<ChunkPos> chunks,Settlement town) {
         CitizenEntity worker(Station station,boolean ai) {
-            var worker=new CitizenEntity(WWMC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(!ai);
+            var worker=new CitizenEntity(VC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(!ai);
             worker.setPos(station.position().getX()+.5,station.position().getY(),station.position().getZ()+1.5);
             worker.bag().offer(new ItemStack(Items.BREAD,4)); town.citizens.add(worker.getUUID());
             town.jobs.assign(worker.getUUID(),station.position()); level.addFreshEntity(worker); return worker;
@@ -47,8 +47,8 @@ public final class SettlementProductionWorldTests {
         // Cover x+34 couriers and their whole floor at every chunk alignment.
         var chunks=CitizenNavigationTests.pinTicking(level,start,3); CitizenNavigationTests.meadow(level,start,-8,36,-12,12);
         var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Settlement production",start,96,List.of(),List.of(stations),"balanced");
-        SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
-        for(var station:stations) level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+        SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(start,VC.BANNER.get().defaultBlockState());
+        for(var station:stations) level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
         return new Fixture(level,start,chunks,town);
     }
     private static Container barrel(ServerLevel level,BlockPos pos,ItemStack... contents) {
@@ -100,22 +100,22 @@ public final class SettlementProductionWorldTests {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-15400));
             var smith=new Station(start.east(20),StructureRole.BLACKSMITH); var f=fixture(level,start,smith);
             f.town.progress.research.add("bronze_age"); BlockPos anvil=smith.position().north(2);
-            level.setBlockAndUpdate(anvil,WWMC.BRONZE_ANVIL.get().defaultBlockState()); level.setBlockAndUpdate(smith.position().east(2),Blocks.FURNACE.defaultBlockState());
-            var repair=new ItemStack(WWMC.BRONZE_HOE.get()); repair.setDamageValue(24); repair.set(DataComponents.CUSTOM_NAME,Component.literal("Old hoe"));
-            Container local=barrel(level,smith.position().south(2),repair,new ItemStack(WWMC.BRONZE_INGOT.get(),8),new ItemStack(Items.STICK,2),
-                    new ItemStack(Items.COPPER_INGOT,3),new ItemStack(WWMC.TIN_INGOT.get()),new ItemStack(Items.COAL,4));
+            level.setBlockAndUpdate(anvil,VC.BRONZE_ANVIL.get().defaultBlockState()); level.setBlockAndUpdate(smith.position().east(2),Blocks.FURNACE.defaultBlockState());
+            var repair=new ItemStack(VC.BRONZE_HOE.get()); repair.setDamageValue(24); repair.set(DataComponents.CUSTOM_NAME,Component.literal("Old hoe"));
+            Container local=barrel(level,smith.position().south(2),repair,new ItemStack(VC.BRONZE_INGOT.get(),8),new ItemStack(Items.STICK,2),
+                    new ItemStack(Items.COPPER_INGOT,3),new ItemStack(VC.TIN_INGOT.get()),new ItemStack(Items.COAL,4));
             helper.assertTrue(ForgeWorkshop.order(level,f.town,"wwmc:bronze_pickaxe",1) && !ForgeWorkshop.order(level,f.town,"wwmc:bronze_ingot",8),"Forge catalogue could not accept orders");
             var worker=f.worker(smith,true);
             helper.succeedWhen(() -> {
-                helper.assertTrue(InventoryOps.count(List.of(local),s -> s.is(WWMC.BRONZE_PICKAXE.get()))==1,"The blacksmith has not delivered its pickaxe: "+worker.activity());
-                helper.assertTrue(InventoryOps.count(List.of(local),s -> s.is(WWMC.BRONZE_HOE.get()) && s.getDamageValue()==0
+                helper.assertTrue(InventoryOps.count(List.of(local),s -> s.is(VC.BRONZE_PICKAXE.get()))==1,"The blacksmith has not delivered its pickaxe: "+worker.activity());
+                helper.assertTrue(InventoryOps.count(List.of(local),s -> s.is(VC.BRONZE_HOE.get()) && s.getDamageValue()==0
                         && s.get(DataComponents.CUSTOM_NAME).getString().equals("Old hoe"))==1,"Repair replaced or lost the original hoe");
-                helper.assertTrue(count(local,worker,WWMC.BRONZE_INGOT.get())==4 && count(local,worker,Items.COPPER_INGOT)==3
-                        && count(local,worker,WWMC.TIN_INGOT.get())==1 && count(local,worker,Items.COAL)==3,"Equipment forging changed unused alloy materials or charged the wrong costs");
-                helper.assertTrue(InventoryOps.count(List.of(local),s -> s.is(WWMC.BRONZE_PICKAXE.get()))==1,"Pickaxe was not physically delivered");
+                helper.assertTrue(count(local,worker,VC.BRONZE_INGOT.get())==4 && count(local,worker,Items.COPPER_INGOT)==3
+                        && count(local,worker,VC.TIN_INGOT.get())==1 && count(local,worker,Items.COAL)==3,"Equipment forging changed unused alloy materials or charged the wrong costs");
+                helper.assertTrue(InventoryOps.count(List.of(local),s -> s.is(VC.BRONZE_PICKAXE.get()))==1,"Pickaxe was not physically delivered");
                 // Finished metallurgy output exceeds the active equipment reserve and can be hauled away.
                 var pickups=JobStorage.collectable(JobStorage.Supplies.of(level),f.town,StructureRole.BLACKSMITH,List.of(local));
-                helper.assertTrue(pickups.stream().anyMatch(p -> p.container().getItem(p.slot()).is(WWMC.BRONZE_INGOT.get())),"Blacksmith hoarded all metallurgy output from couriers");
+                helper.assertTrue(pickups.stream().anyMatch(p -> p.container().getItem(p.slot()).is(VC.BRONZE_INGOT.get())),"Blacksmith hoarded all metallurgy output from couriers");
                 f.close();
             });
         });
@@ -131,23 +131,23 @@ public final class SettlementProductionWorldTests {
                 BlockPos start=helper.absolutePos(new BlockPos(0,2,-18600-i*400));
                 var station=new Station(start.east(20),StructureRole.BLACKSMITH); var f=fixture(level,start,station); fixtures.add(f);
                 f.town.progress.research.add("bronze_age");
-                level.setBlockAndUpdate(station.position().north(2),i==0 ? Blocks.ANVIL.defaultBlockState() : WWMC.BRONZE_ANVIL.get().defaultBlockState());
+                level.setBlockAndUpdate(station.position().north(2),i==0 ? Blocks.ANVIL.defaultBlockState() : VC.BRONZE_ANVIL.get().defaultBlockState());
                 level.setBlockAndUpdate(station.position().east(2),Blocks.FURNACE.defaultBlockState());
-                stock.add(barrel(level,station.position().south(2),new ItemStack(WWMC.BRONZE_INGOT.get(),3),new ItemStack(Items.STICK,2),new ItemStack(Items.COAL)));
+                stock.add(barrel(level,station.position().south(2),new ItemStack(VC.BRONZE_INGOT.get(),3),new ItemStack(Items.STICK,2),new ItemStack(Items.COAL)));
                 helper.assertTrue(ForgeWorkshop.order(level,f.town,"wwmc:bronze_pickaxe",1),"Equipment order was rejected");
                 workers.add(f.worker(station,true));
             }
             boolean[] checked={false};
             helper.runAtTickTime(400,() -> {
-                helper.assertTrue(count(stock.get(0),workers.get(0),WWMC.BRONZE_PICKAXE.get())==1,"Iron anvil lost its normal work speed: "+workers.get(0).activity());
-                helper.assertTrue(count(stock.get(1),workers.get(1),WWMC.BRONZE_PICKAXE.get())==0,"Bronze forging completed before the slower work time");
+                helper.assertTrue(count(stock.get(0),workers.get(0),VC.BRONZE_PICKAXE.get())==1,"Iron anvil lost its normal work speed: "+workers.get(0).activity());
+                helper.assertTrue(count(stock.get(1),workers.get(1),VC.BRONZE_PICKAXE.get())==0,"Bronze forging completed before the slower work time");
                 checked[0]=true;
             });
             helper.succeedWhen(() -> {
                 helper.assertTrue(checked[0],"Waiting for the speed comparison");
                 for(int i=0;i<2;i++) {
-                    helper.assertTrue(InventoryOps.count(List.of(stock.get(i)),s -> s.is(WWMC.BRONZE_PICKAXE.get()))==1,"Blacksmith has not delivered its real pickaxe: "+workers.get(i).activity());
-                    helper.assertTrue(count(stock.get(i),workers.get(i),WWMC.BRONZE_INGOT.get())==0 && count(stock.get(i),workers.get(i),Items.STICK)==0
+                    helper.assertTrue(InventoryOps.count(List.of(stock.get(i)),s -> s.is(VC.BRONZE_PICKAXE.get()))==1,"Blacksmith has not delivered its real pickaxe: "+workers.get(i).activity());
+                    helper.assertTrue(count(stock.get(i),workers.get(i),VC.BRONZE_INGOT.get())==0 && count(stock.get(i),workers.get(i),Items.STICK)==0
                             && count(stock.get(i),workers.get(i),Items.COAL)==0,"Slower work changed the batch costs");
                 }
                 fixtures.forEach(Fixture::close);
@@ -160,9 +160,9 @@ public final class SettlementProductionWorldTests {
     static void anvilWearAndNativeUpgradeKeepState(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-15800)); var f=fixture(level,start);
-            BlockPos anvil=start.east(4); level.setBlockAndUpdate(anvil,WWMC.BRONZE_ANVIL.get().defaultBlockState().setValue(BronzeAnvilBlock.WEAR,7));
+            BlockPos anvil=start.east(4); level.setBlockAndUpdate(anvil,VC.BRONZE_ANVIL.get().defaultBlockState().setValue(BronzeAnvilBlock.WEAR,7));
             var drops=Block.getDrops(level.getBlockState(anvil),level,anvil,null,null,new ItemStack(Items.IRON_PICKAXE));
-            helper.assertTrue(drops.size()==1 && drops.getFirst().is(WWMC.BRONZE_ANVIL_ITEM.get())
+            helper.assertTrue(drops.size()==1 && drops.getFirst().is(VC.BRONZE_ANVIL_ITEM.get())
                     && drops.getFirst().get(DataComponents.BLOCK_STATE).properties().get("wear").equals("7"),"Moving an anvil refreshed its durability");
             ForgeWorkshop.wear(level,anvil,RandomSource.create(0));
             helper.assertTrue(level.getBlockState(anvil).getValue(BronzeAnvilBlock.WEAR)==7,"A non-wear roll damaged a saved bronze anvil");
@@ -174,7 +174,7 @@ public final class SettlementProductionWorldTests {
             BlockPos iron=anvil.east(2);
             // Normal wear may break before or after twelve jobs; both outcomes must match iron.
             for(long seed:new long[]{0,42}) {
-                level.setBlockAndUpdate(anvil,WWMC.BRONZE_ANVIL.get().defaultBlockState());
+                level.setBlockAndUpdate(anvil,VC.BRONZE_ANVIL.get().defaultBlockState());
                 level.setBlockAndUpdate(iron,Blocks.ANVIL.defaultBlockState());
                 var bronzeRandom=RandomSource.create(seed); var ironRandom=RandomSource.create(seed); int operations=0;
                 do {
@@ -191,7 +191,7 @@ public final class SettlementProductionWorldTests {
             var order=new Workshop.Order("minecraft:netherite_pickaxe",1); var plans=ForgeWorkshop.plans(level,order);
             helper.assertTrue(plans.size()==1 && plans.getFirst().upgrade()!=null,"Native netherite recipe is unavailable to the blacksmith");
             var original=new ItemStack(Items.DIAMOND_PICKAXE); original.setDamageValue(42); original.set(DataComponents.CUSTOM_NAME,Component.literal("Family pick"));
-            var worker=new CitizenEntity(WWMC.CITIZEN.get(),level); worker.bag().offer(original); worker.bag().offer(new ItemStack(Items.NETHERITE_UPGRADE_SMITHING_TEMPLATE));
+            var worker=new CitizenEntity(VC.CITIZEN.get(),level); worker.bag().offer(original); worker.bag().offer(new ItemStack(Items.NETHERITE_UPGRADE_SMITHING_TEMPLATE));
             worker.bag().offer(new ItemStack(Items.NETHERITE_INGOT)); worker.bag().offer(new ItemStack(Items.CHARCOAL));
             helper.assertTrue(ForgeWorkshop.craft(level,plans.getFirst(),worker.bag()),"Paid native upgrade failed");
             var made=worker.bag().first(s -> s.is(Items.NETHERITE_PICKAXE));
@@ -252,7 +252,7 @@ public final class SettlementProductionWorldTests {
             var warehouse=new Station(start.east(6),StructureRole.WAREHOUSE); var research=new Station(start.east(20),StructureRole.RESEARCHER);
             var smith=new Station(start.offset(20,0,8),StructureRole.BLACKSMITH); var f=fixture(level,start,warehouse,research,smith);
             level.setBlockAndUpdate(research.position().north(2),Blocks.LECTERN.defaultBlockState());
-            var stock=barrel(level,warehouse.position().south(2),new ItemStack(Items.COPPER_INGOT,24),new ItemStack(WWMC.TIN_INGOT.get(),8),new ItemStack(Items.COAL,24));
+            var stock=barrel(level,warehouse.position().south(2),new ItemStack(Items.COPPER_INGOT,24),new ItemStack(VC.TIN_INGOT.get(),8),new ItemStack(Items.COAL,24));
             f.worker(research,false);
             // Entity registration completes on the server's following tick, just as it does during normal recruitment.
             helper.runAtTickTime(5,() -> {
@@ -262,10 +262,10 @@ public final class SettlementProductionWorldTests {
             });
             helper.runAtTickTime(10,() -> {
                 helper.assertTrue(Research.study(level,f.town,"bronze_age").contains("scrolls") && stock.getItem(0).getCount()==24,"Missing scrolls consumed research supplies");
-                stock.setItem(3,new ItemStack(WWMC.RESEARCH_SCROLL.get(),18)); helper.assertTrue(Research.study(level,f.town,"bronze_age").contains("researched"),"Earned scrolls did not unlock Bronze Age");
-                stock.setItem(4,new ItemStack(WWMC.BRONZE_INGOT.get(),16)); stock.setItem(5,new ItemStack(Items.IRON_INGOT,16));
+                stock.setItem(3,new ItemStack(VC.RESEARCH_SCROLL.get(),18)); helper.assertTrue(Research.study(level,f.town,"bronze_age").contains("researched"),"Earned scrolls did not unlock Bronze Age");
+                stock.setItem(4,new ItemStack(VC.BRONZE_INGOT.get(),16)); stock.setItem(5,new ItemStack(Items.IRON_INGOT,16));
                 helper.assertTrue(Research.missing(level,f.town,Research.byId("iron_age")).contains("blacksmith"),"Iron Age ignored infrastructure");
-                level.setBlockAndUpdate(smith.position().east(2),WWMC.BRONZE_ANVIL.get().defaultBlockState());
+                level.setBlockAndUpdate(smith.position().east(2),VC.BRONZE_ANVIL.get().defaultBlockState());
                 level.setBlockAndUpdate(smith.position().west(2),Blocks.FURNACE.defaultBlockState());
             });
             helper.runAtTickTime(40,() -> {
@@ -327,7 +327,7 @@ public final class SettlementProductionWorldTests {
                     .anyMatch(r -> r.key().equals("forge:wwmc:bronze_pickaxe") && r.detail().getString().startsWith("Target 2")),"Production hides the selected target");
             var builder=new FakePlayer(level,new GameProfile(UUID.randomUUID(),"ProductionBuilder")); builder.setPos(owner.position()); f.town.campaign.members.put(builder.getUUID(),"builder");
             production.act(builder,TownViews.ROW_ACTION,0,200,"forge:wwmc:bronze_pickaxe");
-            helper.assertTrue(f.town.progress.forgeOrders.getFirst().target()==2 && InventoryOps.count(List.of(owner.getInventory()),s -> s.is(WWMC.BRONZE_PICKAXE.get()))==0,"Unauthorized management or GUI clicking produced free gear");
+            helper.assertTrue(f.town.progress.forgeOrders.getFirst().target()==2 && InventoryOps.count(List.of(owner.getInventory()),s -> s.is(VC.BRONZE_PICKAXE.get()))==0,"Unauthorized management or GUI clicking produced free gear");
             f.close(); helper.succeed();
         });
     }
@@ -340,11 +340,11 @@ public final class SettlementProductionWorldTests {
             var chunks=CitizenNavigationTests.pinArea(level,start,-12,12,-12,12); CitizenNavigationTests.meadow(level,start,-12,12,-12,12);
             var site=ExpeditionService.discover(level,start,"townhall","production-test-townhall");
             helper.assertTrue(site!=null && site.title().equals("Ruined Town Hall"),"Town hall site did not generate safely");
-            helper.assertTrue(level.getBlockState(site.pos.north(3)).is(WWMC.BANNER.get())
-                    && level.getBlockState(site.pos.offset(5,0,-4)).is(WWMC.BRONZE_ANVIL.get())
-                    && level.getBlockState(site.pos.offset(4,0,-4)).is(WWMC.STATIONS.get(StructureRole.BLACKSMITH).get()),"Town hall does not show usable settlement blocks");
+            helper.assertTrue(level.getBlockState(site.pos.north(3)).is(VC.BANNER.get())
+                    && level.getBlockState(site.pos.offset(5,0,-4)).is(VC.BRONZE_ANVIL.get())
+                    && level.getBlockState(site.pos.offset(4,0,-4)).is(VC.STATIONS.get(StructureRole.BLACKSMITH).get()),"Town hall does not show usable settlement blocks");
             Container cache=(Container)level.getBlockEntity(site.pos.east(3));
-            helper.assertTrue(InventoryOps.count(List.of(cache),s -> s.is(WWMC.RESEARCH_SCROLL.get()))==2 && SettlementData.get(level).at(site.pos)==null,"Salvage is wrong or ruin automatically claimed a settlement");
+            helper.assertTrue(InventoryOps.count(List.of(cache),s -> s.is(VC.RESEARCH_SCROLL.get()))==2 && SettlementData.get(level).at(site.pos)==null,"Salvage is wrong or ruin automatically claimed a settlement");
             cache.setItem(5,ItemStack.EMPTY); helper.assertTrue(ExpeditionService.discover(level,start,"townhall","production-test-townhall")==null
                     && cache.getItem(5).isEmpty(),"Rediscovering the town hall regenerated loot");
             ExpeditionData.get(level).sites.remove(site); ExpeditionData.get(level).setDirty(); CitizenNavigationTests.release(level,start,chunks); helper.succeed();

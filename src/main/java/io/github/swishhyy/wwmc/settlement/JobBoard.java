@@ -21,7 +21,7 @@ import net.minecraft.core.BlockPos;
 public final class JobBoard {
     public static final int OFF=0,LOW=1,NORMAL=2,HIGH=3;
     public static final List<String> LEVEL_NAMES=List.of("Off","Low","Normal","High");
-    /** Priority presets, applied from the banner or with /wwmc priority; "custom" once a single job is changed. */
+    /** Priority presets, applied from the banner or with /vc priority; "custom" once a single job is changed. */
     public static final List<String> PRESETS=List.of("balanced","food","materials");
     public static final String CUSTOM="custom";
     private static final Codec<UUID> UUID_CODEC=Codec.STRING.xmap(UUID::fromString,UUID::toString);

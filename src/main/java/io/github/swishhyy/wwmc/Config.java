@@ -28,13 +28,13 @@ public final class Config {
     public static int mealIntervalTicks() { return RATION_TICKS.get()*MEAL_MULTIPLIER.get(); }
     public static final ModConfigSpec.IntValue ALARM_THRESHOLD = B.comment("Hostiles citizens must sight at once before a guard runs to ring the town bell.").defineInRange("alarmThreshold", 10, 3, 128);
     public static final ModConfigSpec.IntValue MAX_TRAPS = B.comment("Maximum placed traps per town. Only loaded, ticking traps are checked; each activation spends durability.").defineInRange("maxSettlementTraps",256,1,1024);
-    public static final ModConfigSpec.BooleanValue WAVES = B.comment("Send hostile waves against settlements while their owner is home.").define("enemyWaves", true);
-    public static final ModConfigSpec.IntValue WAVE_MIN_POPULATION = B.comment("Citizens a town needs before waves are scheduled.").defineInRange("waveMinPopulation", 3, 1, 128);
-    public static final ModConfigSpec.IntValue WAVE_INTERVAL_DAYS = B.comment("Average in-game days between waves; each wave arrives at night.").defineInRange("waveIntervalDays", 2, 1, 30);
-    public static final ModConfigSpec.IntValue WAVE_BASE_MOBS = B.comment("Hostiles in every wave before population scaling.").defineInRange("waveBaseMobs", 2, 0, 64);
-    public static final ModConfigSpec.DoubleValue WAVE_MOBS_PER_CITIZEN = B.comment("Additional hostiles per citizen, rounded up.").defineInRange("waveMobsPerCitizen", 0.5, 0.0, 4.0);
-    public static final ModConfigSpec.IntValue WAVE_MAX_MOBS = B.comment("Largest possible wave before population upgrades.").defineInRange("waveMaxMobs", 40, 1, 128);
-    public static final ModConfigSpec.IntValue WAVE_MOBS_PER_UPGRADE = B.comment("Extra hostiles in every wave per population upgrade, also above the largest wave. Upgraded towns also face pillagers, and from the third upgrade vindicators.").defineInRange("waveMobsPerUpgrade", 2, 0, 16);
+    public static final ModConfigSpec.BooleanValue WAVES = B.comment("Send barbarian raids against settlements while a manager is home.").define("enemyWaves", true);
+    public static final ModConfigSpec.IntValue WAVE_MIN_POPULATION = B.comment("Citizens a town needs before barbarian raids are scheduled.").defineInRange("waveMinPopulation", 3, 1, 128);
+    public static final ModConfigSpec.IntValue WAVE_INTERVAL_DAYS = B.comment("Average Minecraft days between barbarian raids, randomized by up to 40% either way. Default 5 gives 3-7 days, with arrival after sunset. Existing saved settings are respected.").defineInRange("waveIntervalDays", 5, 1, 30);
+    public static final ModConfigSpec.IntValue WAVE_BASE_MOBS = B.comment("Barbarians in each raid before population scaling.").defineInRange("waveBaseMobs", 1, 0, 64);
+    public static final ModConfigSpec.DoubleValue WAVE_MOBS_PER_CITIZEN = B.comment("Additional barbarians per citizen, rounded up.").defineInRange("waveMobsPerCitizen", 0.35, 0.0, 4.0);
+    public static final ModConfigSpec.IntValue WAVE_MAX_MOBS = B.comment("Largest possible barbarian raid before population upgrades.").defineInRange("waveMaxMobs", 32, 1, 128);
+    public static final ModConfigSpec.IntValue WAVE_MOBS_PER_UPGRADE = B.comment("Extra barbarians per population upgrade, also above the raid size cap. The first two raids have foot soldiers; archers follow, and armored veterans join from the sixth raid in developed towns.").defineInRange("waveMobsPerUpgrade", 2, 0, 16);
     public static final ModConfigSpec.IntValue MAX_TRADERS = B.comment("Maximum towns whose trader keeps a moving 3x3 chunk window active in one dimension.").defineInRange("maxActiveTraders", 8, 1, 32);
     public static final ModConfigSpec.IntValue TRADE_DISTANCE = B.comment("Longest permitted trader route in blocks, measured between town banners.").defineInRange("tradeRouteDistance", 8192, 512, 32768);
     public static final ModConfigSpec.BooleanValue RANDOM_TOWNS = B.comment("Discover small neutral NPC settlements in suitable loaded Overworld terrain.").define("randomSettlements", true);

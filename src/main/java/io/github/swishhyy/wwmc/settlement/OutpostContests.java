@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import java.util.*;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -50,7 +50,7 @@ public final class OutpostContests {
         data.contests.add(contest); data.setDirty();
         CampaignService.record(level,defender,challenger.name+" offered a battle for "+outpost.name+". Accept or decline at the banner's Neighbours board; nothing changes without acceptance.");
         SettlementService.notify(online(level,defender.owner),challenger.name+" challenged your outpost. Review at a banner's Neighbours board.");
-        WWMC.LOGGER.info("[WWMC] [outposts] {} offered battle {} for {}, defender {}",challenger.id,contest.id,target,defender.id);
+        VC.LOGGER.info("[VC] [outposts] {} offered battle {} for {}, defender {}",challenger.id,contest.id,target,defender.id);
         return "Challenge offered for ten minutes. The defending owner must accept before any outpost PvP or capture begins.";
     }
     public static String accept(ServerLevel level,ServerPlayer player,UUID id) {
@@ -62,7 +62,7 @@ public final class OutpostContests {
         contest.accepted=true; contest.starts=level.getGameTime()+1200; contest.deadline=contest.starts+6000; data.setDirty();
         CampaignService.record(level,defender,"Accepted a battle for "+outpost.name+". One minute to assemble; defend the flag for five minutes. Only players fight within 32 blocks of it.");
         CampaignService.record(level,challenger,"Battle accepted at "+outpost.center.toShortString()+". Assemble for one minute, then hold within six blocks of the flag for 60 seconds with no defender within 16 blocks.");
-        WWMC.LOGGER.info("[WWMC] [outposts] Battle {} accepted, starts {}",id,contest.starts);
+        VC.LOGGER.info("[VC] [outposts] Battle {} accepted, starts {}",id,contest.starts);
         return "Accepted. One minute to assemble, five-minute battle; 60 seconds of uncontested flag presence captures the existing outpost. Normal player death and drops apply.";
     }
     public static String decline(ServerLevel level,ServerPlayer player,UUID id) {
@@ -107,7 +107,7 @@ public final class OutpostContests {
         CampaignService.record(level,challenger,"Captured "+outpost.name+". Its existing miners, warehouse and ore vein now supply this settlement.");
         if(defender!=null) CampaignService.record(level,defender,"Lost "+outpost.name+" after its agreed outpost battle.");
         CampaignService.record(level,outpost,"Captured by "+challenger.name+"; the supply route now leads to its main settlement.");
-        WWMC.LOGGER.info("[WWMC] [outposts] Battle {} captured existing outpost {} for {}",contest.id,outpost.id,challenger.id);
+        VC.LOGGER.info("[VC] [outposts] Battle {} captured existing outpost {} for {}",contest.id,outpost.id,challenger.id);
     }
     public static void tick(ServerLevel level) {
         var data=MultiplayerData.get(level); var towns=SettlementData.get(level); long now=level.getGameTime();
@@ -117,7 +117,7 @@ public final class OutpostContests {
                 String reason=now>=contest.deadline ? contest.accepted ? "The defenders held the flag until time ran out." : "Offer expired." : "Battle cancelled: an owner went offline, permissions changed or the outpost was removed.";
                 if(defender!=null) CampaignService.record(level,defender,"Outpost challenge ended. "+reason);
                 if(challenger!=null) CampaignService.record(level,challenger,"Outpost challenge ended. "+reason);
-                data.contests.remove(contest); data.setDirty(); WWMC.LOGGER.info("[WWMC] [outposts] Battle {} ended: {}",contest.id,reason); continue;
+                data.contests.remove(contest); data.setDirty(); VC.LOGGER.info("[VC] [outposts] Battle {} ended: {}",contest.id,reason); continue;
             }
             if(!contest.accepted || now<contest.starts || !level.hasChunkAt(outpost.center)) continue;
             boolean attacking=false,defending=false;

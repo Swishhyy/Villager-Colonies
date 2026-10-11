@@ -38,7 +38,7 @@ public final class CampaignCommands {
         String result=TownAccess.invite(t,player(c).getUUID(),friend.getUUID(),role);
         if(t.campaign.invitations.containsKey(friend.getUUID())) {
             t.campaign.playerNames.put(friend.getUUID(),friend.getName().getString());
-            SettlementData.get(level(c)).setDirty(); SettlementService.tell(friend,"You were invited to "+t.name+" as "+role+". Use /wwmc town accept to join.");
+            SettlementData.get(level(c)).setDirty(); SettlementService.tell(friend,"You were invited to "+t.name+" as "+role+". Use /vc town accept to join.");
         }
         return say(c,result);
     }
@@ -51,7 +51,7 @@ public final class CampaignCommands {
         CampaignService.record(level(c),t,p.getName().getString()+" joined as "+t.campaign.members.get(p.getUUID())+"."); return say(c,"Joined "+t.name+".");
     }
     @SubscribeEvent public void commands(RegisterCommandsEvent event) {
-        event.getDispatcher().register(Commands.literal("wwmc")
+        event.getDispatcher().register(Commands.literal("vc")
             .then(Commands.literal("campaign").executes(c -> {
                 Settlement t=town(c); if(t==null) return missing(c);
                 if(player(c).distanceToSqr(Vec3.atCenterOf(t.center))>64) return say(c,"Open the Campaign button at your town banner.");

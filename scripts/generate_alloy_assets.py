@@ -14,12 +14,14 @@ PARTS=['sword','pickaxe','axe','shovel','hoe','helmet','chestplate','leggings','
 
 def main(client_jar):
     progression.PALETTES['steel']=[(24,(24,24,24)),(68,(44,52,60)),(107,(76,88,100)),(150,(113,129,145)),(190,(153,170,186)),(216,(192,207,222)),(255,(232,243,255))]
+    # Heat changes the front grille to bright orange; preserve the native animated flame pixels.
+    progression.PALETTES['hot_bronze']=[(24,(24,24,24)),(68,(86,43,21)),(107,(154,70,25)),(150,(230,107,30)),(190,(255,160,44)),(216,(255,205,90)),(255,(255,245,180))]
     progression.TEXTURE_SOURCES=[('item/steel_ingot','item/iron_ingot','steel',None)]+[
         ('item/steel_'+part,'item/iron_'+part,'steel','wood' if part in PARTS[:5] else None) for part in PARTS]+[
         ('entity/equipment/humanoid/steel','entity/equipment/humanoid/iron','steel',None),
         ('entity/equipment/humanoid_leggings/steel','entity/equipment/humanoid_leggings/iron','steel',None),
         ('block/alloy_furnace_front','block/blast_furnace_front','bronze',None),
-        ('block/alloy_furnace_front_on','block/blast_furnace_front_on','bronze',None)]
+        ('block/alloy_furnace_front_on','block/blast_furnace_front_on','hot_bronze','flame')]
     progression.generate_textures(Path(client_jar))
     with zipfile.ZipFile(client_jar) as archive:
         write(ASSETS/'textures/block/alloy_furnace_front_on.png.mcmeta',json.loads(archive.read('assets/minecraft/textures/block/blast_furnace_front_on.png.mcmeta')))

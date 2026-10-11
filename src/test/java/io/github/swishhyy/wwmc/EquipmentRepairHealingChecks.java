@@ -124,10 +124,10 @@ public final class EquipmentRepairHealingChecks {
     }
     @Test @ExtendWith(EphemeralTestServerProvider.class)
     void illustratedGuideAndBlacksmithHardwareAreValid(MinecraftServer server) {
-        var content=WWMC.GUIDE.get().getDefaultInstance().get(DataComponents.WRITTEN_BOOK_CONTENT);
+        var content=VC.GUIDE.get().getDefaultInstance().get(DataComponents.WRITTEN_BOOK_CONTENT);
         assertNotNull(content); assertEquals(GuideBook.pages().size(),content.pages().size());
         assertEquals(1,content.pages().size());
-        assertTrue(WWMC.GUIDE.get() instanceof io.github.swishhyy.wwmc.item.GuideItem);
+        assertTrue(VC.GUIDE.get() instanceof io.github.swishhyy.wwmc.item.GuideItem);
         assertTrue(GuideBook.TOPICS.size()<=12);
         for(String page:GuideBook.pages()) { assertTrue(page.split("\n",-1).length<=13); assertTrue(Arrays.stream(page.split("\n",-1)).allMatch(s -> s.length()<=18)); }
         for(StructureRole role:StructureRole.values()) assertTrue(GuideBook.STATIONS.stream().anyMatch(s -> s.role()==role),"Missing station reference: "+role);

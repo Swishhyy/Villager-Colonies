@@ -17,7 +17,7 @@ public final class AlloyFurnaceMenu extends AbstractContainerMenu {
     public final ContainerData data;
     public AlloyFurnaceMenu(int id,Inventory inventory) { this(id,inventory,new SimpleContainer(4),new SimpleContainerData(5)); }
     public AlloyFurnaceMenu(int id,Inventory inventory,Container furnace,ContainerData data) {
-        super(WwmcMenus.ALLOY_FURNACE.get(),id); checkContainerSize(furnace,4); checkContainerDataCount(data,5);
+        super(VcMenus.ALLOY_FURNACE.get(),id); checkContainerSize(furnace,4); checkContainerDataCount(data,5);
         this.furnace=furnace; this.data=data;
         addSlot(input(furnace,0,38,28)); addSlot(input(furnace,1,62,28)); addSlot(input(furnace,2,50,56));
         addSlot(new Slot(furnace,3,124,36) { @Override public boolean mayPlace(ItemStack stack) { return false; } });

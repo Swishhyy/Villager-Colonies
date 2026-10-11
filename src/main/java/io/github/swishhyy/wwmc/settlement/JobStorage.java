@@ -104,7 +104,7 @@ public final class JobStorage {
                 .flatMap(o -> ForgeWorkshop.plans(level,o).stream()).anyMatch(p -> p.uses(stack));
     }
     private static boolean repairMaterial(ItemStack stack) {
-        return stack.is(io.github.swishhyy.wwmc.WWMC.STEEL_INGOT.get()) || stack.is(io.github.swishhyy.wwmc.WWMC.BRONZE_INGOT.get()) || stack.is(Items.IRON_INGOT) || stack.is(Items.COPPER_INGOT) || stack.is(Items.GOLD_INGOT) || stack.is(Items.DIAMOND)
+        return stack.is(io.github.swishhyy.wwmc.VC.STEEL_INGOT.get()) || stack.is(io.github.swishhyy.wwmc.VC.BRONZE_INGOT.get()) || stack.is(Items.IRON_INGOT) || stack.is(Items.COPPER_INGOT) || stack.is(Items.GOLD_INGOT) || stack.is(Items.DIAMOND)
                 || stack.is(Items.NETHERITE_INGOT) || stack.is(Items.LEATHER) || stack.is(ItemTags.PLANKS) || stack.is(Items.COBBLESTONE);
     }
     public static boolean input(Supplies supplies,StructureRole role,ItemStack stack) { return input(supplies,null,role,stack); }
@@ -151,7 +151,7 @@ public final class JobStorage {
             if(role==StructureRole.COOK) result.add(new Demand(s -> s.is(Items.WHEAT),WHEAT_RESERVE*2));
             if(role==StructureRole.SMELTERY && town!=null && supplies.level() instanceof ServerLevel level
                     && town.stations.stream().filter(s -> s.role()==StructureRole.SMELTERY && (station==null || s.position().equals(station.position()))).anyMatch(s -> SettlementService.processingDevices(level,town,s).stream()
-                            .anyMatch(p -> level.getBlockState(p).is(io.github.swishhyy.wwmc.WWMC.ALLOY_FURNACE.get())))) {
+                            .anyMatch(p -> level.getBlockState(p).is(io.github.swishhyy.wwmc.VC.ALLOY_FURNACE.get())))) {
                 if(Research.has(town,"bronze_age")) { result.add(new Demand(AlloyWorkshop::copper,12)); result.add(new Demand(AlloyWorkshop::tin,4)); }
                 if(Research.has(town,"steel_working")) result.add(new Demand(AlloyWorkshop::iron,8));
             }
@@ -215,7 +215,7 @@ public final class JobStorage {
     private static boolean maintenanceInput(Supplies supplies,Settlement town,ItemStack stack) {
         if(town==null || town.progress.traps.isEmpty()) return false;
         return stack.is(ItemTags.PLANKS) || stack.is(Items.STRING) || stack.is(Items.IRON_INGOT)
-                || stack.is(io.github.swishhyy.wwmc.WWMC.BRONZE_INGOT.get());
+                || stack.is(io.github.swishhyy.wwmc.VC.BRONZE_INGOT.get());
     }
     public static boolean needsSupplies(Supplies supplies,StructureRole role,List<Container> barrels,List<Container> warehouse) { return needsSupplies(supplies,null,role,barrels,warehouse); }
     public static boolean needsSupplies(Supplies supplies,Settlement town,StructureRole role,List<Container> barrels,List<Container> warehouse) {

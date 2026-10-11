@@ -4,6 +4,11 @@
 
 ## Unreleased
 
+- Complete VC branding in commands, guides, release text, source names and `[VC]` diagnostics. Keep existing registry IDs and saved keys so worlds still load.
+- Replace automatic monster waves with native barbarian foot soldiers, bowmen and armored veterans, staged by saved raid history and town development. Keep guard alarms, traps, safe approaches and offline protection.
+- Give fresh settings smaller raid parties and irregular three-to-seven-day gaps, preserve saved overrides, hide the exact countdown, and prevent manual raid overlap.
+- Brighten the lit Alloy Furnace grille with an orange heat palette and retain the native animated flames; keep the unlit texture and reproduce the change through its generator.
+
 - Give each player a Settlement Banner and Settlement Guide on their first login to each world. Save delivery across reconnects and deaths; drop items safely when the inventory is full.
 - Add `/locate settlement` to find the nearest completed NPC town, with clickable coordinates and distance. Use vanilla locate permissions and saved town locations without loading chunks.
 - Establish a nearby NPC neighbour automatically when none is available within two town regions. Search safe plots nearest-first, keep at most nine temporary chunks loaded, resume saved construction and release the window when done. Respect town limits, claims, protected blocks and disabled generation.
@@ -51,7 +56,7 @@ Villager Colonies starts at **0.1.0.0**, with settlement ages, research, traps a
 
 - Rename the mod and distributable to **Villager Colonies** and **`villager-colonies-0.1.0.0.jar`**. Reset the version while retaining the `wwmc` mod ID and existing saves.
 - Use the Villager Colonies emblem in the mod list, mod information panel and configuration menu.
-- Carry forward all **World War MC 0.1.0.1** bug fixes and the additions below. Update in-game titles, guides, downloads and release packaging for the new name.
+- Carry forward the earlier **0.1.0.1** bug fixes and the additions below. Update in-game titles, guides, downloads and release packaging for the new name.
 
 - Add five research-gated traps: wooden spikes, tangle nets, bronze snares, bronze caltrops and iron spring traps. Friendly traffic is safe; wear survives moving and saving.
 - Add paid rearming and repairs, craftsmen maintaining nearby traps after combat, courier repair supplies, and quiet maintenance notices at the banner.
@@ -73,9 +78,9 @@ Villager Colonies starts at **0.1.0.0**, with settlement ages, research, traps a
 - Add Housing Plans, Civic Planning and City Planning research for 10, 15 and 25 extra population places, alongside emerald upgrades and within the server maximum.
 - Move skill promotions and hospital recoveries into the settlement banner's Campaign / Journal tab. Other campaign notices use the hotbar instead of filling chat.
 
-## World War MC 0.1.0.1
+## Villager Colonies 0.1.0.1
 
-A bugfix release for citizen jobs, movement and recovery, with clearer town status and server logs. WWMC remains playable and in development.
+A bugfix release for citizen jobs, movement and recovery, with clearer town status and server logs. VC remains playable and in development.
 
 - Bring injured citizens back from unloaded or frozen chunks so hospital care can resume; retain their health, job and carried equipment. Failed recalls retry after 30 seconds without using the successful-recall cooldown.
 - Finish walking to the selected standing spot when vanilla navigation stops short; recheck actual reach and try another approach when needed. This prevents pantry and job interactions from stalling at the edge of reach.
@@ -90,14 +95,14 @@ A bugfix release for citizen jobs, movement and recovery, with clearer town stat
 
 Install **0.1.0.1** on both clients and servers. Existing town saves, jobs and inventories remain compatible.
 
-## World War MC 0.1.0.0
+## Villager Colonies 0.1.0.0
 
 - Start the four-part public version series. The leading **0** marks ongoing development.
 - Carry forward the settlement and campaign features from the earlier **0.14.0-alpha** build.
 - Replace the generic mod description with a gameplay summary and add source and issue links.
 - Name CI downloads with the mod version, loader, and Minecraft version; include only the distributable JAR.
 
-This is a numbering reset. Existing testers should replace the old WWMC JAR and use matching client and server versions. The mod ID and saved-data formats are unchanged.
+This is a numbering reset. Existing testers should replace the old VC JAR and use matching client and server versions. The mod ID and saved-data formats are unchanged.
 
 ## Earlier development builds
 
@@ -109,7 +114,7 @@ This build makes the town easier to read in play. **Working citizens** use small
 
 **Town colors** now match the main flag and four physical corner banners. The owner chooses a color under **Relationships → Town → Next color**. Existing towns receive a stable color; missing corner flags are repaired on safe loaded terrain without replacing buildings or loading distant chunks.
 
-The **Settlement Guide** opens a custom handbook with **nine short topics**, item icons, supply-chain diagrams, search and visual 3×3 station recipes. Right-click an existing guide, craft one, or use `/wwmc guide`. Press **?** on a town or station screen for relevant help. Press **L** for the new **WWMC advancement tree**: 24 milestones introduce housing, storage, couriers, production, recovery and the campaign. Work milestones require real completed jobs. Existing town saves and guide items remain compatible; use matching **0.14.0-alpha** builds on server and clients.
+The **Settlement Guide** opens a custom handbook with **nine short topics**, item icons, supply-chain diagrams, search and visual 3×3 station recipes. Right-click an existing guide, craft one, or use `/vc guide`. Press **?** on a town or station screen for relevant help. Press **L** for the new **VC advancement tree**: 24 milestones introduce housing, storage, couriers, production, recovery and the campaign. Work milestones require real completed jobs. Existing town saves and guide items remain compatible; use matching **0.14.0-alpha** builds on server and clients.
 
 
 ## 0.13.0
@@ -128,11 +133,11 @@ This build also gives **every job block one citizen, except quarries**. This inc
 
 ## 0.12.0
 
-0.12.0 adds a **multiplayer campaign loop**: accepted town membership, reciprocal alliances, industry specialization, demand-driven shipments, guard squads, bandit camps and occupied mines, supplied outposts, material-funded projects, working hospital medics, NPC supply contracts and a persistent town journal. Open **Campaign** at a town banner; use `/wwmc squad` for field orders away from home. Existing town identities, ownership, job assignments and inventories are preserved. See [Multiplayer campaign](multiplayer-campaign.md) for project costs and a two-player walkthrough.
+0.12.0 adds a **multiplayer campaign loop**: accepted town membership, reciprocal alliances, industry specialization, demand-driven shipments, guard squads, bandit camps and occupied mines, supplied outposts, material-funded projects, working hospital medics, NPC supply contracts and a persistent town journal. Open **Campaign** at a town banner; use `/vc squad` for field orders away from home. Existing town identities, ownership, job assignments and inventories are preserved. See [Multiplayer campaign](multiplayer-campaign.md) for project costs and a two-player walkthrough.
 
 ## 0.11.3
 
-0.11.3 **brings stranded citizens back**. A citizen could freeze at the edge of the area players keep loaded, or be left behind in a chunk that unloaded during an errand. Its station then sat idle, with the citizen listed as out of range. Each town now remembers where its citizens were last seen. When a citizen's station is loaded but the citizen is not, the town loads a 3×3 chunk window around its last place for a few seconds. The citizen is then moved beside its station and keeps its job. A citizen without a job is brought to the banner instead. A citizen that is not found after two searches leaves the roster, so its job and population place open up, and it rejoins if it turns up later. Citizens who went missing before this update have no recorded place: they leave the roster after five minutes with their station loaded, and also rejoin if found. A station's Crew tab and `/wwmc citizens` show where each missing citizen was last seen. See [Personal inventories](settlement-guide.md#personal-inventories).
+0.11.3 **brings stranded citizens back**. A citizen could freeze at the edge of the area players keep loaded, or be left behind in a chunk that unloaded during an errand. Its station then sat idle, with the citizen listed as out of range. Each town now remembers where its citizens were last seen. When a citizen's station is loaded but the citizen is not, the town loads a 3×3 chunk window around its last place for a few seconds. The citizen is then moved beside its station and keeps its job. A citizen without a job is brought to the banner instead. A citizen that is not found after two searches leaves the roster, so its job and population place open up, and it rejoins if it turns up later. Citizens who went missing before this update have no recorded place: they leave the roster after five minutes with their station loaded, and also rejoin if found. A station's Crew tab and `/vc citizens` show where each missing citizen was last seen. See [Personal inventories](settlement-guide.md#personal-inventories).
 
 ## 0.11.2
 

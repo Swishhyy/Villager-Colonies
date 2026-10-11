@@ -49,9 +49,9 @@ Villager Colonies uses a custom four-part format: **release.milestone.update.hot
 
 The maintainer chooses when to change the version. The renamed mod restarts at **0.1.0.0**, retaining every earlier feature and bug fix. For each later release, increase the relevant part and reset every part to its right to zero. The numbers track releases, not a percentage of completion.
 
-Edit `mod_version` in `gradle.properties`. Gradle uses it for the JAR and NeoForge metadata; `mod_archive_name=villager-colonies` controls the filename independently of the saved `wwmc` namespace. CI checks the filename, display name, internal ID, version and changelog on every build. A version change merged into `main` publishes a GitHub release only after all checks pass. Future tags use **`villager-colonies-v<version>`** so restarting the version does not collide with historical WWMC tags. CurseForge submission remains a separate step.
+Edit `mod_version` in `gradle.properties`. Gradle uses it for the JAR and NeoForge metadata; `mod_archive_name=villager-colonies` controls the filename independently of the saved `wwmc` namespace. CI checks the filename, display name, internal ID, version and changelog on every build. A version change merged into `main` publishes a GitHub release only after all checks pass. Future tags use **`villager-colonies-v<version>`** so restarting the version does not collide with historical VC tags. CurseForge submission remains a separate step.
 
-Older WWMC releases and their changelogs retain their original names and numbers. The internal mod ID, resource IDs, commands, `wwmc-server.toml` and saved-data namespace stay compatible. Replace the old JAR manually and use matching client/server builds; keep only one Villager Colonies or WWMC JAR in each `mods` directory.
+Older VC releases and their changelogs retain their original names and numbers. The internal mod ID, resource IDs, commands, `wwmc-server.toml` and saved-data namespace stay compatible. Replace the old JAR manually and use matching client/server builds; keep only one Villager Colonies or VC JAR in each `mods` directory.
 
 The numeric version has no `-alpha` suffix. The leading `0` and the project description communicate the mod's development status. CurseForge's separate **Release Type** field controls which distribution channel a particular file uses: a **Release** file can be a playable build of a mod that is still being developed.
 
@@ -74,9 +74,9 @@ These settings are prepared for **Villager Colonies 0.1.0.0**. CurseForge submis
 - Improve wave approaches, guard defense, worker paths, lumberjacks and civilian sheltering.
 - Add furnished ruins, 3D carcasses, clearer work animations and improved armor rendering.
 - Add population research and quiet banner/journal notices.
-- Use the same build on the client and server. Replace the previous WWMC JAR.
+- Use the same build on the client and server. Replace the previous VC JAR.
 
-See the [full changelog](CHANGELOG.md) for detailed changes and historical WWMC releases.
+See the [full changelog](CHANGELOG.md) for detailed changes and historical VC releases.
 
 ## Publishing references
 

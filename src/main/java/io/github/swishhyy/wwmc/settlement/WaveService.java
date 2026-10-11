@@ -2,12 +2,12 @@ package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.Config;
 import io.github.swishhyy.wwmc.core.WavePlan;
+import io.github.swishhyy.wwmc.VC;
+import io.github.swishhyy.wwmc.entity.BarbarianEntity;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Difficulty;
@@ -73,22 +73,18 @@ public final class WaveService {
         }
         return bounds;
     }
-    private static Mob create(ServerLevel level,WavePlan.Attacker attacker) {
-        var type=BuiltInRegistries.ENTITY_TYPE.getValue(Identifier.withDefaultNamespace(attacker.name().toLowerCase(Locale.ROOT)));
-        return type.create(level,EntitySpawnReason.EVENT) instanceof Mob mob ? mob : null;
-    }
     public static int size(Settlement town) {
         return WavePlan.size(town.citizens.size(),Config.WAVE_BASE_MOBS.get(),Config.WAVE_MOBS_PER_CITIZEN.get(),Config.WAVE_MAX_MOBS.get(),
                 SettlementService.populationLevel(town),Config.WAVE_MOBS_PER_UPGRADE.get());
     }
     public static String status(ServerLevel level,Settlement town) {
-        if(!Config.WAVES.get()) return "enemy waves are disabled";
+        if(!Config.WAVES.get()) return "barbarian raids are disabled";
         int active=ACTIVE.getOrDefault(town.id,0);
-        if(active>0) return active+" wave attackers remain";
+        if(active>0) return active+" barbarian raiders remain";
         int needed=Config.WAVE_MIN_POPULATION.get();
-        if(town.citizens.size()<needed || town.nextWave==0) return "waves begin once the town has "+needed+" citizens";
-        long minutes=Math.max(0,town.nextWave-level.getGameTime())/1200;
-        return "next wave of about "+size(town)+" hostiles in "+(minutes==0 ? "under a minute" : "about "+minutes+" min")+" (arrives at night)"
+        if(town.citizens.size()<needed || town.nextWave==0) return "raids begin once the town has "+needed+" citizens";
+        boolean due=town.nextWave<=level.getGameTime();
+        return "barbarian raids: about "+size(town)+" attackers; "+(due ? "a party may approach after sunset" : "quiet for now; timing varies")
                 +(BLOCKED_APPROACHES.contains(town.id) ? "; waiting for a safe loaded approach beyond the defenses" : "");
     }
     private static ServerPlayer ownerHome(ServerLevel level,Settlement town) {
@@ -124,14 +120,14 @@ public final class WaveService {
     }
     /** Spawn the next wave now. Returns the number of attackers placed. */
     public static int launch(ServerLevel level,Settlement town) {
-        if(level.getDifficulty()==Difficulty.PEACEFUL) return 0;
+        if(level.getDifficulty()==Difficulty.PEACEFUL || !attackers(level,town).isEmpty()) return 0;
         ServerPlayer owner=ownerHome(level,town);
         BlockPos site=arrivalSite(level,town,owner);
         if(site==null) {
             BLOCKED_APPROACHES.add(town.id); long now=level.getGameTime();
             if(Config.SERVER_DIAGNOSTICS.get() && now-LAST_APPROACH_WARNING.getOrDefault(town.id,now-Config.DIAGNOSTIC_REPEAT.get()*20L)>=Config.DIAGNOSTIC_REPEAT.get()*20L) {
                 LAST_APPROACH_WARNING.put(town.id,now);
-                io.github.swishhyy.wwmc.WWMC.LOGGER.warn("[WWMC][wave-approach] town={} center={} No safe ticking natural ground beyond the defense perimeter; wave postponed",town.name,town.center.toShortString());
+                io.github.swishhyy.wwmc.VC.LOGGER.warn("[VC][wave-approach] town={} center={} No safe ticking natural ground beyond the defense perimeter; wave postponed",town.name,town.center.toShortString());
             }
             return 0;
         }
@@ -139,7 +135,7 @@ public final class WaveService {
         var random=level.getRandom();
         int spawned=0;
         Perimeter bounds=perimeter(level,town);
-        for(var entry:WavePlan.compose(size(town),town.citizens.size(),SettlementService.populationLevel(town)).entrySet()) {
+        for(var entry:WavePlan.compose(size(town),town.citizens.size(),SettlementService.populationLevel(town),town.waves).entrySet()) {
             for(int i=0;i<entry.getValue();i++) {
                 BlockPos pos=null;
                 for(int attempt=0;attempt<8 && pos==null;attempt++) {
@@ -147,26 +143,27 @@ public final class WaveService {
                     if(!bounds.contains(x,z)) pos=ground(level,town,x,z);
                 }
                 if(pos==null) pos=site;
-                Mob mob=create(level,entry.getKey());
+                BarbarianEntity mob=VC.BARBARIAN.get().create(level,EntitySpawnReason.EVENT);
                 if(mob==null) continue;
                 mob.setPos(pos.getX()+0.5,pos.getY(),pos.getZ()+0.5);
                 mob.setYRot(random.nextFloat()*360.0F);
                 if(!level.noCollision(mob)) { mob.discard(); continue; }
                 mob.finalizeSpawn(level,level.getCurrentDifficultyAt(pos),EntitySpawnReason.EVENT,null);
+                mob.equip(entry.getKey());
                 enlist(mob,town);
                 for(Entity rider:mob.getPassengers()) if(rider instanceof Mob passenger) enlist(passenger,town);
                 if(level.tryAddFreshEntityWithPassengers(mob)) {
                     spawned++;
-                    if(mob instanceof Monster monster) DefenseService.report(town,monster,"",true,level.getGameTime());
+                    DefenseService.report(town,mob,"",true,level.getGameTime());
                 }
             }
         }
         if(spawned>0) {
             DefenseService.waveAlarm(level,town);
-            town.waves++; ACTIVE.merge(town.id,spawned,Integer::sum);
+            town.waves++; ACTIVE.put(town.id,spawned);
             STARTED.put(town.id,level.getGameTime()); HUNTED.remove(town.id);
             String direction=WavePlan.compass(site.getX()-town.center.getX(),site.getZ()-town.center.getZ());
-            if(owner!=null) SettlementService.notify(owner,"Wave "+town.waves+": "+spawned+" glowing hostiles are attacking "+town.name+" from the "+direction+"!");
+            if(owner!=null) SettlementService.notify(owner,"Barbarian raid "+town.waves+": "+spawned+" raiders are attacking "+town.name+" from the "+direction+"!");
         }
         return spawned;
     }
@@ -196,7 +193,7 @@ public final class WaveService {
         }
         if(reported>0 && notify && HUNTED.add(town.id)) {
             ServerPlayer owner=level.getServer().getPlayerList().getPlayer(town.owner);
-            if(owner!=null) SettlementService.notify(owner,reported+" wave "+(reported==1 ? "attacker is" : "attackers are")+" still at large in "+town.name+". They glow; the guards are hunting them.");
+            if(owner!=null) SettlementService.notify(owner,reported+" "+(reported==1 ? "raider is" : "raiders are")+" still at large in "+town.name+". They glow; the guards are hunting them.");
         }
     }
     private static void schedule(ServerLevel level,Settlement town) {
@@ -221,7 +218,7 @@ public final class WaveService {
         if(before!=null && before>0 && alive==0 && level.hasChunkAt(town.center)) {
             TutorialProgress.record(level,town,"defense");
             ServerPlayer owner=level.getServer().getPlayerList().getPlayer(town.owner);
-            if(owner!=null) SettlementService.notify(owner,town.name+" has repelled the wave.");
+            if(owner!=null) SettlementService.notify(owner,town.name+" has repelled the raid.");
         }
         if(!Config.WAVES.get()) return;
         if(town.citizens.size()<Config.WAVE_MIN_POPULATION.get()) {
@@ -245,7 +242,7 @@ public final class WaveService {
         if(town==null) return;
         glow(mob);
         if(mob instanceof Monster monster) DefenseService.report(town,monster,"",true,level.getGameTime());
-        mob.targetSelector.addGoal(3,new NearestAttackableTargetGoal<>(mob,CitizenEntity.class,true));
+        if(!(mob instanceof BarbarianEntity)) mob.targetSelector.addGoal(3,new NearestAttackableTargetGoal<>(mob,CitizenEntity.class,true));
         if(mob instanceof PathfinderMob walker) mob.goalSelector.addGoal(4,new MarchGoal(walker,town.center));
     }
     @SubscribeEvent public void stopped(ServerStoppedEvent event) {

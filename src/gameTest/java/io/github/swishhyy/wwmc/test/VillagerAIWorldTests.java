@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.test;
 
 import com.mojang.serialization.JsonOps;
 import io.github.swishhyy.wwmc.Config;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.menu.Panels;
@@ -33,7 +33,7 @@ import net.neoforged.testframework.gametest.GameTest;
 public final class VillagerAIWorldTests {
     private record Fixture(ServerLevel level,BlockPos start,List<ChunkPos> chunks,Settlement town,List<CitizenEntity> citizens) {
         CitizenEntity worker(BlockPos feet,Station job) {
-            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level); citizen.join(town.id);
+            var citizen=new CitizenEntity(VC.CITIZEN.get(),level); citizen.join(town.id);
             citizen.setPos(feet.getX()+0.5,feet.getY(),feet.getZ()+0.5); citizen.bag().offer(new ItemStack(Items.BREAD));
             town.citizens.add(citizen.getUUID()); if(job!=null) town.jobs.assign(citizen.getUUID(),job.position());
             citizens.add(citizen); level.addFreshEntity(citizen); return citizen;
@@ -48,8 +48,8 @@ public final class VillagerAIWorldTests {
         CitizenNavigationTests.meadow(level,start,-8,48,-16,16);
         var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Villager AI test",start.west(4),96,List.of(),List.of(stations),"balanced");
         SettlementData.get(level).settlements.add(town); SettlementData.get(level).setDirty();
-        level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState());
-        for(Station station:stations) level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+        level.setBlockAndUpdate(town.center,VC.BANNER.get().defaultBlockState());
+        for(Station station:stations) level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
         return new Fixture(level,start,chunks,town,new ArrayList<>());
     }
     private static Monster zombie(ServerLevel level,BlockPos feet) {
@@ -214,7 +214,7 @@ public final class VillagerAIWorldTests {
             Station post=new Station(start,StructureRole.GUARD);
             var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Immediate wave defense",start,84,List.of(),List.of(post),"balanced");
             SettlementData.get(level).settlements.add(town); SettlementData.get(level).setDirty();
-            level.setBlockAndUpdate(start,WWMC.STATIONS.get(StructureRole.GUARD).get().defaultBlockState());
+            level.setBlockAndUpdate(start,VC.STATIONS.get(StructureRole.GUARD).get().defaultBlockState());
             WorldWorkData.get(level).guardPosts.put(start,new GuardPosts(start,start,start).withRole(GuardPosts.SHIELD));
             var f=new Fixture(level,start,chunks,town,new ArrayList<>()); var guard=f.worker(start.east(2),post);
             guard.setItemSlot(EquipmentSlot.MAINHAND,new ItemStack(Items.IRON_SWORD));
@@ -277,8 +277,8 @@ public final class VillagerAIWorldTests {
             f.town.populationLevel=1; int before=SettlementService.populationLimit(f.town);
             BlockPos chestPos=warehouse.position().south(2); level.setBlockAndUpdate(chestPos,Blocks.CHEST.defaultBlockState());
             Container stock=(Container)level.getBlockEntity(chestPos);
-            stock.setItem(0,new ItemStack(WWMC.RESEARCH_SCROLL.get(),18));
-            var scholar=new CitizenEntity(WWMC.CITIZEN.get(),level); scholar.join(f.town.id); scholar.setNoAi(true);
+            stock.setItem(0,new ItemStack(VC.RESEARCH_SCROLL.get(),18));
+            var scholar=new CitizenEntity(VC.CITIZEN.get(),level); scholar.join(f.town.id); scholar.setNoAi(true);
             scholar.setPos(desk.getX()+1.5,desk.getY(),desk.getZ()+.5); f.town.citizens.add(scholar.getUUID());
             f.town.jobs.assign(scholar.getUUID(),research.position()); f.citizens.add(scholar); level.addFreshEntity(scholar);
             stock.setItem(2,new ItemStack(Items.COBBLESTONE,64)); stock.setItem(3,new ItemStack(Items.EMERALD,56));
@@ -286,7 +286,7 @@ public final class VillagerAIWorldTests {
             helper.runAtTickTime(5,() -> {
                 var town=f.town;
                 helper.assertTrue(Research.study(level,town,"city_planning").contains("first"),"Population tiers ignored their prerequisites");
-                helper.assertTrue(InventoryOps.count(List.of(stock),s -> s.is(WWMC.RESEARCH_SCROLL.get()))==18,"Failed research spent scrolls");
+                helper.assertTrue(InventoryOps.count(List.of(stock),s -> s.is(VC.RESEARCH_SCROLL.get()))==18,"Failed research spent scrolls");
             });
             for(int n=0;n<3;n++) {
                 String id=List.of("housing_plans","civic_planning","city_planning").get(n);
@@ -300,7 +300,7 @@ public final class VillagerAIWorldTests {
             helper.runAtTickTime(45,() -> {
                 var town=f.town;
                 helper.assertTrue(Research.populationBonus(town)==50 && SettlementService.populationLimit(town)==Math.min(Config.MAX_CITIZENS.get(),before+50),"Population research replaced upgrades or failed to raise the cap");
-                helper.assertTrue(InventoryOps.count(List.of(stock),s -> s.is(WWMC.RESEARCH_SCROLL.get()) || s.is(Items.EMERALD) || s.is(Items.COBBLESTONE) || s.is(Items.IRON_INGOT) || s.is(Items.BRICK) || s.is(Items.GOLD_INGOT))==0,"Research costs were not exact");
+                helper.assertTrue(InventoryOps.count(List.of(stock),s -> s.is(VC.RESEARCH_SCROLL.get()) || s.is(Items.EMERALD) || s.is(Items.COBBLESTONE) || s.is(Items.IRON_INGOT) || s.is(Items.BRICK) || s.is(Items.GOLD_INGOT))==0,"Research costs were not exact");
                 var saved=Settlement.CODEC.parse(JsonOps.INSTANCE,Settlement.CODEC.encodeStart(JsonOps.INSTANCE,town).getOrThrow()).getOrThrow();
                 helper.assertTrue(SettlementService.populationLimit(saved)==SettlementService.populationLimit(town),"Research population bonus did not survive saving");
                 helper.assertTrue(!SettlementService.canGrow(town),"Town can buy unusable upgrades above the server maximum");

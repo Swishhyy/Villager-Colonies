@@ -47,8 +47,14 @@ After an alarm ends, craftsmen can maintain loaded traps within **128 blocks of 
 
 The banner's **Overview** reports ready and loaded traps. **Needs → Show** locates defenses needing maintenance. These notices do not create chat messages on each activation.
 
-## Wave approaches
+## Barbarian raid approaches
 
 Waves gather outside the footprint of your active stations and recorded traps, while staying in safe ticking terrain inside the wider claim. They avoid constructed roofs and platforms, water and furnished work areas. If no safe approach is loaded, the wave waits and retries; the banner explains the delay and rate-limited diagnostics report it in the server console.
 
 The server setting **maxSettlementTraps** defaults to **256** per settlement. Trap checks do not load distant chunks. Keep reachable entrances and guards near approaches; ranged attackers can still shoot from a distance.
+
+## Raid progression and timing
+
+The first two raids contain foot soldiers with wooden or stone swords. From the third raid, towns with at least six citizens can face bowmen. From the sixth raid, towns with twelve citizens or two population upgrades can also face armored veterans with chainmail and iron swords. At least one foot soldier remains in every party. Raid history and the chosen next arrival time survive restarts.
+
+Fresh settings begin with three raiders for three citizens, and default to a random **3-7 Minecraft days** (60-140 real minutes at normal tick speed), with arrival on the next eligible night. Existing saved size and timing overrides are respected; set **Raid interval (days)** to **5** in an older world to use the new cadence. A manager must be alive and home, raids never overlap, and peaceful difficulty prevents them. The banner shows general readiness rather than an exact countdown.

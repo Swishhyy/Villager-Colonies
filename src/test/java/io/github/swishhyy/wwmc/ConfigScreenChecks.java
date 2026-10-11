@@ -19,7 +19,7 @@ public final class ConfigScreenChecks {
     void everySettingHasOneReadableSectionWithoutMovingItsSavedPath(MinecraftServer server) throws Exception {
         var source=Config.SPEC.getValues().entrySet();
         Set<String> seen=new HashSet<>();
-        try(var input=ConfigScreenChecks.class.getResourceAsStream("/assets/wwmc/lang/en_us.json")) {
+        try(var input=ConfigScreenChecks.class.getResourceAsStream("/assets/vc/lang/en_us.json")) {
             assertNotNull(input);
             var language=JsonParser.parseReader(new InputStreamReader(input,StandardCharsets.UTF_8)).getAsJsonObject();
             for(ConfigSections.Section section:ConfigSections.SECTIONS) {

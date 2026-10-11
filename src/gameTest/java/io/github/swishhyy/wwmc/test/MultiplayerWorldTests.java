@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.test;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.serialization.JsonOps;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.settlement.*;
@@ -52,8 +52,8 @@ public final class MultiplayerWorldTests {
             Station warehouse=new Station(pos.west(3),StructureRole.WAREHOUSE);
             var town=new Settlement(UUID.randomUUID(),owner,name,pos,Settlement.MIN_RADIUS,List.of(),List.of(warehouse),"balanced");
             towns.add(town); SettlementData.get(level).settlements.add(town); SettlementData.get(level).setDirty();
-            level.setBlockAndUpdate(pos,WWMC.BANNER.get().defaultBlockState());
-            level.setBlockAndUpdate(warehouse.position(),WWMC.STATIONS.get(warehouse.role()).get().defaultBlockState());
+            level.setBlockAndUpdate(pos,VC.BANNER.get().defaultBlockState());
+            level.setBlockAndUpdate(warehouse.position(),VC.STATIONS.get(warehouse.role()).get().defaultBlockState());
             level.setBlockAndUpdate(pos.west(4),Blocks.BARREL.defaultBlockState()); return town;
         }
         Container stock(Settlement town) { return (Container)level.getBlockEntity(town.center.west(4)); }
@@ -113,10 +113,10 @@ public final class MultiplayerWorldTests {
     }
     private static void checkpoint(Fixture f,Settlement town) {
         var station=new Station(town.center.east(2),StructureRole.TRADER);
-        town.stations.add(station); f.level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+        town.stations.add(station); f.level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
     }
     private static CitizenEntity trader(Fixture f,Settlement town) {
-        var trader=new CitizenEntity(WWMC.CITIZEN.get(),f.level); trader.join(town.id);
+        var trader=new CitizenEntity(VC.CITIZEN.get(),f.level); trader.join(town.id);
         trader.setPos(town.center.getX()+2.5,town.center.getY(),town.center.getZ()+1.5);
         town.citizens.add(trader.getUUID()); town.jobs.assign(trader.getUUID(),TradeRoutes.checkpoint(town).position());
         f.citizens.add(trader); f.level.addFreshEntity(trader); SettlementData.get(f.level).setDirty(); return trader;
@@ -228,7 +228,7 @@ public final class MultiplayerWorldTests {
             defender.campaign.extraRoutes.add(outpost.id); outpost.campaign.extraRoutes.add(defender.id);
             outpost.progress.research.add("iron_age"); challenger.progress.research.add("bronze_age");
             f.stock(outpost).setItem(0,new ItemStack(Items.RAW_COPPER,31));
-            var miner=new CitizenEntity(WWMC.CITIZEN.get(),level); miner.join(outpost.id); miner.setNoAi(true);
+            var miner=new CitizenEntity(VC.CITIZEN.get(),level); miner.join(outpost.id); miner.setNoAi(true);
             miner.setPos(outpost.center.getX()+2.5,outpost.center.getY(),outpost.center.getZ()+2.5); miner.bag().offer(new ItemStack(Items.STONE_PICKAXE));
             outpost.citizens.add(miner.getUUID()); f.citizens.add(miner); level.addFreshEntity(miner);
             var site=new ExpeditionData.Site(UUID.randomUUID(),outpost.center,"mine","test"); site.spawned=true; site.cleared=true; site.claimed=outpost.id;

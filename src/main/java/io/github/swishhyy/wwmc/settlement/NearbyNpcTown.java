@@ -1,7 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.Config;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,7 +29,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 /** One temporary nine-chunk search per world gives players a nearby NPC trading partner. */
 public final class NearbyNpcTown {
     private static final TicketController CONTROLLER=new TicketController(
-            Identifier.fromNamespaceAndPath(WWMC.MODID,"npc_discovery"),(level,helper) -> {
+            Identifier.fromNamespaceAndPath(VC.MODID,"npc_discovery"),(level,helper) -> {
                 // Search state is transient. Saved construction resumes through a new player search.
                 for(UUID owner:new ArrayList<>(helper.getEntityTickets().keySet())) helper.removeAllTickets(owner);
             });
@@ -56,7 +56,7 @@ public final class NearbyNpcTown {
         var search=new Search(player.getUUID(),origin,NpcTownPlan.nearbyPlots(level.getSeed(),origin,Config.NPC_SPACING.get()));
         if(pending!=null) { search.building=pending; search.select(pending.center); }
         active.put(level,search);
-        WWMC.LOGGER.info("[WWMC][npc-search] Started near player={} position={} resuming={}",player.getName().getString(),origin,pending!=null);
+        VC.LOGGER.info("[VC][npc-search] Started near player={} position={} resuming={}",player.getName().getString(),origin,pending!=null);
         return true;
     }
 
@@ -82,11 +82,11 @@ public final class NearbyNpcTown {
                 }
             }
             if(search.building!=null && search.building.trading.buildIndex<0) {
-                WWMC.LOGGER.info("[WWMC][npc-search] Established town={} townId={} position={}",search.building.name,search.building.id,search.building.center);
+                VC.LOGGER.info("[VC][npc-search] Established town={} townId={} position={}",search.building.name,search.building.id,search.building.center);
                 finish(level,search,200); return;
             }
             if(search.center==null && !nextPlot(level,search)) {
-                WWMC.LOGGER.info("[WWMC][npc-search] No suitable plot near {}; retrying after ten loaded minutes",search.origin);
+                VC.LOGGER.info("[VC][npc-search] No suitable plot near {}; retrying after ten loaded minutes",search.origin);
                 finish(level,search,12000); return;
             }
             if(search.held.size()<search.chunks.size()) {
@@ -101,7 +101,7 @@ public final class NearbyNpcTown {
                 else search.deadline=level.getGameTime()+1200;
             } else if(level.getGameTime()>search.deadline) {
                 if(search.building!=null) {
-                    WWMC.LOGGER.warn("[WWMC][npc-search] Construction paused town={} reason={}; releasing temporary chunks",search.building.name,search.building.trading.status);
+                    VC.LOGGER.warn("[VC][npc-search] Construction paused town={} reason={}; releasing temporary chunks",search.building.name,search.building.trading.status);
                     finish(level,search,12000);
                 } else { search.release(level); search.center=null; }
             }
@@ -121,7 +121,7 @@ public final class NearbyNpcTown {
                     || !level.getWorldBorder().isWithinBounds(pos.offset(-NpcSettlements.EXTENT,0,-NpcSettlements.EXTENT))
                     || !level.getWorldBorder().isWithinBounds(pos.offset(NpcSettlements.EXTENT,0,NpcSettlements.EXTENT))) continue;
             search.plot=plot; search.select(pos);
-            WWMC.LOGGER.debug("[WWMC][npc-search] Checking plot={} region={}",pos,plot.candidate().region()); return true;
+            VC.LOGGER.debug("[VC][npc-search] Checking plot={} region={}",pos,plot.candidate().region()); return true;
         }
         return false;
     }

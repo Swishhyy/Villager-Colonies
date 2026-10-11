@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.test;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.settlement.*;
@@ -41,7 +41,7 @@ public final class TradeWorldTests {
             server.getCommands().performPrefixedCommand(server.createCommandSourceStack(),"time set 1000");
             server.clockManager().setPaused(server.registryAccess().getOrThrow(WorldClocks.OVERWORLD),true);
             if(SettlementService.night(server.overworld())) throw new IllegalStateException("Daytime work fixtures started at night");
-            WWMC.LOGGER.info("[WWMC tests] Daylight clock fixed for daytime job fixtures");
+            VC.LOGGER.info("[VC tests] Daylight clock fixed for daytime job fixtures");
         });
     }
 
@@ -77,9 +77,9 @@ public final class TradeWorldTests {
             Settlement a=town(owner,"Start",start),b=town(owner,"End",start.east(640));
             var data=SettlementData.get(level); data.settlements.add(a); data.settlements.add(b);
             for(Settlement town:List.of(a,b)) {
-                level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState());
+                level.setBlockAndUpdate(town.center,VC.BANNER.get().defaultBlockState());
                 for(Station station:town.stations)
-                    level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+                    level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
                 level.setBlockAndUpdate(town.center.south(3),Blocks.BARREL.defaultBlockState());
             }
             Container from=(Container)level.getBlockEntity(a.center.south(3));
@@ -87,7 +87,7 @@ public final class TradeWorldTests {
             from.setItem(1,new ItemStack(Items.BREAD,64));
             a.trading.exports.add(new TradeSettings.Export("minecraft:iron_ingot",0,16));
             TradeRoutes.link(a,b,data.settlements,8192);
-            CitizenEntity trader=new CitizenEntity(WWMC.CITIZEN.get(),level);
+            CitizenEntity trader=new CitizenEntity(VC.CITIZEN.get(),level);
             trader.join(a.id); trader.setPos(start.getX()+2.5,start.getY(),start.getZ()+0.5);
             a.citizens.add(trader.getUUID()); level.addFreshEntity(trader); data.setDirty();
             var wet=new AtomicBoolean();
@@ -133,9 +133,9 @@ public final class TradeWorldTests {
             Settlement a=town(owner,"Ford",start),b=town(owner,"Far Bank",start.south(140));
             var data=SettlementData.get(level); data.settlements.add(a); data.settlements.add(b);
             for(Settlement town:List.of(a,b)) {
-                level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState());
+                level.setBlockAndUpdate(town.center,VC.BANNER.get().defaultBlockState());
                 for(Station station:town.stations)
-                    level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+                    level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
                 level.setBlockAndUpdate(town.center.south(3),Blocks.BARREL.defaultBlockState());
             }
             Container from=(Container)level.getBlockEntity(a.center.south(3));
@@ -145,7 +145,7 @@ public final class TradeWorldTests {
             TradeRoutes.link(a,b,data.settlements,8192);
             // A player flying over the land would let traders see it; here the test reads the loaded land directly.
             TradeAtlas.get(level).survey(level,start.offset(-90,0,-12),start.offset(90,0,152));
-            CitizenEntity trader=new CitizenEntity(WWMC.CITIZEN.get(),level);
+            CitizenEntity trader=new CitizenEntity(VC.CITIZEN.get(),level);
             trader.join(a.id); trader.setPos(start.getX()+2.5,start.getY(),start.getZ()+0.5);
             a.citizens.add(trader.getUUID()); level.addFreshEntity(trader); data.setDirty();
             var wet=new AtomicBoolean();

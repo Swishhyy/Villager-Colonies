@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -61,8 +61,8 @@ public final class ClaimProtection {
         Player player=event.getEntity(); BlockPos pos=event.getPos();
         Settlement town=claim(level,pos);
         // Invitees may open only the flag's invitation screen; no claim access exists before acceptance.
-        boolean invitation=town!=null && level.getBlockState(pos).is(WWMC.BANNER.get()) && TownAccess.invited(town,player.getUUID());
-        boolean board=town!=null && town.center.equals(pos) && level.getBlockState(pos).is(WWMC.BANNER.get()) && player.getItemInHand(event.getHand()).isEmpty();
+        boolean invitation=town!=null && level.getBlockState(pos).is(VC.BANNER.get()) && TownAccess.invited(town,player.getUUID());
+        boolean board=town!=null && town.center.equals(pos) && level.getBlockState(pos).is(VC.BANNER.get()) && player.getItemInHand(event.getHand()).isEmpty();
         boolean blocked=denied(level,player,pos) && !invitation && !board;
         var item=player.getItemInHand(event.getHand()).getItem();
         if(!blocked && event.getFace()!=null && (item instanceof BlockItem || item instanceof BucketItem))
@@ -118,7 +118,7 @@ public final class ClaimProtection {
     public void explosion(ExplosionEvent.Detonate event) {
         if(!(event.getLevel() instanceof ServerLevel level)) return;
         var source=event.getExplosion().getIndirectSourceEntity();
-        event.getAffectedBlocks().removeIf(pos -> level.getBlockState(pos).is(WWMC.BANNER.get()) || source instanceof Player player && denied(level,player,pos));
+        event.getAffectedBlocks().removeIf(pos -> level.getBlockState(pos).is(VC.BANNER.get()) || source instanceof Player player && denied(level,player,pos));
     }
     @SubscribeEvent(priority=EventPriority.LOWEST)
     public void piston(PistonEvent.Pre event) {
