@@ -39,7 +39,8 @@ public final class NpcConstruction {
     }
     private static double flat(BlockPos a,BlockPos b) { double x=a.getX()-b.getX(),z=a.getZ()-b.getZ(); return x*x+z*z; }
     private static boolean natural(BlockState s) {
-        return s.isAir() || s.canBeReplaced() || s.is(BlockTags.DIRT) || s.is(BlockTags.BASE_STONE_OVERWORLD)
+        return s.isAir() || s.canBeReplaced() || s.is(Blocks.GRASS_BLOCK) || s.is(Blocks.PODZOL) || s.is(Blocks.MYCELIUM)
+                || s.is(BlockTags.DIRT) || s.is(BlockTags.BASE_STONE_OVERWORLD)
                 || s.is(Blocks.SAND) || s.is(Blocks.RED_SAND) || s.is(Blocks.GRAVEL) || s.is(Blocks.DIRT_PATH) || s.is(Blocks.SNOW_BLOCK);
     }
     private static boolean unchanged(BlockState expected,BlockState current) {

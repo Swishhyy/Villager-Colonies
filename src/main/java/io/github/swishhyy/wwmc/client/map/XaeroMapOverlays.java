@@ -64,7 +64,7 @@ final class XaeroMapOverlays {
         @Override public void renderElementShadow(MapGeometry.Shape s,boolean h,float bright,double x,double z,ElementRenderInfo i,MapElementGraphics g,XaeroBufferProvider b,MultiTextureRenderTypeRendererProvider textures) {}
         @Override public boolean renderElement(MapGeometry.Shape s,boolean hover,double depth,float bright,double fractionX,double fractionZ,
                 ElementRenderInfo i,MapElementGraphics g,XaeroBufferProvider b,MultiTextureRenderTypeRendererProvider textures) {
-            var pose=g.pose(); pose.pushPose(); pose.translate(fractionX,fractionZ,0);
+            var pose=g.pose(); pose.pushPose(); pose.translate(fractionX,fractionZ,depth);
             try {
                 int count=s.points().size(),edges=s.closed() ? count : count-1;
                 for(int n=0;n<edges;n++) {

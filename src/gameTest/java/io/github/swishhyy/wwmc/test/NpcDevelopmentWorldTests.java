@@ -46,7 +46,7 @@ public final class NpcDevelopmentWorldTests {
             helper.runAtTickTime(10,() -> {
                 var d=town.trading.development; d.nextProject=level.getGameTime()-1; d.nextImmigrant=level.getGameTime()+5000;
                 NpcDirector.evaluate(level,town);
-                helper.assertTrue(d.construction!=null,"Funded town failed to plan a cottage");
+                helper.assertTrue(d.construction!=null,"Funded town failed to plan a cottage: phase="+d.phase+", stock="+town.campaign.stock);
                 helper.assertTrue(stock.getItem(0).isEmpty() && stock.getItem(1).isEmpty(),"Project did not reserve its actual materials");
                 var project=d.construction; observer.setPos(project.station.position().getX()+1,start.getY(),project.station.position().getZ());
                 NpcDirector.advance(level,town); helper.assertTrue(project.cursor==0,"Construction changed blocks beside a player");
@@ -103,7 +103,8 @@ public final class NpcDevelopmentWorldTests {
                 for(int n=0;n<100 && !road.complete();n++) data.build(level,road,4);
                 helper.assertTrue(road.complete(),"Highway failed to resume");
                 helper.assertTrue(level.getBlockState(inside.below()).is(Blocks.GRASS_BLOCK),"Highway changed a player's claim");
-                helper.assertTrue(level.getBlockState(obstruction.below()).is(Blocks.DIRT_PATH),"Highway did not pave public ground");
+                helper.assertTrue(level.getBlockState(obstruction.below()).is(Blocks.DIRT_PATH),"Highway did not pave public ground: "+obstruction+" floor="+level.getBlockState(obstruction.below())
+                        +", protected="+WorldWorkData.get(level).protectedBlocks.contains(obstruction.below()));
                 var route=SharedRoads.route(level,inside,b.stations.getFirst().position()); helper.assertTrue(!route.isEmpty(),"Player trader cannot use the shared highway");
                 var path=data.mapPath(a,b); helper.assertTrue(path.size()>=3 && path.size()<=64,"Map route lost the actual highway or exceeded its packet budget");
                 // Do not touch the distant chunk: construct only saved metadata for an unvisited destination.

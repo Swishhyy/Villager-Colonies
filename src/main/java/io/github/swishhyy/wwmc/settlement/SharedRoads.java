@@ -109,8 +109,12 @@ public final class SharedRoads extends SavedData {
     }
     private static boolean passable(ServerLevel level,BlockPos feet) {
         if(feet.getY()<level.getMinY()+1 || feet.getY()+1>=level.getMaxY() || !level.hasChunkAt(feet) || !level.getWorldBorder().isWithinBounds(feet)) return false;
-        for(var p:List.of(feet,feet.above(),feet.below())) if(!level.hasChunkAt(p) || level.getBlockEntity(p)!=null || !level.getFluidState(p).isEmpty()) return false;
+        for(var p:List.of(feet,feet.above(),feet.below())) if(!level.hasChunkAt(p) || level.getBlockEntity(p)!=null) return false;
+        if(!level.getFluidState(feet).isEmpty() || !level.getFluidState(feet.above()).isEmpty()
+                || level.getFluidState(feet.below()).is(net.minecraft.tags.FluidTags.LAVA)) return false;
         var floor=level.getBlockState(feet.below());
+        if(floor.is(Blocks.MAGMA_BLOCK) || floor.is(Blocks.CACTUS) || level.getBlockState(feet).is(Blocks.WITHER_ROSE)
+                || level.getBlockState(feet).is(Blocks.SWEET_BERRY_BUSH) || level.getBlockState(feet).is(Blocks.FIRE) || level.getBlockState(feet).is(Blocks.SOUL_FIRE)) return false;
         return !floor.getCollisionShape(level,feet.below()).isEmpty() && !floor.is(BlockTags.LOGS) && !floor.is(BlockTags.LEAVES)
                 && !floor.is(BlockTags.FENCES) && !floor.is(BlockTags.WALLS)
                 && (level.getBlockState(feet).isAir() || level.getBlockState(feet).canBeReplaced())
@@ -122,20 +126,24 @@ public final class SharedRoads extends SavedData {
         int done=0;
         while(!road.complete() && done<budget) {
             BlockPos center=road.line.get(road.cursor);
-            if(!level.hasChunkAt(center) || !NpcConstruction.away(level,center)) break;
+            if(!level.hasChunkAt(center)) break;
+            Settlement centerClaim=towns.at(center);
+            boolean readOnly=centerClaim!=null && !centerClaim.trading.npc || RoadSurface.preferred(level,center);
+            if(!readOnly && !NpcConstruction.away(level,center)) break;
             if(!passable(level,center)) { road.blockedUntil=level.getGameTime()+1200; setDirty(); break; }
             BlockPos next=road.line.get(Math.min(road.cursor+1,road.line.size()-1));
             boolean eastWest=Math.abs(next.getX()-center.getX())>=Math.abs(next.getZ()-center.getZ());
             for(int width=-1;width<=1;width++) {
                 BlockPos feet=center.offset(eastWest ? 0 : width,0,eastWest ? width : 0);
-                if(!level.hasChunkAt(feet) || !passable(level,feet)) continue;
+                if(!level.hasChunkAt(feet) || !passable(level,feet) || !NpcConstruction.away(level,feet)) continue;
                 Settlement claim=towns.at(feet);
                 // An accepted route permits travel, not changes to the player's claim or supply chests.
                 if(claim!=null && !claim.trading.npc) continue;
                 var protection=WorldWorkData.get(level); var floor=feet.below();
                 if(protection.protectedBlocks.contains(floor) || protection.protectedBlocks.contains(feet) || protection.protectedBlocks.contains(feet.above())) continue;
                 var state=level.getBlockState(floor);
-                if(!state.is(BlockTags.DIRT) && !state.is(Blocks.DIRT_PATH)) continue;
+                if(!state.is(BlockTags.DIRT) && !state.is(Blocks.GRASS_BLOCK) && !state.is(Blocks.PODZOL)
+                        && !state.is(Blocks.MYCELIUM) && !state.is(Blocks.DIRT_PATH)) continue;
                 level.setBlock(floor,Blocks.DIRT_PATH.defaultBlockState(),2);
                 for(var air:List.of(feet,feet.above())) if(!level.getBlockState(air).isAir()) level.setBlock(air,Blocks.AIR.defaultBlockState(),2);
             }

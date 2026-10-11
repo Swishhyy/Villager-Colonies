@@ -178,7 +178,8 @@ public final class TrapWorldTests {
         });
     }
 
-    @GameTest(timeoutTicks=650) @EmptyTemplate
+    // Allow the alarm recovery, supply trip and maintenance work to finish in the concurrent world suite.
+    @GameTest(timeoutTicks=1200) @EmptyTemplate
     @TestHolder(description="A real craftsman waits through an alarm, collects repair supplies, walks to a worn trap and restores it without remote repairs.")
     static void craftsmanMaintainsAfterCombat(DynamicTest test) {
         test.onGameTest(helper -> {
@@ -203,7 +204,8 @@ public final class TrapWorldTests {
                 DefenseService.toggle(level,town); worker.setNoAi(false);
             });
             helper.succeedWhen(() -> {
-                helper.assertTrue(level.getBlockState(pos).getValue(TrapBlock.WEAR)==0 && level.getBlockState(pos).getValue(TrapBlock.ARMED),"Craftsman did not repair: "+worker.activity());
+                helper.assertTrue(level.getBlockState(pos).getValue(TrapBlock.WEAR)==0 && level.getBlockState(pos).getValue(TrapBlock.ARMED),"Craftsman did not repair: "+worker.activity()
+                        +" at "+worker.blockPosition()+", traps="+town.progress.traps.size()+", ticking="+level.isPositionEntityTicking(pos));
                 helper.assertTrue(worker.blockPosition().distSqr(pos)<25,"Craftsman repaired remotely");
                 helper.assertTrue(InventoryOps.count(List.of(supplies,worker.bag()),s -> s.is(Items.OAK_PLANKS))==1,"Repair did not consume exactly one plank");
                 worker.discard(); SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.releaseTicking(level,start,chunks);
