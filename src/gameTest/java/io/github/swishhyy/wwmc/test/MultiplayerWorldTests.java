@@ -80,7 +80,7 @@ public final class MultiplayerWorldTests {
             TestPlayer issuer=f.player("ContractIssuer",start.east()),supplier=f.player("ContractSupplier",start.east(601));
             Settlement a=f.town(issuer.getUUID(),start,"Requesting Town"),b=f.town(supplier.getUUID(),start.east(600),"Supplying Town");
             issuer.getInventory().setItem(0,new ItemStack(Items.BREAD)); issuer.getInventory().setItem(1,new ItemStack(Items.EMERALD,8));
-            try { level.getServer().getCommands().getDispatcher().execute("wwmc playercontract post 10 4",issuer.createCommandSourceStack()); }
+            try { level.getServer().getCommands().getDispatcher().execute("vc playercontract post 10 4",issuer.createCommandSourceStack()); }
             catch(Exception error) { throw new AssertionError("Posting command failed",error); }
             var data=MultiplayerData.get(level); var offers=data.contracts.stream().filter(c -> c.issuer.equals(a.id)).toList();
             helper.assertTrue(offers.size()==1 && issuer.getInventory().countItem(Items.EMERALD)==4 && issuer.getInventory().countItem(Items.BREAD)==1,"Posting duplicated an offer/payment or spent the example");
