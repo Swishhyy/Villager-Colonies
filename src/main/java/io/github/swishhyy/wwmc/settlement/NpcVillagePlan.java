@@ -54,7 +54,7 @@ public final class NpcVillagePlan {
                 b.station(-21,-13,StructureRole.GUARD,Direction.EAST),
                 b.station(-13,0,StructureRole.COOK,Direction.EAST),
                 b.station(13,20,StructureRole.FARM,Direction.WEST),
-                b.station(-13,20,StructureRole.LUMBER,Direction.EAST).withRange(4),
+                b.station(-14,19,StructureRole.LUMBER,Direction.EAST).withRange(3),
                 b.station(21,-13,StructureRole.MINE,Direction.WEST),
                 b.station(13,0,StructureRole.SMELTERY,Direction.WEST),
                 b.station(3,2,StructureRole.COURIER,Direction.NORTH));
@@ -125,19 +125,30 @@ public final class NpcVillagePlan {
     private record Floor(int height,Block block) {}
     private static final class Builder {
         final Settlement town; final NpcVillageLayout layout; final Palette palette;
+        final int[] lotHeights=new int[LOTS.size()];
         final Map<Column,Floor> floors=new LinkedHashMap<>();
         final Map<BlockPos,NpcSettlements.Placement> detail=new LinkedHashMap<>();
-        Builder(Settlement town) { this.town=town; layout=town.trading.layout; palette=Palette.of(layout.palette()); }
+        Builder(Settlement town) {
+            this.town=town; layout=town.trading.layout; palette=Palette.of(layout.palette());
+            for(int n=0;n<LOTS.size();n++) {
+                Lot lot=LOTS.get(n);
+                lotHeights[n]=lot.x()==0 && lot.z()==0 ? 0 : layout.highest(lot.x(),lot.z(),lot.radiusX(),lot.radiusZ());
+            }
+        }
         int lot(int x,int z) {
-            for(Lot lot:LOTS) if(lot.x()==x && lot.z()==z) return layout.highest(x,z,lot.radiusX(),lot.radiusZ());
+            for(int n=0;n<LOTS.size();n++) if(LOTS.get(n).x()==x && LOTS.get(n).z()==z) return lotHeights[n];
             return walk(x,z);
         }
         int walk(int x,int z) {
             int high=layout.ground(x,z);
-            for(Lot lot:LOTS) {
+            for(int n=0;n<LOTS.size();n++) {
+                Lot lot=LOTS.get(n);
+                if(Math.abs(x-lot.x())<=lot.radiusX() && Math.abs(z-lot.z())<=lot.radiusZ()) return lotHeights[n];
+            }
+            for(int n=0;n<LOTS.size();n++) {
+                Lot lot=LOTS.get(n);
                 int distance=Math.max(0,Math.abs(x-lot.x())-lot.radiusX())+Math.max(0,Math.abs(z-lot.z())-lot.radiusZ());
-                int floor=lot.x()==0 && lot.z()==0 ? 0 : layout.highest(lot.x(),lot.z(),lot.radiusX(),lot.radiusZ());
-                high=Math.max(high,floor-distance);
+                high=Math.max(high,lotHeights[n]-distance);
             }
             return high;
         }
@@ -208,7 +219,7 @@ public final class NpcVillagePlan {
                 put(-16,y,z,Blocks.OAK_LOG.defaultBlockState().setValue(BlockStateProperties.AXIS,Direction.Axis.Z),false);
                 block(-16,y+1,z,Blocks.OAK_LOG,false);
             }
-            block(-12,y,19,Blocks.BARREL); block(-14,y,19,Blocks.CRAFTING_TABLE);
+            block(-12,y,19,Blocks.BARREL); block(-15,y,19,Blocks.CRAFTING_TABLE);
             for(int x:new int[]{-20,-19}) { int h=walk(x,20); floor(x,20,h,Blocks.GRASS_BLOCK); block(x,h,20,Blocks.OAK_SAPLING,false); }
             // A real tree starts the forester's work even in a superflat village; the stored log pile is scenery.
             int root=walk(-20,13); floor(-20,13,root,Blocks.GRASS_BLOCK);

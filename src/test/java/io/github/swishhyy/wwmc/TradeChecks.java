@@ -153,6 +153,9 @@ public final class TradeChecks {
             assertTrue(states.values().stream().anyMatch(s -> s.is(Blocks.SMOKER)));
             assertTrue(states.values().stream().anyMatch(s -> s.is(Blocks.ANVIL)));
             assertEquals(8,NpcSettlements.stations(town).stream().filter(s -> s.role().providesWork()).count());
+            var lumber=NpcSettlements.stations(town).stream().filter(s -> s.role()==StructureRole.LUMBER).findFirst().orElseThrow();
+            assertTrue(lumber.contains(town.center.offset(-20,0,13)),"Generated forestry source must be inside the station's supported range");
+            assertEquals(lumber.range(),states.get(lumber.position()).getValue(io.github.swishhyy.wwmc.block.StationBlock.RANGE));
             town.trading.buildIndex=128;
             var restored=TradeSettings.CODEC.parse(JsonOps.INSTANCE,TradeSettings.CODEC.encodeStart(JsonOps.INSTANCE,town.trading).getOrThrow()).getOrThrow();
             assertEquals(town.trading.layout,restored.layout); assertEquals(128,restored.buildIndex);

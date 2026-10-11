@@ -63,7 +63,8 @@ public final class NpcVillageWorldTests {
                 var lumber=town.stations.stream().filter(s -> s.role()==StructureRole.LUMBER).findFirst().orElseThrow();
                 var treeRoot=plan.stream().filter(p -> p.pos().getX()==town.center.getX()-20 && p.pos().getZ()==town.center.getZ()+13
                         && p.state().is(Blocks.OAK_LOG)).map(NpcSettlements.Placement::pos).min(java.util.Comparator.comparingInt(BlockPos::getY)).orElseThrow();
-                helper.assertTrue(lumber.contains(treeRoot) && ForestryService.tree(level,town,treeRoot)!=null,"Lumber yard has no usable natural tree");
+                var treeCheck=ForestryService.inspect(level,town,treeRoot);
+                helper.assertTrue(lumber.contains(treeRoot) && treeCheck.tree()!=null,"Lumber yard has no usable natural tree: in range="+lumber.contains(treeRoot)+", "+treeCheck.reason());
                 for(var p:plan) if(p.protect()) helper.assertTrue(level.getBlockState(p.pos()).getBlock()==p.state().getBlock(),"Furnished building lost "+p.state()+" at "+p.pos());
                 var walker=new io.github.swishhyy.wwmc.entity.CitizenEntity(VC.CITIZEN.get(),level);
                 walker.setPos(town.center.getX()-0.5,town.center.getY(),town.center.getZ()-0.5);
