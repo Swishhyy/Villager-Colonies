@@ -39,13 +39,13 @@ public final class MinecraftChecks {
         for(StructureRole role:StructureRole.values()) markers.add(role.id()+"_station");
         List<String> recipes=new java.util.ArrayList<>(markers); recipes.add("surveyor"); recipes.add("settlement_guide");
         for(String id:recipes) {
-            try(var input=MinecraftChecks.class.getResourceAsStream("/data/vc/recipe/"+id+".json")) {
+            try(var input=MinecraftChecks.class.getResourceAsStream("/data/wwmc/recipe/"+id+".json")) {
                 if(input==null) throw new AssertionError("Missing recipe: "+id);
                 Recipe.CODEC.parse(ops,JsonParser.parseReader(new InputStreamReader(input,StandardCharsets.UTF_8))).getOrThrow();
             }
         }
         for(String id:markers) {
-            try(var input=MinecraftChecks.class.getResourceAsStream("/data/vc/loot_table/blocks/"+id+".json")) {
+            try(var input=MinecraftChecks.class.getResourceAsStream("/data/wwmc/loot_table/blocks/"+id+".json")) {
                 if(input==null) throw new AssertionError("Missing block drops: "+id);
                 LootTable.DIRECT_CODEC.parse(ops,JsonParser.parseReader(new InputStreamReader(input,StandardCharsets.UTF_8))).getOrThrow();
             }

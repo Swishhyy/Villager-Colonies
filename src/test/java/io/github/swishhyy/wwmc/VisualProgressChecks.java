@@ -33,7 +33,7 @@ public final class VisualProgressChecks {
     void tutorialAdvancementsLoadWithMinecraftCodec(MinecraftServer server) throws Exception {
         var ops=server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
         List<String> ids=List.of("root","read_guide","found_town","housing","warehouse","recruit","first_job","courier","harvest","meals","butchering","timber","mining","smelting","crafting","repair","enchanting","recovery","defense","friends","shipment","project","schematic","research");
-        for(String id:ids) try(var in=getClass().getResourceAsStream("/data/vc/advancement/tutorial/"+id+".json")) {
+        for(String id:ids) try(var in=getClass().getResourceAsStream("/data/wwmc/advancement/tutorial/"+id+".json")) {
             assertNotNull(in,id);
             Advancement advancement=Advancement.CODEC.parse(ops,JsonParser.parseReader(new InputStreamReader(in,StandardCharsets.UTF_8))).getOrThrow();
             assertTrue(advancement.criteria().containsKey("done"));
