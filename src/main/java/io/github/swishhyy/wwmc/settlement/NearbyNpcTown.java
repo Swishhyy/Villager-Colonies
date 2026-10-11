@@ -34,7 +34,8 @@ public final class NearbyNpcTown {
                 for(UUID owner:new ArrayList<>(helper.getEntityTickets().keySet())) helper.removeAllTickets(owner);
             });
     private final Map<ServerLevel,Search> active=new WeakHashMap<>();
-    private final Map<UUID,Long> retryAt=new HashMap<>();
+    private record Retry(BlockPos origin,long until) {}
+    private final Map<UUID,Retry> retryAt=new HashMap<>();
     private int playerCursor;
 
     public static void register(RegisterTicketControllersEvent event) { event.register(CONTROLLER); }
@@ -46,7 +47,9 @@ public final class NearbyNpcTown {
     /** Returns whether a nearest-first search was started; existing completed neighbours need no work. */
     public boolean ensureNearby(ServerPlayer player) {
         if(!(player.level() instanceof ServerLevel level) || !level.dimension().equals(Level.OVERWORLD) || !enabled()
-                || player.isSpectator() || active.containsKey(level) || level.getGameTime()<retryAt.getOrDefault(player.getUUID(),0L)) return false;
+                || player.isSpectator() || active.containsKey(level)) return false;
+        Retry retry=retryAt.get(player.getUUID());
+        if(retry!=null && level.getGameTime()<retry.until() && distanceSquared(player.blockPosition(),retry.origin())<256.0*256.0) return false;
         var data=SettlementData.get(level); BlockPos origin=player.blockPosition();
         long reach=2L*Config.NPC_SPACING.get();
         var nearby=data.settlements.stream().filter(t -> t.trading.npc && distanceSquared(t.center,origin)<=reach*reach).toList();
@@ -126,7 +129,7 @@ public final class NearbyNpcTown {
         return false;
     }
     private void finish(ServerLevel level,Search search,int delay) {
-        search.release(level); active.remove(level); retryAt.put(search.owner,level.getGameTime()+delay);
+        search.release(level); active.remove(level); retryAt.put(search.owner,new Retry(search.origin,level.getGameTime()+delay));
     }
     public int heldChunks(ServerLevel level) { var search=active.get(level); return search==null ? 0 : search.held.size(); }
     @SubscribeEvent public void stopped(ServerStoppedEvent event) {

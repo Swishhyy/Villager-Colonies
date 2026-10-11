@@ -118,13 +118,47 @@ public final class TradeChecks {
         BlockPos origin=new BlockPos(-1740,140,-1820);
         var plots=NpcTownPlan.nearbyPlots(42,origin,1408);
         assertEquals(plots,NpcTownPlan.nearbyPlots(42,origin,1408));
-        assertEquals(81,plots.size()); assertEquals(9,plots.stream().map(p -> p.candidate().id()).distinct().count());
+        assertEquals(225,plots.size()); assertEquals(9,plots.stream().map(p -> p.candidate().id()).distinct().count());
         BlockPos horizontal=new BlockPos(origin.getX(),0,origin.getZ()); double previous=-1;
         for(var plot:plots) {
             double distance=plot.site().distSqr(horizontal); assertTrue(distance>=previous,"A farther NPC plot precedes a nearer one"); previous=distance;
             assertTrue(NpcTownPlan.sites(plot.candidate()).contains(plot.site()),"Bootstrap created an unrelated town layout or ID");
         }
         assertEquals(plots,NpcTownPlan.nearbyPlots(42,new BlockPos(origin.getX(),-60,origin.getZ()),1408),"Player altitude changes nearest-town discovery");
+    }
+    @Test void newVillageHasSeparateFurnishedHousesAndResumableTerrain() {
+        for(String palette:List.of("oak","sandstone","acacia","spruce")) {
+            var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Village",new BlockPos(8,70,8),240,List.of(),List.of(),"balanced"); town.trading.npc=true;
+            town.trading.layout=NpcVillageLayout.flat(palette);
+            var plan=NpcSettlements.blueprint(town);
+            var states=new HashMap<BlockPos,net.minecraft.world.level.block.state.BlockState>();
+            for(var p:plan) {
+                assertNull(states.put(p.pos(),p.state()));
+                assertTrue(TradeChunks.window(town.center).contains(new net.minecraft.world.level.ChunkPos(p.pos()).pack()),"Village exceeds its nine-chunk window");
+            }
+            var homes=NpcSettlements.stations(town).stream().filter(s -> s.role()==StructureRole.HOUSING).toList();
+            assertEquals(3,homes.size()); int beds=0;
+            for(var e:states.entrySet()) if(e.getValue().getBlock() instanceof BedBlock && e.getValue().getValue(BedBlock.PART)==BedPart.HEAD) {
+                var foot=e.getKey().relative(e.getValue().getValue(BedBlock.FACING).getOpposite());
+                assertTrue(homes.stream().anyMatch(h -> h.contains(e.getKey()) && h.contains(foot)));
+                assertTrue(StationDetection.completeBed(e.getValue(),states.get(foot))); beds++;
+            }
+            assertEquals(12,beds);
+            for(var home:homes) assertEquals(4,states.entrySet().stream().filter(e -> home.contains(e.getKey())
+                    && e.getValue().getBlock() instanceof BedBlock && e.getValue().getValue(BedBlock.PART)==BedPart.HEAD).count());
+            assertEquals(7,states.values().stream().filter(s -> s.is(Blocks.OAK_DOOR)
+                    && s.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF)
+                    ==net.minecraft.world.level.block.state.properties.DoubleBlockHalf.LOWER).count());
+            assertTrue(states.values().stream().anyMatch(s -> s.is(Blocks.GLASS)));
+            assertTrue(states.values().stream().anyMatch(s -> s.is(Blocks.SMOKER)));
+            assertTrue(states.values().stream().anyMatch(s -> s.is(Blocks.ANVIL)));
+            assertEquals(8,NpcSettlements.stations(town).stream().filter(s -> s.role().providesWork()).count());
+            town.trading.buildIndex=128;
+            var restored=TradeSettings.CODEC.parse(JsonOps.INSTANCE,TradeSettings.CODEC.encodeStart(JsonOps.INSTANCE,town.trading).getOrThrow()).getOrThrow();
+            assertEquals(town.trading.layout,restored.layout); assertEquals(128,restored.buildIndex);
+        }
+        var old=TradeSettings.CODEC.parse(JsonOps.INSTANCE,new com.google.gson.JsonObject()).getOrThrow();
+        assertNull(old.layout,"Old towns must retain their original construction plan");
     }
     @Test void routeRowsKeepStableIdentityAcrossNetwork(MinecraftServer server) {
         String key=UUID.randomUUID().toString();

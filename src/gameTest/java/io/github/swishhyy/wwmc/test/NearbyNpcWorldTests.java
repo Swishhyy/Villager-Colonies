@@ -31,8 +31,9 @@ public final class NearbyNpcWorldTests {
             var level=helper.getLevel();
             var candidate=NpcTownPlan.candidate(level.getSeed(),700,700,Config.NPC_SPACING.get());
             BlockPos center=new BlockPos(candidate.center().getX(),level.getSeaLevel()+5,candidate.center().getZ());
-            var chunks=CitizenNavigationTests.pinArea(level,center,-18,18,-18,18);
-            CitizenNavigationTests.meadow(level,center,-18,18,-18,18);
+            int extent=io.github.swishhyy.wwmc.settlement.NpcSettlements.EXTENT;
+            var chunks=CitizenNavigationTests.pinArea(level,center,-extent,extent,-extent,extent);
+            CitizenNavigationTests.meadow(level,center,-extent,extent,-extent,extent);
             var player=FakePlayerFactory.get(level,new GameProfile(UUID.randomUUID(),"NearbyVisitor"));
             player.setGameMode(GameType.CREATIVE); player.setPos(center.getX()-256,center.getY(),center.getZ()); level.addNewPlayer(player);
             var service=new NearbyNpcTown(); NeoForge.EVENT_BUS.register(service);

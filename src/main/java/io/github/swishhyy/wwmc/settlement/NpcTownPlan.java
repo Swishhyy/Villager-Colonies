@@ -30,7 +30,8 @@ public final class NpcTownPlan {
     /** Nearby alternate plots allow a town beside a hill or player build, without searching or generating distant terrain. */
     public static List<BlockPos> sites(Candidate candidate) {
         List<BlockPos> sites=new ArrayList<>(List.of(candidate.center()));
-        for(int x:new int[]{-96,0,96}) for(int z:new int[]{-96,0,96}) if(x!=0 || z!=0) sites.add(candidate.center().offset(x,0,z));
+        for(int x:new int[]{-192,-96,0,96,192}) for(int z:new int[]{-192,-96,0,96,192})
+            if(x!=0 || z!=0) sites.add(candidate.center().offset(x,0,z));
         return sites;
     }
     /** The same discovery regions and alternate plots, searched nearest-first. */

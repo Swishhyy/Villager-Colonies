@@ -41,7 +41,8 @@ public final class TradeSettings {
         BlockPos.CODEC.optionalFieldOf("runner_pos").forGetter(t -> Optional.ofNullable(t.runnerPos)),
         Codec.LONG.optionalFieldOf("delivered",0L).forGetter(t -> t.delivered),
         Codec.INT.optionalFieldOf("build_index",-1).forGetter(t -> t.buildIndex),
-        Codec.unboundedMap(Codec.STRING.xmap(UUID::fromString,UUID::toString),Codec.INT).optionalFieldOf("relations",Map.of()).forGetter(t -> t.relations)
+        Codec.unboundedMap(Codec.STRING.xmap(UUID::fromString,UUID::toString),Codec.INT).optionalFieldOf("relations",Map.of()).forGetter(t -> t.relations),
+        NpcVillageLayout.CODEC.optionalFieldOf("npc_layout").forGetter(t -> Optional.ofNullable(t.layout))
     ).apply(i,TradeSettings::new));
     public boolean npc,paused;
     public String specialty;
@@ -50,17 +51,20 @@ public final class TradeSettings {
     public long delivered;
     /** NPC construction checkpoint: -1 means the town is complete. */
     public int buildIndex;
+    /** Absent in old towns: their original construction plan and buildings are retained. */
+    public NpcVillageLayout layout;
     public final List<Export> exports;
     /** Starts neutral; deliveries build goodwill and attacks make this town refuse that owner's routes. */
     public final Map<UUID,Integer> relations;
     public String status="Choose a destination town";
-    public TradeSettings() { this(false,"",Optional.empty(),List.of(),false,Optional.empty(),Optional.empty(),0,-1,Map.of()); }
+    public TradeSettings() { this(false,"",Optional.empty(),List.of(),false,Optional.empty(),Optional.empty(),0,-1,Map.of(),Optional.empty()); }
     private TradeSettings(boolean npc,String specialty,Optional<UUID> partner,List<Export> exports,boolean paused,
-            Optional<UUID> runner,Optional<BlockPos> runnerPos,long delivered,int buildIndex,Map<UUID,Integer> relations) {
+            Optional<UUID> runner,Optional<BlockPos> runnerPos,long delivered,int buildIndex,Map<UUID,Integer> relations,Optional<NpcVillageLayout> layout) {
         this.npc=npc; this.specialty=specialty; this.partner=partner.orElse(null); this.paused=paused;
         this.exports=new ArrayList<>(exports.stream().limit(MAX_EXPORTS).toList());
         this.runner=runner.orElse(null); this.runnerPos=runnerPos.map(BlockPos::immutable).orElse(null);
         this.delivered=Math.max(0,delivered); this.buildIndex=Math.max(-1,buildIndex);
         this.relations=new HashMap<>(relations);
+        this.layout=layout.orElse(null);
     }
 }

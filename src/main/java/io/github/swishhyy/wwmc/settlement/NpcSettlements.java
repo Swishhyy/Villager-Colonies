@@ -24,7 +24,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
 /** Small neutral towns are discovered in loaded terrain and built in bounded, restartable server-thread batches. */
 public final class NpcSettlements {
-    public static final int BUILD_BUDGET=128,EXTENT=15;
+    public static final int BUILD_BUDGET=128,EXTENT=NpcVillageLayout.EXTENT;
     public record Placement(BlockPos pos,BlockState state,boolean protect) {}
     private static final Map<ServerLevel,Map<UUID,List<Placement>>> PLANS=new WeakHashMap<>();
     private int playerCursor,buildCursor;
@@ -51,21 +51,22 @@ public final class NpcSettlements {
     private boolean discover(ServerLevel level,NpcTownPlan.Candidate candidate) {
         return discover(level,candidate,NpcTownPlan.sites(candidate))!=null;
     }
-    static Settlement discover(ServerLevel level,NpcTownPlan.Candidate candidate,List<BlockPos> sites) {
+    public static Settlement discover(ServerLevel level,NpcTownPlan.Candidate candidate,List<BlockPos> sites) {
         NpcWorldData regions=NpcWorldData.get(level);
         if(regions.generated.contains(candidate.region()) || !Config.RANDOM_TOWNS.get()) return null;
         var data=SettlementData.get(level); int radius=Config.SETTLEMENT_RADIUS.get();
         if(data.settlements.stream().filter(t -> t.trading.npc).count()>=Config.MAX_NPC_TOWNS.get()) return null;
-        BlockPos center=null;
+        NpcVillageTerrain.Site terrain=null;
         for(BlockPos site:sites) {
             if(!loaded(level,site) || data.settlements.stream().anyMatch(t -> t.overlaps(site,radius))) continue;
-            center=suitable(level,site);
-            if(center!=null) break;
+            terrain=NpcVillageTerrain.inspect(level,site);
+            if(terrain!=null) break;
         }
-        if(center==null) return null;
-        Settlement town=new Settlement(candidate.id(),candidate.id(),candidate.name().strip(),center,radius,List.of(),List.of(),
+        if(terrain==null) return null;
+        Settlement town=new Settlement(candidate.id(),candidate.id(),candidate.name().strip(),terrain.center(),radius,List.of(),List.of(),
                 candidate.specialty().equals("farming") ? "food" : "materials");
         town.populationLevel=0; town.trading.npc=true; town.trading.specialty=candidate.specialty(); town.trading.buildIndex=0;
+        town.trading.layout=terrain.layout();
         switch(candidate.specialty()) {
             case "farming" -> town.trading.exports.add(new TradeSettings.Export("minecraft:carrot",64,32));
             case "timber" -> town.trading.exports.add(new TradeSettings.Export("minecraft:oak_log",16,32));
@@ -73,36 +74,6 @@ public final class NpcSettlements {
         }
         data.settlements.add(town); data.setDirty(); regions.generated(candidate.region());
         return town;
-    }
-    /** Never overwrite a player block, a block entity, a wet site, a steep slope or another town's claim. */
-    private static BlockPos suitable(ServerLevel level,BlockPos probe) {
-        int low=Integer.MAX_VALUE,high=Integer.MIN_VALUE;
-        var protectedBlocks=WorldWorkData.get(level).protectedBlocks;
-        for(int x=-EXTENT;x<=EXTENT;x++) for(int z=-EXTENT;z<=EXTENT;z++) {
-            int px=probe.getX()+x,pz=probe.getZ()+z;
-            int y=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,px,pz);
-            if(y<level.getSeaLevel() || y+6>=level.getMaxY()) return rejected(probe,new BlockPos(px,y,pz),"surface height outside safe range");
-            low=Math.min(low,y); high=Math.max(high,y);
-            if(high-low>2) return rejected(probe,new BlockPos(px,y,pz),"slope exceeds two blocks");
-            BlockPos ground=new BlockPos(px,y-1,pz); var state=level.getBlockState(ground);
-            // Since 26.2, the dirt tag contains dirt variants rather than all natural soil surfaces.
-            if(!state.is(BlockTags.DIRT) && !state.is(Blocks.GRASS_BLOCK) && !state.is(Blocks.PODZOL) && !state.is(Blocks.MYCELIUM)
-                    && !state.is(Blocks.SAND) && !state.is(Blocks.GRAVEL) && !state.is(BlockTags.BASE_STONE_OVERWORLD)) return rejected(probe,ground,"unsupported ground "+state);
-            for(int dy=-3;dy<=6;dy++) {
-                BlockPos p=ground.above(dy);
-                if(!level.getWorldBorder().isWithinBounds(p)) return rejected(probe,p,"outside world border");
-                if(protectedBlocks.contains(p)) return rejected(probe,p,"protected block");
-                if(level.getBlockEntity(p)!=null) return rejected(probe,p,"block entity");
-                if(!level.getFluidState(p).isEmpty()) return rejected(probe,p,"fluid");
-                var block=level.getBlockState(p);
-                if(dy>0 && !block.isAir() && !block.canBeReplaced()) return rejected(probe,p,"obstruction "+block);
-            }
-        }
-        return new BlockPos(probe.getX(),high,probe.getZ());
-    }
-    private static BlockPos rejected(BlockPos probe,BlockPos blocked,String reason) {
-        VC.LOGGER.debug("[VC][npc-search] Rejected plot={} position={} reason={}",probe,blocked,reason);
-        return null;
     }
     private void build(ServerLevel level,Settlement town) {
         List<Placement> plan=PLANS.computeIfAbsent(level,l -> new HashMap<>()).computeIfAbsent(town.id,id -> blueprint(town));
@@ -131,12 +102,14 @@ public final class NpcSettlements {
     }
     private static Station station(Settlement t,int x,int z,StructureRole role) { return new Station(t.center.offset(x,0,z),role,Direction.NORTH); }
     public static List<Station> stations(Settlement t) {
+        if(t.trading.layout!=null) return NpcVillagePlan.stations(t);
         return List.of(station(t,-8,-8,StructureRole.HOUSING),station(t,4,0,StructureRole.WAREHOUSE),
                 station(t,0,-3,StructureRole.TRADER),station(t,0,8,StructureRole.GUARD),station(t,4,4,StructureRole.COURIER),
                 station(t,7,-8,StructureRole.COOK),station(t,9,8,StructureRole.FARM),station(t,-9,8,StructureRole.LUMBER),
                 station(t,-10,0,StructureRole.MINE),station(t,-6,0,StructureRole.SMELTERY));
     }
     public static List<Placement> blueprint(Settlement town) {
+        if(town.trading.layout!=null) return NpcVillagePlan.blueprint(town);
         // Last placement wins before construction starts; no intermediate scaffolding is left in the saved plan.
         Map<BlockPos,Placement> map=new LinkedHashMap<>();
         class Builder {
