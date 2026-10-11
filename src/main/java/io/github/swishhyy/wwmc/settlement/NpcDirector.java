@@ -58,7 +58,7 @@ public final class NpcDirector {
                 CampaignService.journal(level,town,"Our community is building a new "+kind+".");
             }
         }
-        if(now>=d.nextImmigrant && food>=Math.max(24,(town.citizens.size()+1)*3)+4 && !stock.isEmpty()
+        if(town.progress.growthEnabled && now>=d.nextImmigrant && food>=Math.max(24,(town.citizens.size()+1)*3)+4 && !stock.isEmpty()
                 && NpcConstruction.away(level,town.center) && d.construction==null) {
             // Immigration is a paid, real spawn; never invent citizens in unloaded terrain.
             d.nextImmigrant=now+interval();

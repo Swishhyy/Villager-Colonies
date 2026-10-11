@@ -31,7 +31,7 @@ public final class SharedRoads extends SavedData {
         public long blockedUntil;
         public Road(UUID a,UUID b,List<BlockPos> line,int cursor,long blockedUntil) {
             if(line.size()<2 || line.size()>8192) throw new IllegalArgumentException("Invalid highway length");
-            this.a=a; this.b=b; this.line=line.stream().map(BlockPos::immutable).toList();
+            this.a=a; this.b=b; this.line=new ArrayList<>(line.stream().map(BlockPos::immutable).toList());
             this.cursor=Math.clamp(cursor,0,line.size()); this.blockedUntil=blockedUntil;
         }
         public boolean complete() { return cursor>=line.size(); }
@@ -74,11 +74,11 @@ public final class SharedRoads extends SavedData {
             break;
         }
     }
-    /** A complete dry route must be surveyed and loaded before a single block is changed. */
+    /** Plan from saved surveys; unvisited land is forbidden and each loaded segment is checked again before work. */
     public Road plan(ServerLevel level,Settlement a,Settlement b) {
         if(!TradeRoutes.agreed(a,b) || a.trading.buildIndex>=0 || b.trading.buildIndex>=0) return null;
         var atlas=TradeAtlas.get(level); BlockPos start=gate(a,b),end=gate(b,a);
-        if(flat(start,end)>MAX_LENGTH*MAX_LENGTH || !level.hasChunkAt(start) || !level.hasChunkAt(end)) return null;
+        if(flat(start,end)>MAX_LENGTH*MAX_LENGTH) return null;
         TradePlanner.Terrain known=new TradePlanner.Terrain() {
             @Override public TradePlanner.Cell cell(int x,int z) { return atlas.cell(x,z); }
             @Override public boolean blocked(int x,int z) { var c=cell(x,z); return !c.seen() || !c.passable() || atlas.blocked(x,z); }
@@ -96,11 +96,12 @@ public final class SharedRoads extends SavedData {
                 double part=count==0 ? 0 : (double)step/count;
                 int x=(int)Math.round(from.getX()+(to.getX()-from.getX())*part),z=(int)Math.round(from.getZ()+(to.getZ()-from.getZ())*part);
                 BlockPos column=new BlockPos(x,from.getY(),z);
-                if(!level.hasChunkAt(column)) return null;
                 var cell=known.cell(TradePlanner.cellOf(x),TradePlanner.cellOf(z)); if(!cell.seen() || !cell.passable()) return null;
-                int y=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,x,z);
+                int y=cell.height();
+                if(level.hasChunkAt(column)) y=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,x,z);
                 BlockPos feet=new BlockPos(x,y,z);
-                if(!passable(level,feet) || !line.isEmpty() && Math.abs(line.getLast().getY()-y)>1) return null;
+                if(level.hasChunkAt(feet) && !passable(level,feet)) return null;
+                if(!line.isEmpty() && Math.abs(line.getLast().getY()-y)>4) return null;
                 if(line.isEmpty() || !line.getLast().equals(feet)) line.add(feet);
                 if(line.size()>8192) return null;
             }
@@ -127,10 +128,16 @@ public final class SharedRoads extends SavedData {
         while(!road.complete() && done<budget) {
             BlockPos center=road.line.get(road.cursor);
             if(!level.hasChunkAt(center)) break;
+            int height=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,center.getX(),center.getZ());
+            if(Math.abs(height-center.getY())>4 || road.cursor>0 && Math.abs(height-road.line.get(road.cursor-1).getY())>1) {
+                road.blockedUntil=level.getGameTime()+1200; setDirty(); break;
+            }
+            center=new BlockPos(center.getX(),height,center.getZ());
             Settlement centerClaim=towns.at(center);
             boolean readOnly=centerClaim!=null && !centerClaim.trading.npc || RoadSurface.preferred(level,center);
             if(!readOnly && !NpcConstruction.away(level,center)) break;
             if(!passable(level,center)) { road.blockedUntil=level.getGameTime()+1200; setDirty(); break; }
+            road.line.set(road.cursor,center);
             BlockPos next=road.line.get(Math.min(road.cursor+1,road.line.size()-1));
             boolean eastWest=Math.abs(next.getX()-center.getX())>=Math.abs(next.getZ()-center.getZ());
             for(int width=-1;width<=1;width++) {
