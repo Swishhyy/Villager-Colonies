@@ -57,7 +57,7 @@ public final class GuideBook {
         new Topic("relationships","Town & friends","Manage access and colors at the flag",List.of(
             new Card("minecraft:iron_door","Invite your friends","Open Relationships > Players. Invite a Builder or Steward. They accept under Invitations. Outsiders have no access."),
             new Card("minecraft:blue_banner","Choose a town color","Open Relationships > Town and press Next color. Your flag and four border corners use the same saved color."),
-            new Card("minecraft:map","Share the map","Open Campaign > Map to see claims, routes and expedition sites. Click to ping your town and allies."),
+            new Card("minecraft:map","Share the map","More > Settlement map opens JourneyMap or Xaero. Towns, expeditions and allied pings appear automatically. Share your position with /vc ping meet."),
             new Card("wwmc:trader_station","Connect settlements","Set exports at Trader. Your own towns link immediately; other players must agree. Warehouses and a walkable route are required.")
         ),List.of(),"Alliances share cooperation, not building access. Only the owner changes town permissions and color."),
         new Topic("research","Ages & research","Stone > Bronze > Iron",List.of(

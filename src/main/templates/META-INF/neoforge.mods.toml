@@ -87,8 +87,26 @@ config="wwmc.mixins.json"
     ordering="NONE"
     side="BOTH"
 
-# Features are specific properties of the game environment, that you may want to declare you require. This example declares
-# that your mod requires GL version 3.2 or higher. Other features will be added. They are side aware so declaring this won't
+# Maps are optional client integrations; servers and clients without a map still load normally.
+[[dependencies.${mod_id}]]
+    modId="journeymap"
+    type="optional"
+    ordering="AFTER"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="xaeroworldmap"
+    type="optional"
+    ordering="AFTER"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="xaerominimap"
+    type="optional"
+    ordering="AFTER"
+    side="CLIENT"
+
+# Features are side aware; for example, a GL requirement won't
 # stop your mod loading on the server for example.
 #[features.${mod_id}]
 #openGLVersion="[3.2,)"

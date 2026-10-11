@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+- Replace sparse NPC town layouts with terraced, biome-themed villages: three furnished cottages, warehouse, bakery, smithy, market, watchpost, farm and covered work yards, with roofs, windows, lights, flowers and a village square. Preserve existing towns and saved construction.
+- Allow dry superflat and below-sea-level terrain, clear natural trees, check only the occupied footprint and accept ordinary slopes. Search more candidate plots and retry after exploring a new area; preserve water, cliffs, construction, player blocks, claims and the nine-chunk budget.
+- Replace the built-in map screen with optional JourneyMap and Xaero integrations. Automatically update dimension-specific town, expedition and shared-ping markers; open the installed map from More → Settlement map. Keep both maps optional on clients and unnecessary on servers, with no map API bundled in the JAR.
 - Complete VC branding in commands, guides, release text, source names and `[VC]` diagnostics. Keep existing registry IDs and saved keys so worlds still load.
 - Replace automatic monster waves with native barbarian foot soldiers, bowmen and armored veterans, staged by saved raid history and town development. Keep guard alarms, traps, safe approaches and offline protection.
 - Give fresh settings smaller raid parties and irregular three-to-seven-day gaps, preserve saved overrides, hide the exact countdown, and prevent manual raid overlap.

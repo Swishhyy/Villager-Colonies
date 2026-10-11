@@ -46,31 +46,19 @@ public final class VcNetwork {
             BlockPos.STREAM_CODEC,HighlightPayload::pos,ByteBufCodecs.VAR_INT,HighlightPayload::seconds,HighlightPayload::new);
         @Override public Type<HighlightPayload> type() { return TYPE; }
     }
-    /** A fresh map for the open map screen with this container id. */
-    public record MapPayload(int containerId,MapData map) implements CustomPacketPayload {
+    /** Background marker updates also reach players who open their map mod with its own key. */
+    public record MapPayload(MapData map,boolean open) implements CustomPacketPayload {
         public static final Type<MapPayload> TYPE=new Type<>(Identifier.fromNamespaceAndPath(VC.MODID,"map"));
         public static final StreamCodec<RegistryFriendlyByteBuf,MapPayload> STREAM_CODEC=StreamCodec.composite(
-            ByteBufCodecs.VAR_INT,MapPayload::containerId,MapData.STREAM_CODEC,MapPayload::map,MapPayload::new);
+            MapData.STREAM_CODEC,MapPayload::map,ByteBufCodecs.BOOL,MapPayload::open,MapPayload::new);
         @Override public Type<MapPayload> type() { return TYPE; }
     }
-    /** A click on the map: refresh it, place a ping of a kind at a column, or remove a ping by id. */
-    public record MapActionPayload(int action,int x,int z,String kind,String id) implements CustomPacketPayload {
-        public static final Type<MapActionPayload> TYPE=new Type<>(Identifier.fromNamespaceAndPath(VC.MODID,"map_action"));
-        public static final StreamCodec<RegistryFriendlyByteBuf,MapActionPayload> STREAM_CODEC=StreamCodec.composite(
-            ByteBufCodecs.VAR_INT,MapActionPayload::action,ByteBufCodecs.VAR_INT,MapActionPayload::x,ByteBufCodecs.VAR_INT,MapActionPayload::z,
-            ByteBufCodecs.STRING_UTF8,MapActionPayload::kind,ByteBufCodecs.STRING_UTF8,MapActionPayload::id,MapActionPayload::new);
-        @Override public Type<MapActionPayload> type() { return TYPE; }
-    }
     public static void register(RegisterPayloadHandlersEvent event) {
-        var registrar=event.registrar("5");
+        var registrar=event.registrar("6");
         registrar.playToClient(GuidePayload.TYPE,GuidePayload.STREAM_CODEC);
         registrar.playToClient(ViewPayload.TYPE,ViewPayload.STREAM_CODEC);
         registrar.playToClient(HighlightPayload.TYPE,HighlightPayload.STREAM_CODEC);
         registrar.playToClient(MapPayload.TYPE,MapPayload.STREAM_CODEC);
-        registrar.playToServer(MapActionPayload.TYPE,MapActionPayload.STREAM_CODEC,(payload,context) -> {
-            if(context.player() instanceof ServerPlayer player && payload.kind().length()<=16 && payload.id().length()<=64)
-                io.github.swishhyy.wwmc.settlement.SettlementMap.act(player,payload.action(),payload.x(),payload.z(),payload.kind(),payload.id());
-        });
         registrar.playToServer(ActionPayload.TYPE,ActionPayload.STREAM_CODEC,VcNetwork::action);
     }
     /** Only the screen the player actually has open, while it is still valid, receives the action. */

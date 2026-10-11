@@ -36,6 +36,7 @@ public final class VCClient {
         bus.addListener(VCClient::payloads);
         NeoForge.EVENT_BUS.register(new StationRangePreview());
         NeoForge.EVENT_BUS.addListener(VCClient::tooltip);
+        NeoForge.EVENT_BUS.register(new io.github.swishhyy.wwmc.client.map.ExternalMaps());
     }
     /** A station item from a broken, upgraded station names the upgrades it will bring back. */
     private static void tooltip(ItemTooltipEvent event) {
@@ -73,7 +74,6 @@ public final class VCClient {
         event.register(VcMenus.CRAFTSMAN.get(),CraftsmanScreen::new);
         event.register(VcMenus.CITIZEN.get(),CitizenScreen::new);
         event.register(VcMenus.TRADER.get(),TraderScreen::new);
-        event.register(VcMenus.MAP.get(),io.github.swishhyy.wwmc.client.screen.MapScreen::new);
     }
     /** A refresh only applies to the screen it was built for. */
     private static void payloads(RegisterClientPayloadHandlersEvent event) {
@@ -83,8 +83,7 @@ public final class VCClient {
             if(context.player().containerMenu.containerId==payload.containerId() && context.player().containerMenu instanceof ViewMenu menu) menu.view(payload.view());
         });
         event.register(VcNetwork.HighlightPayload.TYPE,(payload,context) -> StationRangePreview.highlight(payload.pos(),payload.seconds()));
-        event.register(VcNetwork.MapPayload.TYPE,(payload,context) -> {
-            if(context.player().containerMenu.containerId==payload.containerId() && context.player().containerMenu instanceof io.github.swishhyy.wwmc.menu.MapMenu menu) menu.map=payload.map();
-        });
+        event.register(VcNetwork.MapPayload.TYPE,(payload,context) ->
+                io.github.swishhyy.wwmc.client.map.ExternalMaps.receive(payload.map(),payload.open()));
     }
 }

@@ -61,6 +61,16 @@ public final class NpcVillageWorldTests {
                 helper.assertTrue(SettlementService.populationLimit(town)>=10,"Separate cottages do not provide population capacity");
                 helper.assertTrue(InventoryOps.count(SettlementService.storage(level,town),s -> s.is(net.minecraft.world.item.Items.BREAD))>0,"Warehouse has no real starter supplies");
                 for(var p:plan) if(p.protect()) helper.assertTrue(level.getBlockState(p.pos()).getBlock()==p.state().getBlock(),"Furnished building lost "+p.state()+" at "+p.pos());
+                var walker=new io.github.swishhyy.wwmc.entity.CitizenEntity(VC.CITIZEN.get(),level);
+                walker.setPos(town.center.getX()-0.5,town.center.getY(),town.center.getZ()-0.5);
+                try {
+                    for(var station:town.stations) if(station.role()==StructureRole.HOUSING || station.role()==StructureRole.WAREHOUSE
+                            || station.role()==StructureRole.COOK || station.role()==StructureRole.SMELTERY) {
+                        BlockPos inside=station.position().relative(station.facing(),2);
+                        var path=walker.getNavigation().createPath(inside,0);
+                        helper.assertTrue(path!=null && path.canReach(),"Village road or doorway is unreachable: "+station.role()+" at "+inside);
+                    }
+                } finally { walker.discard(); }
             });
         });
     }

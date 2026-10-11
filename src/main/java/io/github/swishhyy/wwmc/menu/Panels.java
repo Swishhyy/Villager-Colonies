@@ -104,7 +104,7 @@ public final class Panels {
                 new Row(icon(Items.BELL),Component.literal("Alarm: "+DefenseService.status(town)),Component.literal("Shelter civilians and put guards on duty; toggle the all-clear when safe."),0,-1,0,"act:alarm"),
                 new Row(icon(Items.FILLED_MAP),Component.literal("Expeditions and projects"),Component.literal("Army, ruined sites, outposts, supply projects and town journal"),0,-1,0,"act:campaign"),
                 new Row(icon(Items.NAME_TAG),Component.literal("Town settings"),Component.literal("Name, colours, permissions, invitations and alliances"),0,-1,0,"act:relationships"),
-                new Row(icon(Items.MAP),Component.literal("Settlement map"),Component.literal("Claims, routes, ruins and shared markers"),0,-1,0,"act:map"),
+                new Row(icon(Items.MAP),Component.literal("Settlement map"),Component.literal("JourneyMap or Xaero: towns, expeditions and shared markers"),0,-1,0,"act:map"),
                 new Row(icon(Items.PAPER),"Population research","+"+Research.populationBonus(town)+" places from housing discoveries"));
         return new PanelView(Component.literal(town.name),Component.literal(Research.age(town)+" · "+(problems==0 ? "Your settlement at a glance" : problems+" needs attention")),
                 List.of(new Tab("Overview",overview),new Tab("Needs",needs),new Tab("More",more)),

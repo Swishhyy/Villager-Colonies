@@ -6,7 +6,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 
-/** Holds the shared settlement map while its screen is open; pings refresh it in place. */
+/** Reserved legacy menu ID for existing registry snapshots. New clients open an optional map mod instead. */
 public final class MapMenu extends AbstractContainerMenu {
     public MapData map;
     public MapMenu(int id,MapData map) { super(VcMenus.MAP.get(),id); this.map=map; }

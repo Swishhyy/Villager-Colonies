@@ -197,7 +197,8 @@ public final class NpcVillagePlan {
             put(-19,y+1,-13,Blocks.OAK_DOOR.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING,Direction.EAST)
                     .setValue(BlockStateProperties.DOUBLE_BLOCK_HALF,DoubleBlockHalf.UPPER),true);
             block(-21,y+2,-11,Blocks.GLASS); block(-23,y+2,-13,Blocks.GLASS);
-            block(-21,y+2,-13,Blocks.LANTERN); block(-22,y,-14,Blocks.BARREL);
+            put(-21,y+3,-13,Blocks.LANTERN.defaultBlockState().setValue(BlockStateProperties.HANGING,true),true);
+            block(-22,y,-14,Blocks.BARREL);
         }
         void lumberYard() {
             int y=lot(-13,20); shed(-13,20,4,2,y);
@@ -237,11 +238,13 @@ public final class NpcVillagePlan {
                 put(x,y-1,z,Blocks.FARMLAND.defaultBlockState().setValue(BlockStateProperties.MOISTURE,7),true);
                 if(x!=13 || z!=20) put(x,y,z,((CropBlock)Blocks.CARROTS).getStateForAge(7),false);
             }
-            block(13,y-1,20,Blocks.WATER,false); block(10,y,18,Blocks.BARREL);
+            block(13,y-1,20,Blocks.WATER,false); block(10,y-1,18,Blocks.DIRT); block(10,y,18,Blocks.BARREL);
             for(int x=9;x<=17;x++) for(int z=17;z<=23;z++) if(x==9 || x==17 || z==17 || z==23) {
                 floor(x,z,y,Blocks.DIRT); put(x,y,z,Blocks.OAK_FENCE.defaultBlockState()
-                        .setValue(BlockStateProperties.NORTH,z>17).setValue(BlockStateProperties.SOUTH,z<23)
-                        .setValue(BlockStateProperties.WEST,x>9).setValue(BlockStateProperties.EAST,x<17),true);
+                        .setValue(BlockStateProperties.NORTH,(x==9 || x==17) && z>17)
+                        .setValue(BlockStateProperties.SOUTH,(x==9 || x==17) && z<23)
+                        .setValue(BlockStateProperties.WEST,(z==17 || z==23) && x>9)
+                        .setValue(BlockStateProperties.EAST,(z==17 || z==23) && x<17),true);
             }
             put(9,y,20,Blocks.OAK_FENCE_GATE.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING,Direction.EAST)
                     .setValue(BlockStateProperties.OPEN,true),true);

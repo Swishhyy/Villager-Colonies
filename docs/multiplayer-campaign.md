@@ -159,16 +159,15 @@ Couriers supply one usable tool per assigned worker and count tools already in w
 
 ## Shared map and pings
 
-Campaign -> **Map**, or `/vc map`, opens a top-down map centered on you. It shows:
+The banner's **More → Settlement map**, or `/vc map`, opens JourneyMap or Xaero's World Map when installed on your client. The old built-in map has been replaced by these optional integrations. Markers refresh about every ten seconds even when you open the map using its own key:
 
-- Every claim, colored by its relation to you: yours, allied, neutral, hostile or another player's.
-- The trade routes of your own and allied towns.
+- Completed towns, colored by their relation to you: yours, allied, neutral, hostile or another player's. JourneyMap's marker description includes the claim radius.
 - Expedition sites and raids.
-- Pings, and your own position.
+- Shared pings from your own and allied towns. Your map mod supplies the terrain, player position, zoom and navigation controls.
 
-Scroll or use - and + to zoom from 256 to 16,384 blocks across. N, S, E and W pan the map, and Me centers it on you. Hover anything for details.
+JourneyMap takes priority for the button when both maps are installed, and both receive markers. Xaero World Map can run alone; with Xaero Minimap installed, native third-party waypoints appear in both Xaero maps. With only Xaero Minimap, the button enlarges it. No map mod is needed on the server. Without a client map, use Neighbours or `/locate settlement`. The integrations show location markers; claim outlines and trade-route lines are not drawn. Your personal waypoints remain separate and are never removed by Villager Colonies.
 
-Choose a ping kind with the Ping button: meet here, build a bridge, build here, danger or resources. Then click the map to place it. Right-click your own ping to remove it; a town's managers can remove any of its pings. `/vc ping <kind> [note]` marks where you stand.
+Use your map's normal waypoint tools for personal markers. `/vc ping <meet|bridge|build|danger|resource> [note]` shares a marker where you stand with your town and its allies. `/vc ping remove <id>` removes a shared ping you own or manage; JourneyMap includes that command in the marker description. Shared marker changes appear on the next refresh.
 
 A ping belongs to the managed town you stand in, or your nearest one. That town's managers and its allies' managers see it, and placing it is written in the town journal. Each town keeps its 16 newest pings.
 
@@ -204,7 +203,7 @@ For personal deliveries or remaining reward collection, bring goods to the reque
 | `/vc contract accept/deliver <contract UUID>` | Accept an offer or make a personal delivery/collect payment |
 | `/vc journal` | Read recent town history |
 | `/vc needs` | List the town's needs, most urgent first |
-| `/vc map` | Open the shared settlement map |
+| `/vc map` | Open the installed JourneyMap or Xaero map with settlement markers |
 | `/vc ping <kind> [note]` | Share a ping where you stand: meet, bridge, build, danger or resource |
 
 Town commands select the managed town you stand inside, then a town whose squad you lead, then your nearest managed town. Membership and alliance changes always require the immutable owner. Campaign board actions require being within eight blocks of the banner; field orders remain available away from it. All authority and item movement are checked on the server.

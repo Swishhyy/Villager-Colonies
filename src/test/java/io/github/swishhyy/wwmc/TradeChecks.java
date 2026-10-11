@@ -134,7 +134,7 @@ public final class TradeChecks {
             var states=new HashMap<BlockPos,net.minecraft.world.level.block.state.BlockState>();
             for(var p:plan) {
                 assertNull(states.put(p.pos(),p.state()));
-                assertTrue(TradeChunks.window(town.center).contains(new net.minecraft.world.level.ChunkPos(p.pos()).pack()),"Village exceeds its nine-chunk window");
+                assertTrue(TradeChunks.window(town.center).contains(net.minecraft.world.level.ChunkPos.containing(p.pos()).pack()),"Village exceeds its nine-chunk window");
             }
             var homes=NpcSettlements.stations(town).stream().filter(s -> s.role()==StructureRole.HOUSING).toList();
             assertEquals(3,homes.size()); int beds=0;
