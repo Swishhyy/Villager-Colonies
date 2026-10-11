@@ -5,6 +5,7 @@ import io.github.swishhyy.wwmc.Config;
 import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.settlement.NearbyNpcTown;
 import io.github.swishhyy.wwmc.settlement.NpcTownPlan;
+import io.github.swishhyy.wwmc.settlement.NpcSettlements;
 import io.github.swishhyy.wwmc.settlement.NpcWorldData;
 import io.github.swishhyy.wwmc.settlement.SettlementData;
 import java.util.UUID;
