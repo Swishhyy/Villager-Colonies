@@ -1,6 +1,7 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
+    "particle": "#wood",
     "wood": "minecraft:block/oak_planks",
     "stake": "minecraft:block/stripped_oak_log",
     "bronze": "wwmc:block/bronze_block",

@@ -184,6 +184,7 @@ For personal deliveries or remaining reward collection, bring goods to the reque
 
 | Command | Purpose |
 | --- | --- |
+| `/locate settlement` | Nearest generated NPC town, banner coordinates and distance; vanilla locate permissions, Overworld only |
 | `/wwmc town invite <player> [builder\|steward]` | Owner invites a currently online player; default steward |
 | `/wwmc town accept [town UUID]` | Accept an invitation; without a UUID chooses the nearest waiting invitation |
 | `/wwmc town remove <player>` | Owner revokes membership/invitation; offline members can be removed on the board |

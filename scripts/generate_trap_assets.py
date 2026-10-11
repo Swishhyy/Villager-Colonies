@@ -33,7 +33,7 @@ def model(name, status, material):
     elements = []
     broken = status == 'broken'
     armed = status == 'armed'
-    textures = {'wood': 'minecraft:block/oak_planks', 'stake': 'minecraft:block/stripped_oak_log',
+    textures = {'particle': '#wood', 'wood': 'minecraft:block/oak_planks', 'stake': 'minecraft:block/stripped_oak_log',
                 'bronze': 'wwmc:block/bronze_block', 'iron': 'minecraft:block/iron_block',
                 'rope': 'minecraft:block/white_wool', 'marker': 'minecraft:block/' + ('green' if armed else 'red') + '_wool'}
     if name == 'wooden_spikes':

@@ -24,7 +24,7 @@ Steel requires **Iron Age → Steelworking** and a staffed smeltery with an allo
 
 Smelters service real appliances; couriers deliver ingredients and fuel. Set alloy stock targets in **Production → Metalwork**; the default is 32 for each alloy and zero pauses new automated batches. Already loaded batches can finish. Hoppers feed both material slots from above, fuel from the sides, and extract output from below. Full output pauses new batches; inventory, fuel and partial progress survive saving. Outside a settlement or before research, the furnace explains its lock and does not consume new fuel or materials.
 
-New bronze no longer needs a crafted blend or a second smelting step. Previously made blends still smelt normally. Saved smith alloy/refining orders retain their targets and are serviced by smelters.
+New bronze no longer needs a crafted blend or a second smelting step. Bronze Blend remains in the creative tab; previously made blends still smelt normally. Saved smith alloy/refining orders retain their targets and are serviced by smelters.
 
 ## Forge and repair equipment
 

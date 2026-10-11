@@ -19,7 +19,7 @@ This is the detailed reference for the playable settlement systems. For a shorte
 
 ## Start a settlement
 
-Install the same mod JAR on the NeoForge 26.2 client and server. Use a new test world for this development build. Craft a **Settlement Guide** from one book and one blue dye, or run `/wwmc guide`, then right-click it to read the instructions.
+Install the same mod JAR on the NeoForge 26.2 client and server. Each player automatically receives **one Settlement Banner and one Settlement Guide** on their first login to each world. This is always enabled; reconnects, deaths and changing dimensions do not grant another pack. If the inventory is full, the items drop at the player's feet. Right-click the guide to read the instructions. Craft a replacement from one book and one blue dye, or run `/wwmc guide`.
 
 1. Craft or obtain a **Settlement Banner**, place it on solid ground with open space around it, and right-click it with an empty hand to found your town. New towns extend **240 blocks in each horizontal direction**, a 481×481 block footprint including the center. Banners matching your town color appear at the four corners when those chunks are loaded and the ground can support a banner. The mod does not load distant chunks to place them or replace obstructing blocks.
 2. Build a small camp with beds. Place a **Housing Station** or **Barracks Station** inside it.
@@ -202,6 +202,10 @@ Each active trader maintains a moving **3×3 chunk window**. The route does not 
 
 Small NPC towns appear as you explore suitable **loaded Overworld terrain**. Deterministic regions usually put candidate towns about **1,000–2,000 blocks apart**, with larger gaps where terrain or claims prevent building. Sites must be dry, gently sloped, clear of block entities and recorded player blocks, and outside every existing town claim. Construction is saved and proceeds in batches of 128 block placements per tick. Revisiting a region cannot duplicate its town; destroying it does not cause a respawn.
 
+By default, **ensureNearbyNpcTown** searches for a neighbour when an Overworld player has no NPC town within twice `npcTownSpacing`. It visits the nearest candidate plots using one temporary 3×3 chunk window, loads one chunk every five ticks, builds a safe town and releases the window. Existing unfinished towns resume; existing completed neighbours need no extra generation. Claims, protected blocks, terrain checks, `randomSettlements` and `maxNpcTowns` still apply. An exhausted search retries after ten loaded minutes; leaving the area or disconnecting releases its chunks.
+
+**Find a town:** use the banner's **More → Settlement map**, or `/wwmc map`, to see generated towns. With cheats enabled or operator access, `/locate settlement` finds the nearest completed NPC town in the Overworld and reports its name, clickable banner coordinates and horizontal distance. It also finds saved towns in unloaded chunks. Clicking the coordinates suggests a teleport command; it does not teleport automatically. If no town has finished generating, explore suitable terrain first. The command does not generate new towns or search future candidate sites.
+
 NPC towns start neutral with a house, 12 beds, warehouse, trader checkpoint, guard, farm, lumber operation, renewable iron vein, smelter, kitchen, and courier. They begin with six named citizens (subject to the population cap) and starter supplies, then can have children under the same happiness, spare-food, housing and population rules as player towns while ticking. Small crews take one worker per station. Farmers export carrots, timber towns oak logs, and mining towns iron ingots; their own reserves are protected. A free neutral town accepts a proposed route automatically. Deliveries build goodwill; attacking its citizens ends your route, makes it refuse further trade, and its guards defend the town. Countries, sieges, conquest, negotiated prices, route networks, carts and escorts remain future work.
 
 | Setting | Default | Meaning |
@@ -209,6 +213,7 @@ NPC towns start neutral with a house, 12 beds, warehouse, trader checkpoint, gua
 | `maxActiveTraders` | 8 | Town traders with a moving 9-chunk window in one dimension. |
 | `tradeRouteDistance` | 8192 | Longest banner-to-banner trader route, in blocks. |
 | `randomSettlements` | true | Discover new neutral NPC towns; disabling leaves existing towns intact. |
+| `ensureNearbyNpcTown` | true | Temporarily load nearby safe candidate plots to establish an NPC neighbour; respects the generation toggle and town cap. |
 | `npcTownSpacing` | 1408 | Region size for future candidate towns, in blocks. |
 | `maxNpcTowns` | 48 | Maximum automatically generated NPC towns in the Overworld. |
 

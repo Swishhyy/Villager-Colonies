@@ -62,9 +62,8 @@ public final class ResearchAgeWorldTests {
             var chunks=CitizenNavigationTests.pinTicking(level,start,1); CitizenNavigationTests.meadow(level,start,-8,16,-8,8);
             var owner=new RecipePlayer(level,new GameProfile(UUID.randomUUID(),"BronzeOwner"));
             WWMC.TAB.get().buildContents(new CreativeModeTab.ItemDisplayParameters(level.enabledFeatures(),false,level.registryAccess()));
-            for(var material:List.of(WWMC.RAW_TIN.get(),WWMC.TIN_INGOT.get(),WWMC.BRONZE_INGOT.get(),WWMC.ALLOY_FURNACE_ITEM.get()))
+            for(var material:List.of(WWMC.RAW_TIN.get(),WWMC.TIN_INGOT.get(),WWMC.BRONZE_BLEND.get(),WWMC.BRONZE_INGOT.get(),WWMC.ALLOY_FURNACE_ITEM.get()))
                 helper.assertTrue(WWMC.TAB.get().getDisplayItems().stream().filter(v -> v.is(material)).count()==1,"A current bronze ingredient or appliance is missing from the creative tab");
-            helper.assertTrue(WWMC.TAB.get().getDisplayItems().stream().noneMatch(v -> v.is(WWMC.BRONZE_BLEND.get())),"Legacy blend is still advertised as the new production route");
             owner.setPos(start.getX()+.5,start.getY(),start.getZ()+.5);
             var town=new Settlement(UUID.randomUUID(),owner.getUUID(),"Bronze production",start,32,List.of(),List.of(),"balanced");
             SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());

@@ -5,11 +5,13 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Comparator;
 import net.minecraft.core.BlockPos;
 
 /** Deterministic regions avoid a repeated random spawn check producing towns around the same player. */
 public final class NpcTownPlan {
     public record Candidate(UUID id,BlockPos center,String name,String specialty,String region) {}
+    public record Plot(Candidate candidate,BlockPos site) {}
     private static final String[] NAMES={"Oakridge","Redbrook","Stoneford","Willowfield","Pinehaven","Ashvale","Copperhill","Meadowcross","Foxglade","Birchmere","Westmere","Greenhollow"};
     private static final String[] SPECIALTIES={"farming","timber","mining"};
     private NpcTownPlan() {}
@@ -30,5 +32,17 @@ public final class NpcTownPlan {
         List<BlockPos> sites=new ArrayList<>(List.of(candidate.center()));
         for(int x:new int[]{-96,0,96}) for(int z:new int[]{-96,0,96}) if(x!=0 || z!=0) sites.add(candidate.center().offset(x,0,z));
         return sites;
+    }
+    /** The same discovery regions and alternate plots, searched nearest-first. */
+    public static List<Plot> nearbyPlots(long seed,BlockPos origin,int spacing) {
+        int rx=Math.floorDiv(origin.getX(),spacing),rz=Math.floorDiv(origin.getZ(),spacing);
+        List<Plot> plots=new ArrayList<>();
+        for(int dx=-1;dx<=1;dx++) for(int dz=-1;dz<=1;dz++) {
+            Candidate candidate=candidate(seed,rx+dx,rz+dz,spacing);
+            for(BlockPos site:sites(candidate)) plots.add(new Plot(candidate,site));
+        }
+        BlockPos horizontal=new BlockPos(origin.getX(),0,origin.getZ());
+        plots.sort(Comparator.comparingDouble(p -> p.site().distSqr(horizontal)));
+        return List.copyOf(plots);
     }
 }
