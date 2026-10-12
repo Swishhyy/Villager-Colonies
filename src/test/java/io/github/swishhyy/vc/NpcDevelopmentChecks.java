@@ -27,6 +27,12 @@ public final class NpcDevelopmentChecks {
         migrated.widthCursor=7;
         assertEquals(7,SharedRoads.Road.CODEC.parse(JsonOps.INSTANCE,SharedRoads.Road.CODEC.encodeStart(JsonOps.INSTANCE,migrated).getOrThrow()).getOrThrow().widthCursor);
     }
+    @Test void growingTownsArrangeMoreNeighbourRoutes() {
+        var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Growing",BlockPos.ZERO,120,List.of(),List.of(),"balanced");
+        assertEquals(2,NeighbourTrade.routeLimit(town),"A new town keeps two neighbour routes");
+        town.trading.development.completed=2; assertEquals(3,NeighbourTrade.routeLimit(town));
+        town.trading.development.completed=8; assertEquals(4,NeighbourTrade.routeLimit(town),"No more routes than a town can save");
+    }
     @Test void safetyAndFoodGateGrowthAndPaidWorkSurvivesSaving() {
         assertEquals(NpcDevelopment.Phase.RECOVER,NpcDirector.decide(new NpcDirector.Situation(true,100,8,true,true,true,true)));
         assertEquals(NpcDevelopment.Phase.SUPPLY,NpcDirector.decide(new NpcDirector.Situation(false,10,8,false,true,true,true)));

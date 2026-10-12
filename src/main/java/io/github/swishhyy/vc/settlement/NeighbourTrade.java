@@ -33,13 +33,19 @@ public final class NeighbourTrade {
                 && level.hasChunkAt(town.center) && level.isPositionEntityTicking(town.center)
                 && level.hasChunkAt(checkpoint.position()) && SettlementService.active(level,checkpoint);
     }
-    /** One NPC per existing campaign check; at most two neighbour routes leave its player-facing primary route free. */
+    /**
+     * Neighbour routes an NPC town arranges: two at first, then one more for every two buildings it adds, up to the four
+     * a town can keep. A town that has grown trades farther afield, and every agreed route can become a highway, so
+     * the road network keeps growing the longer a world runs.
+     */
+    public static int routeLimit(Settlement town) { return Math.min(4,2+town.trading.development.completed/2); }
+    /** One NPC per existing campaign check; its neighbour routes leave its player-facing primary route free. */
     public static void update(ServerLevel level,Settlement town) {
         if(!ready(level,town)) return;
         var towns=SettlementData.get(level);
         if(town.campaign.extraRoutes.removeIf(id -> towns.byId(id)==null)) towns.setDirty();
-        if(town.campaign.extraRoutes.size()>=2) return;
-        Settlement other=nearby(level,town).stream().filter(t -> ready(level,t) && t.campaign.extraRoutes.size()<2
+        if(town.campaign.extraRoutes.size()>=routeLimit(town)) return;
+        Settlement other=nearby(level,town).stream().filter(t -> ready(level,t) && t.campaign.extraRoutes.size()<routeLimit(t)
                 && !TradeRoutes.agreed(town,t) && town.trading.relations.getOrDefault(t.owner,0)>=0 && t.trading.relations.getOrDefault(town.owner,0)>=0)
                 .min(Comparator.comparingInt((Settlement t) -> town.trading.specialty.equals(t.trading.specialty) ? 1 : 0)
                         .thenComparingDouble(t -> t.center.distSqr(town.center))).orElse(null);
