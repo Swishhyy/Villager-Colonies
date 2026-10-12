@@ -92,17 +92,18 @@ def start_and_stop(attempt):
                 x,z=json.loads((RUN / "native-town.json").read_text())
             exchange(connection,21,2,f"forceload add {x-23} {z-23} {x+23} {z+23}")
             town_deadline=time.monotonic()+100
+            banner=crew="not inspected"
             while True:
                 town=exchange(connection,22,2,f"execute positioned {x} 80 {z} run locate settlement")
                 if "The nearest AI settlement" in town:
                     match=re.search(r"is at \[?(-?\d+),\s*(-?\d+),\s*(-?\d+)\]?",town)
                     if match and int(match[1])==x and int(match[3])==z:
                         y=int(match[2])
-                        banner=exchange(connection,23,2,f"execute if block {x} {y} {z} vc:settlement_banner run say VC-worldgen-banner-present")
-                        crew=exchange(connection,24,2,f"execute positioned {x} {y} {z} if entity @e[type=vc:citizen,distance=..64] run say VC-worldgen-crew-present")
-                        if "VC-worldgen-banner-present" in banner and "VC-worldgen-crew-present" in crew:break
+                        banner=exchange(connection,23,2,f"execute if block {x} {y} {z} vc:settlement_banner")
+                        crew=exchange(connection,24,2,f"execute positioned {x} {y} {z} if entity @e[type=vc:citizen,distance=..64]")
+                        if "Test passed" in banner and "Test passed" in crew:break
                 if time.monotonic()>town_deadline:
-                    raise RuntimeError(f"Native structure did not activate its settlement: {town}")
+                    raise RuntimeError(f"Native structure verification timed out: town={town}; banner={banner}; crew={crew}")
                 time.sleep(0.25)
             print(f"Native town startup {attempt}: physical village, saved settlement and real crew verified",flush=True)
             exchange(connection,25,2,"forceload remove all")
