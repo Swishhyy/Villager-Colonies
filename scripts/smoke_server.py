@@ -22,7 +22,7 @@ with socket.socket() as probe:
 (RUN / "eula.txt").write_text("eula=true\n")
 (RUN / "server.properties").write_text(
     "level-name=smoke-world\nlevel-seed=246813579\ngenerate-structures=true\nonline-mode=false\nserver-ip=127.0.0.1\nserver-port=0\n"
-    "view-distance=2\nsimulation-distance=2\nspawn-protection=0\n"
+    "view-distance=2\nsimulation-distance=2\nspawn-protection=0\npause-when-empty-seconds=0\n"
     "enable-rcon=true\nrcon.password=vc-local-smoke\n"
     f"rcon.port={rcon_port}\n"
 )
@@ -97,16 +97,13 @@ def start_and_stop(attempt):
                 if "The nearest AI settlement" in town:
                     match=re.search(r"\[(-?\d+),\s*(-?\d+),\s*(-?\d+)\]",town)
                     if match and int(match[1])==x and int(match[3])==z:
-                        y=int(match[2]);break
+                        y=int(match[2])
+                        banner=exchange(connection,23,2,f"execute if block {x} {y} {z} vc:settlement_banner run say VC-worldgen-banner-present")
+                        crew=exchange(connection,24,2,f"execute positioned {x} {y} {z} if entity @e[type=vc:citizen,distance=..64] run say VC-worldgen-crew-present")
+                        if "VC-worldgen-banner-present" in banner and "VC-worldgen-crew-present" in crew:break
                 if time.monotonic()>town_deadline:
                     raise RuntimeError(f"Native structure did not activate its settlement: {town}")
                 time.sleep(0.25)
-            banner=exchange(connection,23,2,f"execute if block {x} {y} {z} vc:settlement_banner run say VC-worldgen-banner-present")
-            if "VC-worldgen-banner-present" not in banner:
-                raise RuntimeError(f"Native town banner missing: {banner}")
-            crew=exchange(connection,24,2,f"execute positioned {x} {y} {z} if entity @e[type=vc:citizen,distance=..64] run say VC-worldgen-crew-present")
-            if "VC-worldgen-crew-present" not in crew:
-                raise RuntimeError(f"Native town workers missing: {crew}")
             print(f"Native town startup {attempt}: physical village, saved settlement and real crew verified",flush=True)
             exchange(connection,25,2,"forceload remove all")
             saved = exchange(connection, 11, 2, "save-all flush")

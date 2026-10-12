@@ -30,6 +30,7 @@ public final class SettlementStructures {
     public static final DeferredHolder<StructurePieceType,StructurePieceType> TOWN_PIECE=PIECES.register("settlement",() -> NpcTownPiece::new);
     public static final ResourceKey<Structure> TOWN=ResourceKey.create(Registries.STRUCTURE,Identifier.fromNamespaceAndPath(VC.MODID,"settlement"));
     private final Map<ServerLevel,Map<UUID,NpcTownPiece>> pending=new WeakHashMap<>();
+    private int activationCursor;
     public static void register(IEventBus bus) { TYPES.register(bus); PIECES.register(bus); }
 
     @SubscribeEvent public void loaded(ChunkEvent.Load event) {
@@ -54,14 +55,15 @@ public final class SettlementStructures {
     @SubscribeEvent public void tick(LevelTickEvent.Post event) {
         if(!(event.getLevel() instanceof ServerLevel level) || level.getGameTime()%20!=0) return;
         var queue=pending.get(level); if(queue==null || queue.isEmpty()) return;
-        var iterator=queue.values().iterator(); int checked=0;
-        while(iterator.hasNext() && checked++<16) {
-            var piece=iterator.next();
+        var choices=queue.values().toArray(NpcTownPiece[]::new);
+        for(int checked=0;checked<Math.min(16,choices.length);checked++) {
+            var piece=choices[Math.floorMod(activationCursor++,choices.length)];
             if(!NpcSettlements.loaded(level,piece.candidate().center())) continue;
-            activate(level,piece); iterator.remove(); return;
+            activate(level,piece); queue.remove(piece.candidate().id()); return;
         }
     }
     public static Settlement activate(ServerLevel level,NpcTownPiece piece) {
+        if(!NpcSettlements.loaded(level,piece.candidate().center())) return null;
         var data=SettlementData.get(level); var candidate=piece.candidate();
         var existing=data.byId(candidate.id()); if(existing!=null) return existing;
         var regions=NpcWorldData.get(level); if(regions.generated.contains(candidate.region())) return null;

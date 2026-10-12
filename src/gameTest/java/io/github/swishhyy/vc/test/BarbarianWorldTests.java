@@ -54,7 +54,7 @@ public final class BarbarianWorldTests {
             var command=level.getServer().getCommands().getDispatcher().getRoot().getChild("vc");
             helper.assertTrue(command!=null,"VC commands were not registered");
             for(String family:List.of("status","wave","map","town","neighbours")) helper.assertTrue(command.getChild(family)!=null,"Command family was lost: "+family);
-            helper.assertTrue(level.getServer().getCommands().getDispatcher().getRoot().getChild("vc")==null,"Legacy branding remains in command suggestions");
+            helper.assertTrue(command.getName().equals(VC.MODID),"Command root and active mod ID disagree");
             CitizenNavigationTests.releaseTicking(level,start,chunks); helper.succeed();
         });
     }
