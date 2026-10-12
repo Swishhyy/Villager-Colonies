@@ -23,16 +23,22 @@ public final class SharedRoads extends SavedData {
         public static final Codec<Road> CODEC=RecordCodecBuilder.create(i -> i.group(
             Settlement.UUID_CODEC.fieldOf("a").forGetter(r -> r.a),Settlement.UUID_CODEC.fieldOf("b").forGetter(r -> r.b),
             BlockPos.CODEC.listOf().fieldOf("line").forGetter(r -> r.line),Codec.INT.optionalFieldOf("cursor",0).forGetter(r -> r.cursor),
-            Codec.LONG.optionalFieldOf("blocked_until",0L).forGetter(r -> r.blockedUntil)
+            Codec.LONG.optionalFieldOf("blocked_until",0L).forGetter(r -> r.blockedUntil),
+            Codec.INT.optionalFieldOf("width_cursor",0).forGetter(r -> r.widthCursor)
         ).apply(i,Road::new));
         public final UUID a,b;
         public final List<BlockPos> line;
         public int cursor;
+        public int widthCursor;
         public long blockedUntil;
         public Road(UUID a,UUID b,List<BlockPos> line,int cursor,long blockedUntil) {
+            this(a,b,line,cursor,blockedUntil,cursor);
+        }
+        public Road(UUID a,UUID b,List<BlockPos> line,int cursor,long blockedUntil,int widthCursor) {
             if(line.size()<2 || line.size()>8192) throw new IllegalArgumentException("Invalid highway length");
             this.a=a; this.b=b; this.line=new ArrayList<>(line.stream().map(BlockPos::immutable).toList());
             this.cursor=Math.clamp(cursor,0,line.size()); this.blockedUntil=blockedUntil;
+            this.widthCursor=Math.clamp(widthCursor,0,this.cursor);
         }
         public boolean complete() { return cursor>=line.size(); }
         public List<BlockPos> from(UUID id) { if(id.equals(a)) return line; var reversed=new ArrayList<>(line); Collections.reverse(reversed); return reversed; }
@@ -58,7 +64,7 @@ public final class SharedRoads extends SavedData {
     public static void tick(ServerLevel level) {
         if(!Config.NPC_ROADS.get()) return;
         var data=get(level); var towns=SettlementData.get(level);
-        var pending=data.roads.stream().filter(r -> !r.complete() && r.blockedUntil<=level.getGameTime()).toList();
+        var pending=data.roads.stream().filter(r -> r.widthCursor<r.line.size() && r.blockedUntil<=level.getGameTime()).toList();
         if(!pending.isEmpty()) data.build(level,pending.get(Math.floorMod(data.buildCursor++,pending.size())),COLUMNS_PER_TICK);
         if(level.getGameTime()%200!=0 || data.roads.size()>=MAX_ROADS) return;
         var sources=towns.settlements.stream().filter(t -> t.trading.buildIndex<0 && TradeRoutes.checkpoint(t)!=null).toList();
@@ -125,15 +131,16 @@ public final class SharedRoads extends SavedData {
         var towns=SettlementData.get(level); var a=towns.byId(road.a); var b=towns.byId(road.b);
         if(!TradeRoutes.agreed(a,b)) return 0;
         int done=0;
-        while(!road.complete() && done<budget) {
-            BlockPos center=road.line.get(road.cursor);
+        while(road.widthCursor<road.line.size() && done<budget) {
+            int index=road.widthCursor; boolean extending=index==road.cursor;
+            BlockPos center=road.line.get(index);
             if(!level.hasChunkAt(center)) break;
             int height=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,center.getX(),center.getZ());
             BlockPos changedFloor=new BlockPos(center.getX(),height-1,center.getZ());
             if(height!=center.getY() && WorldWorkData.get(level).protectedBlocks.contains(changedFloor)) {
                 road.blockedUntil=level.getGameTime()+1200; setDirty(); break;
             }
-            if(Math.abs(height-center.getY())>4 || road.cursor>0 && Math.abs(height-road.line.get(road.cursor-1).getY())>1) {
+            if(Math.abs(height-center.getY())>4 || index>0 && Math.abs(height-road.line.get(index-1).getY())>1) {
                 road.blockedUntil=level.getGameTime()+1200; setDirty(); break;
             }
             center=new BlockPos(center.getX(),height,center.getZ());
@@ -141,12 +148,12 @@ public final class SharedRoads extends SavedData {
             boolean readOnly=centerClaim!=null && !centerClaim.trading.npc || RoadSurface.preferred(level,center);
             if(!readOnly && !NpcConstruction.away(level,center)) break;
             if(!passable(level,center)) { road.blockedUntil=level.getGameTime()+1200; setDirty(); break; }
-            road.line.set(road.cursor,center);
-            BlockPos next=road.line.get(Math.min(road.cursor+1,road.line.size()-1));
-            boolean eastWest=Math.abs(next.getX()-center.getX())>=Math.abs(next.getZ()-center.getZ());
-            for(int width=-1;width<=1;width++) {
-                BlockPos feet=center.offset(eastWest ? 0 : width,0,eastWest ? width : 0);
-                if(!level.hasChunkAt(feet) || !passable(level,feet) || !NpcConstruction.away(level,feet)) continue;
+            road.line.set(index,center);
+            for(BlockPos column:RoadShape.columns(road.line,index)) {
+                if(!level.hasChunkAt(column)) continue;
+                int laneHeight=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,column.getX(),column.getZ());
+                BlockPos feet=new BlockPos(column.getX(),laneHeight,column.getZ());
+                if(Math.abs(laneHeight-height)>1 || !passable(level,feet) || !NpcConstruction.away(level,feet)) continue;
                 Settlement claim=towns.at(feet);
                 // An accepted route permits travel, not changes to the player's claim or supply chests.
                 if(claim!=null && !claim.trading.npc) continue;
@@ -158,7 +165,7 @@ public final class SharedRoads extends SavedData {
                 level.setBlock(floor,Blocks.DIRT_PATH.defaultBlockState(),2);
                 for(var air:List.of(feet,feet.above())) if(!level.getBlockState(air).isAir()) level.setBlock(air,Blocks.AIR.defaultBlockState(),2);
             }
-            road.cursor++; done++;
+            road.widthCursor++; if(extending) road.cursor++; done++;
         }
         if(done>0) setDirty();
         return done;

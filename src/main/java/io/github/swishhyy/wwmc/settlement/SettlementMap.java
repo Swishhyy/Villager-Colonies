@@ -82,10 +82,13 @@ public final class SettlementMap {
     private static void send(ServerPlayer player,boolean open) {
         PacketDistributor.sendToPlayer(player,new VcNetwork.MapPayload(build((ServerLevel)player.level(),player),open));
     }
+    public static void refresh(ServerLevel level) {
+        for(ServerPlayer player:level.players()) if(!(player instanceof FakePlayer)) send(player,false);
+    }
     /** Reads saved town locations; never loads terrain to populate a map. */
     @SubscribeEvent public void tick(LevelTickEvent.Post event) {
         if(event.getLevel() instanceof ServerLevel level && level.getGameTime()%200==0)
-            for(ServerPlayer player:level.players()) if(!(player instanceof FakePlayer)) send(player,false);
+            refresh(level);
     }
     /** The town a player's pings belong to: the managed town they stand in, or their nearest. */
     private static Settlement home(ServerLevel level,ServerPlayer player) {

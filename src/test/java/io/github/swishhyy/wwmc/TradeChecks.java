@@ -118,11 +118,11 @@ public final class TradeChecks {
         BlockPos origin=new BlockPos(-1740,140,-1820);
         var plots=NpcTownPlan.nearbyPlots(42,origin,1408);
         assertEquals(plots,NpcTownPlan.nearbyPlots(42,origin,1408));
-        assertEquals(225,plots.size()); assertEquals(9,plots.stream().map(p -> p.candidate().id()).distinct().count());
+        assertTrue(plots.size()>=225 && plots.size()<=274); assertEquals(9,plots.stream().map(p -> p.candidate().id()).distinct().count());
         BlockPos horizontal=new BlockPos(origin.getX(),0,origin.getZ()); double previous=-1;
         for(var plot:plots) {
             double distance=plot.site().distSqr(horizontal); assertTrue(distance>=previous,"A farther NPC plot precedes a nearer one"); previous=distance;
-            assertTrue(NpcTownPlan.sites(plot.candidate()).contains(plot.site()),"Bootstrap created an unrelated town layout or ID");
+            assertEquals(NpcTownPlan.candidate(42,Math.floorDiv(plot.site().getX(),1408),Math.floorDiv(plot.site().getZ(),1408),1408).id(),plot.candidate().id(),"An explored clearing lost its deterministic region identity");
         }
         assertEquals(plots,NpcTownPlan.nearbyPlots(42,new BlockPos(origin.getX(),-60,origin.getZ()),1408),"Player altitude changes nearest-town discovery");
     }

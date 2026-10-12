@@ -113,7 +113,7 @@ public final class NpcVillageWorldTests {
             level.setBlock(used,Blocks.AIR.defaultBlockState(),2);
             level.setBlock(corner,Blocks.OAK_PLANKS.defaultBlockState(),2); protection.protect(corner);
             helper.assertTrue(NpcVillageTerrain.inspect(level,candidate.center())!=null,"An unused corner unnecessarily rejected the entire village");
-            for(int y=0;y<=13;y++) level.setBlock(used.above(y),Blocks.STONE.defaultBlockState(),2);
+            for(int y=0;y<=NpcVillageTerrain.MAX_FOUNDATION+1;y++) level.setBlock(used.above(y),Blocks.STONE.defaultBlockState(),2);
             helper.assertTrue(NpcVillageTerrain.inspect(level,candidate.center())==null,"A cliff passed the terrain safety limit");
             helper.succeed();
         });

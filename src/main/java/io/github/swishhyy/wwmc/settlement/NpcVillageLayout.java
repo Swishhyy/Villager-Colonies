@@ -18,7 +18,7 @@ public record NpcVillageLayout(String palette,List<Integer> ground,List<Integer>
         if(ground.size()!=CELLS || surface.size()!=CELLS) throw new IllegalArgumentException("Invalid NPC village terrain snapshot");
         ground=List.copyOf(ground); surface=List.copyOf(surface);
     }
-    public NpcVillageLayout(String palette,List<Integer> ground,List<Integer> surface) { this(palette,ground,surface,2); }
+    public NpcVillageLayout(String palette,List<Integer> ground,List<Integer> surface) { this(palette,ground,surface,3); }
     public static NpcVillageLayout flat(String palette) {
         return new NpcVillageLayout(palette,Collections.nCopies(CELLS,0),Collections.nCopies(CELLS,0));
     }
@@ -30,5 +30,10 @@ public record NpcVillageLayout(String palette,List<Integer> ground,List<Integer>
         for(int dx=-radiusX;dx<=radiusX;dx++) for(int dz=-radiusZ;dz<=radiusZ;dz++)
             high=Math.max(high,ground(x+dx,z+dz));
         return high;
+    }
+    public int median(int x,int z,int radiusX,int radiusZ) {
+        var levels=new java.util.ArrayList<Integer>();
+        for(int dx=-radiusX;dx<=radiusX;dx++) for(int dz=-radiusZ;dz<=radiusZ;dz++) levels.add(ground(x+dx,z+dz));
+        levels.sort(Integer::compareTo); return levels.get(levels.size()/2);
     }
 }

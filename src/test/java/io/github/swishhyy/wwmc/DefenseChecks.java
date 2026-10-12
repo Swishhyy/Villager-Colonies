@@ -52,9 +52,9 @@ public final class DefenseChecks {
 
         Settlement old=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Old",new BlockPos(0,64,0),150,List.of(),List.of(),"balanced");
         Settlement neighbor=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Neighbor",new BlockPos(350,64,0),150,List.of(),List.of(),"balanced");
-        check(!old.widenTo(Settlement.MIN_RADIUS,List.of(old,neighbor)) && old.radius==150,"A claim does not grow into a neighboring town");
+        check(!old.widenTo(240,List.of(old,neighbor)) && old.radius==150,"An explicit expansion does not reach a neighboring town");
         Settlement far=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Far",new BlockPos(900,64,0),Settlement.MIN_RADIUS,List.of(),List.of(),"balanced");
-        check(old.widenTo(Settlement.MIN_RADIUS,List.of(old,far)) && old.radius==240 && old.contains(new BlockPos(240,70,-240)),"Older small claims widen to the 240-block minimum");
+        check(old.widenTo(240,List.of(old,far)) && old.radius==240 && old.contains(new BlockPos(240,70,-240)),"An explicit expansion updates protection consistently");
         check(!far.widenTo(Settlement.MIN_RADIUS,List.of(old,far)),"Claims at the minimum are unchanged");
         old.nextWave=123456L; old.waves=3;
         Settlement saved=Settlement.CODEC.parse(JsonOps.INSTANCE,Settlement.CODEC.encodeStart(JsonOps.INSTANCE,old).getOrThrow()).getOrThrow();

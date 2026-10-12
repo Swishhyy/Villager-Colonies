@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+## 0.1.0.1
+
+- Halve new settlement claims to a 120-block radius and replace automatic claim widening with paid banner border upgrades. Expand by 32 blocks per purchase, starting at 16 emeralds; require the owner, prevent overlaps and preserve saved land, prices and corner markers.
+- Survey the actual soil beneath trees and terrace towns on hills. Check explored clearings as well as fixed region plots, while retaining one saved town identity per region and bounded chunk/search budgets.
+- Let mine, fort and camp ruins use protected, dry terrain terraces rather than requiring nearly flat treeless ground. Fill foundations and clear only validated natural vegetation.
+- Widen shared highways into joined five-block paths, including saved roads; resume their widening cursor without discarding routes or loading new terrain.
+- Keep JourneyMap town names visible on location markers, add a guarded late initialization fallback and expose throttled integration failures in latest.log.
+
 - Rotate miners between ready exposed ores beside their station; each physical ore block has its own saved cooldown across restarts.
 - Staff new NPC villages with one citizen per workstation (normally eight), spread recruitment spawns and provide varied starter meals. Repair unchanged old watchpost/well/bell details while retaining saved construction.
 - Add a shared saved NPC director for food and safety priorities, material-funded cottages, workshops and inns, and food-funded immigration. Resume paid construction and pause near players, unloaded terrain and protected edits.

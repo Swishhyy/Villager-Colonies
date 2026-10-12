@@ -95,12 +95,14 @@ public final class Panels {
         var overview=new ArrayList<Row>();
         overview.add(new Row(icon(VC.BANNER_ITEM.get()),"Population",town.citizens.size()+" / "+limit+" citizens · "+beds+" housing beds · +"+Research.populationBonus(town)+" places from research"));
         overview.add(new Row(icon(Items.PAPER),"Jobs",TownJobs.assess(level,town).summary()));
+        overview.add(new Row(icon(Items.MAP),"Border: "+town.radius+" blocks",(town.radius*2+1)+" × "+(town.radius*2+1)+" claimed blocks · buy expansion in More"));
         overview.add(new Row(icon(Items.BREAD),"Food",InventoryOps.count(SettlementService.townStorage(level,town),FoodHealing::food)+" meals in storage"));
         int happiness=CitizenWellbeing.average(level,town);
         overview.add(new Row(icon(Items.APPLE),"Happiness: "+happiness+" / 100",CitizenWellbeing.mood(happiness)+" · "+town.progress.children.size()+" children · details in People / Wellbeing").bar(happiness/100F,happiness>=75 ? GREEN : happiness>=50 ? AMBER : RED));
         overview.add(researchStatus(Research.status(level,town)));
         overview.addAll(needs.stream().filter(r -> r.color()!=GREEN).limit(1).toList());
         var more=List.of(
+                borderUpgrade(level,town,viewer),
                 new Row(icon(Items.BELL),Component.literal("Alarm: "+DefenseService.status(town)),Component.literal("Shelter civilians and put guards on duty; toggle the all-clear when safe."),0,-1,0,"act:alarm"),
                 new Row(icon(Items.FILLED_MAP),Component.literal("Expeditions and projects"),Component.literal("Army, ruined sites, outposts, supply projects and town journal"),0,-1,0,"act:campaign"),
                 new Row(icon(Items.NAME_TAG),Component.literal("Town settings"),Component.literal("Name, colours, permissions, invitations and alliances"),0,-1,0,"act:relationships"),
@@ -164,6 +166,14 @@ public final class Panels {
     private static boolean affords(ServerPlayer viewer,int cost) {
         return viewer==null || viewer.getAbilities().instabuild || SettlementService.emeralds(viewer)>=cost;
     }
+    private static Row borderUpgrade(ServerLevel level,Settlement town,ServerPlayer viewer) {
+        String issue=ClaimUpgrades.issue(level,town); int cost=ClaimUpgrades.cost(town),next=ClaimUpgrades.nextRadius(town);
+        boolean owner=viewer==null || TownAccess.owner(town,viewer.getUUID());
+        String detail=!owner ? "Only the settlement owner may buy land." : !issue.isEmpty() ? issue
+                : "Radius "+town.radius+" → "+next+" for "+cost+" emeralds. Neighbouring claims cannot be overwritten.";
+        return new Row(icon(Items.MAP),Component.literal("Expand border: "+cost+" emeralds"),Component.literal(detail),
+                issue.isEmpty() ? 0 : AMBER,PanelView.NO_BAR,owner && issue.isEmpty() && affords(viewer,cost) ? 0 : 1,"act:border");
+    }
     private static Row alarm(Settlement town) {
         Row row=new Row(icon(Items.BELL),"Alarm",DefenseService.status(town));
         return DefenseService.alarmed(town) ? new Row(row.icon(),row.text(),row.detail(),RED,PanelView.NO_BAR,PanelView.NO_VALUE) : row;
@@ -200,6 +210,7 @@ public final class Panels {
             case MultiplayerViews.OPEN -> MultiplayerViews.open(player,town);
             case PRIORITY -> SettlementService.applyPreset(level,town,JobBoard.PRESETS.get((JobBoard.PRESETS.indexOf(town.priority)+1)%JobBoard.PRESETS.size()));
             case JOB -> {
+                if(key.equals("act:border")) { ClaimUpgrades.buy(level,player,town); return; }
                 if(key.equals("act:alarm")) { DefenseService.toggle(level,town); return; }
                 if(key.equals("act:campaign")) { CampaignViews.open(player,town); return; }
                 if(key.equals("act:relationships")) { RelationshipViews.open(player,town); return; }

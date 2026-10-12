@@ -32,6 +32,12 @@ public final class JourneyMapCompat implements IClientPlugin,ExternalMaps.Provid
     @Override public String getModId() { return VC.MODID; }
     @Override public String id() { return "journeymap"; }
     @Override public void initialize(IClientAPI api) { this.api=api; ExternalMaps.register(this); }
+    /** A guarded fallback for loader builds whose annotation scan did not initialize the plugin. */
+    public static ExternalMaps.Provider connect() throws ReflectiveOperationException {
+        var bridge=new JourneyMapCompat();
+        var api=(IClientAPI)Class.forName("journeymap.api.client.impl.ClientAPI").getField("INSTANCE").get(null);
+        bridge.initialize(api); return bridge;
+    }
     @Override public void sync(MapData map) {
         String current=api.getWorldId();
         if(current==null || current.isEmpty()) return;
@@ -47,7 +53,7 @@ public final class JourneyMapCompat implements IClientPlugin,ExternalMaps.Provid
                 waypoint=WaypointFactory.createWaypoint(VC.MODID,marker.pos(),marker.label(),map.dimension(),false);
                 waypoint.setCustomData("vc_marker",marker.id());
                 waypoint.setShowBeacon(false); waypoint.setShowInWorld(false); waypoint.setShowOnLocatorBar(false);
-                waypoint.setShowOnMap(true); waypoint.setShowLabel(!marker.symbol().equals("T")); waypoint.setShowIcon(true);
+                waypoint.setShowOnMap(true); waypoint.setShowLabel(true); waypoint.setShowIcon(true);
                 waypoints.put(marker.id(),waypoint);
             }
             waypoint.setName(marker.label()); waypoint.setBlockPos(marker.pos()); waypoint.setColor(marker.color()); waypoint.setDescription(marker.detail());

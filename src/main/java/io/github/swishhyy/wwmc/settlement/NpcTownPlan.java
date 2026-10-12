@@ -34,16 +34,30 @@ public final class NpcTownPlan {
             if(x!=0 || z!=0) sites.add(candidate.center().offset(x,0,z));
         return sites;
     }
+    /** Explored clearings also get checked. The containing region still has one stable town ID. */
+    public static List<Plot> loadedPlots(long seed,BlockPos origin,int spacing) {
+        List<Plot> plots=new ArrayList<>();
+        for(int dx=-3;dx<=3;dx++) for(int dz=-3;dz<=3;dz++) {
+            int x=Math.floorDiv(origin.getX()+dx*64,16)*16+8,z=Math.floorDiv(origin.getZ()+dz*64,16)*16+8;
+            var site=new BlockPos(x,0,z);
+            var town=candidate(seed,Math.floorDiv(x,spacing),Math.floorDiv(z,spacing),spacing);
+            plots.add(new Plot(town,site));
+        }
+        var horizontal=new BlockPos(origin.getX(),0,origin.getZ());
+        plots.sort(Comparator.comparingDouble(p -> p.site().distSqr(horizontal)));
+        return List.copyOf(plots);
+    }
     /** The same discovery regions and alternate plots, searched nearest-first. */
     public static List<Plot> nearbyPlots(long seed,BlockPos origin,int spacing) {
         int rx=Math.floorDiv(origin.getX(),spacing),rz=Math.floorDiv(origin.getZ(),spacing);
         List<Plot> plots=new ArrayList<>();
+        plots.addAll(loadedPlots(seed,origin,spacing));
         for(int dx=-1;dx<=1;dx++) for(int dz=-1;dz<=1;dz++) {
             Candidate candidate=candidate(seed,rx+dx,rz+dz,spacing);
             for(BlockPos site:sites(candidate)) plots.add(new Plot(candidate,site));
         }
         BlockPos horizontal=new BlockPos(origin.getX(),0,origin.getZ());
         plots.sort(Comparator.comparingDouble(p -> p.site().distSqr(horizontal)));
-        return List.copyOf(plots);
+        return plots.stream().distinct().toList();
     }
 }

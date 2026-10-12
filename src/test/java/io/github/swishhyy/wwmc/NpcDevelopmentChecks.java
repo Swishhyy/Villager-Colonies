@@ -14,6 +14,19 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(EphemeralTestServerProvider.class)
 public final class NpcDevelopmentChecks {
+    @Test void joinedRoadWidthAndLegacyWideningSurviveSaving() {
+        var line=new ArrayList<BlockPos>(); for(int n=0;n<=20;n++) line.add(new BlockPos(n,70,n));
+        var diagonal=RoadShape.columns(line,10);
+        assertTrue(diagonal.contains(new BlockPos(8,70,10)) && diagonal.contains(new BlockPos(10,70,8)),"A diagonal narrows back to disconnected slices");
+        var corner=List.of(new BlockPos(0,70,0),new BlockPos(1,70,0),new BlockPos(1,70,1));
+        assertTrue(RoadShape.columns(corner,1).contains(new BlockPos(2,70,-1)),"A turn has an unfilled join");
+        var road=new SharedRoads.Road(UUID.randomUUID(),UUID.randomUUID(),line,line.size(),0);
+        var json=SharedRoads.Road.CODEC.encodeStart(JsonOps.INSTANCE,road).getOrThrow().getAsJsonObject(); json.remove("width_cursor");
+        var migrated=SharedRoads.Road.CODEC.parse(JsonOps.INSTANCE,json).getOrThrow();
+        assertTrue(migrated.complete()); assertEquals(0,migrated.widthCursor,"An old road must be scheduled for safe widening");
+        migrated.widthCursor=7;
+        assertEquals(7,SharedRoads.Road.CODEC.parse(JsonOps.INSTANCE,SharedRoads.Road.CODEC.encodeStart(JsonOps.INSTANCE,migrated).getOrThrow()).getOrThrow().widthCursor);
+    }
     @Test void safetyAndFoodGateGrowthAndPaidWorkSurvivesSaving() {
         assertEquals(NpcDevelopment.Phase.RECOVER,NpcDirector.decide(new NpcDirector.Situation(true,100,8,true,true,true,true)));
         assertEquals(NpcDevelopment.Phase.SUPPLY,NpcDirector.decide(new NpcDirector.Situation(false,10,8,false,true,true,true)));

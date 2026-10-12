@@ -103,7 +103,7 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
             }
             if(row.key().startsWith("act:")) {
                 String label=row.key().startsWith("act:show:") ? "Show" : row.key().startsWith("act:research:") ? "Unlock" : row.key().startsWith("act:project:") ? "Build" : row.key().startsWith("act:accept:") ? "Accept" : row.key().startsWith("act:decline:") ? "Decline"
-                        : row.key().startsWith("act:unally:") ? "End / cancel" : row.key().startsWith("act:ally:") ? "Ally" : row.key().equals("act:growth:pause") ? "Pause" : row.key().equals("act:growth:resume") ? "Resume" : "Use";
+                        : row.key().startsWith("act:unally:") ? "End / cancel" : row.key().startsWith("act:ally:") ? "Ally" : row.key().equals("act:growth:pause") ? "Pause" : row.key().equals("act:growth:resume") ? "Resume" : row.key().equals("act:border") ? "Buy" : "Use";
                 if(menu.kind==PanelMenu.Kind.MULTIPLAYER) label=row.key().contains("-accept") ? "Accept" : row.key().contains("-challenge") ? "Challenge" : row.key().contains("-deliver") ? "Deliver"
                         : row.key().contains("-release") ? "Release" : row.key().contains("-post") ? "Post" : row.key().contains("-decline") ? "Decline" : "Cancel";
                 int width=menu.kind==PanelMenu.Kind.RELATIONSHIPS || menu.kind==PanelMenu.Kind.MULTIPLAYER ? 76 : row.key().startsWith("act:research:") || row.key().startsWith("act:growth:") ? 44 : 32;

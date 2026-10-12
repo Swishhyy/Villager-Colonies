@@ -59,14 +59,14 @@ public final class ExpeditionService {
         if(data.settlements.stream().anyMatch(t -> t.overlaps(pos,Settlement.MIN_RADIUS+radius+3))) return "too close to an existing claim";
         for(int x=-radius;x<=radius;x++) for(int z=-radius;z<=radius;z++) {
             BlockPos feet=pos.offset(x,0,z); if(!level.hasChunkAt(feet)) return "unloaded ground at "+feet.toShortString();
-            int ground=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,feet.getX(),feet.getZ());
-            if(Math.abs(ground-pos.getY())>2) return "uneven ground at "+feet.toShortString()+"; height "+ground;
+            var survey=NaturalTerrain.surface(level,feet.getX(),feet.getZ()); if(survey==null) return "unloaded ground";
+            int ground=survey.ground();
+            if(Math.abs(ground-pos.getY())>12) return "terrain needs more than twelve blocks of local terracing at "+feet.toShortString();
             if(!level.getFluidState(new BlockPos(feet.getX(),ground-1,feet.getZ())).isEmpty()) return "wet ground at "+feet.toShortString();
-            for(int y=-3;y<=6;y++) {
+            for(int y=Math.min(-3,ground-pos.getY()-1);y<=Math.max(8,survey.top()-pos.getY());y++) {
                 BlockPos block=feet.offset(0,y,0); var state=level.getBlockState(block);
                 if(protection.protectedBlocks.contains(block) || level.getBlockEntity(block)!=null) return "protected construction at "+block.toShortString();
-                if(!state.isAir() && !state.is(Blocks.GRASS_BLOCK) && !state.is(BlockTags.DIRT) && !state.is(BlockTags.BASE_STONE_OVERWORLD) && !state.is(BlockTags.LEAVES)
-                        && !state.is(BlockTags.LOGS) && !state.canBeReplaced()) return "non-natural block "+BuiltInRegistries.BLOCK.getKey(state.getBlock())+" at "+block.toShortString();
+                if(!NaturalTerrain.soil(state) && !NaturalTerrain.vegetation(state)) return "non-natural block "+BuiltInRegistries.BLOCK.getKey(state.getBlock())+" at "+block.toShortString();
             }
         }
         return "";
@@ -75,7 +75,8 @@ public final class ExpeditionService {
         var data=ExpeditionData.get(level);
         if(data.sites.size()>=Config.MAX_EXPEDITIONS.get() || data.sites.stream().anyMatch(s -> s.region.equals(region) || s.pos.distSqr(probe)<384*384)) return null;
         if(!level.hasChunkAt(probe)) return null;
-        BlockPos pos=new BlockPos(probe.getX(),level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,probe.getX(),probe.getZ()),probe.getZ());
+        var ground=NaturalTerrain.surface(level,probe.getX(),probe.getZ()); if(ground==null) return null;
+        BlockPos pos=new BlockPos(probe.getX(),ground.ground(),probe.getZ());
         if(!siteIssue(level,pos,RuinedSites.radius(kind)).isEmpty()) return null;
         UUID id=UUID.nameUUIDFromBytes((level.getSeed()+":"+region).getBytes(StandardCharsets.UTF_8));
         String objective=switch(kind) {
@@ -96,6 +97,13 @@ public final class ExpeditionService {
     }
     private static void build(ServerLevel level,ExpeditionData.Site site) {
         BlockPos c=site.pos;
+        // A real foundation and cleared terrace rather than a floating floor or trees through the ruins.
+        int radius=RuinedSites.radius(site.kind);
+        for(int x=-radius;x<=radius;x++) for(int z=-radius;z<=radius;z++) {
+            var survey=NaturalTerrain.surface(level,c.getX()+x,c.getZ()+z);
+            for(int y=survey.ground()-c.getY()-1;y<-1;y++) put(level,c.offset(x,y,z),Blocks.COBBLESTONE.defaultBlockState());
+            for(int y=0;y<=Math.max(8,survey.top()-c.getY());y++) level.setBlock(c.offset(x,y,z),Blocks.AIR.defaultBlockState(),3);
+        }
         if(site.kind.equals("fort") || site.kind.equals("mine") || site.kind.equals("townhall")) {
             RuinedSites.build(level,site);
             cache(level,site); return;

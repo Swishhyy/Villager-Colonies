@@ -20,11 +20,23 @@ public final class TownBorders {
     }
     public static String title(Settlement town) { return color(town).getName().replace('_',' '); }
     public static List<BlockPos> corners(Settlement town) {
-        return List.of(town.center.offset(-town.radius,0,-town.radius),town.center.offset(town.radius,0,-town.radius),
-                town.center.offset(-town.radius,0,town.radius),town.center.offset(town.radius,0,town.radius));
+        return cornersAt(town.center,town.radius);
+    }
+    public static List<BlockPos> cornersAt(BlockPos center,int radius) {
+        return List.of(center.offset(-radius,0,-radius),center.offset(radius,0,-radius),
+                center.offset(-radius,0,radius),center.offset(radius,0,radius));
     }
     public static void update(ServerLevel level,Settlement town) {
         DyeColor color=color(town);
+        // Retain unloaded old flags until they can be removed safely; they are still recognized as town markers.
+        var corners=corners(town);
+        for(BlockPos saved:List.copyOf(town.borderBanners)) {
+            if(corners.stream().anyMatch(p -> p.getX()==saved.getX() && p.getZ()==saved.getZ()) || !level.hasChunkAt(saved)) continue;
+            var state=level.getBlockState(saved);
+            if(state.getBlock() instanceof BannerBlock && level.getBlockEntity(saved) instanceof net.minecraft.world.level.block.entity.BannerBlockEntity bannerEntity
+                    && bannerEntity.getPatterns().layers().isEmpty()) level.removeBlock(saved,false);
+            town.borderBanners.remove(saved); SettlementData.get(level).setDirty();
+        }
         if(level.hasChunkAt(town.center)) {
             var flag=level.getBlockState(town.center);
             if(flag.is(VC.BANNER.get()) && flag.getValue(SettlementBannerBlock.COLOR)!=color)

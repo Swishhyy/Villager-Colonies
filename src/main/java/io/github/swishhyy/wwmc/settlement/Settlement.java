@@ -17,8 +17,8 @@ import java.util.Set;
 import net.minecraft.core.BlockPos;
 
 public final class Settlement {
-    /** Every claim extends at least this far from its banner. */
-    public static final int MIN_RADIUS=240;
+    /** Default starting radius. Saved smaller or larger claims retain their purchased land. */
+    public static final int MIN_RADIUS=120,MAX_RADIUS=512;
     /** The population level of a town saved before population upgrades, until the server works out what it already holds. */
     public static final int UNSET=-1;
     public static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
@@ -40,12 +40,13 @@ public final class Settlement {
         TradeSettings.CODEC.optionalFieldOf("trading").forGetter(s -> Optional.of(s.trading))
     ).apply(i, Settlement::new));
     /** Additional optional fields preserve both prior recall saves and campaign data alongside the sixteen-field core. */
-    private record Extra(Optional<JobBoard> jobs,Map<UUID,BlockPos> places,Optional<CampaignState> campaign,Optional<TownProgress> progress) {}
+    private record Extra(Optional<JobBoard> jobs,Map<UUID,BlockPos> places,Optional<CampaignState> campaign,Optional<TownProgress> progress,int borderLevel) {}
     private static final MapCodec<Extra> EXTRA = RecordCodecBuilder.mapCodec(i -> i.group(
         JobBoard.CODEC.optionalFieldOf("jobs").forGetter(Extra::jobs),
         Codec.unboundedMap(UUID_CODEC,BlockPos.CODEC).optionalFieldOf("citizen_places",Map.of()).forGetter(Extra::places),
         CampaignState.CODEC.optionalFieldOf("campaign").forGetter(Extra::campaign),
-        TownProgress.CODEC.optionalFieldOf("progress").forGetter(Extra::progress)
+        TownProgress.CODEC.optionalFieldOf("progress").forGetter(Extra::progress),
+        Codec.intRange(0,32).optionalFieldOf("border_level",0).forGetter(Extra::borderLevel)
     ).apply(i, Extra::new));
     public static final Codec<Settlement> CODEC = Codec.mapPair(CORE,EXTRA).xmap(
         pair -> {
@@ -54,15 +55,18 @@ public final class Settlement {
             pair.getSecond().places().forEach((citizen,place) -> s.citizenPlaces.put(citizen,place.immutable()));
             s.campaign=pair.getSecond().campaign().orElseGet(CampaignState::new);
             s.progress=pair.getSecond().progress().orElseGet(TownProgress::legacy);
+            s.borderLevel=pair.getSecond().borderLevel();
             return s;
         },
-        s -> Pair.of(s,new Extra(Optional.of(s.jobs),s.citizenPlaces,Optional.of(s.campaign),Optional.of(s.progress)))).codec();
+        s -> Pair.of(s,new Extra(Optional.of(s.jobs),s.citizenPlaces,Optional.of(s.campaign),Optional.of(s.progress),s.borderLevel))).codec();
     public final UUID id;
     /** Changes only when both main settlement owners consent to an expedition outpost battle and its flag is captured. */
     public UUID owner;
     public String name, priority;
     public final BlockPos center;
     public int radius;
+    /** Paid border expansions. Older saved claims start at level zero and retain their radius. */
+    public int borderLevel;
     /** Game time of the next enemy wave; zero until the town is populous enough. */
     public long nextWave;
     public int waves;
@@ -131,7 +135,7 @@ public final class Settlement {
                     .thenComparingInt(s -> s.position().getY())
                     .thenComparingInt(s -> s.position().getZ())).orElse(null);
     }
-    /** Enlarge an older, smaller claim when the larger square would not reach another town. */
+    /** Explicit expansion only; periodic town updates never widen a claim. */
     public boolean widenTo(int minimum,Collection<Settlement> towns) {
         if(radius>=minimum || towns.stream().anyMatch(other -> other!=this && other.overlaps(center,minimum))) return false;
         radius=minimum; return true;

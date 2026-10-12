@@ -16,7 +16,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 /** Follow dry natural ground, clear vegetation, and reject construction only where the plan touches it. */
 public final class NpcVillageTerrain {
-    public static final int MAX_RELIEF=12,MAX_FOUNDATION=6,MAX_TREE_HEIGHT=32;
+    public static final int MAX_RELIEF=64,MAX_FOUNDATION=20,MAX_TREE_HEIGHT=NaturalTerrain.MAX_TREE_HEIGHT;
     public record Site(BlockPos center,NpcVillageLayout layout) {}
     private NpcVillageTerrain() {}
 
@@ -24,13 +24,13 @@ public final class NpcVillageTerrain {
         int extent=NpcVillageLayout.EXTENT;
         List<Integer> ground=new ArrayList<>(NpcVillageLayout.CELLS),surface=new ArrayList<>(NpcVillageLayout.CELLS);
         for(int x=-extent;x<=extent;x++) for(int z=-extent;z<=extent;z++) {
-            int top=level.getHeight(Heightmap.Types.WORLD_SURFACE,probe.getX()+x,probe.getZ()+z),y=top;
-            // Tree trunks are part of the heightmap. Descend through natural vegetation to actual soil.
-            while(y>level.getMinY()+2 && top-y<=MAX_TREE_HEIGHT && vegetation(level.getBlockState(probe.offset(x,y-1-probe.getY(),z)))) y--;
-            ground.add(y); surface.add(top);
+            var column=NaturalTerrain.surface(level,probe.getX()+x,probe.getZ()+z);
+            if(column==null) return reject(probe,probe.offset(x,0,z),"unloaded terrain");
+            ground.add(column.ground()); surface.add(column.top());
         }
-        int banner=Integer.MIN_VALUE;
-        for(int x=-4;x<=4;x++) for(int z=-4;z<=4;z++) banner=Math.max(banner,ground.get(NpcVillageLayout.index(x,z)));
+        List<Integer> plaza=new ArrayList<>();
+        for(int x=-4;x<=4;x++) for(int z=-4;z<=4;z++) plaza.add(ground.get(NpcVillageLayout.index(x,z)));
+        plaza.sort(Integer::compareTo); int banner=plaza.get(plaza.size()/2);
         BlockPos center=new BlockPos(probe.getX(),banner,probe.getZ());
         List<Integer> relativeGround=ground.stream().map(y -> y-center.getY()).toList();
         List<Integer> relativeSurface=surface.stream().map(y -> y-center.getY()).toList();
@@ -39,7 +39,7 @@ public final class NpcVillageTerrain {
         for(var column:NpcVillagePlan.footprint()) {
             int y=ground.get(NpcVillageLayout.index(column.x(),column.z()));
             BlockPos p=new BlockPos(probe.getX()+column.x(),y-1,probe.getZ()+column.z());
-            if(y<level.getMinY()+4 || y+MAX_RELIEF+10>=level.getMaxY()) return reject(probe,p,"surface height outside safe range");
+            if(y<level.getMinY()+4 || y+12>=level.getMaxY()) return reject(probe,p,"surface height outside safe range");
             if(!soil(level.getBlockState(p))) return reject(probe,p,"unsupported ground "+level.getBlockState(p));
             low=Math.min(low,y); high=Math.max(high,y);
             if(high-low>MAX_RELIEF) return reject(probe,p,"terrain relief exceeds "+MAX_RELIEF+" blocks");
@@ -56,6 +56,7 @@ public final class NpcVillageTerrain {
         var protectedBlocks=WorldWorkData.get(level).protectedBlocks;
         for(var placement:NpcVillagePlan.blueprint(preview)) {
             BlockPos p=placement.pos(); BlockState state=level.getBlockState(p);
+            if(p.getY()<level.getMinY() || p.getY()>=level.getMaxY()) return reject(probe,p,"building outside height range");
             if(!level.getWorldBorder().isWithinBounds(p)) return reject(probe,p,"outside world border");
             if(protectedBlocks.contains(p)) return reject(probe,p,"protected block");
             if(level.getBlockEntity(p)!=null) return reject(probe,p,"block entity");
@@ -73,14 +74,10 @@ public final class NpcVillageTerrain {
         return "oak";
     }
     private static boolean soil(BlockState state) {
-        return state.is(BlockTags.DIRT) || state.is(BlockTags.BASE_STONE_OVERWORLD) || state.is(Blocks.GRASS_BLOCK)
-                || state.is(Blocks.PODZOL) || state.is(Blocks.MYCELIUM) || state.is(Blocks.SAND) || state.is(Blocks.RED_SAND)
-                || state.is(Blocks.GRAVEL) || state.is(Blocks.CLAY) || state.is(Blocks.TERRACOTTA) || state.is(Blocks.SNOW_BLOCK)
-                || state.is(Blocks.MUD);
+        return NaturalTerrain.soil(state);
     }
     private static boolean vegetation(BlockState state) {
-        return state.isAir() || state.canBeReplaced() || state.is(BlockTags.LOGS)
-                || state.getBlock() instanceof LeavesBlock && !state.getValue(BlockStateProperties.PERSISTENT);
+        return NaturalTerrain.vegetation(state);
     }
     private static Site reject(BlockPos probe,BlockPos p,String reason) {
         VC.LOGGER.debug("[VC][npc-search] Rejected plot={} position={} reason={}",probe,p,reason); return null;

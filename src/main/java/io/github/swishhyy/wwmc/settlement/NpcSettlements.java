@@ -27,19 +27,24 @@ public final class NpcSettlements {
     public static final int BUILD_BUDGET=128,EXTENT=NpcVillageLayout.EXTENT;
     public record Placement(BlockPos pos,BlockState state,boolean protect) {}
     private static final Map<ServerLevel,Map<UUID,List<Placement>>> PLANS=new WeakHashMap<>();
-    private int playerCursor,buildCursor;
+    private int playerCursor,buildCursor,searchCursor;
     @SubscribeEvent public void tick(LevelTickEvent.Post event) {
         if(!(event.getLevel() instanceof ServerLevel level) || !level.dimension().equals(Level.OVERWORLD)) return;
         SettlementData data=SettlementData.get(level);
         var pending=data.settlements.stream().filter(t -> t.trading.npc && t.trading.buildIndex>=0 && loaded(level,t.center)).toList();
         if(!pending.isEmpty()) { build(level,pending.get(Math.floorMod(buildCursor++,pending.size()))); return; }
-        if(level.getGameTime()%100==0 && Config.RANDOM_TOWNS.get() && !level.players().isEmpty()
+        var players=level.players().stream().filter(p -> !(p instanceof net.neoforged.neoforge.common.util.FakePlayer) && p.isAlive() && !p.isSpectator()).toList();
+        if(level.getGameTime()%100==0 && Config.RANDOM_TOWNS.get() && !players.isEmpty()
                 && data.settlements.stream().filter(t -> t.trading.npc).count()<Config.MAX_NPC_TOWNS.get()) {
-            var player=level.players().get(Math.floorMod(playerCursor++,level.players().size()));
-            int spacing=Config.NPC_SPACING.get(),rx=Math.floorDiv(player.blockPosition().getX(),spacing),rz=Math.floorDiv(player.blockPosition().getZ(),spacing);
-            for(int dx=-1;dx<=1;dx++) for(int dz=-1;dz<=1;dz++) {
-                var candidate=NpcTownPlan.candidate(level.getSeed(),rx+dx,rz+dz,spacing);
-                if(discover(level,candidate)) return;
+            var player=players.get(Math.floorMod(playerCursor++,players.size()));
+            var plots=NpcTownPlan.nearbyPlots(level.getSeed(),player.blockPosition(),Config.NPC_SPACING.get());
+            int inspected=0;
+            for(int n=0;n<plots.size();n++) {
+                var plot=plots.get(Math.floorMod(searchCursor++,plots.size()));
+                if(!loaded(level,plot.site()) || NpcWorldData.get(level).generated.contains(plot.candidate().region())
+                        || player.blockPosition().distSqr(new BlockPos(plot.site().getX(),player.getBlockY(),plot.site().getZ()))<96*96) continue;
+                if(discover(level,plot.candidate(),List.of(plot.site()))!=null) return;
+                if(++inspected>=4) break;
             }
         }
         // Founding still recruits a starting crew. Later growth uses PopulationGrowth's happy parents and real babies.

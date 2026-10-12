@@ -119,7 +119,7 @@ public final class NearbyNpcTown {
         var data=SettlementData.get(level); var generated=NpcWorldData.get(level).generated;
         while(!search.plots.isEmpty()) {
             var plot=search.plots.removeFirst(); BlockPos pos=plot.site();
-            if(generated.contains(plot.candidate().region()) || distanceSquared(pos,search.origin)<256.0*256.0
+            if(generated.contains(plot.candidate().region()) || distanceSquared(pos,search.origin)<96.0*96.0
                     || data.settlements.stream().anyMatch(t -> t.overlaps(pos,Config.SETTLEMENT_RADIUS.get()))
                     || !level.getWorldBorder().isWithinBounds(pos.offset(-NpcSettlements.EXTENT,0,-NpcSettlements.EXTENT))
                     || !level.getWorldBorder().isWithinBounds(pos.offset(NpcSettlements.EXTENT,0,NpcSettlements.EXTENT))) continue;

@@ -57,7 +57,7 @@ public final class SettlementService {
     static List<BlockPos> resourcePositions(ServerLevel level,Settlement town,Station station,String kind,Supplier<List<BlockPos>> scan) {
         return RESOURCE_SCANS.computeIfAbsent(level,l -> new StationResourceCache()).positions(town,station,kind,level.getGameTime(),scan);
     }
-    private static void refreshResources(ServerLevel level,Settlement town) {
+    static void refreshResources(ServerLevel level,Settlement town) {
         StationResourceCache scans=RESOURCE_SCANS.get(level);
         if(scans!=null) scans.refresh(town.id);
     }
@@ -626,12 +626,6 @@ public final class SettlementService {
         if(scans!=null) scans.prune(level.getGameTime());
         for(Settlement s:data.settlements) {
             if(ForgeWorkshop.migrate(level,s)) data.setDirty();
-            if(s.widenTo(Settlement.MIN_RADIUS,data.settlements)) {
-                // Old corner banners are no longer the border; they stay in the world as ordinary blocks.
-                s.borderBanners.clear(); data.setDirty();
-                ServerPlayer owner=level.getServer().getPlayerList().getPlayer(s.owner);
-                if(owner!=null) tell(owner,s.name+"'s claim now extends "+s.radius+" blocks from its banner.");
-            }
             placeBorders(level,s);
             if(s.populationLevel<0) { s.populationLevel=populationLevel(s); data.setDirty(); }
             if(s.stations.removeIf(station -> level.hasChunkAt(station.position()) && !active(level,station))) data.setDirty();

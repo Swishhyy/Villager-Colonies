@@ -132,21 +132,36 @@ public final class NpcVillagePlan {
     private static final class Builder {
         final Settlement town; final NpcVillageLayout layout; final Palette palette;
         final int[] lotHeights=new int[LOTS.size()];
+        final int minimumGround;
         final Map<Column,Floor> floors=new LinkedHashMap<>();
         final Map<BlockPos,NpcSettlements.Placement> detail=new LinkedHashMap<>();
         Builder(Settlement town) {
             this.town=town; layout=town.trading.layout; palette=Palette.of(layout.palette());
+            minimumGround=layout.ground().stream().mapToInt(Integer::intValue).min().orElse(0);
             for(int n=0;n<LOTS.size();n++) {
                 Lot lot=LOTS.get(n);
-                lotHeights[n]=lot.x()==0 && lot.z()==0 ? 0 : layout.highest(lot.x(),lot.z(),lot.radiusX(),lot.radiusZ());
+                lotHeights[n]=lot.x()==0 && lot.z()==0 ? 0 : layout.design()>=3
+                        ? layout.median(lot.x(),lot.z(),lot.radiusX(),lot.radiusZ()) : layout.highest(lot.x(),lot.z(),lot.radiusX(),lot.radiusZ());
             }
+            if(layout.design()>=3) {
+                var plaza=LOTS.getLast();
+                for(int n=0;n<LOTS.size();n++) {
+                    int reach=separation(LOTS.get(n),plaza); lotHeights[n]=Math.clamp(lotHeights[n],-reach,reach);
+                }
+                // One block per road step between terraces, including on steeper natural hills.
+                for(int pass=0;pass<LOTS.size();pass++) for(int a=0;a<LOTS.size();a++) for(int b=0;b<LOTS.size();b++)
+                    lotHeights[a]=Math.min(lotHeights[a],lotHeights[b]+separation(LOTS.get(a),LOTS.get(b)));
+            }
+        }
+        int separation(Lot a,Lot b) {
+            return Math.max(0,Math.abs(a.x()-b.x())-a.radiusX()-b.radiusX())+Math.max(0,Math.abs(a.z()-b.z())-a.radiusZ()-b.radiusZ());
         }
         int lot(int x,int z) {
             for(int n=0;n<LOTS.size();n++) if(LOTS.get(n).x()==x && LOTS.get(n).z()==z) return lotHeights[n];
             return walk(x,z);
         }
         int walk(int x,int z) {
-            int high=layout.ground(x,z);
+            int high=layout.design()>=3 ? minimumGround : layout.ground(x,z);
             for(int n=0;n<LOTS.size();n++) {
                 Lot lot=LOTS.get(n);
                 if(Math.abs(x-lot.x())<=lot.radiusX() && Math.abs(z-lot.z())<=lot.radiusZ()) return lotHeights[n];
