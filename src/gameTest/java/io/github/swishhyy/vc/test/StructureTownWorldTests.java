@@ -31,8 +31,8 @@ public final class StructureTownWorldTests {
             var piece=new NpcTownPiece(NpcTownPlan.worldgenCandidate(level.getSeed(),site.center()),site,120);
             var context=StructurePieceSerializationContext.fromLevel(level);
             var structure=level.registryAccess().lookupOrThrow(Registries.STRUCTURE).getOrThrow(SettlementStructures.TOWN).value();
-            var start=new StructureStart(structure,new ChunkPos(base),0,new PiecesContainer(List.of(piece)));
-            var restored=StructureStart.loadStaticStart(context,start.createTag(context,new ChunkPos(base)),level.getSeed());
+            var start=new StructureStart(structure,ChunkPos.containing(base),0,new PiecesContainer(List.of(piece)));
+            var restored=StructureStart.loadStaticStart(context,start.createTag(context,ChunkPos.containing(base)),level.getSeed());
             helper.assertTrue(restored!=null && restored.isValid(),"The native start did not survive its save");
             var saved=(NpcTownPiece)restored.getPieces().getFirst();
             helper.assertTrue(saved.candidate().equals(piece.candidate()) && saved.placements().equals(piece.placements()),"Saving changes the founding layout or identity");

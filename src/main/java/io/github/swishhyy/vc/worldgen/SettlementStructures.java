@@ -48,7 +48,7 @@ public final class SettlementStructures {
         var chunk=event.getChunk().getPos();
         level.getServer().execute(() -> {
             var queue=pending.get(level);
-            if(queue!=null) queue.values().removeIf(p -> new net.minecraft.world.level.ChunkPos(p.candidate().center()).equals(chunk));
+            if(queue!=null) queue.values().removeIf(p -> net.minecraft.world.level.ChunkPos.containing(p.candidate().center()).equals(chunk));
         });
     }
     @SubscribeEvent public void tick(LevelTickEvent.Post event) {
