@@ -4,9 +4,11 @@ import io.github.swishhyy.vc.Config;
 import io.github.swishhyy.vc.VC;
 import io.github.swishhyy.vc.settlement.*;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -305,6 +307,8 @@ public final class RoadNetwork {
         }
         Set<Long> paved=new HashSet<>();
         boolean changed=false;
+        // World generation reads the generation heightmaps; a finished world (the place command) keeps only live ones.
+        boolean live=world instanceof ServerLevel;
         List<Road> ordered=new ArrayList<>(near.values()); ordered.addAll(streets.values());
         for(Road road:ordered) {
             if(!road.near(x0,z0,x1,z1)) continue;
@@ -315,15 +319,16 @@ public final class RoadNetwork {
                 for(int dx=-1;dx<=1;dx++) for(int dz=-1;dz<=1;dz++) {
                     int cx=x+dx,cz=z+dz;
                     if(cx<x0 || cx>x1 || cz<z0 || cz>z1 || !paved.add(pack(cx,cz))) continue;
-                    pave(world,cx,cz,road.feet()[n]);
+                    pave(world,cx,cz,road.feet()[n],live);
                     changed=true;
                 }
             }
         }
         return changed;
     }
-    private static void pave(WorldGenLevel world,int x,int z,int feet) {
-        int surface=world.getHeight(Heightmap.Types.WORLD_SURFACE_WG,x,z),ground=world.getHeight(Heightmap.Types.OCEAN_FLOOR_WG,x,z);
+    private static void pave(WorldGenLevel world,int x,int z,int feet,boolean live) {
+        int surface=world.getHeight(live ? Heightmap.Types.WORLD_SURFACE : Heightmap.Types.WORLD_SURFACE_WG,x,z);
+        int ground=world.getHeight(live ? Heightmap.Types.OCEAN_FLOOR : Heightmap.Types.OCEAN_FLOOR_WG,x,z);
         int top=ground-1,road=feet-1;
         if(surface>ground || road>top+MAX_FILL) {
             // Over water, or a hole too deep to fill, a plank deck carries the road.
@@ -347,15 +352,21 @@ public final class RoadNetwork {
 
     // ---------- Trade along the roads ----------
     private record Link(Node other,List<BlockPos> line) {}
-    /** Towns reachable from a site by road: its neighbours, or through up to two crossroads. Runs off the server thread. */
-    private List<Link> links(Node home,Set<Long> towns) {
-        List<Link> found=new ArrayList<>();
+    /**
+     * Towns reachable from a site by road: its neighbours, or through up to two crossroads. Runs off the server thread
+     * and hands on each town as soon as its road is surveyed, nearest first, so a town hears of its neighbours long
+     * before the wider network has been surveyed.
+     */
+    private void links(Node home,Set<Long> towns,Consumer<Link> found) {
+        int count=0;
         record Trip(Node at,Node from,List<BlockPos> line,int crossroads) {}
         var queue=new ArrayDeque<Trip>(); queue.add(new Trip(home,null,List.of(),0));
         Set<Long> seen=new HashSet<>(); seen.add(home.key());
-        while(!queue.isEmpty() && found.size()<MAX_LINKS) {
+        while(!queue.isEmpty() && count<MAX_LINKS) {
             Trip trip=queue.poll();
-            for(Node next:neighbours(trip.at())) {
+            List<Node> ahead=new ArrayList<>(neighbours(trip.at()));
+            ahead.sort(Comparator.comparing(node -> !towns.contains(node.key())));
+            for(Node next:ahead) {
                 if(!seen.add(next.key())) continue;
                 Road road=road(trip.at(),next);
                 if(road==null) continue;
@@ -366,11 +377,10 @@ public final class RoadNetwork {
                     append(line,spoke(trip.at(),side(trip.at(),next)),true);
                 }
                 append(line,road,trip.at().key()>next.key());
-                if(towns.contains(next.key())) { if(line.size()>=2 && line.size()<=8192) found.add(new Link(next,line)); }
+                if(towns.contains(next.key())) { if(line.size()>=2 && line.size()<=8192) { found.accept(new Link(next,line)); count++; } }
                 else if(trip.crossroads()<2) queue.add(new Trip(next,trip.at(),line,trip.crossroads()+1));
             }
         }
-        return found;
     }
     private static void append(List<BlockPos> line,Road road,boolean reversed) {
         if(road.length()==0) return;
@@ -384,45 +394,42 @@ public final class RoadNetwork {
     }
     /**
      * A town found on the network arranges trade with the towns already found along its roads, and the shared highway
-     * graph learns the roads between them. Surveying runs in the background; the result is applied on the server thread.
+     * graph learns the roads between them. Surveying runs in the background and each road is applied on the server
+     * thread as it is found; the result completes once the survey has finished.
      */
-    public static void connect(ServerLevel level,Settlement town) {
+    public static CompletableFuture<Void> connect(ServerLevel level,Settlement town) {
         var network=of(level);
         Node home=network==null ? null : network.nodeAt(town.center);
-        if(home==null) return;
+        if(home==null) return CompletableFuture.completedFuture(null);
         Map<Long,UUID> towns=new HashMap<>();
         for(Settlement other:SettlementData.get(level).settlements) if(other!=town && other.trading.npc && other.trading.buildIndex<0) {
             Node node=network.nodeAt(other.center);
             if(node!=null) towns.put(node.key(),other.id);
         }
-        if(towns.isEmpty()) return;
-        SURVEYOR.execute(() -> {
-            List<Link> links;
-            try { links=network.links(home,towns.keySet()); }
-            catch(RuntimeException e) { VC.LOGGER.warn("[VC][roads] Survey from town={} failed",town.id,e); return; }
-            level.getServer().execute(() -> network.apply(level,town,towns,links));
-        });
+        if(towns.isEmpty()) return CompletableFuture.completedFuture(null);
+        return CompletableFuture.runAsync(() -> {
+            try { network.links(home,towns.keySet(),link -> level.getServer().execute(() -> network.apply(level,town,towns,link))); }
+            catch(RuntimeException e) { VC.LOGGER.warn("[VC][roads] Survey from town={} failed",town.id,e); }
+        },SURVEYOR);
     }
-    private void apply(ServerLevel level,Settlement town,Map<Long,UUID> towns,List<Link> links) {
+    private void apply(ServerLevel level,Settlement town,Map<Long,UUID> towns,Link link) {
         var data=SettlementData.get(level); var roads=SharedRoads.get(level);
         if(data.byId(town.id)!=town) return;
-        for(Link link:links) {
-            Settlement other=data.byId(towns.get(link.other().key()));
-            if(other==null || other.trading.relations.getOrDefault(town.owner,0)<0 || town.trading.relations.getOrDefault(other.owner,0)<0) continue;
-            if(!town.campaign.extraRoutes.contains(other.id) && town.campaign.extraRoutes.size()>=MAX_LINKS
-                    || !other.campaign.extraRoutes.contains(town.id) && other.campaign.extraRoutes.size()>=MAX_LINKS) continue;
-            boolean linked=town.campaign.extraRoutes.add(other.id) | other.campaign.extraRoutes.add(town.id);
-            if(roads.between(town.id,other.id)==null && roads.roads.size()<SharedRoads.MAX_ROADS) {
-                var line=link.line();
-                roads.roads.add(new SharedRoads.Road(town.id,other.id,line,line.size(),0,line.size()));
-                roads.setDirty();
-            }
-            if(linked) {
-                NeighbourTrade.refreshRequests(town); NeighbourTrade.refreshRequests(other);
-                CampaignService.journal(level,town,"Our road to "+other.name+" is open for trade.");
-                CampaignService.journal(level,other,"Our road to "+town.name+" is open for trade.");
-                VC.LOGGER.info("[VC][roads] Trade road opened: {} <-> {} ({} waypoints)",town.id,other.id,link.line().size());
-            }
+        Settlement other=data.byId(towns.get(link.other().key()));
+        if(other==null || other.trading.relations.getOrDefault(town.owner,0)<0 || town.trading.relations.getOrDefault(other.owner,0)<0) return;
+        if(!town.campaign.extraRoutes.contains(other.id) && town.campaign.extraRoutes.size()>=MAX_LINKS
+                || !other.campaign.extraRoutes.contains(town.id) && other.campaign.extraRoutes.size()>=MAX_LINKS) return;
+        boolean linked=town.campaign.extraRoutes.add(other.id) | other.campaign.extraRoutes.add(town.id);
+        if(roads.between(town.id,other.id)==null && roads.roads.size()<SharedRoads.MAX_ROADS) {
+            var line=link.line();
+            roads.roads.add(new SharedRoads.Road(town.id,other.id,line,line.size(),0,line.size()));
+            roads.setDirty();
+        }
+        if(linked) {
+            NeighbourTrade.refreshRequests(town); NeighbourTrade.refreshRequests(other);
+            CampaignService.journal(level,town,"Our road to "+other.name+" is open for trade.");
+            CampaignService.journal(level,other,"Our road to "+town.name+" is open for trade.");
+            VC.LOGGER.info("[VC][roads] Trade road opened: {} <-> {} ({} waypoints)",town.id,other.id,link.line().size());
         }
         data.setDirty();
     }

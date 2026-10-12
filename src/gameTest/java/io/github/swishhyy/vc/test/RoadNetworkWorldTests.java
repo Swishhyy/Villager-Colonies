@@ -5,6 +5,7 @@ import io.github.swishhyy.vc.settlement.*;
 import io.github.swishhyy.vc.worldgen.RoadNetwork;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -63,7 +64,8 @@ public final class RoadNetworkWorldTests {
                 data.settlements.remove(a); data.settlements.remove(b); data.setDirty();
                 CitizenNavigationTests.release(level,column,chunks);
             });
-            RoadNetwork.connect(level,a);
+            // The game test server runs its ticks as fast as it can: wait for the survey itself, not for a number of ticks.
+            RoadNetwork.connect(level,a).orTimeout(60,TimeUnit.SECONDS).join();
             helper.succeedWhen(() -> {
                 helper.assertTrue(TradeRoutes.agreed(a,b),"Neighbouring towns did not open trade along their road");
                 var shared=SharedRoads.get(level).between(a.id,b.id);
