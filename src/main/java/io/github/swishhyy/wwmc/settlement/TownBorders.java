@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.block.SettlementBannerBlock;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -27,7 +27,7 @@ public final class TownBorders {
         DyeColor color=color(town);
         if(level.hasChunkAt(town.center)) {
             var flag=level.getBlockState(town.center);
-            if(flag.is(WWMC.BANNER.get()) && flag.getValue(SettlementBannerBlock.COLOR)!=color)
+            if(flag.is(VC.BANNER.get()) && flag.getValue(SettlementBannerBlock.COLOR)!=color)
                 level.setBlockAndUpdate(town.center,flag.setValue(SettlementBannerBlock.COLOR,color));
         }
         var banner=BuiltInRegistries.BLOCK.getValue(Identifier.withDefaultNamespace(color.getName()+"_banner")).defaultBlockState();

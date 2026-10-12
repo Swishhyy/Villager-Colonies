@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.util.List;
@@ -24,7 +24,7 @@ public final class Carcasses {
         public final Item meat;
         public final int portions;
         Kind(String id,Item meat,int portions) { this.id=id; this.meat=meat; this.portions=portions; }
-        public ItemStack stack() { return new ItemStack(WWMC.CARCASSES.get(this).get()); }
+        public ItemStack stack() { return new ItemStack(VC.CARCASSES.get(this).get()); }
     }
     public static Kind kind(LivingEntity entity) {
         for(Kind kind:Kind.values()) if(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).equals(Identifier.withDefaultNamespace(kind.id))) return kind;
@@ -32,7 +32,7 @@ public final class Carcasses {
     }
     public static Kind kind(ItemStack stack) {
         if(stack.isEmpty()) return null;
-        for(Kind kind:Kind.values()) if(stack.is(WWMC.CARCASSES.get(kind).get())) return kind;
+        for(Kind kind:Kind.values()) if(stack.is(VC.CARCASSES.get(kind).get())) return kind;
         return null;
     }
     public static boolean carcass(ItemStack stack) { return kind(stack)!=null; }

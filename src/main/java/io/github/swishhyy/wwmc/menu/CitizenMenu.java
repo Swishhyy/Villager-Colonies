@@ -17,7 +17,7 @@ public final class CitizenMenu extends SettlementMenu {
     private final Container bag;
     private final CitizenEntity citizen;
     public CitizenMenu(int id,Inventory inventory,Container bag,CitizenEntity citizen,ServerPlayer viewer,PanelView view) {
-        super(WwmcMenus.CITIZEN.get(),id,viewer,view);
+        super(VcMenus.CITIZEN.get(),id,viewer,view);
         this.bag=bag; this.citizen=citizen;
         for(int row=0;row<4;row++) for(int column=0;column<9;column++) addSlot(new Slot(bag,column+row*9,BAG_X+column*18,BAG_Y+row*18));
         for(int row=0;row<3;row++) for(int column=0;column<9;column++)

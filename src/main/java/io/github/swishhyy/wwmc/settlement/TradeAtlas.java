@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.settlement;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.entity.RoadSurface;
 import io.github.swishhyy.wwmc.settlement.TradePlanner.Cell;
 import java.nio.ByteBuffer;
@@ -40,7 +40,7 @@ public final class TradeAtlas extends SavedData implements TradePlanner.Terrain 
             Codec.BYTE_BUFFER.fieldOf("cells").forGetter(Stored::cells)).apply(i,Stored::new));
     }
     private static final Codec<TradeAtlas> CODEC=Stored.CODEC.listOf().xmap(TradeAtlas::new,TradeAtlas::stored);
-    private static final SavedDataType<TradeAtlas> TYPE=new SavedDataType<>(Identifier.fromNamespaceAndPath(WWMC.MODID,"trade_atlas"),TradeAtlas::new,CODEC);
+    private static final SavedDataType<TradeAtlas> TYPE=new SavedDataType<>(Identifier.fromNamespaceAndPath(VC.MODID,"trade_atlas"),TradeAtlas::new,CODEC);
 
     private static final class Region {
         final short[] height=new short[REGION*REGION];

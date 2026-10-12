@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.BlockPos;
@@ -37,7 +37,7 @@ public final class Research {
         public Tech {
             var requirements=new ArrayList<TownProjects.Cost>();
             for(var cost:costs) if(!cost.name().equals("paper")) requirements.add(cost);
-            requirements.add(new TownProjects.Cost("research scrolls",Math.max(4,(ticks+SCROLL_TICKS-1)/SCROLL_TICKS),s -> s.is(WWMC.RESEARCH_SCROLL.get())));
+            requirements.add(new TownProjects.Cost("research scrolls",Math.max(4,(ticks+SCROLL_TICKS-1)/SCROLL_TICKS),s -> s.is(VC.RESEARCH_SCROLL.get())));
             costs=List.copyOf(requirements);
         }
         public int scrolls() { return Math.max(4,(ticks+SCROLL_TICKS-1)/SCROLL_TICKS); }
@@ -48,10 +48,10 @@ public final class Research {
     private static TownProjects.Cost cost(String name,int count,net.minecraft.world.item.Item item) { return new TownProjects.Cost(name,count,s -> s.is(item)); }
     public static final List<Tech> ALL=List.of(
         new Tech("bronze_age","Bronze Age","Unlocks the alloy furnace, bronze forging, bronze anvil, blacksmith and quarry stations",
-                List.of(cost("copper ingots",24,Items.COPPER_INGOT),new TownProjects.Cost("tin ingots",8,s -> s.is(WWMC.TIN_INGOT.get())),
+                List.of(cost("copper ingots",24,Items.COPPER_INGOT),new TownProjects.Cost("tin ingots",8,s -> s.is(VC.TIN_INGOT.get())),
                         cost("coal",8,Items.COAL),cost("paper",8,Items.PAPER)),"","",3600),
         new Tech("iron_age","Iron Age","Unlocks iron and gold forging, buckets, shields and durable iron anvils",
-                List.of(new TownProjects.Cost("bronze ingots",16,s -> s.is(WWMC.BRONZE_INGOT.get())),cost("iron ingots",16,Items.IRON_INGOT),
+                List.of(new TownProjects.Cost("bronze ingots",16,s -> s.is(VC.BRONZE_INGOT.get())),cost("iron ingots",16,Items.IRON_INGOT),
                         cost("coal",16,Items.COAL),cost("paper",16,Items.PAPER)),"","bronze_age",7200),
         new Tech("gemcraft","Gemcraft","Unlocks diamond equipment and enchanting after the Iron Age",
                 List.of(cost("diamonds",8,Items.DIAMOND),cost("lapis lazuli",24,Items.LAPIS_LAZULI),cost("paper",24,Items.PAPER)),"","iron_age",9600),
@@ -189,7 +189,7 @@ public final class Research {
         town.progress.research.add(id);
         SettlementData.get(level).setDirty();
         CampaignService.record(level,town,"Researched "+tech.title()+": "+tech.benefit()+".");
-        WWMC.LOGGER.info("[WWMC][research-unlock] town={} project={} scrolls={} age={}",town.id,id,tech.scrolls(),age(town));
+        VC.LOGGER.info("[VC][research-unlock] town={} project={} scrolls={} age={}",town.id,id,tech.scrolls(),age(town));
         return tech.title()+" researched. Settlement members share this discovery.";
     }
     /** Furnished and staffed stations are practical requirements, rather than another stack of items. */
@@ -205,21 +205,21 @@ public final class Research {
                 && !SettlementService.anvils(level,town,s).isEmpty() && !ForgeWorkshop.heat(level,town,s).isEmpty()))
             return "Staff a blacksmith with an anvil and a furnace before the Iron Age";
         if(tech.id().equals("steel_working") && town.stations.stream().noneMatch(s -> s.role()==StructureRole.SMELTERY && staffed(level,town,s)
-                && SettlementService.processingDevices(level,town,s).stream().anyMatch(p -> level.getBlockState(p).is(WWMC.ALLOY_FURNACE.get()))))
+                && SettlementService.processingDevices(level,town,s).stream().anyMatch(p -> level.getBlockState(p).is(VC.ALLOY_FURNACE.get()))))
             return "Staff a smeltery with an alloy furnace before Steelworking";
         if(tech.id().equals("field_medicine") && town.stations.stream().noneMatch(s -> s.role()==StructureRole.HOSPITAL && staffed(level,town,s)
                 && !SettlementService.beds(level,town,s).isEmpty())) return "Staff a hospital with a bed first";
         return "";
     }
     public static int scrolls(ServerLevel level,Settlement town) {
-        return InventoryOps.count(SettlementService.storage(level,town),s -> s.is(WWMC.RESEARCH_SCROLL.get()));
+        return InventoryOps.count(SettlementService.storage(level,town),s -> s.is(VC.RESEARCH_SCROLL.get()));
     }
     /** Paid scrolls may finish even after a target is lowered; they are never discarded. */
     public static String scrollPause(ServerLevel level,Settlement town) {
         if(project(town)!=null) return "";
         var stock=SettlementService.storage(level,town);
         if(stock.isEmpty()) return "Needs a loaded warehouse with storage for paper, ink and scrolls.";
-        if(town.progress.scrollPaid) return room(stock,new ItemStack(WWMC.RESEARCH_SCROLL.get())) ? "" : "Warehouse is full. Keeping the paid scroll until there is room.";
+        if(town.progress.scrollPaid) return room(stock,new ItemStack(VC.RESEARCH_SCROLL.get())) ? "" : "Warehouse is full. Keeping the paid scroll until there is room.";
         if(scrolls(level,town)>=town.progress.scrollTarget) return town.progress.scrollTarget==0 ? "Scroll production is paused." : "Scroll target reached: "+town.progress.scrollTarget+" in the warehouse.";
         for(var cost:SCROLL_SUPPLIES) if(InventoryOps.count(stock,cost.material())<cost.count()) return "Needs "+cost.count()+" "+cost.name()+" in the warehouse to make a scroll.";
         return "";
@@ -246,7 +246,7 @@ public final class Research {
             if(town.progress.projectTicks>=tech.ticks()) {
                 town.progress.research.add(tech.id()); town.progress.project=""; town.progress.projectTicks=0;
                 CampaignService.record(level,town,"Researched "+tech.title()+": "+tech.benefit()+".");
-                WWMC.LOGGER.info("[WWMC][research-complete] town={} project={} age={}",town.id,tech.id(),age(town));
+                VC.LOGGER.info("[VC][research-complete] town={} project={} age={}",town.id,tech.id(),age(town));
             }
         } else {
             var stock=SettlementService.storage(level,town);
@@ -256,7 +256,7 @@ public final class Research {
             }
             town.progress.scrollTicks=Math.min(SCROLL_TICKS,town.progress.scrollTicks+10);
             if(town.progress.scrollTicks>=SCROLL_TICKS) {
-                ItemStack made=new ItemStack(WWMC.RESEARCH_SCROLL.get());
+                ItemStack made=new ItemStack(VC.RESEARCH_SCROLL.get());
                 for(var box:stock) made=InventoryOps.insert(box,made);
                 if(made.isEmpty()) { town.progress.scrollPaid=false; town.progress.scrollTicks=0; }
             }

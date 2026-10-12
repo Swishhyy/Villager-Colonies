@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.test;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.serialization.JsonOps;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.menu.CitizenMenu;
@@ -92,7 +92,7 @@ public final class ResearchStatusWorldTests {
                 town.jobs.release(missing); town.citizens.remove(missing);
                 level.setBlockAndUpdate(station.position(),Blocks.AIR.defaultBlockState());
                 check.accept(Research.WorkState.PAUSED,"Station is missing");
-                level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(StructureRole.RESEARCHER).get().defaultBlockState());
+                level.setBlockAndUpdate(station.position(),VC.STATIONS.get(StructureRole.RESEARCHER).get().defaultBlockState());
                 Station unloaded=new Station(start.east(224),StructureRole.RESEARCHER);
                 helper.assertTrue(!level.hasChunkAt(unloaded.position()),"Fixture's distant station unexpectedly loaded");
                 town.stations.remove(station); town.stations.add(unloaded);
@@ -167,8 +167,8 @@ public final class ResearchStatusWorldTests {
 
     private static Settlement town(ServerLevel level,BlockPos start,List<Station> stations) {
         var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Research status",start,96,List.of(),stations,"balanced");
-        SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
-        for(var station:stations) level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+        SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(start,VC.BANNER.get().defaultBlockState());
+        for(var station:stations) level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
         return town;
     }
     /** Older paid projects keep their original supplies and route behavior. */
@@ -179,11 +179,11 @@ public final class ResearchStatusWorldTests {
     private static Container stock(ServerLevel level,Station warehouse) {
         BlockPos chest=warehouse.position().south(2); level.setBlockAndUpdate(chest,Blocks.CHEST.defaultBlockState());
         Container stock=(Container)level.getBlockEntity(chest);
-        stock.setItem(0,new ItemStack(Items.COPPER_INGOT,25)); stock.setItem(1,new ItemStack(WWMC.TIN_INGOT.get(),9));
+        stock.setItem(0,new ItemStack(Items.COPPER_INGOT,25)); stock.setItem(1,new ItemStack(VC.TIN_INGOT.get(),9));
         stock.setItem(2,new ItemStack(Items.COAL,9)); stock.setItem(3,new ItemStack(Items.PAPER,9)); return stock;
     }
     private static CitizenEntity worker(ServerLevel level,Settlement town,Station station,BlockPos pos,boolean ai) {
-        var worker=new CitizenEntity(WWMC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(!ai);
+        var worker=new CitizenEntity(VC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(!ai);
         worker.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5); worker.bag().offer(new ItemStack(Items.BREAD));
         town.citizens.add(worker.getUUID()); town.jobs.assign(worker.getUUID(),station.position()); level.addFreshEntity(worker); return worker;
     }

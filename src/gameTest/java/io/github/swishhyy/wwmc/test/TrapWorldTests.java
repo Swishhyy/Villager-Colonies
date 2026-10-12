@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.test;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.serialization.JsonOps;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.block.TrapBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.core.TrapKind;
@@ -41,11 +41,11 @@ public final class TrapWorldTests {
     private static Settlement town(net.minecraft.server.level.ServerLevel level,BlockPos start,UUID owner) {
         var town=new Settlement(UUID.randomUUID(),owner,"Trap fixture",start,96,List.of(),List.of(),"balanced");
         SettlementData.get(level).settlements.add(town);
-        level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
+        level.setBlockAndUpdate(start,VC.BANNER.get().defaultBlockState());
         return town;
     }
     private static void place(net.minecraft.server.level.ServerLevel level,BlockPos pos,TrapKind kind) {
-        level.setBlockAndUpdate(pos,WWMC.TRAPS.get(kind).get().defaultBlockState());
+        level.setBlockAndUpdate(pos,VC.TRAPS.get(kind).get().defaultBlockState());
         if(!TrapService.register(level,pos)) throw new AssertionError("Trap was not indexed");
     }
     private static Mob mob(net.minecraft.server.level.ServerLevel level,BlockPos pos,String id) {
@@ -97,7 +97,7 @@ public final class TrapWorldTests {
             var chunks=CitizenNavigationTests.pinTicking(level,start,3); CitizenNavigationTests.meadow(level,start,-8,16,-8,8);
             helper.runAtTickTime(10,() -> {
             var town=town(level,start,UUID.randomUUID()); BlockPos pos=start.east(5); place(level,pos,TrapKind.WOODEN_SPIKES);
-            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level); citizen.join(town.id); citizen.setNoAi(true);
+            var citizen=new CitizenEntity(VC.CITIZEN.get(),level); citizen.join(town.id); citizen.setNoAi(true);
             citizen.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5); level.addFreshEntity(citizen);
             var cow=mob(level,pos,"cow"); var wolf=mob(level,pos,"wolf"); var neutral=mob(level,pos,"enderman");
             var player=new FakePlayer(level,new GameProfile(UUID.randomUUID(),"TrapVisitor")); player.setPos(pos.getX()+.5,pos.getY(),pos.getZ()+.5);
@@ -140,7 +140,7 @@ public final class TrapWorldTests {
                     && level.getBlockState(snare).getValue(TrapBlock.WEAR)==2,"Rearming must retain existing snare wear");
             level.setBlockAndUpdate(snare,level.getBlockState(snare).setValue(TrapBlock.WEAR,6).setValue(TrapBlock.ARMED,false));
             helper.assertTrue(!TrapService.maintain(level,town,snare,List.of(stock)),"String repaired a broken bronze mechanism");
-            stock.setItem(2,new ItemStack(WWMC.BRONZE_INGOT.get()));
+            stock.setItem(2,new ItemStack(VC.BRONZE_INGOT.get()));
             helper.assertTrue(TrapService.maintain(level,town,snare,List.of(stock)) && stock.getItem(2).isEmpty(),"Bronze repair did not spend an ingot");
             var legacy=Settlement.CODEC.encodeStart(JsonOps.INSTANCE,town).getOrThrow().getAsJsonObject();
             legacy.getAsJsonObject("progress").remove("traps");
@@ -158,20 +158,20 @@ public final class TrapWorldTests {
             var chunks=CitizenNavigationTests.pinTicking(level,start,3); CitizenNavigationTests.meadow(level,start,-8,16,-8,8);
             helper.runAtTickTime(10,() -> {
             var player=new FakePlayer(level,new GameProfile(UUID.randomUUID(),"TrapResearcher")); var town=town(level,start,player.getUUID());
-            for(var kind:TrapKind.values()) helper.assertTrue(AgeProgression.required(new ItemStack(WWMC.TRAP_ITEMS.get(kind).get()))==kind.age,"Wrong age for "+kind);
+            for(var kind:TrapKind.values()) helper.assertTrue(AgeProgression.required(new ItemStack(VC.TRAP_ITEMS.get(kind).get()))==kind.age,"Wrong age for "+kind);
             var menu=new CraftingMenu(2,player.getInventory(),ContainerLevelAccess.create(level,start));
-            for(int slot:new int[]{2,4,5,6}) menu.getSlot(slot).setByPlayer(new ItemStack(WWMC.BRONZE_INGOT.get()));
+            for(int slot:new int[]{2,4,5,6}) menu.getSlot(slot).setByPlayer(new ItemStack(VC.BRONZE_INGOT.get()));
             menu.slotsChanged(menu.getSlot(2).container);
-            helper.assertTrue(menu.getSlot(0).getItem().is(WWMC.TRAP_ITEMS.get(TrapKind.BRONZE_CALTROPS).get()),"Caltrop recipe did not load");
+            helper.assertTrue(menu.getSlot(0).getItem().is(VC.TRAP_ITEMS.get(TrapKind.BRONZE_CALTROPS).get()),"Caltrop recipe did not load");
             menu.clicked(0,0,ContainerInput.QUICK_MOVE,player);
-            helper.assertTrue(!menu.getSlot(2).getItem().isEmpty() && player.getInventory().countItem(WWMC.TRAP_ITEMS.get(TrapKind.BRONZE_CALTROPS).get())==0,
+            helper.assertTrue(!menu.getSlot(2).getItem().isEmpty() && player.getInventory().countItem(VC.TRAP_ITEMS.get(TrapKind.BRONZE_CALTROPS).get())==0,
                     "Locked trap recipe spent inputs or produced an item");
             BlockPos pos=start.east(6); place(level,pos,TrapKind.BRONZE_SNARE); var zombie=mob(level,pos,"zombie");
             TrapService.tickTown(level,town); helper.assertTrue(level.getBlockState(pos).getValue(TrapBlock.WEAR)==0,"Locked trap activated");
             town.progress.research.add("bronze_age"); TrapService.tickTown(level,town);
             helper.assertTrue(level.getBlockState(pos).getValue(TrapBlock.WEAR)==1,"Research did not enable the trap");
             menu.clicked(0,0,ContainerInput.QUICK_MOVE,player);
-            helper.assertTrue(menu.getSlot(2).getItem().isEmpty() && player.getInventory().countItem(WWMC.TRAP_ITEMS.get(TrapKind.BRONZE_CALTROPS).get())==4,
+            helper.assertTrue(menu.getSlot(2).getItem().isEmpty() && player.getInventory().countItem(VC.TRAP_ITEMS.get(TrapKind.BRONZE_CALTROPS).get())==4,
                     "Unlocked recipe did not craft the promised four caltrops");
             zombie.discard(); SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.releaseTicking(level,start,chunks); helper.succeed();
             });
@@ -186,13 +186,13 @@ public final class TrapWorldTests {
             var chunks=CitizenNavigationTests.pinTicking(level,start,2); CitizenNavigationTests.meadow(level,start,-16,36,-12,12);
             var town=town(level,start,UUID.randomUUID()); Station craft=new Station(start.east(6),StructureRole.CRAFTSMAN);
             Station warehouse=new Station(start.west(7),StructureRole.WAREHOUSE); town.stations.addAll(List.of(craft,warehouse));
-            for(var station:town.stations) level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+            for(var station:town.stations) level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
             BlockPos barrel=craft.position().south(2); level.setBlockAndUpdate(barrel,Blocks.BARREL.defaultBlockState());
             Container supplies=(Container)level.getBlockEntity(barrel); supplies.setItem(0,new ItemStack(Items.OAK_PLANKS,2));
             level.setBlockAndUpdate(warehouse.position().north(2),Blocks.CHEST.defaultBlockState());
             BlockPos pos=start.east(24); place(level,pos,TrapKind.WOODEN_SPIKES);
             level.setBlockAndUpdate(pos,level.getBlockState(pos).setValue(TrapBlock.WEAR,12).setValue(TrapBlock.ARMED,false));
-            var worker=new CitizenEntity(WWMC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(true);
+            var worker=new CitizenEntity(VC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(true);
             worker.setPos(craft.position().getX()+.5,craft.position().getY(),craft.position().getZ()+1.5);
             worker.bag().offer(new ItemStack(Items.BREAD)); town.citizens.add(worker.getUUID()); town.jobs.assign(worker.getUUID(),craft.position()); level.addFreshEntity(worker);
             DefenseService.waveAlarm(level,town);
@@ -218,7 +218,7 @@ public final class TrapWorldTests {
             helper.runAtTickTime(10,() -> {
             var town=town(level,start,UUID.randomUUID()); town.radius=80;
             Station guard=new Station(start.west(62),StructureRole.GUARD); town.stations.add(guard);
-            level.setBlockAndUpdate(guard.position(),WWMC.STATIONS.get(guard.role()).get().defaultBlockState());
+            level.setBlockAndUpdate(guard.position(),VC.STATIONS.get(guard.role()).get().defaultBlockState());
             place(level,start.east(60),TrapKind.WOODEN_SPIKES);
             var bounds=WaveService.perimeter(level,town);
             helper.assertTrue(bounds.contains(start.getX()+60,start.getZ()) && bounds.contains(start.getX()-62,start.getZ()),"Defense footprint omitted a post or trap");

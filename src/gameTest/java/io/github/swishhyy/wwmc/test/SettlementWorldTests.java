@@ -1,7 +1,7 @@
 package io.github.swishhyy.wwmc.test;
 
 import com.mojang.authlib.GameProfile;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.menu.PanelMenu;
 import io.github.swishhyy.wwmc.menu.Panels;
@@ -40,7 +40,7 @@ public final class SettlementWorldTests {
     private static Settlement town(ServerLevel level,UUID owner,BlockPos center,String name) {
         var town=new Settlement(UUID.randomUUID(),owner,name,center,16,List.of(),List.of(),"balanced");
         SettlementData.get(level).settlements.add(town); SettlementData.get(level).setDirty();
-        level.setBlockAndUpdate(center,WWMC.BANNER.get().defaultBlockState()); return town;
+        level.setBlockAndUpdate(center,VC.BANNER.get().defaultBlockState()); return town;
     }
     private static void leave(ServerLevel level,Settlement... towns) {
         for(Settlement town:towns) SettlementData.get(level).settlements.remove(town);
@@ -68,8 +68,8 @@ public final class SettlementWorldTests {
             new ServerExplosion(level,creeper,null,null,Vec3.atCenterOf(firstBomb),3,false,Explosion.BlockInteraction.DESTROY).explode();
             new ServerExplosion(level,tnt,null,null,Vec3.atCenterOf(secondBomb),4,false,Explosion.BlockInteraction.DESTROY).explode();
             helper.assertTrue(level.getBlockState(firstBomb).isAir() && level.getBlockState(secondBomb).isAir(),"Explosion positive controls survived; blast protection may be global");
-            helper.assertTrue(level.getBlockState(start).is(WWMC.BANNER.get()) && level.getBlockState(second).is(WWMC.BANNER.get()),"An explosion destroyed a settlement flag");
-            helper.assertTrue(WWMC.BANNER.get().defaultBlockState().getPistonPushReaction()==PushReaction.BLOCK,"A piston can move the fixed rally point");
+            helper.assertTrue(level.getBlockState(start).is(VC.BANNER.get()) && level.getBlockState(second).is(VC.BANNER.get()),"An explosion destroyed a settlement flag");
+            helper.assertTrue(VC.BANNER.get().defaultBlockState().getPistonPushReaction()==PushReaction.BLOCK,"A piston can move the fixed rally point");
             List<BlockPos> forced=new ArrayList<>(List.of(start,second,firstBomb));
             NeoForge.EVENT_BUS.post(new ExplosionEvent.Detonate(level,new ServerExplosion(level,tnt,null,null,Vec3.atCenterOf(firstBomb),4,false,Explosion.BlockInteraction.DESTROY),new ArrayList<>(),forced));
             helper.assertTrue(forced.equals(List.of(firstBomb)),"An explosion that bypasses resistance can still destroy or duplicate flags");
@@ -123,21 +123,21 @@ public final class SettlementWorldTests {
             ServerPlayer owner=player(level,"RecoveryOwner",start.south()),stranger=player(level,"RecoveryStranger",start.east());
             Settlement a=town(level,owner.getUUID(),start,"Damaged Town"),b=town(level,owner.getUUID(),second,"Other Town"); UUID citizen=UUID.randomUUID();
             a.citizens.add(citizen); a.stations.add(new Station(start.west(4),StructureRole.GUARD)); a.jobs.assign(citizen,start.west(4)); a.campaign.requests.put("minecraft:bread",32); a.trading.partner=b.id; b.trading.partner=a.id;
-            level.setBlockAndUpdate(start.west(4),WWMC.STATIONS.get(StructureRole.GUARD).get().defaultBlockState());
+            level.setBlockAndUpdate(start.west(4),VC.STATIONS.get(StructureRole.GUARD).get().defaultBlockState());
             level.setBlockAndUpdate(start,Blocks.STONE.defaultBlockState());
-            owner.getInventory().setItem(9,new ItemStack(WWMC.BANNER_ITEM.get(),2));
+            owner.getInventory().setItem(9,new ItemStack(VC.BANNER_ITEM.get(),2));
             SettlementService.recoverBanner(level,owner,a);
             helper.assertTrue(level.getBlockState(start).is(Blocks.STONE) && owner.getInventory().getItem(9).getCount()==2,"Recovery overwrote a block or consumed a flag on failure");
-            level.setBlockAndUpdate(start,Blocks.AIR.defaultBlockState()); stranger.getInventory().setItem(9,new ItemStack(WWMC.BANNER_ITEM.get())); SettlementService.recoverBanner(level,stranger,a);
+            level.setBlockAndUpdate(start,Blocks.AIR.defaultBlockState()); stranger.getInventory().setItem(9,new ItemStack(VC.BANNER_ITEM.get())); SettlementService.recoverBanner(level,stranger,a);
             helper.assertTrue(level.getBlockState(start).isAir() && stranger.getInventory().getItem(9).getCount()==1,"A stranger restored another town's rally point");
-            BlockPos temporary=start.south(3); level.setBlockAndUpdate(temporary,WWMC.BANNER.get().defaultBlockState());
+            BlockPos temporary=start.south(3); level.setBlockAndUpdate(temporary,VC.BANNER.get().defaultBlockState());
             var menu=new PanelMenu(1,PanelMenu.Kind.RELATIONSHIPS,temporary,owner,RelationshipViews.build(level,a,owner));
             helper.assertTrue(menu.stillValid(owner),"A lost town cannot open recovery from a replacement flag inside its claim");
             menu.act(owner,RelationshipViews.RECOVER,0,0,"");
-            helper.assertTrue(level.getBlockState(start).is(WWMC.BANNER.get()) && owner.getInventory().getItem(9).getCount()==1,"Recovery did not consume exactly one physical replacement flag");
+            helper.assertTrue(level.getBlockState(start).is(VC.BANNER.get()) && owner.getInventory().getItem(9).getCount()==1,"Recovery did not consume exactly one physical replacement flag");
             menu.act(owner,RelationshipViews.RECOVER,0,0,""); helper.assertTrue(owner.getInventory().getItem(9).getCount()==1,"Repeated recovery charged twice");
             helper.assertTrue(SettlementData.get(level).at(start)==a && a.citizens.equals(List.of(citizen)) && a.jobs.home(citizen).equals(start.west(4)) && a.campaign.requests.get("minecraft:bread")==32,"Recovery reset town identity, population, assignment or policy");
-            helper.assertTrue(a.trading.partner.equals(b.id) && b.trading.partner.equals(a.id) && b.name.equals("Other Town") && level.getBlockState(second).is(WWMC.BANNER.get()),"Recovery changed the other town or its route");
+            helper.assertTrue(a.trading.partner.equals(b.id) && b.trading.partner.equals(a.id) && b.name.equals("Other Town") && level.getBlockState(second).is(VC.BANNER.get()),"Recovery changed the other town or its route");
             leave(level,a,b); CitizenNavigationTests.release(level,start,firstChunks); CitizenNavigationTests.release(level,second,secondChunks); helper.succeed();
         });
     }

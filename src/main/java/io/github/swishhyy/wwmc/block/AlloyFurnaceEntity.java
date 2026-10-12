@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.block;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.menu.AlloyFurnaceMenu;
 import io.github.swishhyy.wwmc.settlement.*;
 import net.minecraft.core.BlockPos;
@@ -33,7 +33,7 @@ public final class AlloyFurnaceEntity extends BaseContainerBlockEntity implement
         public void set(int index,int value) {}
         public int getCount() { return 5; }
     };
-    public AlloyFurnaceEntity(BlockPos pos,BlockState state) { super(WWMC.ALLOY_FURNACE_ENTITY.get(),pos,state); }
+    public AlloyFurnaceEntity(BlockPos pos,BlockState state) { super(VC.ALLOY_FURNACE_ENTITY.get(),pos,state); }
     @Override public int getContainerSize() { return 4; }
     @Override protected NonNullList<ItemStack> getItems() { return items; }
     @Override protected void setItems(NonNullList<ItemStack> value) { items=value; }

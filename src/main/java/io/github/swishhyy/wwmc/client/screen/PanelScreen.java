@@ -4,7 +4,7 @@ import io.github.swishhyy.wwmc.menu.PanelMenu;
 import io.github.swishhyy.wwmc.menu.PanelView;
 import io.github.swishhyy.wwmc.menu.Panels;
 import io.github.swishhyy.wwmc.menu.TownViews;
-import io.github.swishhyy.wwmc.menu.WwmcNetwork;
+import io.github.swishhyy.wwmc.menu.VcNetwork;
 import io.github.swishhyy.wwmc.settlement.JobBoard;
 import io.github.swishhyy.wwmc.settlement.CampaignViews;
 import io.github.swishhyy.wwmc.settlement.RelationshipViews;
@@ -75,7 +75,7 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
             int row=i/2,column=i%2;
             // A last button alone on its row spans the whole width.
             boolean alone=column==0 && i==actions.size()-1;
-            Button button=Button.builder(action.label(),b -> ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,action.id(),0,0,"")))
+            Button button=Button.builder(action.label(),b -> ClientPacketDistributor.sendToServer(new VcNetwork.ActionPayload(menu.containerId,action.id(),0,0,"")))
                     .bounds(leftPos+7+column*half,topPos+imageHeight-6-(rows-row)*22,alone ? half*2-2 : half-2,20).build();
             button.active=action.enabled();
             if(!action.tooltip().getString().isEmpty()) button.setTooltip(Tooltip.create(action.tooltip()));
@@ -138,14 +138,14 @@ public final class PanelScreen extends AbstractContainerScreen<PanelMenu> {
     /** A row whose priority the owner sets from the list. */
     private static boolean control(PanelView.Row row) { return !row.key().isEmpty() && row.value()>=0; }
     private void send(int index,int value,String key) {
-        ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,
+        ClientPacketDistributor.sendToServer(new VcNetwork.ActionPayload(menu.containerId,
                 TownViews.focused(menu.kind) ? TownViews.ROW_ACTION : menu.kind==PanelMenu.Kind.MULTIPLAYER ? MultiplayerViews.ROW_ACTION : menu.kind==PanelMenu.Kind.RELATIONSHIPS ? RelationshipViews.ROW_ACTION : menu.kind==PanelMenu.Kind.CAMPAIGN || menu.kind==PanelMenu.Kind.ARMY ? CampaignViews.ROW_ACTION : Panels.JOB,index,value,key));
     }
     private boolean naming() { return menu.kind==PanelMenu.Kind.RELATIONSHIPS && tab==3; }
     private int listTop() { return naming() ? LIST_TOP+24 : LIST_TOP; }
     private List<PanelView.Action> footerActions() { return view().actions().stream().filter(a -> a.id()!=RelationshipViews.RENAME).toList(); }
     private int controlWidth(PanelView.Row row) { return !control(row) ? 0 : row.key().startsWith("act:research:") || row.key().startsWith("act:growth:") ? 48 : menu.kind==PanelMenu.Kind.RELATIONSHIPS || menu.kind==PanelMenu.Kind.MULTIPLAYER && row.key().startsWith("act:") ? 80 : 34; }
-    private void rename() { if(townName!=null) ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,RelationshipViews.RENAME,0,0,townName.getValue())); }
+    private void rename() { if(townName!=null) ClientPacketDistributor.sendToServer(new VcNetwork.ActionPayload(menu.containerId,RelationshipViews.RENAME,0,0,townName.getValue())); }
     @Override public boolean keyPressed(KeyEvent event) {
         if(townName!=null && townName.isFocused() && event.key()!=256) {
             if(event.key()==257 || event.key()==335) { rename(); return true; }

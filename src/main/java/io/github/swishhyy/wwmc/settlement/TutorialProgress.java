@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -14,7 +14,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 /** Native advancement progress comes from functioning town setups and completed jobs, never a client request. */
 public final class TutorialProgress {
     public static void award(ServerPlayer player,String id) {
-        var holder=((ServerLevel)player.level()).getServer().getAdvancements().get(Identifier.fromNamespaceAndPath(WWMC.MODID,"tutorial/"+id));
+        var holder=((ServerLevel)player.level()).getServer().getAdvancements().get(Identifier.fromNamespaceAndPath(VC.MODID,"tutorial/"+id));
         if(holder!=null && !player.getAdvancements().getOrStartProgress(holder).isDone()) player.getAdvancements().award(holder,"done");
     }
     public static void record(ServerLevel level,Settlement town,String id) {

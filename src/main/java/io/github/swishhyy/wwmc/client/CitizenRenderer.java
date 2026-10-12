@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.client;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelLayerLocation;
@@ -32,7 +32,7 @@ public final class CitizenRenderer extends HumanoidMobRenderer<CitizenEntity,Cit
         public boolean armoredHead,armoredChest,armoredLegs,armoredFeet,rightHanded;
         public float workElapsed;
     }
-    public static final ModelLayerLocation LAYER=new ModelLayerLocation(Identifier.fromNamespaceAndPath(WWMC.MODID,"citizen"),"main");
+    public static final ModelLayerLocation LAYER=new ModelLayerLocation(Identifier.fromNamespaceAndPath(VC.MODID,"citizen"),"main");
     private static final Identifier SKIN=Identifier.withDefaultNamespace("textures/entity/villager/villager.png");
     public CitizenRenderer(EntityRendererProvider.Context context) {
         super(context,new CitizenModel(context.bakeLayer(LAYER)),0.5F);

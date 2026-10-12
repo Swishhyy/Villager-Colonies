@@ -1,7 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import com.mojang.serialization.Codec;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -23,7 +23,7 @@ public final class StarterPack {
 
     public static boolean give(ServerPlayer player) {
         if(!Receipts.get((ServerLevel)player.level()).claim(player.getUUID())) return false;
-        for(var item:List.of(WWMC.BANNER_ITEM.get(),WWMC.GUIDE.get())) {
+        for(var item:List.of(VC.BANNER_ITEM.get(),VC.GUIDE.get())) {
             ItemStack stack=new ItemStack(item);
             player.getInventory().add(stack);
             if(!stack.isEmpty()) player.drop(stack,false);
@@ -35,7 +35,7 @@ public final class StarterPack {
     public static final class Receipts extends SavedData {
         public static final Codec<Receipts> CODEC=Settlement.UUID_CODEC.listOf().xmap(Receipts::new,d -> List.copyOf(d.players));
         private static final SavedDataType<Receipts> TYPE=new SavedDataType<>(
-                Identifier.fromNamespaceAndPath(WWMC.MODID,"starter_packs"),Receipts::new,CODEC);
+                Identifier.fromNamespaceAndPath(VC.MODID,"starter_packs"),Receipts::new,CODEC);
         private final Set<UUID> players;
         public Receipts() { this(List.of()); }
         private Receipts(List<UUID> players) { this.players=new HashSet<>(players); }

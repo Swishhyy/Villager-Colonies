@@ -1,6 +1,6 @@
 # Development guide
 
-The public project name is **Villager Colonies**. Its internal `wwmc` mod ID, Java package, resource namespace, `/wwmc` commands, config filenames and diagnostic prefix are retained for compatibility with existing worlds and integrations. The distributable is now named `villager-colonies-<mod_version>.jar`.
+The public project name is **Villager Colonies**. Commands use `/vc` and diagnostics use `[VC]`. The internal `wwmc` mod ID, Java package, resource namespace, config filenames and saved keys remain stable so existing worlds and settings load. The distributable is now named `villager-colonies-<mod_version>.jar`.
 
 [Project overview](../README.md) · [All guides](README.md) · [Roadmap](ROADMAP.md)
 
@@ -41,7 +41,7 @@ There is no generative AI or external service dependency. Initial decisions use 
 | `settlement` | Claims, block ownership/protection, forestry, saved excavation plans, commands, inventory transfers, guard weapons, bell alarms, and enemy waves. |
 | `block` / `item` | Banner, automatic role stations with their upgrade levels in the block state, and station inspection. |
 | `entity` | Citizen goals, harvesting, supply trips, food, rest, and entity persistence. |
-| `client` / `WWMCClient` | Citizen model/renderer and transient range outlines; dedicated servers do not load rendering classes. |
+| `client` / `VCClient` | Citizen model/renderer and transient range outlines; dedicated servers do not load rendering classes. |
 | `src/main/resources` | Block/item models, language, drops (which keep station upgrades), and recipes. |
 | `tools/station_models.py` | Generates the station and banner models from vanilla block textures; rerun it after editing a model. |
 | `scripts/generate_progression_assets.py` | Recolors vanilla iron textures for tin/bronze and generates equipment, carcass models, research-station assets, recipes, tags and tin world generation; requires Python, Pillow and the official Minecraft 26.2 client JAR. |
@@ -110,3 +110,11 @@ Recolored bronze and tin textures derive from Minecraft assets by Mojang. Their 
 The world suite exercises actual varied meals and remainder returns, cached amenity removal, gradual happiness and native entity saves; scheduled food-funded births, saved loaded-time cooldowns, job-free children and actual adulthood; alloy research locks, exact ingredient/fuel costs, full output, furnace save/load, inventory drops, menu transfers and native hopper sides. Courier/smelter and steel-to-blacksmith scenarios use real inventories and workers. Native tool components drive bounded bonuses; miners retain their existing block-break timing.
 
 Generate the new assets after the base progression and production generators with `python3 scripts/generate_alloy_assets.py --client-jar /path/to/26.2.jar`. Steel reuses native iron silhouettes, wooden handles, armor UVs and alpha masks; alloy furnace animation retains the native frame metadata.
+
+## Barbarian raids and furnace appearance
+
+Native barbarian entities use Minecraft humanoid combat, visible held weapons and armor, and native illager skins and sounds. No external image or model dependency is needed. Raid roles, equipment, health and town tags survive native entity saves. Raid count and selected arrival time remain in the existing settlement record; surviving old tagged attackers remain recognized after the update. The first two raids use foot soldiers, archers join from raid three in towns of at least six citizens, and armored veterans join from raid six in towns with at least twelve citizens or two population upgrades. Armor never bypasses the early melee stages. Equipment has zero drop chance and spawned arrows cannot be collected.
+
+Fresh settings default to an average of five Minecraft days with 40% variation (three to seven days before the next eligible sunset). Existing timing and size overrides remain in force. The banner reports broad readiness rather than an exact attack countdown. Raid calls never overlap a surviving party, and offline managers, peaceful difficulty and blocked approaches retain their protection.
+
+`generate_alloy_assets.py` preserves native animated flame colors and gives the lit grille a brighter orange heat palette. Dimensions, alpha, animation frames, copper body, unlit appearance and the saved block ID stay intact.

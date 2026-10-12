@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.menu.*;
 import java.util.*;
 import net.minecraft.core.BlockPos;
@@ -30,7 +30,7 @@ public final class RelationshipViews {
     }
     public static boolean valid(ServerPlayer player,BlockPos flag) {
         if(!player.isAlive() || player.distanceToSqr(Vec3.atCenterOf(flag))>64 || !level(player).hasChunkAt(flag)
-                || !level(player).getBlockState(flag).is(WWMC.BANNER.get())) return false;
+                || !level(player).getBlockState(flag).is(VC.BANNER.get())) return false;
         Settlement town=SettlementData.get(level(player)).at(flag);
         return TownAccess.builds(town,player.getUUID()) || TownAccess.invited(town,player.getUUID());
     }
@@ -77,13 +77,13 @@ public final class RelationshipViews {
             invitations.add(action(Items.DYE.red(),"Decline: "+offered.name,"Remove this invitation without joining","decline:"+offered.id,true));
         }
         if(invitations.isEmpty()) invitations.add(row(Items.PAPER,"No invitations waiting","Owners invite friends on the Players tab. Friends accept here at the flag.","",-1));
-        settings.add(row(WWMC.BANNER_ITEM.get(),"Town name",town.name,"town:name",-1));
+        settings.add(row(VC.BANNER_ITEM.get(),"Town name",town.name,"town:name",-1));
         settings.add(row(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.withDefaultNamespace(TownBorders.color(town).getName()+"_dye")),"Town color: "+TownBorders.title(town),"The town flag and four corner banners share this color",owner ? "color:town" : "",TownBorders.color(town).getId()));
         settings.add(row(Items.MAP,"Flag location",town.center.toShortString()+"; restore a missing flag here without creating a new town","",-1));
         settings.add(row(Items.COMPASS,"Claim borders","X "+(town.center.getX()-town.radius)+" to "+(town.center.getX()+town.radius)+", Z "+(town.center.getZ()-town.radius)+" to "+(town.center.getZ()+town.radius)+"; all heights","",-1));
         settings.add(row(Items.PAPER,"Entry notice","You are now entering "+town.name,"",-1));
         settings.add(row(Items.IRON_DOOR,"Player permissions","Builder can build and interact. Steward also manages workers, supplies and squads. Revoke removes invitations and access.","",-1));
-        boolean flagLoaded=level.hasChunkAt(town.center),intact=flagLoaded && level.getBlockState(town.center).is(WWMC.BANNER.get());
+        boolean flagLoaded=level.hasChunkAt(town.center),intact=flagLoaded && level.getBlockState(town.center).is(VC.BANNER.get());
         return new PanelView(Component.literal(town.name+" · Relationships"),Component.literal(owner ? "Set access, approve alliances and name your town" : "Your permissions and invitations; the owner controls relationships"),
                 List.of(new PanelView.Tab("Players",players),new PanelView.Tab("Settlements",towns),new PanelView.Tab("Invitations",invitations),new PanelView.Tab("Town",settings)),
                 List.of(new PanelView.Action(BACK,"Town overview",TownAccess.manages(town,viewer.getUUID()) && intact && viewer.distanceToSqr(Vec3.atCenterOf(town.center))<=64),

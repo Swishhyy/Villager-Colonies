@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.settlement;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
@@ -19,7 +19,7 @@ public final class WorldWorkData extends SavedData {
         ForestryService.Tree.CODEC.listOf().optionalFieldOf("cleared_trees",List.of()).forGetter(d -> new ArrayList<>(d.clearedTrees.values()))
     ).apply(i,WorldWorkData::new));
     private static final SavedDataType<WorldWorkData> TYPE=new SavedDataType<>(
-        Identifier.fromNamespaceAndPath(WWMC.MODID,"world_work"),WorldWorkData::new,CODEC);
+        Identifier.fromNamespaceAndPath(VC.MODID,"world_work"),WorldWorkData::new,CODEC);
     public final Set<BlockPos> protectedBlocks;
     public final List<PlantingSite> plantings;
     public final Map<BlockPos,ExcavationJob> excavations=new LinkedHashMap<>();

@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.client.screen;
 
 import com.electronwill.nightconfig.core.UnmodifiableConfig;
 import io.github.swishhyy.wwmc.ConfigSections;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -21,12 +21,12 @@ import net.neoforged.neoforge.client.gui.ConfigurationScreen.ConfigurationSectio
 import net.neoforged.neoforge.client.gui.widget.ResizableTextureImageWidget;
 
 /** Native config editing, undo/reset and save behavior, with a short category menu. */
-public final class WwmcConfigScreen extends ConfigurationSectionScreen {
-    private static final Identifier EMBLEM=Identifier.fromNamespaceAndPath(WWMC.MODID,"textures/gui/emblem.png");
+public final class VcConfigScreen extends ConfigurationSectionScreen {
+    private static final Identifier EMBLEM=Identifier.fromNamespaceAndPath(VC.MODID,"textures/gui/emblem.png");
     public static Screen create(ModContainer mod,Screen parent) {
-        return new ConfigurationScreen(mod,parent,WwmcConfigScreen::new);
+        return new ConfigurationScreen(mod,parent,VcConfigScreen::new);
     }
-    private WwmcConfigScreen(ConfigurationScreen parent,ModConfig.Type type,ModConfig config,Component title) {
+    private VcConfigScreen(ConfigurationScreen parent,ModConfig.Type type,ModConfig config,Component title) {
         // Only the top menu hides the flat values. Its child screens keep the native editors.
         super(parent,type,config,title,(c,key,element) -> c.parent() instanceof ConfigurationScreen ? null : element);
     }

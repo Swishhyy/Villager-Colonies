@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.test;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.settlement.*;
@@ -28,12 +28,12 @@ public final class RecallWorldTests {
             var job=new Station(start.east(3),StructureRole.FARM);
             var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Partial floor recall",start,240,List.of(),List.of(job),"balanced");
             var data=SettlementData.get(level); data.settlements.add(town); data.setDirty();
-            level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
-            level.setBlockAndUpdate(job.position(),WWMC.STATIONS.get(job.role()).get().defaultBlockState());
+            level.setBlockAndUpdate(start,VC.BANNER.get().defaultBlockState());
+            level.setBlockAndUpdate(job.position(),VC.STATIONS.get(job.role()).get().defaultBlockState());
             // Force recovery beside the furniture, where every floor is partial height.
             level.setBlockAndUpdate(start.above(),Blocks.STONE.defaultBlockState());
             level.setBlockAndUpdate(job.position().above(),Blocks.STONE.defaultBlockState());
-            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level); citizen.join(town.id); citizen.setNoAi(true);
+            var citizen=new CitizenEntity(VC.CITIZEN.get(),level); citizen.join(town.id); citizen.setNoAi(true);
             town.citizens.add(citizen.getUUID()); town.jobs.assign(citizen.getUUID(),job.position()); level.addFreshEntity(citizen);
             helper.runAtTickTime(5,() -> {
                 var slab=Blocks.STONE_SLAB.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SLAB_TYPE,
@@ -75,9 +75,9 @@ public final class RecallWorldTests {
             // Block every candidate beside both home anchors, including the block above them.
             for(int x=-2;x<=5;x++) for(int z=-2;z<=2;z++) for(int y=-1;y<=2;y++)
                 level.setBlockAndUpdate(start.offset(x,y,z),Blocks.STONE.defaultBlockState());
-            level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
-            level.setBlockAndUpdate(job.position(),WWMC.STATIONS.get(job.role()).get().defaultBlockState());
-            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
+            level.setBlockAndUpdate(start,VC.BANNER.get().defaultBlockState());
+            level.setBlockAndUpdate(job.position(),VC.STATIONS.get(job.role()).get().defaultBlockState());
+            var citizen=new CitizenEntity(VC.CITIZEN.get(),level);
             citizen.join(town.id); citizen.setNoAi(true); citizen.setPos(away.getX()+0.5,away.getY(),away.getZ()+0.5);
             town.citizens.add(citizen.getUUID()); town.jobs.assign(citizen.getUUID(),job.position());
             town.citizenPlaces.put(citizen.getUUID(),away); level.addFreshEntity(citizen);
@@ -133,9 +133,9 @@ public final class RecallWorldTests {
             Station kitchen=new Station(start.east(3),StructureRole.COOK);
             var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Recall",start,240,List.of(),List.of(kitchen),"balanced");
             var data=SettlementData.get(level); data.settlements.add(town);
-            level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState());
-            level.setBlockAndUpdate(kitchen.position(),WWMC.STATIONS.get(StructureRole.COOK).get().defaultBlockState());
-            var cook=new CitizenEntity(WWMC.CITIZEN.get(),level);
+            level.setBlockAndUpdate(town.center,VC.BANNER.get().defaultBlockState());
+            level.setBlockAndUpdate(kitchen.position(),VC.STATIONS.get(StructureRole.COOK).get().defaultBlockState());
+            var cook=new CitizenEntity(VC.CITIZEN.get(),level);
             cook.join(town.id); cook.setPos(away.getX()+0.5,away.getY(),away.getZ()+0.5);
             if(injured) cook.setHealth(cook.getMaxHealth()-6);
             float hurtHealth=cook.getHealth();

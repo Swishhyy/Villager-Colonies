@@ -1,7 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.Config;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import java.util.*;
@@ -101,7 +101,7 @@ public final class NpcSettlements {
         return new BlockPos(probe.getX(),high,probe.getZ());
     }
     private static BlockPos rejected(BlockPos probe,BlockPos blocked,String reason) {
-        WWMC.LOGGER.debug("[WWMC][npc-search] Rejected plot={} position={} reason={}",probe,blocked,reason);
+        VC.LOGGER.debug("[VC][npc-search] Rejected plot={} position={} reason={}",probe,blocked,reason);
         return null;
     }
     private void build(ServerLevel level,Settlement town) {
@@ -168,7 +168,7 @@ public final class NpcSettlements {
         for(Station s:stations(town)) {
             int x=s.position().getX()-town.center.getX(),z=s.position().getZ()-town.center.getZ();
             if(s.role()!=StructureRole.HOUSING) b.floor(x,z,Blocks.COBBLESTONE);
-            b.put(x,0,z,WWMC.STATIONS.get(s.role()).get().defaultBlockState(),true);
+            b.put(x,0,z,VC.STATIONS.get(s.role()).get().defaultBlockState(),true);
         }
         // Warehouse and the job barrels are real block entities, discovered by the normal station scans.
         for(int x:new int[]{3,4,5}) { b.floor(x,-2,Blocks.OAK_PLANKS); b.block(x,0,-2,Blocks.BARREL); }
@@ -183,7 +183,7 @@ public final class NpcSettlements {
         }
         b.put(9,-1,8,Blocks.WATER.defaultBlockState(),false);
         for(int[] p:new int[][]{{-9,5},{-9,11},{-6,8}}) { b.floor(p[0],p[1],Blocks.GRASS_BLOCK); b.put(p[0],0,p[1],Blocks.OAK_SAPLING.defaultBlockState(),false); }
-        b.block(0,0,0,WWMC.BANNER.get()); b.floor(0,9,Blocks.COBBLESTONE); b.block(0,0,9,Blocks.BELL);
+        b.block(0,0,0,VC.BANNER.get()); b.floor(0,9,Blocks.COBBLESTONE); b.block(0,0,9,Blocks.BELL);
         for(int[] p:new int[][]{{2,-4},{2,6},{-3,2},{6,2}}) { b.floor(p[0],p[1],Blocks.COBBLESTONE); b.block(p[0],0,p[1],Blocks.TORCH); }
         return List.copyOf(map.values());
     }

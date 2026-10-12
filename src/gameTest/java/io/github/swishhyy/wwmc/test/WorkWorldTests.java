@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.test;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.settlement.*;
@@ -25,9 +25,9 @@ public final class WorkWorldTests {
     private static WorkTown town(ServerLevel level,BlockPos start,Station... stations) {
         Settlement town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Work test",start.west(4),48,List.of(),List.of(stations),"balanced");
         var data=SettlementData.get(level); data.settlements.add(town); data.setDirty();
-        level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState());
-        for(Station station:stations) level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
-        var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
+        level.setBlockAndUpdate(town.center,VC.BANNER.get().defaultBlockState());
+        for(Station station:stations) level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
+        var citizen=new CitizenEntity(VC.CITIZEN.get(),level);
         citizen.join(town.id); citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5);
         town.citizens.add(citizen.getUUID()); level.addFreshEntity(citizen);
         return new WorkTown(town,citizen);

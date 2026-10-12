@@ -1,7 +1,7 @@
 package io.github.swishhyy.wwmc.menu;
 
 import io.github.swishhyy.wwmc.Config;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.core.Upgrades;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
@@ -31,7 +31,7 @@ public final class Panels {
     private Panels() {}
     private static ServerLevel level(ServerPlayer player) { return (ServerLevel)player.level(); }
     private static ItemStack icon(ItemLike item) { return new ItemStack(item); }
-    public static ItemStack stationIcon(StructureRole role) { return new ItemStack(WWMC.STATION_ITEMS.get(role).get()); }
+    public static ItemStack stationIcon(StructureRole role) { return new ItemStack(VC.STATION_ITEMS.get(role).get()); }
     /** The owner's settlement at this position, while the owner stands within eight blocks of it. */
     private static Settlement owned(ServerPlayer player,BlockPos pos) {
         if(!player.isAlive() || player.distanceToSqr(Vec3.atCenterOf(pos))>64) return null;
@@ -45,7 +45,7 @@ public final class Panels {
     }
     /** Cheap check the open screen runs every tick. */
     public static boolean valid(ServerPlayer player,BlockPos pos,boolean banner) {
-        if(banner) { Settlement town=owned(player,pos); return town!=null && town.center.equals(pos) && level(player).hasChunkAt(pos) && level(player).getBlockState(pos).is(WWMC.BANNER.get()); }
+        if(banner) { Settlement town=owned(player,pos); return town!=null && town.center.equals(pos) && level(player).hasChunkAt(pos) && level(player).getBlockState(pos).is(VC.BANNER.get()); }
         return stationAt(player,pos)!=null;
     }
     private static void dirty(ServerPlayer player) { SettlementData.get(level(player)).setDirty(); }
@@ -93,7 +93,7 @@ public final class Panels {
         int beds=SettlementService.housingBeds(level,town).size(),limit=SettlementService.populationLimit(town);
         List<Row> needs=needRows(level,town); long problems=needs.stream().filter(r -> r.color()!=GREEN).count();
         var overview=new ArrayList<Row>();
-        overview.add(new Row(icon(WWMC.BANNER_ITEM.get()),"Population",town.citizens.size()+" / "+limit+" citizens · "+beds+" housing beds · +"+Research.populationBonus(town)+" places from research"));
+        overview.add(new Row(icon(VC.BANNER_ITEM.get()),"Population",town.citizens.size()+" / "+limit+" citizens · "+beds+" housing beds · +"+Research.populationBonus(town)+" places from research"));
         overview.add(new Row(icon(Items.PAPER),"Jobs",TownJobs.assess(level,town).summary()));
         overview.add(new Row(icon(Items.BREAD),"Food",InventoryOps.count(SettlementService.townStorage(level,town),FoodHealing::food)+" meals in storage"));
         int happiness=CitizenWellbeing.average(level,town);
@@ -141,7 +141,7 @@ public final class Panels {
         catch(NumberFormatException e) { return; }
         if(!town.contains(pos)) return;
         player.closeContainer();
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,new WwmcNetwork.HighlightPayload(pos,20));
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,new VcNetwork.HighlightPayload(pos,20));
         SettlementService.tell(player,"Marked "+pos.toShortString()+": "+directions(player.blockPosition(),pos)+". The outline shows through walls for 20 seconds.");
     }
     /** How far, and which way, from one place to another, such as "34 blocks north-east". */
@@ -414,7 +414,7 @@ public final class Panels {
                     String condition=switch(level.getBlockState(at).getValue(io.github.swishhyy.wwmc.block.BronzeAnvilBlock.WEAR)/4) {
                         case 0 -> "Fresh"; case 1 -> "Chipped"; default -> "Damaged";
                     };
-                    rows.add(new Row(icon(WWMC.BRONZE_ANVIL_ITEM.get()),"Bronze anvil",condition+" · 65% slower than iron · "+at.toShortString()));
+                    rows.add(new Row(icon(VC.BRONZE_ANVIL_ITEM.get()),"Bronze anvil",condition+" · 65% slower than iron · "+at.toShortString()));
                 }
             }
             case GATHERER -> rows.add(new Row(icon(Items.STONE_SHOVEL),"Gathering","Needs a shovel; harvests cane and bamboo tops, plus dry exposed sand, gravel and clay. Plant bases and construction are preserved."));

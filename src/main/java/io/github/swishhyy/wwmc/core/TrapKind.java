@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.core;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -26,7 +26,7 @@ public enum TrapKind {
         return switch(this) {
             case WOODEN_SPIKES -> Items.OAK_PLANKS;
             case TANGLE_NET -> Items.STRING;
-            case BRONZE_SNARE,BRONZE_CALTROPS -> WWMC.BRONZE_INGOT.get();
+            case BRONZE_SNARE,BRONZE_CALTROPS -> VC.BRONZE_INGOT.get();
             case IRON_SPRING_TRAP -> Items.IRON_INGOT;
         };
     }

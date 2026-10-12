@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.settlement;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
@@ -74,7 +74,7 @@ public final class MultiplayerData extends SavedData {
             Contest.CODEC.listOf().optionalFieldOf("contests",List.of()).forGetter(d -> d.contests),
             Codec.unboundedMap(Settlement.UUID_CODEC,Codec.LONG).optionalFieldOf("payments",Map.of()).forGetter(d -> d.payments)
     ).apply(i,MultiplayerData::new));
-    private static final SavedDataType<MultiplayerData> TYPE=new SavedDataType<>(Identifier.fromNamespaceAndPath(WWMC.MODID,"multiplayer"),MultiplayerData::new,CODEC);
+    private static final SavedDataType<MultiplayerData> TYPE=new SavedDataType<>(Identifier.fromNamespaceAndPath(VC.MODID,"multiplayer"),MultiplayerData::new,CODEC);
     public final List<Contract> contracts;
     public final List<LegacyDuel> retiredDuels;
     public final List<Contest> contests;
@@ -93,7 +93,7 @@ public final class MultiplayerData extends SavedData {
         initialized=true;
         if(retiredDuels.isEmpty() && contests.isEmpty()) return;
         for(LegacyDuel duel:retiredDuels) { pay(duel.challenger,duel.stake); if(duel.accepted) pay(duel.opponent,duel.stake); }
-        WWMC.LOGGER.info("[WWMC] [multiplayer] Restored reserved stakes for {} retired preview duels; cancelled {} outpost challenges",retiredDuels.size(),contests.size());
+        VC.LOGGER.info("[VC] [multiplayer] Restored reserved stakes for {} retired preview duels; cancelled {} outpost challenges",retiredDuels.size(),contests.size());
         retiredDuels.clear(); contests.clear(); setDirty();
     }
     public static MultiplayerData get(ServerLevel level) {

@@ -44,10 +44,10 @@ public final class DefenseChecks {
         check(WavePlan.size(3,2,0.5,40)==4 && WavePlan.size(20,2,0.5,40)==12 && WavePlan.size(32,2,0.5,40)==18,"Waves grow with population");
         check(WavePlan.size(500,2,0.5,40)==40 && WavePlan.size(0,0,0.0,40)==1,"Wave sizes stay within their bounds");
         var small=WavePlan.compose(4,3);
-        check(small.get(WavePlan.Attacker.ZOMBIE)==4 && small.get(WavePlan.Attacker.SKELETON)==0 && small.get(WavePlan.Attacker.SPIDER)==0,"A first small wave is only zombies");
-        var large=WavePlan.compose(20,36);
-        check(large.values().stream().mapToInt(Integer::intValue).sum()==20 && large.get(WavePlan.Attacker.SKELETON)==5 && large.get(WavePlan.Attacker.SPIDER)==3,"Larger towns also face archers and spiders without changing the total");
-        check(WavePlan.delay(2,bound -> 0)==36000 && WavePlan.delay(2,bound -> bound-1)==60000,"Waves arrive every two days give or take half a day");
+        check(small.get(WavePlan.Attacker.FOOT_SOLDIER)==4 && small.get(WavePlan.Attacker.ARCHER)==0 && small.get(WavePlan.Attacker.ARMORED)==0,"A first raid is only foot soldiers");
+        var large=WavePlan.compose(20,36,0,5);
+        check(large.values().stream().mapToInt(Integer::intValue).sum()==20 && large.get(WavePlan.Attacker.ARCHER)==5 && large.get(WavePlan.Attacker.ARMORED)==4,"Later raids add archers and armor without changing the total");
+        check(WavePlan.delay(5,bound -> 0)==72000 && WavePlan.delay(5,bound -> bound-1)==168000,"Default raids are scattered over three to seven Minecraft days");
         check(WavePlan.compass(0,-10).equals("north") && WavePlan.compass(10,0).equals("east") && WavePlan.compass(-7,7).equals("south-west"),"Wave warnings name the compass direction");
 
         Settlement old=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Old",new BlockPos(0,64,0),150,List.of(),List.of(),"balanced");

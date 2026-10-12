@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.util.*;
@@ -21,7 +21,7 @@ public final class TownNeeds {
     public record Need(int severity,ItemStack icon,String title,String detail,BlockPos at) {}
     private TownNeeds() {}
     private static ItemStack icon(ItemLike item) { return new ItemStack(item); }
-    private static ItemStack station(StructureRole role) { return new ItemStack(WWMC.STATION_ITEMS.get(role).get()); }
+    private static ItemStack station(StructureRole role) { return new ItemStack(VC.STATION_ITEMS.get(role).get()); }
     private static Station first(Settlement town,StructureRole role) {
         return town.stations.stream().filter(s -> s.role()==role).findFirst().orElse(null);
     }

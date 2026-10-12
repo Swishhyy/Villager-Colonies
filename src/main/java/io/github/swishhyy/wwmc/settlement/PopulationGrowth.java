@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.util.*;
 import net.minecraft.core.BlockPos;
@@ -66,7 +66,7 @@ public final class PopulationGrowth {
             if(homes.contains(bed) || level.getBlockState(bed).getValue(net.minecraft.world.level.block.BedBlock.OCCUPIED)) continue;
             var parents=adults.stream().filter(c -> c.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(bed))<=32*32).limit(2).toList();
             if(parents.size()<2 || parents.get(0).distanceToSqr(parents.get(1))>16*16) continue;
-            CitizenEntity baby=WWMC.CITIZEN.get().create(level,EntitySpawnReason.BREEDING); if(baby==null) return false;
+            CitizenEntity baby=VC.CITIZEN.get().create(level,EntitySpawnReason.BREEDING); if(baby==null) return false;
             baby.setAge(-CHILD_TICKS);
             BlockPos spot=null;
             var ground=CitizenReach.ground(level,p -> town.contains(p) && level.hasChunkAt(p));
@@ -89,7 +89,7 @@ public final class PopulationGrowth {
             SettlementData.get(level).setDirty();
             level.sendParticles(ParticleTypes.HEART,baby.getX(),baby.getY()+0.7,baby.getZ(),7,0.3,0.3,0.3,0);
             CampaignService.record(level,town,baby.getName().getString()+" was born. Children grow up before taking jobs.");
-            WWMC.LOGGER.info("[WWMC][birth] town={} child={} population={} meals={}",town.id,baby.getUUID(),town.citizens.size(),MEALS);
+            VC.LOGGER.info("[VC][birth] town={} child={} population={} meals={}",town.id,baby.getUUID(),town.citizens.size(),MEALS);
             return true;
         }
         return false;

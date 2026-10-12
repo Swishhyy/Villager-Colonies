@@ -3,7 +3,7 @@ package io.github.swishhyy.wwmc.settlement;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import io.github.swishhyy.wwmc.Config;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.block.StationBlock;
 import io.github.swishhyy.wwmc.block.SettlementBannerBlock;
 import io.github.swishhyy.wwmc.core.ReservationBook;
@@ -131,15 +131,15 @@ public final class SettlementService {
         if(town==null || !town.contains(player.blockPosition()) || !TownAccess.builds(town,player.getUUID())) return "Stand inside a town where you have building permission.";
         if(!level.hasChunkAt(town.center)) return "Move closer to the original flag at "+town.center.toShortString()+" so its chunk is loaded.";
         BlockState state=level.getBlockState(town.center);
-        if(state.is(WWMC.BANNER.get())) return "The settlement flag is already in place at "+town.center.toShortString()+".";
+        if(state.is(VC.BANNER.get())) return "The settlement flag is already in place at "+town.center.toShortString()+".";
         if(!state.isAir()) return "Clear the original flag position at "+town.center.toShortString()+" first; recovery never replaces another block.";
         ItemStack replacement=ItemStack.EMPTY;
         for(int slot=0;slot<player.getInventory().getContainerSize();slot++) {
             ItemStack item=player.getInventory().getItem(slot);
-            if(item.is(WWMC.BANNER_ITEM.get())) { replacement=item; break; }
+            if(item.is(VC.BANNER_ITEM.get())) { replacement=item; break; }
         }
         if(replacement.isEmpty() && !player.getAbilities().instabuild) return "Carry one Settlement Banner in your inventory to restore the flag.";
-        if(!level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState().setValue(SettlementBannerBlock.FACING,player.getDirection()))) return "The flag could not be restored here.";
+        if(!level.setBlockAndUpdate(town.center,VC.BANNER.get().defaultBlockState().setValue(SettlementBannerBlock.FACING,player.getDirection()))) return "The flag could not be restored here.";
         if(!player.getAbilities().instabuild) { replacement.shrink(1); player.getInventory().setChanged(); }
         CampaignService.record(level,town,"Settlement flag restored at "+town.center.toShortString()+".");
         return "Restored "+town.name+"'s flag. Its citizens, stations, claim and routes are unchanged.";
@@ -488,7 +488,7 @@ public final class SettlementService {
         int limit=Math.min(beds.size(),populationLimit(settlement));
         int added=0;
         for(int i=0;i<count && settlement.citizens.size()<limit;i++) {
-            CitizenEntity citizen=WWMC.CITIZEN.get().create(level,EntitySpawnReason.COMMAND);
+            CitizenEntity citizen=VC.CITIZEN.get().create(level,EntitySpawnReason.COMMAND);
             if(citizen==null) break;
             BlockPos spawn=null;
             for(int x=-3;x<=3 && spawn==null;x++) for(int z=-3;z<=3;z++) {
@@ -514,10 +514,10 @@ public final class SettlementService {
         return 1;
     }
     @SubscribeEvent public void commands(RegisterCommandsEvent event) {
-        event.getDispatcher().register(Commands.literal("wwmc")
+        event.getDispatcher().register(Commands.literal("vc")
             .then(Commands.literal("guide").executes(c -> {
                 ServerPlayer player=c.getSource().getPlayerOrException();
-                ItemStack book=WWMC.GUIDE.get().getDefaultInstance();
+                ItemStack book=VC.GUIDE.get().getDefaultInstance();
                 if(!player.getInventory().add(book)) player.drop(book,false);
                 notify(player,"Settlement Guide received. Right-click it to read recipes and town instructions."); return 1;
             }))
@@ -552,7 +552,7 @@ public final class SettlementService {
                         String job=StringArgumentType.getString(c,"job"),name=StringArgumentType.getString(c,"level");
                         StructureRole role=java.util.Arrays.stream(StructureRole.values()).filter(r -> r.providesWork() && r.id().equals(job)).findFirst().orElse(null);
                         int level=JobBoard.LEVEL_NAMES.stream().map(n -> n.toLowerCase(java.util.Locale.ROOT)).toList().indexOf(name.toLowerCase(java.util.Locale.ROOT));
-                        if(role==null || level<0) { c.getSource().sendFailure(Component.literal("Use /wwmc job <job> <off|low|normal|high>, for example /wwmc job farm high.")); return 0; }
+                        if(role==null || level<0) { c.getSource().sendFailure(Component.literal("Use /vc job <job> <off|low|normal|high>, for example /vc job farm high.")); return 0; }
                         setJobLevel(c.getSource().getLevel(),s,role,level);
                         c.getSource().sendSuccess(() -> Component.literal(role.title()+" priority set to "+JobBoard.levelName(level)+"."),false); return 1;
                     }))))
@@ -604,7 +604,7 @@ public final class SettlementService {
         SettlementData data=SettlementData.get(level);
         Settlement settlement=data.at(event.getPos());
         if(settlement==null) return;
-        boolean banner=settlement.center.equals(event.getPos()) && event.getState().is(WWMC.BANNER.get());
+        boolean banner=settlement.center.equals(event.getPos()) && event.getState().is(VC.BANNER.get());
         boolean station=event.getState().getBlock() instanceof StationBlock;
         if(!banner && !station) return;
         if(!(banner ? TownAccess.owner(settlement,event.getPlayer().getUUID()) : TownAccess.builds(settlement,event.getPlayer().getUUID()))) {
@@ -620,7 +620,7 @@ public final class SettlementService {
         reservations(level).prune(level.getGameTime());
         workers(level).prune(level.getGameTime());
         SettlementData data=SettlementData.get(level);
-        if(data.settlements.removeIf(s -> s.trading.buildIndex<0 && s.citizens.isEmpty() && level.hasChunkAt(s.center) && !level.getBlockState(s.center).is(WWMC.BANNER.get()))) data.setDirty();
+        if(data.settlements.removeIf(s -> s.trading.buildIndex<0 && s.citizens.isEmpty() && level.hasChunkAt(s.center) && !level.getBlockState(s.center).is(VC.BANNER.get()))) data.setDirty();
         StationResourceCache scans=RESOURCE_SCANS.get(level);
         if(scans!=null) scans.prune(level.getGameTime());
         for(Settlement s:data.settlements) {

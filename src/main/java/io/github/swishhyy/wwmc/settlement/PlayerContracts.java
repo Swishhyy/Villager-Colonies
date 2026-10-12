@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import java.util.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -36,7 +36,7 @@ public final class PlayerContracts {
         var order=new MultiplayerData.Contract(UUID.randomUUID(),issuer.id,publisher.getUUID(),BuiltInRegistries.ITEM.getKey(example.getItem()).toString(),amount,0,payment,Optional.empty(),Optional.empty());
         data.contracts.add(order); data.setDirty();
         CampaignService.record(level,issuer,"Posted a player contract: "+amount+" "+example.getHoverName().getString()+" for "+payment+" emeralds (reserved).");
-        WWMC.LOGGER.info("[WWMC] [contracts] {} posted {}: {} x{}, payment {}",publisher.getUUID(),order.id,order.item,amount,payment);
+        VC.LOGGER.info("[VC] [contracts] {} posted {}: {} x{}, payment {}",publisher.getUUID(),order.id,order.item,amount,payment);
         return "Contract posted; payment reserved. Other settlements can accept it on a banner's Neighbours board.";
     }
     public static String accept(ServerLevel level,Settlement supplier,ServerPlayer player,UUID id) {
@@ -47,7 +47,7 @@ public final class PlayerContracts {
                 || supplier.id.equals(issuer.id) || supplier.owner.equals(issuer.owner)) return "Accept for a different main settlement you manage.";
         order.supplier=supplier.id; order.recipient=player.getUUID(); data.setDirty();
         CampaignService.record(level,supplier,"Accepted "+issuer.name+"'s supply contract. Deliver by trader or at its banner; payment goes to "+player.getName().getString()+".");
-        WWMC.LOGGER.info("[WWMC] [contracts] {} accepted {} for settlement {}",player.getUUID(),id,supplier.id);
+        VC.LOGGER.info("[VC] [contracts] {} accepted {} for settlement {}",player.getUUID(),id,supplier.id);
         return "Accepted. Connect a trade route to "+issuer.name+" and your trader delivers warehouse surplus, or carry plain goods to its banner at "+issuer.center.toShortString()+". Reserved payment goes to you after delivery.";
     }
     private static boolean plain(ItemStack stack) { return !stack.isEmpty() && ItemStack.isSameItemSameComponents(stack,new ItemStack(stack.getItem())); }
@@ -91,7 +91,7 @@ public final class PlayerContracts {
         data.pay(order.recipient,order.payment); data.setDirty();
         CampaignService.record(level,issuer,"Supply contract completed by "+supplier.name+"; "+order.payment+" reserved emeralds paid.");
         CampaignService.record(level,supplier,"Completed "+issuer.name+"'s supply contract. Collect "+order.payment+" emeralds at the banner.");
-        WWMC.LOGGER.info("[WWMC] [contracts] {} completed {}; released {} emeralds to {}",supplier.id,order.id,order.payment,order.recipient);
+        VC.LOGGER.info("[VC] [contracts] {} completed {}; released {} emeralds to {}",supplier.id,order.id,order.payment,order.recipient);
     }
     public static String routeStatus(ServerLevel level,Settlement source,Settlement destination) {
         if(source==null) return "Accept for a main settlement you manage";
@@ -135,7 +135,7 @@ public final class PlayerContracts {
         Settlement issuer=order==null ? null : SettlementData.get(level).byId(order.issuer);
         if(order==null || order.supplier!=null || !TownAccess.manages(issuer,player.getUUID())) return "Only an unaccepted offer can be cancelled by its issuing settlement.";
         data.pay(order.publisher,order.payment); data.contracts.remove(order); data.setDirty();
-        WWMC.LOGGER.info("[WWMC] [contracts] Cancelled {}; refunded {} emeralds to {}",id,order.payment,order.publisher);
+        VC.LOGGER.info("[VC] [contracts] Cancelled {}; refunded {} emeralds to {}",id,order.payment,order.publisher);
         return "Offer cancelled. Reserved emeralds returned to the publisher's payment balance.";
     }
     public static String abandon(ServerLevel level,ServerPlayer player,UUID id) {

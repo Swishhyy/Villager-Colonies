@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.test;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.serialization.JsonOps;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.settlement.*;
@@ -52,8 +52,8 @@ public final class MultiplayerWorldTests {
             Station warehouse=new Station(pos.west(3),StructureRole.WAREHOUSE);
             var town=new Settlement(UUID.randomUUID(),owner,name,pos,Settlement.MIN_RADIUS,List.of(),List.of(warehouse),"balanced");
             towns.add(town); SettlementData.get(level).settlements.add(town); SettlementData.get(level).setDirty();
-            level.setBlockAndUpdate(pos,WWMC.BANNER.get().defaultBlockState());
-            level.setBlockAndUpdate(warehouse.position(),WWMC.STATIONS.get(warehouse.role()).get().defaultBlockState());
+            level.setBlockAndUpdate(pos,VC.BANNER.get().defaultBlockState());
+            level.setBlockAndUpdate(warehouse.position(),VC.STATIONS.get(warehouse.role()).get().defaultBlockState());
             level.setBlockAndUpdate(pos.west(4),Blocks.BARREL.defaultBlockState()); return town;
         }
         Container stock(Settlement town) { return (Container)level.getBlockEntity(town.center.west(4)); }
@@ -80,7 +80,7 @@ public final class MultiplayerWorldTests {
             TestPlayer issuer=f.player("ContractIssuer",start.east()),supplier=f.player("ContractSupplier",start.east(601));
             Settlement a=f.town(issuer.getUUID(),start,"Requesting Town"),b=f.town(supplier.getUUID(),start.east(600),"Supplying Town");
             issuer.getInventory().setItem(0,new ItemStack(Items.BREAD)); issuer.getInventory().setItem(1,new ItemStack(Items.EMERALD,8));
-            try { level.getServer().getCommands().getDispatcher().execute("wwmc playercontract post 10 4",issuer.createCommandSourceStack()); }
+            try { level.getServer().getCommands().getDispatcher().execute("vc playercontract post 10 4",issuer.createCommandSourceStack()); }
             catch(Exception error) { throw new AssertionError("Posting command failed",error); }
             var data=MultiplayerData.get(level); var offers=data.contracts.stream().filter(c -> c.issuer.equals(a.id)).toList();
             helper.assertTrue(offers.size()==1 && issuer.getInventory().countItem(Items.EMERALD)==4 && issuer.getInventory().countItem(Items.BREAD)==1,"Posting duplicated an offer/payment or spent the example");
@@ -113,10 +113,10 @@ public final class MultiplayerWorldTests {
     }
     private static void checkpoint(Fixture f,Settlement town) {
         var station=new Station(town.center.east(2),StructureRole.TRADER);
-        town.stations.add(station); f.level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+        town.stations.add(station); f.level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
     }
     private static CitizenEntity trader(Fixture f,Settlement town) {
-        var trader=new CitizenEntity(WWMC.CITIZEN.get(),f.level); trader.join(town.id);
+        var trader=new CitizenEntity(VC.CITIZEN.get(),f.level); trader.join(town.id);
         trader.setPos(town.center.getX()+2.5,town.center.getY(),town.center.getZ()+1.5);
         town.citizens.add(trader.getUUID()); town.jobs.assign(trader.getUUID(),TradeRoutes.checkpoint(town).position());
         f.citizens.add(trader); f.level.addFreshEntity(trader); SettlementData.get(f.level).setDirty(); return trader;
@@ -210,7 +210,7 @@ public final class MultiplayerWorldTests {
             checkpoint(f,home); checkpoint(f,other); checkpoint(f,npc);
             var view=MultiplayerViews.view(a,start); String text=view.tabs().toString();
             helper.assertTrue(text.contains("Public trade news") && text.contains("Needs:") && !text.contains("Private neighbour journal") && view.tabs().stream().noneMatch(t -> t.name().getString().equals("Duels")),"Neighbour board leaked private journal data or retained duels");
-            helper.assertTrue(level.getServer().getCommands().getDispatcher().getRoot().getChild("wwmc").getChild("duel")==null,"Removed duel command remains registered");
+            helper.assertTrue(level.getServer().getCommands().getDispatcher().getRoot().getChild("vc").getChild("duel")==null,"Removed duel command remains registered");
             b.setPos(start.getX()+1.5,start.getY(),start.getZ()+1.5); MultiplayerViews.act(b,start,MultiplayerViews.ROW_ACTION,0,"act:trade-link:"+npc.id);
             helper.assertTrue(home.trading.partner==null && ClaimProtection.denied(level,b,start.west(4)) && !MultiplayerCombat.claimException(level,b,a),"Public board changed another town's trade or combat permissions");
             f.close(); helper.succeed();
@@ -228,7 +228,7 @@ public final class MultiplayerWorldTests {
             defender.campaign.extraRoutes.add(outpost.id); outpost.campaign.extraRoutes.add(defender.id);
             outpost.progress.research.add("iron_age"); challenger.progress.research.add("bronze_age");
             f.stock(outpost).setItem(0,new ItemStack(Items.RAW_COPPER,31));
-            var miner=new CitizenEntity(WWMC.CITIZEN.get(),level); miner.join(outpost.id); miner.setNoAi(true);
+            var miner=new CitizenEntity(VC.CITIZEN.get(),level); miner.join(outpost.id); miner.setNoAi(true);
             miner.setPos(outpost.center.getX()+2.5,outpost.center.getY(),outpost.center.getZ()+2.5); miner.bag().offer(new ItemStack(Items.STONE_PICKAXE));
             outpost.citizens.add(miner.getUUID()); f.citizens.add(miner); level.addFreshEntity(miner);
             var site=new ExpeditionData.Site(UUID.randomUUID(),outpost.center,"mine","test"); site.spawned=true; site.cleared=true; site.claimed=outpost.id;

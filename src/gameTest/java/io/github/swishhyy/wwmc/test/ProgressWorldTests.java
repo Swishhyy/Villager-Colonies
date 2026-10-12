@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.test;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.menu.Panels;
@@ -32,10 +32,10 @@ public final class ProgressWorldTests {
             var mine=new Station(start.east(16),StructureRole.MINE);
             var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Courier needs",start,96,List.of(),List.of(courier,mine),"balanced");
             var data=SettlementData.get(level); data.settlements.add(town); data.setDirty();
-            level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
-            for(Station station:town.stations) level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+            level.setBlockAndUpdate(start,VC.BANNER.get().defaultBlockState());
+            for(Station station:town.stations) level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
             level.setBlockAndUpdate(mine.position().east(2),Blocks.BARREL.defaultBlockState());
-            var worker=new CitizenEntity(WWMC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(true);
+            var worker=new CitizenEntity(VC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(true);
             worker.setPos(start.getX()+6.5,start.getY(),start.getZ()+0.5); town.citizens.add(worker.getUUID()); level.addFreshEntity(worker);
             helper.runAtTickTime(5,() -> {
                 helper.assertTrue(!SettlementService.couriers(level,town),"An empty courier station cannot haul");
@@ -77,11 +77,11 @@ public final class ProgressWorldTests {
             stations.add(new Station(start.offset(-4,0,18),StructureRole.BARRACKS));
             var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Job counts",start,96,List.of(),stations,"balanced");
             var data=SettlementData.get(level); data.settlements.add(town); data.setDirty();
-            level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
-            for(Station station:stations) level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+            level.setBlockAndUpdate(start,VC.BANNER.get().defaultBlockState());
+            for(Station station:stations) level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
             List<CitizenEntity> citizens=new ArrayList<>();
             for(int n=0;n<30;n++) {
-                var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level); citizen.join(town.id); citizen.setNoAi(true);
+                var citizen=new CitizenEntity(VC.CITIZEN.get(),level); citizen.join(town.id); citizen.setNoAi(true);
                 citizen.setPos(start.getX()+2.5,start.getY(),start.getZ()+2.5);
                 town.citizens.add(citizen.getUUID()); level.addFreshEntity(citizen); citizens.add(citizen);
                 if(n<24) town.jobs.assign(citizen.getUUID(),stations.get(n).position());
@@ -103,9 +103,9 @@ public final class ProgressWorldTests {
                 jobs=TownJobs.assess(level,town);
                 helper.assertTrue(jobs.places()==24 && jobs.open()==1 && jobs.off()==0 && jobs.noJobAdvice().contains("open"),"Re-enabled places must be available: "+jobs);
                 var quarry=new Station(start.offset(42,0,27),StructureRole.QUARRY);
-                town.stations.add(quarry); level.setBlockAndUpdate(quarry.position(),WWMC.STATIONS.get(StructureRole.QUARRY).get().defaultBlockState());
+                town.stations.add(quarry); level.setBlockAndUpdate(quarry.position(),VC.STATIONS.get(StructureRole.QUARRY).get().defaultBlockState());
                 var hospital=new Station(start.offset(-4,0,24),StructureRole.HOSPITAL);
-                town.stations.add(hospital); level.setBlockAndUpdate(hospital.position(),WWMC.STATIONS.get(StructureRole.HOSPITAL).get().defaultBlockState());
+                town.stations.add(hospital); level.setBlockAndUpdate(hospital.position(),VC.STATIONS.get(StructureRole.HOSPITAL).get().defaultBlockState());
                 jobs=TownJobs.assess(level,town);
                 int capacity=24+SettlementService.workerLimit(town,quarry);
                 helper.assertTrue(jobs.places()==capacity,"A quarry adds its whole crew; an unfunded medic adds none: "+jobs);
@@ -132,14 +132,14 @@ public final class ProgressWorldTests {
             town.progress.research.add("bronze_age"); town.progress.research.add("iron_age");
             BlockPos desk=research.position().north(); level.setBlockAndUpdate(desk,Blocks.LECTERN.defaultBlockState());
             var data=SettlementData.get(level); data.settlements.add(town); data.setDirty();
-            level.setBlockAndUpdate(town.center,WWMC.BANNER.get().defaultBlockState());
-            for(Station station:town.stations) level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
+            level.setBlockAndUpdate(town.center,VC.BANNER.get().defaultBlockState());
+            for(Station station:town.stations) level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
             BlockPos chestPos=warehouse.position().south(2);
             level.setBlockAndUpdate(chestPos,Blocks.CHEST.defaultBlockState());
             Container chest=(Container)level.getBlockEntity(chestPos);
             chest.setItem(0,new ItemStack(Items.IRON_INGOT,40)); chest.setItem(1,new ItemStack(Items.COAL,16)); chest.setItem(2,new ItemStack(Items.GOLD_INGOT,8));
-            chest.setItem(3,new ItemStack(WWMC.RESEARCH_SCROLL.get(),Research.byId("steel_tools").scrolls()));
-            var scholar=new CitizenEntity(WWMC.CITIZEN.get(),level); scholar.join(town.id); scholar.setNoAi(true);
+            chest.setItem(3,new ItemStack(VC.RESEARCH_SCROLL.get(),Research.byId("steel_tools").scrolls()));
+            var scholar=new CitizenEntity(VC.CITIZEN.get(),level); scholar.join(town.id); scholar.setNoAi(true);
             scholar.setPos(desk.getX()+1.5,desk.getY(),desk.getZ()+.5); town.citizens.add(scholar.getUUID());
             town.jobs.assign(scholar.getUUID(),research.position()); level.addFreshEntity(scholar);
             helper.succeedWhen(() -> {

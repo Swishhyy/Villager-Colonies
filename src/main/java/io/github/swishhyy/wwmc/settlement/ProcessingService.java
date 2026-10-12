@@ -76,7 +76,7 @@ public final class ProcessingService {
         if(station.role()!=StructureRole.SMELTERY || !AlloyWorkshop.material(stack)
                 || ingredient(station.role(),stack) || fuel(level,stack)) return true;
         boolean bronze=AlloyWorkshop.copper(stack) || AlloyWorkshop.tin(stack);
-        var output=bronze ? io.github.swishhyy.wwmc.WWMC.BRONZE_INGOT.get() : io.github.swishhyy.wwmc.WWMC.STEEL_INGOT.get();
+        var output=bronze ? io.github.swishhyy.wwmc.VC.BRONZE_INGOT.get() : io.github.swishhyy.wwmc.VC.STEEL_INGOT.get();
         return Research.has(town,bronze ? "bronze_age" : "steel_working") && AlloyWorkshop.target(town,output)>0
                 && SettlementService.processingDevices(level,town,station).stream()
                     .anyMatch(p -> level.getBlockEntity(p) instanceof io.github.swishhyy.wwmc.block.AlloyFurnaceEntity);

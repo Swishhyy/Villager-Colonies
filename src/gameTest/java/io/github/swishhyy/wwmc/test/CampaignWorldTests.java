@@ -1,7 +1,7 @@
 package io.github.swishhyy.wwmc.test;
 
 import com.mojang.authlib.GameProfile;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.settlement.*;
@@ -29,12 +29,12 @@ public final class CampaignWorldTests {
     private static Settlement town(ServerLevel level,BlockPos center,Station... stations) {
         var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Campaign test",center,32,List.of(),List.of(stations),"balanced");
         SettlementData.get(level).settlements.add(town); SettlementData.get(level).setDirty();
-        level.setBlockAndUpdate(center,WWMC.BANNER.get().defaultBlockState());
-        for(Station s:stations) level.setBlockAndUpdate(s.position(),WWMC.STATIONS.get(s.role()).get().defaultBlockState());
+        level.setBlockAndUpdate(center,VC.BANNER.get().defaultBlockState());
+        for(Station s:stations) level.setBlockAndUpdate(s.position(),VC.STATIONS.get(s.role()).get().defaultBlockState());
         return town;
     }
     private static CitizenEntity citizen(ServerLevel level,Settlement town,BlockPos pos) {
-        var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level); citizen.join(town.id); citizen.setPos(pos.getX()+0.5,pos.getY(),pos.getZ()+0.5);
+        var citizen=new CitizenEntity(VC.CITIZEN.get(),level); citizen.join(town.id); citizen.setPos(pos.getX()+0.5,pos.getY(),pos.getZ()+0.5);
         town.citizens.add(citizen.getUUID()); level.addFreshEntity(citizen); return citizen;
     }
     private static void leave(ServerLevel level,Settlement town,CitizenEntity... citizens) {

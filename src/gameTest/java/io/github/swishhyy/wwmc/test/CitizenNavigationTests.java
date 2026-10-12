@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.test;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.ArrayList;
@@ -86,7 +86,7 @@ public final class CitizenNavigationTests {
     }
     /** A citizen with no town and default navigation settings, standing at the start. */
     private static CitizenEntity walker(ServerLevel level,BlockPos start) {
-        var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
+        var citizen=new CitizenEntity(VC.CITIZEN.get(),level);
         citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
         return citizen;
     }
@@ -195,7 +195,7 @@ public final class CitizenNavigationTests {
             for(int x=0;x<=20;x++) level.setBlockAndUpdate(start.offset(x,-1,3),Blocks.DIRT_PATH.defaultBlockState());
             for(int z=0;z<=3;z++) for(int x:new int[]{0,20})
                 level.setBlockAndUpdate(start.offset(x,-1,z),Blocks.DIRT_PATH.defaultBlockState());
-            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
+            var citizen=new CitizenEntity(VC.CITIZEN.get(),level);
             citizen.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(48);
             citizen.getNavigation().updatePathfinderMaxVisitedNodes();
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
@@ -235,7 +235,7 @@ public final class CitizenNavigationTests {
             for(int x=4;x<=10;x++) level.setBlockAndUpdate(start.offset(x,-1,6),Blocks.OAK_PLANKS.defaultBlockState());
             for(int z=6;z<=9;z++) level.setBlockAndUpdate(start.offset(10,-1,z),Blocks.OAK_PLANKS.defaultBlockState());
             for(int x=10;x<=16;x++) level.setBlockAndUpdate(start.offset(x,-1,9),Blocks.OAK_PLANKS.defaultBlockState());
-            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
+            var citizen=new CitizenEntity(VC.CITIZEN.get(),level);
             citizen.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(48);
             citizen.getNavigation().updatePathfinderMaxVisitedNodes();
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
@@ -269,7 +269,7 @@ public final class CitizenNavigationTests {
                 level.setBlockAndUpdate(start.offset(x,-1,z),(x>=5 && x<=13 ? Blocks.WATER : Blocks.GRASS_BLOCK).defaultBlockState());
                 for(int y=0;y<=3;y++) level.setBlockAndUpdate(start.offset(x,y,z),Blocks.AIR.defaultBlockState());
             }
-            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
+            var citizen=new CitizenEntity(VC.CITIZEN.get(),level);
             citizen.getAttribute(Attributes.FOLLOW_RANGE).setBaseValue(32);
             citizen.getNavigation().updatePathfinderMaxVisitedNodes();
             citizen.setPos(start.getX()+0.5,start.getY(),start.getZ()+0.5); level.addFreshEntity(citizen);
@@ -295,7 +295,7 @@ public final class CitizenNavigationTests {
                         (x>=5 && x<=13 ? Blocks.WATER : Blocks.GRASS_BLOCK).defaultBlockState());
                 for(int y=0;y<=3;y++) level.setBlockAndUpdate(start.offset(x,y,z),Blocks.AIR.defaultBlockState());
             }
-            var citizen=new CitizenEntity(WWMC.CITIZEN.get(),level);
+            var citizen=new CitizenEntity(VC.CITIZEN.get(),level);
             citizen.setPos(start.getX()+10.5,start.getY()-1,start.getZ()+0.5); level.addFreshEntity(citizen);
             BlockPos bank=start.east(2);
             var swimming=new AtomicBoolean();

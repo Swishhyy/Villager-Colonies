@@ -48,6 +48,7 @@ public final class GuideBook {
             new Card("wwmc:guard_station","Equip a guard","Place usable armor and shields on nearby stands. Put weapons, shields and arrows in the guard barrel. Archers shoot real arrows; shield guards raise a shield between attacks. One post has one guard."),
             new Card("minecraft:shield","Posts & patrols","Choose a swordsman, shield guard or archer role at Guard. Use the Inspector to mark posts and patrol points."),
             new Card("minecraft:bell","Sound the alarm","Ring a bell to call guards. Keep some home when borrowing guards for a squad or expedition."),
+            new Card("minecraft:stone_sword","Barbarian raids","Expect a few foot soldiers first. Archers join later, then armored veterans in developed towns. Raids have irregular gaps, arrive after sunset and wait until a manager is home."),
             new Card("wwmc:hospital_station","Make patient beds","Put beds beside Hospital. They heal slowly. Fund Field Hospital and stock meals plus paper to let a medic assist."),
             new Card("wwmc:wooden_spikes","Build trap defenses","Stone Age spikes damage and slow; nets strongly slow. Bronze unlocks snares and caltrops; Iron unlocks spring traps. Place them on solid ground inside your town."),
             new Card("wwmc:bronze_snare","Maintain your traps","Only hostile monsters trigger traps. Each activation spends a use. Nets and snares need string to rearm; broken traps need planks, string or their metal. Moving a trap retains wear."),

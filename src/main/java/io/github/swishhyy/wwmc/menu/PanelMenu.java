@@ -16,7 +16,7 @@ public final class PanelMenu extends SettlementMenu {
     public final Kind kind;
     public final BlockPos pos;
     public PanelMenu(int id,Kind kind,BlockPos pos,ServerPlayer viewer,PanelView view) {
-        super(WwmcMenus.PANEL.get(),id,viewer,view); this.kind=kind; this.pos=pos.immutable();
+        super(VcMenus.PANEL.get(),id,viewer,view); this.kind=kind; this.pos=pos.immutable();
     }
     public static PanelMenu read(int id,Inventory inventory,RegistryFriendlyByteBuf buf) {
         Kind kind=buf.readEnum(Kind.class);

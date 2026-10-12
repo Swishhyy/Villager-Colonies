@@ -123,8 +123,9 @@ def generate_textures(client_jar):
         for destination, vanilla, material, preserve in TEXTURE_SOURCES:
             original = source(vanilla)
             image = original.copy()
+            unlit = source(vanilla.removesuffix('_on')) if preserve == 'flame' else None
             rock_colors = set()
-            if preserve and preserve != 'wood':
+            if preserve and preserve not in ('wood', 'flame'):
                 rock = source(preserve)
                 rock_colors = {rock.getpixel((x, y)) for y in range(rock.height) for x in range(rock.width)}
             changed = 0
@@ -132,6 +133,8 @@ def generate_textures(client_jar):
                 for x in range(image.width):
                     red, green, blue, alpha = original.getpixel((x, y))
                     if not alpha or (red, green, blue, alpha) in rock_colors:
+                        continue
+                    if unlit is not None and (red, green, blue, alpha) != unlit.getpixel((x, y % unlit.height)):
                         continue
                     if preserve == 'wood' and not red == green == blue:
                         continue

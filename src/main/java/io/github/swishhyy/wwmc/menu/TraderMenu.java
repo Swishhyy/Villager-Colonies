@@ -18,7 +18,7 @@ public final class TraderMenu extends SettlementMenu {
     private String feedback="";
     private int feedbackTicks;
     public TraderMenu(int id,Inventory inventory,BlockPos pos,ServerPlayer viewer,PanelView view) {
-        super(WwmcMenus.TRADER.get(),id,viewer,view); this.pos=pos.immutable();
+        super(VcMenus.TRADER.get(),id,viewer,view); this.pos=pos.immutable();
         addSlot(new Slot(new SimpleContainer(1),0,EXAMPLE_X,EXAMPLE_Y) {
             @Override public boolean mayPlace(ItemStack stack) { return false; }
             @Override public boolean mayPickup(Player player) { return false; }

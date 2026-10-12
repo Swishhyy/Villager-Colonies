@@ -19,7 +19,7 @@ This is the detailed reference for the playable settlement systems. For a shorte
 
 ## Start a settlement
 
-Install the same mod JAR on the NeoForge 26.2 client and server. Each player automatically receives **one Settlement Banner and one Settlement Guide** on their first login to each world. This is always enabled; reconnects, deaths and changing dimensions do not grant another pack. If the inventory is full, the items drop at the player's feet. Right-click the guide to read the instructions. Craft a replacement from one book and one blue dye, or run `/wwmc guide`.
+Install the same mod JAR on the NeoForge 26.2 client and server. Each player automatically receives **one Settlement Banner and one Settlement Guide** on their first login to each world. This is always enabled; reconnects, deaths and changing dimensions do not grant another pack. If the inventory is full, the items drop at the player's feet. Right-click the guide to read the instructions. Craft a replacement from one book and one blue dye, or run `/vc guide`.
 
 1. Craft or obtain a **Settlement Banner**, place it on solid ground with open space around it, and right-click it with an empty hand to found your town. New towns extend **240 blocks in each horizontal direction**, a 481×481 block footprint including the center. Banners matching your town color appear at the four corners when those chunks are loaded and the ground can support a banner. The mod does not load distant chunks to place them or replace obstructing blocks.
 2. Build a small camp with beds. Place a **Housing Station** or **Barracks Station** inside it.
@@ -28,7 +28,7 @@ Install the same mod JAR on the NeoForge 26.2 client and server. Each player aut
 5. Place **Farm** and **Lumber Stations** with crops or tree roots inside their **7×7×7** ranges. Put barrels in their ranges and add a **Courier Station** to deliver tools and collect goods. Every job block takes **one worker**, except a quarry, which supports **eight** by default. Only quarries can buy more crew slots (see [Station upgrades](#station-upgrades)). Citizens reserve individual trees or excavation positions so a shared crew cannot harvest the same target twice. Placed logs and actual buildings remain protected; a nearby housing, hospital, barracks or warehouse scan range alone does not protect natural trees.
 6. Prepare farmland and plant crops yourself. Carrots or potatoes supply both food and replanting stock; wheat is collected, and a cook makes it into bread. Put a lumber station by natural trees or accessible soil. It fells the connected tree, collects real leaf drops, and replants from saplings in its job barrel or worker's bag. Couriers bring warehouse supplies to the job barrel. If no tree is accessible, it can plant a new one instead. Trees grow at Minecraft's normal rate.
 7. For mining, the simplest choice is a **Mine Station placed within two blocks of an exposed ore** (an ore with at least one open side): its miner works that ore as an endless vein. See [Ore veins](#ore-veins). A Mine Station with no ore beside it digs tunnels instead: place it facing into the intended descent, with open walking space in front. It chooses and saves a random depth between **Y −30 and 10**, then digs a staircase and eight 24-block side branches. Near that depth, workers also walk to accessible exposed cave ores they can reach. Alternatively, place a **Quarry Station** facing the neighboring chunk you want excavated. The quarry removes that complete 16×16 chunk from the surface down to Y −64, preserving bedrock. Keep the station and level, walkable ground outside the target chunk, in line with the station, where the crew's staircase begins. The whole plan must fit inside the town claim.
-8. Run `/wwmc recruit 3`. Recruitment is limited by loaded housing beds and the town's population limit: 10 citizens at first, raised with emeralds on the town screen (see [Population](#population)). Each citizen takes the open job of highest priority and keeps it (see [Jobs and priorities](#jobs-and-priorities)), obtains supplies, works, and delivers cargo in batches.
+8. Run `/vc recruit 3`. Recruitment is limited by loaded housing beds and the town's population limit: 10 citizens at first, raised with emeralds on the town screen (see [Population](#population)). Each citizen takes the open job of highest priority and keeps it (see [Jobs and priorities](#jobs-and-priorities)), obtains supplies, works, and delivers cargo in batches.
 9. Right-click your citizen with an empty hand to open their screen: job, current activity, health, next meal and equipment above their **36-slot bag**. Add food, spare tools, saplings, or guard gear directly. Sneak-right-click releases their job, and they take another open place; holding an item while interacting shows their status above the hotbar. Right-click the banner for the town screen. Mine depths are automatic.
 10. Place a **Guard Station**, supply armor stands in its local range, and configure its day/night posts as described below. One citizen becomes its guard automatically; defense slots fill before production jobs. Add more Guard Stations for more defenders or expedition soldiers.
 11. Place a **Craftsman Station** near your warehouse and teach it what to make (see [Craftsmen](#craftsmen)). Add a **Smeltery Station** with a furnace or blast furnace in range, and a **Cook Station** with a furnace, smoker or lit campfire in range. Stock raw ores, raw food, wheat, and fuel in the warehouse. See [Smelters and cooks](#smelters-and-cooks).
@@ -80,20 +80,20 @@ When miners encounter caves near the selected depth, they scan a bounded nearby 
 
 | Command | Purpose |
 | --- | --- |
-| `/wwmc guide` | Receive the visual handbook with short topics, search and station recipes. |
-| `/wwmc status` | Inspect your town's population, loaded beds, stations, and priority. |
-| `/wwmc recruit [1-8]` | Recruit citizens up to the housing/population limit. Defaults to one. |
-| `/wwmc name <name>` | Rename your town, up to 48 characters. |
-| `/wwmc priority balanced\|food\|materials` | Set every job's priority from a preset: balanced puts guards and traders first, food also puts farms and cooks first, and materials puts farms and cooks last. |
-| `/wwmc job <job> <off\|low\|normal\|high>` | Set one job's priority, for example `/wwmc job farm high`. |
-| `/wwmc citizens` | List each loaded citizen with their job and what they are doing. |
-| `/wwmc needs` | List the town's needs, most urgent first, with the station each concerns. |
-| `/wwmc map` | Open the shared settlement map. |
-| `/wwmc ping <meet\|bridge\|build\|danger\|resource> [note]` | Mark where you stand on the shared map for your town and its allies. |
-| `/wwmc craft` | List craftsman orders with town stock and targets; change them on the Craftsman Station screen. |
-| `/wwmc craft bread on\|off` | Switch the cooks' bread order, also available on the Cook Station screen. |
-| `/wwmc alarm` | Sound the alarm yourself, or call the all-clear early while it rings. |
-| `/wwmc wave` | Bring the next enemy wave forward to now, even in daylight. |
+| `/vc guide` | Receive the visual handbook with short topics, search and station recipes. |
+| `/vc status` | Inspect your town's population, loaded beds, stations, and priority. |
+| `/vc recruit [1-8]` | Recruit citizens up to the housing/population limit. Defaults to one. |
+| `/vc name <name>` | Rename your town, up to 48 characters. |
+| `/vc priority balanced\|food\|materials` | Set every job's priority from a preset: balanced puts guards and traders first, food also puts farms and cooks first, and materials puts farms and cooks last. |
+| `/vc job <job> <off\|low\|normal\|high>` | Set one job's priority, for example `/vc job farm high`. |
+| `/vc citizens` | List each loaded citizen with their job and what they are doing. |
+| `/vc needs` | List the town's needs, most urgent first, with the station each concerns. |
+| `/vc map` | Open the shared settlement map. |
+| `/vc ping <meet\|bridge\|build\|danger\|resource> [note]` | Mark where you stand on the shared map for your town and its allies. |
+| `/vc craft` | List craftsman orders with town stock and targets; change them on the Craftsman Station screen. |
+| `/vc craft bread on\|off` | Switch the cooks' bread order, also available on the Cook Station screen. |
+| `/vc alarm` | Sound the alarm yourself, or call the all-clear early while it rings. |
+| `/vc wave` | Bring the next enemy wave forward to now, even in daylight. |
 
 Commands affect your own town at your current position. You can own several towns in the Overworld, each with its own population limit. If you own several and stand outside them, use a banner screen or enter the town you want to manage. Player claims deny block placement/removal, block and container use, entity interactions and player attacks until the owner's invitation is accepted. Configure builders and stewards on the banner's Relationships screen; alliances alone grant no claim access. The owner can rename the town on Relationships -> Town. Entry notices display that name. An occupied settlement's banner is its fixed rally point and cannot be mined normally; all settlement banners resist explosions and piston movement. Lost flags can be restored at their original coordinates without changing the saved town.
 
@@ -159,7 +159,7 @@ All markers use eight planks around a center item in a crafting table.
 | Enchanter Station | Book |
 | Researcher Station | Lectern |
 
-The Station Inspector is a shapeless recipe with two paper and one stick. The **Settlement Guide** is a shapeless recipe with one book and one blue dye; right-click it to open the native book screen. `/wwmc guide` gives another copy. Tools consumed to craft stations are separate from tools supplied to workers.
+The Station Inspector is a shapeless recipe with two paper and one stick. The **Settlement Guide** is a shapeless recipe with one book and one blue dye; right-click it to open the native book screen. `/vc guide` gives another copy. Tools consumed to craft stations are separate from tools supplied to workers.
 
 ### Ages and research
 
@@ -204,7 +204,7 @@ Small NPC towns appear as you explore suitable **loaded Overworld terrain**. Det
 
 By default, **ensureNearbyNpcTown** searches for a neighbour when an Overworld player has no NPC town within twice `npcTownSpacing`. It visits the nearest candidate plots using one temporary 3×3 chunk window, loads one chunk every five ticks, builds a safe town and releases the window. Existing unfinished towns resume; existing completed neighbours need no extra generation. Claims, protected blocks, terrain checks, `randomSettlements` and `maxNpcTowns` still apply. An exhausted search retries after ten loaded minutes; leaving the area or disconnecting releases its chunks.
 
-**Find a town:** use the banner's **More → Settlement map**, or `/wwmc map`, to see generated towns. With cheats enabled or operator access, `/locate settlement` finds the nearest completed NPC town in the Overworld and reports its name, clickable banner coordinates and horizontal distance. It also finds saved towns in unloaded chunks. Clicking the coordinates suggests a teleport command; it does not teleport automatically. If no town has finished generating, explore suitable terrain first. The command does not generate new towns or search future candidate sites.
+**Find a town:** use the banner's **More → Settlement map**, or `/vc map`, to see generated towns. With cheats enabled or operator access, `/locate settlement` finds the nearest completed NPC town in the Overworld and reports its name, clickable banner coordinates and horizontal distance. It also finds saved towns in unloaded chunks. Clicking the coordinates suggests a teleport command; it does not teleport automatically. If no town has finished generating, explore suitable terrain first. The command does not generate new towns or search future candidate sites.
 
 NPC towns start neutral with a house, 12 beds, warehouse, trader checkpoint, guard, farm, lumber operation, renewable iron vein, smelter, kitchen, and courier. They begin with six named citizens (subject to the population cap) and starter supplies, then can have children under the same happiness, spare-food, housing and population rules as player towns while ticking. Small crews take one worker per station. Farmers export carrots, timber towns oak logs, and mining towns iron ingots; their own reserves are protected. A free neutral town accepts a proposed route automatically. Deliveries build goodwill; attacking its citizens ends your route, makes it refuse further trade, and its guards defend the town. Countries, sieges, conquest, negotiated prices, route networks, carts and escorts remain future work.
 
@@ -242,10 +242,10 @@ Veins replenish in about 15 seconds with a stone pickaxe (`oreVeinSeconds`). Woo
 | `alarmThreshold` | 10 | Hostiles citizens must sight at once before a guard runs to ring the bell. |
 | `enemyWaves` | true | Send hostile waves against towns while their owner is home. |
 | `waveMinPopulation` | 3 | Citizens a town needs before waves are scheduled. |
-| `waveIntervalDays` | 2 | Average in-game days between waves, ±25%. |
-| `waveBaseMobs` | 2 | Hostiles in every wave before population scaling. |
-| `waveMobsPerCitizen` | 0.5 | Extra hostiles per citizen, rounded up. |
-| `waveMaxMobs` | 40 | Largest possible wave before population upgrades. |
+| `waveIntervalDays` | 5 | Average Minecraft days between barbarian raids, ±40% (3-7 days before the next eligible sunset). |
+| `waveBaseMobs` | 1 | Barbarians in each raid before population scaling. |
+| `waveMobsPerCitizen` | 0.35 | Additional barbarians per citizen, rounded up. |
+| `waveMaxMobs` | 32 | Largest raid before population upgrades. |
 | `waveMobsPerUpgrade` | 2 | Extra hostiles per population upgrade, also above `waveMaxMobs`. |
 | `mineMinY` | −30 | Lower endpoint for a new mine's randomly chosen depth. |
 | `mineMaxY` | 10 | Upper endpoint for a new mine's randomly chosen depth. |
@@ -337,7 +337,7 @@ A **Craftsman Station** (eight planks around a crafting table) employs one craft
 
 **Work.** A craftsman takes the highest order below its target that has materials, from the station's own barrels, supplied by couriers, carries up to eight batches of real items to the bench and crafts them there. Each batch is checked against Minecraft's recipe before it is made, and container items such as milk buckets come back empty. When two orders make each other, such as iron ingots and iron blocks, each only uses the other's stock above its target, so they never convert back and forth. When nothing is short or materials are missing, the craftsman takes other work for a while.
 
-New towns, and towns from earlier builds, start with these orders: stone pickaxe 2, stone axe 2, stone sword 2, bow 1, arrows 64, torches 32, ladders 32, sticks 32 and planks (any wood) 64. Orders switched off in an earlier build start at 0. Cooks still bake one bread from three wheat up to 32 bread; the Cook Station screen or `/wwmc craft bread off` switches it off.
+New towns, and towns from earlier builds, start with these orders: stone pickaxe 2, stone axe 2, stone sword 2, bow 1, arrows 64, torches 32, ladders 32, sticks 32 and planks (any wood) 64. Orders switched off in an earlier build start at 0. Cooks still bake one bread from three wheat up to 32 bread; the Cook Station screen or `/vc craft bread off` switches it off.
 
 ### Settlement screens
 
@@ -348,20 +348,20 @@ Right-click with an empty hand to open:
 - **Craftsman Station:** the order screen described above.
 - **Citizen:** their job, activity, health, next meal and equipment above their bag.
 
-Screens refresh every second and close when you move more than eight blocks away. Owners and accepted stewards can open them. Use Relationships -> Players to invite members or revoke access; invitees accept on Relationships -> Invitations. Builders can build and interact inside the claim. The Relationships -> Town tab saves a custom town name. The field-order screen (`/wwmc squad`) remains usable away from the banner. Short notices, including alarms and waves, appear above the hotbar instead of in chat.
+Screens refresh every second and close when you move more than eight blocks away. Owners and accepted stewards can open them. Use Relationships -> Players to invite members or revoke access; invitees accept on Relationships -> Invitations. Builders can build and interact inside the claim. The Relationships -> Town tab saves a custom town name. The field-order screen (`/vc squad`) remains usable away from the banner. Short notices, including alarms and waves, appear above the hotbar instead of in chat.
 
 ### Jobs and priorities
 
 Every citizen has its **own station**. It goes back there each morning, after deliveries, meals and alarms, and waits beside it when there is no work, rather than taking another station. Assignments stay the same from day to day; a station's Crew tab lists its worker, or a quarry's crew, including those asleep or out of range. When updating an older town, places above the new limit are released automatically, and those citizens take other open jobs without losing their inventories.
 
-Each job has a **priority**: Off, Low, Normal or High. Set it with the - and + buttons in the banner's **Jobs** tab, the priority button on a station's screen, or `/wwmc job`.
+Each job has a **priority**: Off, Low, Normal or High. Set it with the - and + buttons in the banner's **Jobs** tab, the priority button on a station's screen, or `/vc job`.
 
 The overview's Jobs row shows **filled / enabled job places**. A station count includes Housing, Barracks and Warehouse Stations, which employ nobody. Most work stations add one place; a quarry adds its configured crew, and a hospital adds a medic only after funding the Field Hospital project. The Jobs tab lists open loaded places, switched-off places and places waiting for loading or a trade route. If all enabled places are full, add work stations or expand a quarry crew; raising a priority moves workers between jobs without creating more places.
 
 - A citizen without a job, such as a new recruit, takes the open place of highest priority. Among equal priorities, guard posts fill first, then the trader, then the station with the fewest workers, then the nearest.
 - About every half minute, and at once after you change a priority, a citizen moves to an open place in a job of **higher** priority than its own. Equal priorities never trade workers, so a new Normal station waits for a recruit, a free citizen or a raised priority.
 - **Off** frees everyone in that job, and nobody takes it until you raise it again.
-- Guards and traders start at High and every other job at Normal. The preset button on the banner, or `/wwmc priority`, sets every job at once: balanced, food (all food jobs High) or materials (all food jobs Low). Both production presets keep couriers at High so deliveries retain their staff.
+- Guards and traders start at High and every other job at Normal. The preset button on the banner, or `/vc priority`, sets every job at once: balanced, food (all food jobs High) or materials (all food jobs Low). Both production presets keep couriers at High so deliveries retain their staff.
 - An open guard post draws a citizen from a lower-priority job at once, day or night.
 - Sneak-right-click a citizen to release it from its job: it takes another open place and avoids that station for a minute.
 
@@ -380,7 +380,7 @@ The town screen's **Needs** tab gathers what the owner can fix, most urgent firs
 - Guard Stations without chosen posts, a blocked trade route, and a missing courier.
 - Anything a worker is waiting for, grouped per station.
 
-Rows that concern one place have a **Show** button. It closes the screen, outlines the block through walls with a tall marker for 20 seconds, and gives its distance and direction in chat. `/wwmc needs` lists the same in chat.
+Rows that concern one place have a **Show** button. It closes the screen, outlines the block through walls with a tall marker for 20 seconds, and gives its distance and direction in chat. `/vc needs` lists the same in chat.
 
 Hover over shortened row text to read the full explanation. A **missing job barrel** means none belongs to that station: place one in range, outside warehouse coverage, and nearer to this station than other job stations. **Cannot reach a job barrel** means one was detected but the worker could not reach clear standing ground beside it. Citizens can approach over paths, slabs and carpets; walls and blocked entrances still prevent access.
 
@@ -424,15 +424,15 @@ A new town holds up to **10 citizens** (`basePopulation`). The town screen's **G
 
 **Population research** in the banner's **Research** tab gives another way to grow. **Housing Plans** adds 10 places, **Civic Planning** adds 15, and **City Planning** adds 25. Study them in that order using warehouse materials. Their bonuses stack with emerald upgrades, survive saving, and still obey `maxCitizens`; each recruit needs an available housing bed. The overview shows the research bonus and the correct next upgrade limit.
 
-A bigger town draws bigger attacks. Each population upgrade adds **2 attackers** to every wave (`waveMobsPerUpgrade`), even beyond `waveMaxMobs`; from the first upgrade a tenth of each wave per upgrade are **pillagers**, and from the third upgrade **vindicators** join them. Towns from earlier builds count as having bought enough upgrades for the citizens they already have.
+A bigger town draws bigger raids. Each population upgrade adds **2 barbarians** to every party (`waveMobsPerUpgrade`), even beyond `waveMaxMobs`. The first two raids use foot soldiers; archers join from the third raid with at least six citizens, and armored veterans join from the sixth raid with twelve citizens or two population upgrades. Towns from earlier builds retain their saved raid history and population.
 
 ### Alarms and enemy waves
 
 **Noticing a threat.** Every second, the town counts the hostile monsters its citizens can see inside the claim: guards watch out to 24 blocks (32 during an alarm), other citizens only notice hostiles within 8 blocks. One or two monsters are left to the guards. When at least `alarmThreshold` (default **10**) are in sight at once, the guard closest to a **bell** within 96 blocks runs to ring it. Bells must be inside the claim and loaded. If that guard is killed, cannot find a path, or takes longer than a minute, another guard is sent. Without a reachable bell, you receive a warning instead and the town is not alerted.
 
-**The alarm.** A bell rung inside the town raises the alarm and wakes guards. An arriving wave also raises it immediately, without requiring a bell runner. Frightened civilians run to a reachable **housing or barracks bed**, prefer the bed they used before, open house doors on the way, and wait inside until it is safe. A nearby hostile can send a civilian home even without a town alarm. Losing sight of the hostile on the way does not cancel the trip. At night they can stay asleep in their bed. Without a reachable bed they use housing or the banner as a fallback. Guards prioritize nearby attackers, share reports, and answer wave threats; shield guards leave their gate during alarms. Injured guards keep defending and seek hospital beds after combat ends and ten quiet seconds pass. After **30 seconds** without sighted or reported hostiles, the town gives the all-clear. `/wwmc alarm` raises the alarm or calls the all-clear early.
+**The alarm.** A bell rung inside the town raises the alarm and wakes guards. An arriving wave also raises it immediately, without requiring a bell runner. Frightened civilians run to a reachable **housing or barracks bed**, prefer the bed they used before, open house doors on the way, and wait inside until it is safe. A nearby hostile can send a civilian home even without a town alarm. Losing sight of the hostile on the way does not cancel the trip. At night they can stay asleep in their bed. Without a reachable bed they use housing or the banner as a fallback. Guards prioritize nearby attackers, share reports, and answer wave threats; shield guards leave their gate during alarms. Injured guards keep defending and seek hospital beds after combat ends and ten quiet seconds pass. After **30 seconds** without sighted or reported hostiles, the town gives the all-clear. `/vc alarm` raises the alarm or calls the all-clear early.
 
-**Enemy waves.** Once a town has `waveMinPopulation` (default **3**) citizens, a wave is scheduled about every `waveIntervalDays` (default **2**) in-game days. It arrives after sunset, only while you are online and within 64 blocks of the claim, and never while the previous wave's attackers are still alive. Waves contain `waveBaseMobs + waveMobsPerCitizen × population` hostiles, rounded up and capped at `waveMaxMobs`: four for a three-citizen town, 12 for 20 citizens, 18 for 32. Small towns face zombies; from 6 citizens a quarter of each wave are skeletons, and from 10 citizens 15% are spiders. The wave gathers 40–64 blocks from the banner on loaded open ground inside the claim, away from stations and at least 24 blocks from you, then marches on the banner and attacks citizens on sight. You are told its size and compass direction, and again when it has been repelled. Wave mobs do not despawn and remember their town across restarts. `/wwmc status` shows the alarm state and the next wave; `/wwmc wave` calls the next wave immediately. Peaceful difficulty prevents waves. Population upgrades make every wave larger and bring pillagers and vindicators; see [Population](#population).
+**Barbarian raids.** Once a town has `waveMinPopulation` (default **3**) citizens, it attracts irregular raids. Fresh settings use an average `waveIntervalDays` of **5** Minecraft days with **40% variation**, giving **3-7 days** before the next eligible sunset. A manager must be online, alive and within 64 blocks of the claim. Parties never overlap. Fresh sizes use `1 + ceil(0.35 × population)`, capped at 32 before population upgrades: three raiders for three citizens, eight for 20, thirteen for 32. Early parties wield wooden or stone swords; later parties add real bowmen and armored veterans. They gather beyond active stations and trap defenses on safe ticking natural ground, stay at least 24 blocks from you, and march on the banner. Blocked approaches postpone the raid. Guards and traps recognize barbarians as hostile; weapons, armor, health and town membership survive saves. `/vc status` reports general raid readiness; `/vc wave` calls a raid immediately unless attackers remain. Peaceful difficulty prevents raids. Existing saved size and timing overrides remain in force; set the interval to 5 to adopt the new cadence in an older world.
 
 **Glowing attackers.** Every wave attacker glows through walls and is reported to the guards immediately. Reports refresh while attackers remain, including after a reload. If any remain after a minute, a single hotbar notice tells you how many the guards are still hunting.
 

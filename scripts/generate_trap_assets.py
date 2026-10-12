@@ -1,6 +1,6 @@
 """Generate original voxel trap models and their recipes, saved-state loot and labels.
 
-Uses existing vanilla materials and WWMC's bronze material; creates no copied textures.
+Uses existing vanilla materials and VC's bronze material; creates no copied textures.
 Run with Python from any directory. Generation is deterministic and idempotent.
 """
 import json

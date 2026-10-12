@@ -1,7 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.Config;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
@@ -16,7 +16,7 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 /** A moving 3x3 window per trader, never a force-loaded corridor between towns. */
 public final class TradeChunks {
     private static final Map<ServerLevel,Map<UUID,Set<Long>>> HELD=new WeakHashMap<>();
-    private static final TicketController CONTROLLER=new TicketController(Identifier.fromNamespaceAndPath(WWMC.MODID,"traders"),(level,helper) -> {
+    private static final TicketController CONTROLLER=new TicketController(Identifier.fromNamespaceAndPath(VC.MODID,"traders"),(level,helper) -> {
         var towns=SettlementData.get(level);
         Set<UUID> allowed=allowed(level);
         for(var entry:helper.getEntityTickets().entrySet()) {

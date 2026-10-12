@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.client.screen;
 
 import io.github.swishhyy.wwmc.menu.PanelView;
 import io.github.swishhyy.wwmc.menu.TraderMenu;
-import io.github.swishhyy.wwmc.menu.WwmcNetwork;
+import io.github.swishhyy.wwmc.menu.VcNetwork;
 import io.github.swishhyy.wwmc.settlement.TraderPanel;
 import java.util.*;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -27,7 +27,7 @@ public final class TraderScreen extends AbstractContainerScreen<TraderMenu> {
     private List<PanelView.Row> rows() { return menu.view().tabs().get(tab).rows(); }
     private int pages() { return Math.max(1,(rows().size()+PAGE-1)/PAGE); }
     private void send(int action,int index,int value,String key) {
-        ClientPacketDistributor.sendToServer(new WwmcNetwork.ActionPayload(menu.containerId,action,index,value,key));
+        ClientPacketDistributor.sendToServer(new VcNetwork.ActionPayload(menu.containerId,action,index,value,key));
     }
     private void flush() { for(Change c:pending.values()) send(c.action(),c.index(),c.amount(),c.key()); pending.clear(); }
     private final class Amount extends AbstractSliderButton {

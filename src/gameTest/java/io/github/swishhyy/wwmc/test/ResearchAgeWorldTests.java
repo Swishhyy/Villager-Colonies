@@ -2,7 +2,7 @@ package io.github.swishhyy.wwmc.test;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.serialization.JsonOps;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
 import io.github.swishhyy.wwmc.settlement.*;
@@ -61,48 +61,48 @@ public final class ResearchAgeWorldTests {
             var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-12600));
             var chunks=CitizenNavigationTests.pinTicking(level,start,1); CitizenNavigationTests.meadow(level,start,-8,16,-8,8);
             var owner=new RecipePlayer(level,new GameProfile(UUID.randomUUID(),"BronzeOwner"));
-            WWMC.TAB.get().buildContents(new CreativeModeTab.ItemDisplayParameters(level.enabledFeatures(),false,level.registryAccess()));
-            for(var material:List.of(WWMC.RAW_TIN.get(),WWMC.TIN_INGOT.get(),WWMC.BRONZE_BLEND.get(),WWMC.BRONZE_INGOT.get(),WWMC.ALLOY_FURNACE_ITEM.get()))
-                helper.assertTrue(WWMC.TAB.get().getDisplayItems().stream().filter(v -> v.is(material)).count()==1,"A current bronze ingredient or appliance is missing from the creative tab");
+            VC.TAB.get().buildContents(new CreativeModeTab.ItemDisplayParameters(level.enabledFeatures(),false,level.registryAccess()));
+            for(var material:List.of(VC.RAW_TIN.get(),VC.TIN_INGOT.get(),VC.BRONZE_BLEND.get(),VC.BRONZE_INGOT.get(),VC.ALLOY_FURNACE_ITEM.get()))
+                helper.assertTrue(VC.TAB.get().getDisplayItems().stream().filter(v -> v.is(material)).count()==1,"A current bronze ingredient or appliance is missing from the creative tab");
             owner.setPos(start.getX()+.5,start.getY(),start.getZ()+.5);
             var town=new Settlement(UUID.randomUUID(),owner.getUUID(),"Bronze production",start,32,List.of(),List.of(),"balanced");
-            SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
+            SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(start,VC.BANNER.get().defaultBlockState());
             ItemStack copper=new ItemStack(Items.COPPER_INGOT); owner.getInventory().setItem(9,copper);
             CriteriaTriggers.INVENTORY_CHANGED.trigger(owner,owner.getInventory(),copper);
             helper.assertTrue(owner.getRecipeBook().contains(recipeKey("alloy_furnace")),"Collecting copper did not discover the alloy furnace");
-            ItemStack rawTin=new ItemStack(WWMC.RAW_TIN.get()); owner.getInventory().setItem(10,rawTin);
+            ItemStack rawTin=new ItemStack(VC.RAW_TIN.get()); owner.getInventory().setItem(10,rawTin);
             CriteriaTriggers.INVENTORY_CHANGED.trigger(owner,owner.getInventory(),rawTin);
             helper.assertTrue(owner.getRecipeBook().contains(recipeKey("tin_from_raw_smelting")) && owner.getRecipeBook().contains(recipeKey("tin_from_raw_blasting")),"Raw tin did not discover native refining recipes");
             var menu=owner.inventoryMenu; owner.containerMenu=menu;
-            for(int slot=1;slot<=4;slot++) menu.getSlot(slot).setByPlayer(new ItemStack(slot==4 ? WWMC.TIN_INGOT.get() : Items.COPPER_INGOT));
+            for(int slot=1;slot<=4;slot++) menu.getSlot(slot).setByPlayer(new ItemStack(slot==4 ? VC.TIN_INGOT.get() : Items.COPPER_INGOT));
             menu.slotsChanged(menu.getSlot(1).container); helper.assertTrue(menu.getSlot(0).getItem().isEmpty(),"Manual blend crafting is still enabled");
             BlockPos alloyPos=start.east(3),legacyPos=start.east(6);
-            level.setBlockAndUpdate(alloyPos,WWMC.ALLOY_FURNACE.get().defaultBlockState()); level.setBlockAndUpdate(legacyPos,Blocks.FURNACE.defaultBlockState());
+            level.setBlockAndUpdate(alloyPos,VC.ALLOY_FURNACE.get().defaultBlockState()); level.setBlockAndUpdate(legacyPos,Blocks.FURNACE.defaultBlockState());
             var alloy=(io.github.swishhyy.wwmc.block.AlloyFurnaceEntity)level.getBlockEntity(alloyPos);
-            alloy.setItem(0,new ItemStack(Items.COPPER_INGOT,3)); alloy.setItem(1,new ItemStack(WWMC.TIN_INGOT.get())); alloy.setItem(2,new ItemStack(Items.COAL));
-            var legacy=(AbstractFurnaceBlockEntity)level.getBlockEntity(legacyPos); legacy.setItem(0,new ItemStack(WWMC.BRONZE_BLEND.get())); legacy.setItem(1,new ItemStack(Items.COAL));
+            alloy.setItem(0,new ItemStack(Items.COPPER_INGOT,3)); alloy.setItem(1,new ItemStack(VC.TIN_INGOT.get())); alloy.setItem(2,new ItemStack(Items.COAL));
+            var legacy=(AbstractFurnaceBlockEntity)level.getBlockEntity(legacyPos); legacy.setItem(0,new ItemStack(VC.BRONZE_BLEND.get())); legacy.setItem(1,new ItemStack(Items.COAL));
             helper.runAtTickTime(40,() -> {
                 helper.assertTrue(alloy.getItem(3).isEmpty() && alloy.getItem(0).getCount()==3 && alloy.getItem(2).getCount()==1,"An unresearched furnace consumed inputs or fuel"); town.progress.research.add("bronze_age");
             });
             helper.runAtTickTime(650,() -> {
-                helper.assertTrue(alloy.getItem(3).is(WWMC.BRONZE_INGOT.get()) && alloy.getItem(3).getCount()==4 && alloy.getItem(0).isEmpty() && alloy.getItem(1).isEmpty(),"Actual alloy furnace failed direct bronze production");
-                helper.assertTrue(legacy.getItem(2).is(WWMC.BRONZE_INGOT.get()) && legacy.getItem(0).isEmpty(),"Legacy blends stopped smelting");
+                helper.assertTrue(alloy.getItem(3).is(VC.BRONZE_INGOT.get()) && alloy.getItem(3).getCount()==4 && alloy.getItem(0).isEmpty() && alloy.getItem(1).isEmpty(),"Actual alloy furnace failed direct bronze production");
+                helper.assertTrue(legacy.getItem(2).is(VC.BRONZE_INGOT.get()) && legacy.getItem(0).isEmpty(),"Legacy blends stopped smelting");
                 owner.getInventory().add(alloy.removeItem(3,4)); owner.getInventory().add(legacy.removeItem(2,1));
-                ItemStack ingot=new ItemStack(WWMC.BRONZE_INGOT.get());
+                ItemStack ingot=new ItemStack(VC.BRONZE_INGOT.get());
                 CriteriaTriggers.INVENTORY_CHANGED.trigger(owner,owner.getInventory(),ingot);
                 for(String part:List.of("sword","pickaxe","axe","shovel","hoe","helmet","chestplate","leggings","boots"))
                     helper.assertTrue(owner.getRecipeBook().contains(recipeKey("bronze_"+part)),"Bronze ingot did not discover equipment: "+part);
                 var table=new CraftingMenu(1,owner.getInventory(),ContainerLevelAccess.create(level,start)); owner.containerMenu=table;
-                for(int slot=0;slot<owner.getInventory().getContainerSize();slot++) if(owner.getInventory().getItem(slot).is(WWMC.BRONZE_INGOT.get())) {
+                for(int slot=0;slot<owner.getInventory().getContainerSize();slot++) if(owner.getInventory().getItem(slot).is(VC.BRONZE_INGOT.get())) {
                     ItemStack metal=owner.getInventory().removeItem(slot,3);
                     for(int input=1;input<=3;input++) table.getSlot(input).setByPlayer(metal.split(1));
                     break;
                 }
                 table.getSlot(5).setByPlayer(new ItemStack(Items.STICK)); table.getSlot(8).setByPlayer(new ItemStack(Items.STICK));
                 table.slotsChanged(table.getSlot(1).container);
-                helper.assertTrue(table.getSlot(0).getItem().is(WWMC.BRONZE_PICKAXE.get()),"Smelted bronze did not match the real pickaxe recipe");
+                helper.assertTrue(table.getSlot(0).getItem().is(VC.BRONZE_PICKAXE.get()),"Smelted bronze did not match the real pickaxe recipe");
                 table.clicked(0,0,ContainerInput.QUICK_MOVE,owner);
-                helper.assertTrue(owner.getInventory().countItem(WWMC.BRONZE_PICKAXE.get())==0
+                helper.assertTrue(owner.getInventory().countItem(VC.BRONZE_PICKAXE.get())==0
                         && table.getSlot(1).getItem().getCount()==1 && table.getSlot(5).getItem().getCount()==1,
                         "Researched bronze equipment bypassed the blacksmith or consumed blocked crafting ingredients");
                 SettlementData.get(level).settlements.remove(town); CitizenNavigationTests.releaseTicking(level,start,chunks);
@@ -120,14 +120,14 @@ public final class ResearchAgeWorldTests {
             var chunks=CitizenNavigationTests.pinTicking(level,start,2); CitizenNavigationTests.meadow(level,start,-8,30,-12,12);
             Station warehouse=new Station(start.east(6),StructureRole.WAREHOUSE),station=new Station(start.east(20),StructureRole.RESEARCHER);
             var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Age research",start,96,List.of(),List.of(warehouse,station),"balanced");
-            SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(start,WWMC.BANNER.get().defaultBlockState());
-            for(var s:town.stations) level.setBlockAndUpdate(s.position(),WWMC.STATIONS.get(s.role()).get().defaultBlockState());
+            SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(start,VC.BANNER.get().defaultBlockState());
+            for(var s:town.stations) level.setBlockAndUpdate(s.position(),VC.STATIONS.get(s.role()).get().defaultBlockState());
             BlockPos desk=station.position().north(2),chest=warehouse.position().south(2);
             level.setBlockAndUpdate(desk,Blocks.LECTERN.defaultBlockState()); level.setBlockAndUpdate(chest,Blocks.CHEST.defaultBlockState());
             Container stock=(Container)level.getBlockEntity(chest);
-            stock.setItem(0,new ItemStack(Items.COPPER_INGOT,24)); stock.setItem(1,new ItemStack(WWMC.TIN_INGOT.get(),8));
+            stock.setItem(0,new ItemStack(Items.COPPER_INGOT,24)); stock.setItem(1,new ItemStack(VC.TIN_INGOT.get(),8));
             stock.setItem(2,new ItemStack(Items.COAL,8)); stock.setItem(3,new ItemStack(Items.PAPER,8));
-            var worker=new CitizenEntity(WWMC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(true);
+            var worker=new CitizenEntity(VC.CITIZEN.get(),level); worker.join(town.id); worker.setNoAi(true);
             worker.setPos(station.position().getX()+.5,station.position().getY(),station.position().getZ()+1.5);
             worker.bag().offer(new ItemStack(Items.BREAD)); town.citizens.add(worker.getUUID()); town.jobs.assign(worker.getUUID(),station.position()); level.addFreshEntity(worker);
             // This fixture represents a project paid before the scroll update.
@@ -177,11 +177,11 @@ public final class ResearchAgeWorldTests {
                 for(int slot=1;slot<=9;slot++) starterMenu.getSlot(slot).setByPlayer(new ItemStack(slot==5 ? entry.getKey() : Items.OAK_PLANKS));
                 starterMenu.slotsChanged(starterMenu.getSlot(5).container);
                 ItemStack stationResult=starterMenu.getSlot(0).getItem();
-                helper.assertTrue(stationResult.is(WWMC.STATION_ITEMS.get(entry.getValue()).get()) && AgeProgression.allowed(owner,stationResult),
+                helper.assertTrue(stationResult.is(VC.STATION_ITEMS.get(entry.getValue()).get()) && AgeProgression.allowed(owner,stationResult),
                         "Starter station recipe is ambiguous or age-locked: "+entry.getValue());
             }
             ItemStack sword=new ItemStack(Items.IRON_SWORD),helmet=new ItemStack(Items.IRON_HELMET); helmet.setDamageValue(17);
-            helper.assertTrue(!AgeProgression.allowed(owner,sword) && !AgeProgression.allowed(owner,new ItemStack(WWMC.BRONZE_PICKAXE.get())),"Stone Age permits metal equipment");
+            helper.assertTrue(!AgeProgression.allowed(owner,sword) && !AgeProgression.allowed(owner,new ItemStack(VC.BRONZE_PICKAXE.get())),"Stone Age permits metal equipment");
             owner.getInventory().add(sword.copy()); owner.setItemSlot(EquipmentSlot.HEAD,helmet); AgeProgression.unequip(owner);
             helper.assertTrue(owner.getItemBySlot(EquipmentSlot.HEAD).isEmpty() && owner.getInventory().countItem(Items.IRON_SWORD)==1
                     && owner.getInventory().countItem(Items.IRON_HELMET)==1,"Locked loot or armor was lost");
@@ -226,12 +226,12 @@ public final class ResearchAgeWorldTests {
                 helper.assertTrue(feature.place(level,level.getChunkSource().getGenerator(),RandomSource.create(4+n),center),"Tin feature did not place");
                 BlockPos ore=null;
                 for(BlockPos p:BlockPos.betweenClosed(center.offset(-6,-6,-6),center.offset(6,6,6)))
-                    if(level.getBlockState(p).is(n==0 ? WWMC.TIN_ORE.get() : WWMC.DEEPSLATE_TIN_ORE.get())) { ore=p.immutable(); break; }
+                    if(level.getBlockState(p).is(n==0 ? VC.TIN_ORE.get() : VC.DEEPSLATE_TIN_ORE.get())) { ore=p.immutable(); break; }
                 helper.assertTrue(ore!=null,"Missing tin ore variant "+n);
                 var drops=Block.getDrops(level.getBlockState(ore),level,ore,null,null,new ItemStack(Items.STONE_PICKAXE));
-                helper.assertTrue(drops.stream().anyMatch(s -> s.is(WWMC.RAW_TIN.get()) && s.getCount()==1),"Tin ore did not drop raw tin");
+                helper.assertTrue(drops.stream().anyMatch(s -> s.is(VC.RAW_TIN.get()) && s.getCount()==1),"Tin ore did not drop raw tin");
             }
-            helper.assertTrue(level.getServer().getRecipeManager().getRecipeFor(RecipeType.SMELTING,new SingleRecipeInput(new ItemStack(WWMC.RAW_TIN.get())),level).isPresent(),"Tin smelting recipe failed to load");
+            helper.assertTrue(level.getServer().getRecipeManager().getRecipeFor(RecipeType.SMELTING,new SingleRecipeInput(new ItemStack(VC.RAW_TIN.get())),level).isPresent(),"Tin smelting recipe failed to load");
             CitizenNavigationTests.release(level,start,chunks); helper.succeed();
         });
     }
@@ -250,7 +250,7 @@ public final class ResearchAgeWorldTests {
             var site=ExpeditionService.discover(level,start,"fort",region);
             helper.assertTrue(site!=null,"Castle did not generate on clear flat terrain: "+ExpeditionService.siteIssue(level,start));
             BlockPos c=site.pos;
-            helper.assertTrue(level.getBlockState(c.offset(8,0,-7)).is(WWMC.STATIONS.get(StructureRole.RESEARCHER).get())
+            helper.assertTrue(level.getBlockState(c.offset(8,0,-7)).is(VC.STATIONS.get(StructureRole.RESEARCHER).get())
                     && level.getBlockState(c.offset(8,0,-9)).is(Blocks.LECTERN),"Missing research example room");
             Station housing=new Station(c.offset(-8,0,-7),StructureRole.HOUSING),warehouse=new Station(c.offset(8,0,7),StructureRole.WAREHOUSE),mine=new Station(c.offset(-8,0,7),StructureRole.MINE);
             var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Castle example",c,96,List.of(),List.of(housing,warehouse,mine),"balanced");

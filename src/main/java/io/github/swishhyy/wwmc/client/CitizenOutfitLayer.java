@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.client;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.PartPose;
@@ -15,8 +15,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 
 /** Vanilla profession clothes plus job-colored sashes and hats; these are visual layers, never equipment items. */
 public final class CitizenOutfitLayer extends RenderLayer<CitizenRenderer.State,CitizenModel> {
-    public static final ModelLayerLocation LAYER=new ModelLayerLocation(Identifier.fromNamespaceAndPath(WWMC.MODID,"citizen_outfit"),"main");
-    public static final ModelLayerLocation PROFESSION=new ModelLayerLocation(Identifier.fromNamespaceAndPath(WWMC.MODID,"citizen_profession"),"main");
+    public static final ModelLayerLocation LAYER=new ModelLayerLocation(Identifier.fromNamespaceAndPath(VC.MODID,"citizen_outfit"),"main");
+    public static final ModelLayerLocation PROFESSION=new ModelLayerLocation(Identifier.fromNamespaceAndPath(VC.MODID,"citizen_profession"),"main");
     private static final Identifier CLOTH=Identifier.withDefaultNamespace("textures/block/white_wool.png");
     private final CitizenModel accents,profession;
     private record Outfit(String profession,int color) {}

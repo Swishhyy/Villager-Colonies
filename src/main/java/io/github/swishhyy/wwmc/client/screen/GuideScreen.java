@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.client.screen;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.item.GuideBook;
 import java.util.ArrayList;
 import java.util.List;
@@ -119,7 +119,7 @@ public final class GuideScreen extends Screen {
             Ui.slot(g,sx,sy); g.item(icon(row==1 && col==1 ? s.ingredient() : "minecraft:oak_planks"),sx,sy);
         }
         g.text(font,">",gridX+64,top+23,ACCENT,false);
-        Ui.slot(g,gridX+84,top+19); g.item(new ItemStack(WWMC.STATION_ITEMS.get(s.role()).get()),gridX+84,top+19);
+        Ui.slot(g,gridX+84,top+19); g.item(new ItemStack(VC.STATION_ITEMS.get(s.role()).get()),gridX+84,top+19);
         top+=65;
         top=card(g,new GuideBook.Card("wwmc:"+s.role().id()+"_station","Place beside",s.furniture()),top,-1,-1);
         top=card(g,new GuideBook.Card(s.ingredient(),"Supply",s.supplies()),top,-1,-1);
@@ -129,8 +129,8 @@ public final class GuideScreen extends Screen {
         int left=left(),cw=contentWidth(),gridX=left+Math.max(0,(cw-108)/2);
         top=text(g,"Make bronze after Bronze Age research",left,top,cw,INK)+4;
         top=text(g,"Use an Alloy Furnace inside your researched settlement. Add 3 copper, 1 tin and separate fuel.",left,top,cw,MUTED)+6;
-        ItemStack copper=new ItemStack(Items.COPPER_INGOT,3),tin=new ItemStack(WWMC.TIN_INGOT.get());
-        ItemStack bronze=new ItemStack(WWMC.BRONZE_INGOT.get(),4);
+        ItemStack copper=new ItemStack(Items.COPPER_INGOT,3),tin=new ItemStack(VC.TIN_INGOT.get());
+        ItemStack bronze=new ItemStack(VC.BRONZE_INGOT.get(),4);
         ItemStack[] inputs={copper,tin,new ItemStack(Items.COAL)};
         for(int i=0;i<inputs.length;i++) {
             int sx=gridX+i*24;

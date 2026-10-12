@@ -21,7 +21,7 @@ public final class CraftsmanMenu extends SettlementMenu {
     private String feedback="";
     private int feedbackTicks;
     public CraftsmanMenu(int id,Inventory inventory,BlockPos pos,ServerPlayer viewer,PanelView view) {
-        super(WwmcMenus.CRAFTSMAN.get(),id,viewer,view);
+        super(VcMenus.CRAFTSMAN.get(),id,viewer,view);
         this.pos=pos.immutable();
         addSlot(new Slot(new SimpleContainer(1),0,TEACH_X,TEACH_Y) {
             @Override public boolean mayPlace(ItemStack stack) { return false; }

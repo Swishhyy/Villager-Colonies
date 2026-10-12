@@ -1,6 +1,6 @@
 package io.github.swishhyy.wwmc.settlement;
 
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -89,7 +89,7 @@ public final class Workshop {
                 // One broken recipe from a mod or datapack must not stop the workshop.
                 try { plan=plan(recipes.level(),holder); }
                 catch(RuntimeException e) {
-                    WWMC.LOGGER.error("[WWMC][recipe-error] Cannot index crafting recipe {}; skipping it for craftsmen",holder.id(),e);
+                    VC.LOGGER.error("[VC][recipe-error] Cannot index crafting recipe {}; skipping it for craftsmen",holder.id(),e);
                     plan=null;
                 }
                 if(plan!=null) built.computeIfAbsent(plan.result().getItem(),item -> new ArrayList<>()).add(plan);

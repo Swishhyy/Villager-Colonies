@@ -5,7 +5,7 @@ license="MIT"
 [[mods]]
 modId="wwmc_tests"
 version="1"
-displayName="WWMC world tests"
+displayName="VC world tests"
 
 [[dependencies.wwmc_tests]]
 modId="wwmc"

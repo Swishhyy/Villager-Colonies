@@ -1,7 +1,7 @@
 package io.github.swishhyy.wwmc.settlement;
 
 import io.github.swishhyy.wwmc.Config;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import java.util.*;
 import net.minecraft.server.level.ServerLevel;
 
@@ -48,6 +48,6 @@ public final class NeighbourTrade {
         town.campaign.extraRoutes.add(other.id); other.campaign.extraRoutes.add(town.id);
         CampaignService.journal(level,town,"Arranged neighbour trade with "+other.name+". Our trader carries surplus between the warehouses.");
         CampaignService.journal(level,other,"Arranged neighbour trade with "+town.name+". Our trader carries surplus between the warehouses.");
-        WWMC.LOGGER.info("[WWMC] [neighbours] NPC trade route established: {} <-> {}",town.id,other.id);
+        VC.LOGGER.info("[VC] [neighbours] NPC trade route established: {} <-> {}",town.id,other.id);
     }
 }

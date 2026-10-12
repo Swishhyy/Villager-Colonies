@@ -4,7 +4,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import io.github.swishhyy.wwmc.menu.MapData;
 import io.github.swishhyy.wwmc.menu.MapMenu;
 import net.minecraft.world.SimpleMenuProvider;
-import io.github.swishhyy.wwmc.menu.WwmcNetwork;
+import io.github.swishhyy.wwmc.menu.VcNetwork;
 import java.util.*;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
@@ -78,7 +78,7 @@ public final class SettlementMap {
     public static void open(ServerPlayer player) {
         MapData map=build((ServerLevel)player.level(),player);
         if(player.containerMenu instanceof MapMenu menu) {
-            menu.map=map; PacketDistributor.sendToPlayer(player,new WwmcNetwork.MapPayload(menu.containerId,map)); return;
+            menu.map=map; PacketDistributor.sendToPlayer(player,new VcNetwork.MapPayload(menu.containerId,map)); return;
         }
         player.openMenu(new SimpleMenuProvider((id,inventory,p) -> new MapMenu(id,map),Component.literal("Settlement map")),buf -> MapData.STREAM_CODEC.encode(buf,map));
     }
@@ -123,7 +123,7 @@ public final class SettlementMap {
         open(player);
     }
     @SubscribeEvent public void commands(RegisterCommandsEvent event) {
-        event.getDispatcher().register(Commands.literal("wwmc")
+        event.getDispatcher().register(Commands.literal("vc")
             .then(Commands.literal("map").executes(c -> { open(c.getSource().getPlayerOrException()); return 1; }))
             .then(Commands.literal("ping")
                 .then(Commands.argument("kind",StringArgumentType.word())

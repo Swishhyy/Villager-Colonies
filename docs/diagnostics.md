@@ -2,7 +2,7 @@
 
 [Project overview](../README.md) · [All guides](README.md) · [Report a bug](https://github.com/Swishhyy/Villager-Colonies/issues)
 
-Villager Colonies writes diagnostics to the hosting game's **console** and **`logs/latest.log`**, including single-player worlds. Search for **`[WWMC]`** to find them; this existing log prefix is retained after the rename.
+Villager Colonies writes diagnostics to the hosting game's **console** and **`logs/latest.log`**, including single-player worlds. Search for **`[VC]`** to find them; the prefix matches the VC command and project branding.
 
 | Message | What it tells you |
 | --- | --- |
@@ -36,4 +36,4 @@ These flat keys live in the generated `wwmc-server.toml`. In a loaded single-pla
 
 Brief pauses do not announce a recovery, and unloaded time does not count toward the stall delay. Tracking belongs to each citizen or current recall search, so old worlds and removed citizens do not leave a growing global log cache.
 
-For a bug report, include the relevant `[WWMC]` lines **and nearby exceptions** from `latest.log`, your Minecraft/NeoForge versions, the exact Villager Colonies version or commit, and what happened in game. The `server-start` line shows which Villager Colonies version the game loaded.
+For a bug report, include the relevant `[VC]` lines **and nearby exceptions** from `latest.log`, your Minecraft/NeoForge versions, the exact Villager Colonies version or commit, and what happened in game. The `server-start` line shows which Villager Colonies version the game loaded.

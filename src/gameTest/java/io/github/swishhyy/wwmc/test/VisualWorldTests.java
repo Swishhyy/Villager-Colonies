@@ -1,7 +1,7 @@
 package io.github.swishhyy.wwmc.test;
 
 import com.mojang.authlib.GameProfile;
-import io.github.swishhyy.wwmc.WWMC;
+import io.github.swishhyy.wwmc.VC;
 import io.github.swishhyy.wwmc.block.SettlementBannerBlock;
 import io.github.swishhyy.wwmc.core.StructureRole;
 import io.github.swishhyy.wwmc.entity.CitizenEntity;
@@ -33,7 +33,7 @@ public final class VisualWorldTests {
             var chunks=CitizenNavigationTests.pinArea(level,center,-18,18,-18,18);
             CitizenNavigationTests.meadow(level,center,-18,18,-18,18);
             var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Corners",center,16,List.of(),List.of(),"balanced");
-            SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(center,WWMC.BANNER.get().defaultBlockState());
+            SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(center,VC.BANNER.get().defaultBlockState());
             helper.assertTrue(TownBorders.choose(level,town,UUID.randomUUID(),DyeColor.RED.getId()).startsWith("Only"),"A stranger changed town color");
             TownBorders.choose(level,town,town.owner,DyeColor.CYAN.getId());
             helper.assertTrue(town.borderBanners.size()==4,"Missing corner flags");
@@ -58,9 +58,9 @@ public final class VisualWorldTests {
             var chunks=CitizenNavigationTests.pinArea(level,center,-8,16,-8,8); CitizenNavigationTests.meadow(level,center,-8,16,-8,8);
             Station station=new Station(center.east(6),StructureRole.ENCHANTER);
             var town=new Settlement(UUID.randomUUID(),UUID.randomUUID(),"Progress",center,32,List.of(),List.of(station),"balanced");
-            SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(center,WWMC.BANNER.get().defaultBlockState());
-            level.setBlockAndUpdate(station.position(),WWMC.STATIONS.get(station.role()).get().defaultBlockState());
-            CitizenEntity citizen=WWMC.CITIZEN.get().create(level,EntitySpawnReason.COMMAND);
+            SettlementData.get(level).settlements.add(town); level.setBlockAndUpdate(center,VC.BANNER.get().defaultBlockState());
+            level.setBlockAndUpdate(station.position(),VC.STATIONS.get(station.role()).get().defaultBlockState());
+            CitizenEntity citizen=VC.CITIZEN.get().create(level,EntitySpawnReason.COMMAND);
             citizen.join(town.id); citizen.setPos(station.position().getX()+0.5,station.position().getY(),station.position().getZ()+1.5);
             town.citizens.add(citizen.getUUID()); town.jobs.assign(citizen.getUUID(),station.position()); level.addFreshEntity(citizen);
             helper.assertTrue(!TutorialProgress.milestones(level,town).contains("enchanting"),"An empty station counted as completed enchanting");

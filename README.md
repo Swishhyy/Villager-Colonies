@@ -6,9 +6,7 @@ Build a settlement, recruit villagers, and give them jobs like farming, mining, 
 
 Trade with other settlements, play alongside friends, and equip guards to defend against raids. When you're ready, lead your guards out to clear bandit camps and establish outposts.
 
-**Villager Colonies is playable and still in development.** Version **0.1.0.0** starts the renamed mod and carries forward the WWMC features and bug fixes.
-
-Formerly **World War MC**. The internal `wwmc` namespace keeps existing worlds, commands and configuration files compatible.
+**Villager Colonies is playable and still in development.** Version **0.1.0.0** provides the settlement foundation and its latest fixes.
 
 [CurseForge project](https://www.curseforge.com/minecraft/mc-mods/world-war-mc) · [All guides](docs/README.md) · [Changelog](docs/CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Report a bug](https://github.com/Swishhyy/Villager-Colonies/issues)
 
@@ -20,7 +18,7 @@ Formerly **World War MC**. The internal `wwmc` namespace keeps existing worlds, 
 - **Production:** farms, forests, gatherers, mines, quarries, cooking, workshops, metallurgy, forging, enchanting, and repairs.
 - **Friends and trade:** town permissions, alliances, and traders who carry goods between settlements.
 - **Settlement neighbours:** real caravans, paid supply contracts, nearby-town needs and quiet news at the banner. NPC towns arrange their own trade routes. See [settlement interactions](docs/multiplayer-campaign.md#settlement-neighbours).
-- **Defense and exploration:** guards, patrols, raids, bandit camps, and supplied outposts.
+- **Defense and exploration:** guards, patrols, irregular barbarian raids, bandit camps, and supplied outposts.
 - **Visible progress:** job outfits and work effects, town colors, upgrades, research, a visual handbook, and tutorial advancements.
 - **Settlement ages:** Stone → Bronze → Iron. Researchers make tradeable scrolls; towns unlock discoveries together, and blacksmiths forge advanced equipment.
 - **Happiness and families:** varied meals, housing and amenities keep citizens happy. With spare food and beds, happy adults can have children who play and grow before taking jobs.
@@ -51,7 +49,7 @@ Use a successful [main Actions build](https://github.com/Swishhyy/Villager-Colon
 3. Place the JAR in the instance's **`mods`** folder. If using an Actions download, extract its artifact ZIP first.
 4. For multiplayer, install the **same Villager Colonies build on the server and every client**.
 
-Replace the previous WWMC or Villager Colonies JAR; keep only one copy in the folder. The internal mod ID stays `wwmc` so existing worlds retain their blocks, citizens and settlement data. Use a test world or back up an existing world before updating.
+Replace the previous mod JAR; keep only one copy in the folder. Existing worlds retain their blocks, citizens and settlement data. Use a test world or back up an existing world before updating.
 
 ## Get started
 
