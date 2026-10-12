@@ -26,7 +26,7 @@ import net.neoforged.testframework.gametest.GameTest;
 public final class NearbyNpcWorldTests {
     @GameTest(timeoutTicks=1000,batch="nearbyNpc")
     @EmptyTemplate
-    @TestHolder(description="A nearby NPC search builds a real furnished town and recruits its crew, holds at most nine temporary chunks, releases them and does not duplicate its neighbour.")
+    @TestHolder(description="A nearby NPC search builds a real furnished town and recruits its crew, holds at most twenty-five temporary chunks, releases them and does not duplicate its neighbour.")
     static void nearbyTownBuildsAndReleasesChunks(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel();
@@ -58,7 +58,7 @@ public final class NearbyNpcWorldTests {
             var maximum=new AtomicInteger();
             helper.succeedWhen(() -> {
                 maximum.accumulateAndGet(service.heldChunks(level),Math::max);
-                helper.assertTrue(service.heldChunks(level)<=9,"NPC generation exceeded its temporary chunk budget");
+                helper.assertTrue(service.heldChunks(level)<=25,"NPC generation exceeded its temporary chunk budget");
                 var town=SettlementData.get(level).byId(candidate.id());
                 helper.assertTrue(town!=null && town.trading.buildIndex<0,"NPC town has not finished construction: "+(town==null ? "not discovered; held="+service.heldChunks(level)+", maximum="+maximum.get() : town.trading.buildIndex+" "+town.trading.status));
                 helper.assertTrue(level.getBlockState(town.center).is(VC.BANNER.get()) && town.citizens.size()==NpcSettlements.startingPopulation(town),"NPC town lacks its banner or real starting crew");

@@ -72,7 +72,9 @@ public final class NpcConstruction {
         for(var p:NpcVillagePlan.addition(town,center,kind,front)) blocks.put(p.pos(),p);
         // Connect the entrance to an existing street, keeping the approach outside the new room.
         BlockPos door=center.relative(front,6);
-        BlockPos street=Math.abs(dx)>=Math.abs(dz) ? town.center.offset(dx>0 ? 22 : -22,0,6) : town.center.offset(0,0,dz>0 ? 22 : -22);
+        // A walled village's additions stand outside its wall, so their path leads to the nearest gate instead.
+        BlockPos street=NpcVillagePlan.walled(town) ? NpcVillagePlan.entrance(town,dx,dz)
+                : Math.abs(dx)>=Math.abs(dz) ? town.center.offset(dx>0 ? 22 : -22,0,6) : town.center.offset(0,0,dz>0 ? 22 : -22);
         int x=door.getX(),z=door.getZ();
         while(x!=street.getX() || z!=street.getZ()) {
             if(z!=street.getZ()) z+=Integer.signum(street.getZ()-z); else x+=Integer.signum(street.getX()-x);

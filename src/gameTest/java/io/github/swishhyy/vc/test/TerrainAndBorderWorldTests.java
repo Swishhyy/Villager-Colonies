@@ -19,9 +19,10 @@ import net.neoforged.testframework.gametest.EmptyTemplate;
 import net.neoforged.testframework.gametest.GameTest;
 
 public final class TerrainAndBorderWorldTests {
-    private static void hillside(ServerLevel level,BlockPos base,int extent) {
+    /** Land rising one block every {@code run} blocks eastward, and more gently southward. */
+    private static void hillside(ServerLevel level,BlockPos base,int extent,int run) {
         for(int x=-extent;x<=extent;x++) for(int z=-extent;z<=extent;z++) {
-            int height=Math.floorDiv(x,3)+Math.floorDiv(z,8);
+            int height=Math.floorDiv(x,run)+Math.floorDiv(z,run*16/7);
             for(int y=-28;y<height-1;y++) level.setBlock(base.offset(x,y,z),Blocks.DIRT.defaultBlockState(),2);
             level.setBlock(base.offset(x,height-1,z),Blocks.GRASS_BLOCK.defaultBlockState(),2);
             for(int y=height;y<=45;y++) level.setBlock(base.offset(x,y,z),Blocks.AIR.defaultBlockState(),2);
@@ -32,13 +33,16 @@ public final class TerrainAndBorderWorldTests {
         for(int x=-2;x<=2;x++) for(int z=-2;z<=2;z++) level.setBlock(root.offset(x,36,z),Blocks.SPRUCE_LEAVES.defaultBlockState(),2);
     }
     @GameTest(timeoutTicks=1600,batch="ruggedVillage") @EmptyTemplate
-    @TestHolder(description="A forest-covered hillside with more than twelve blocks of relief generates a complete furnished town with grounded terraces, eight workers, twelve beds and reachable houses; tall trees are surveyed down to actual soil.")
+    @TestHolder(description="A steep hillside is refused, but a rolling forest slope generates a complete walled town on graded ground with every post staffed, twelve beds and reachable houses; tall trees are surveyed down to actual soil.")
     static void furnishedVillageOnRuggedForest(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); var candidate=NpcTownPlan.candidate(level.getSeed(),745,745,1408);
             var base=new BlockPos(candidate.center().getX(),level.getSeaLevel()+30,candidate.center().getZ());
-            var chunks=CitizenNavigationTests.pinArea(level,base,-23,23,-23,23); hillside(level,base,23);
-            var root=base.offset(-13,Math.floorDiv(-13,3)+Math.floorDiv(-13,8),-13); tree(level,root);
+            int extent=NpcSettlements.EXTENT;
+            var chunks=CitizenNavigationTests.pinArea(level,base,-extent,extent,-extent,extent); hillside(level,base,extent,3);
+            helper.assertTrue(NpcVillageTerrain.inspect(level,candidate.center())==null,"A steep hillside was terraced into a village");
+            int run=8; hillside(level,base,extent,run);
+            var root=base.offset(-13,Math.floorDiv(-13,run)+Math.floorDiv(-13,run*16/7),-13); tree(level,root);
             var town=NpcSettlements.discover(level,candidate,List.of(candidate.center()));
             helper.assertTrue(town!=null,"A normal hillside and tall forest still rejected settlement generation");
             test.whenDisabled(() -> {
@@ -49,7 +53,7 @@ public final class TerrainAndBorderWorldTests {
             });
             helper.succeedWhen(() -> {
                 helper.assertTrue(town.trading.buildIndex<0,"Rugged village construction is incomplete: "+town.trading.status);
-                helper.assertTrue(town.citizens.size()==8 && SettlementService.housingBeds(level,town).size()==12,"Town lost its native population or beds");
+                helper.assertTrue(town.citizens.size()==NpcSettlements.startingPopulation(town) && SettlementService.housingBeds(level,town).size()==12,"Town lost its native population or beds");
                 var walker=new io.github.swishhyy.vc.entity.CitizenEntity(VC.CITIZEN.get(),level);
                 walker.setPos(town.center.getX()+0.5,town.center.getY(),town.center.getZ()+0.5); walker.setOnGround(true);
                 try {
@@ -67,7 +71,7 @@ public final class TerrainAndBorderWorldTests {
     static void ruinsOnForestSlopes(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); var base=helper.absolutePos(new BlockPos(-410000,50,-30000));
-            var chunks=CitizenNavigationTests.pinArea(level,base,-12,12,-12,12); hillside(level,base,12); tree(level,base);
+            var chunks=CitizenNavigationTests.pinArea(level,base,-12,12,-12,12); hillside(level,base,12,3); tree(level,base);
             BlockPos edit=base.east(3); level.setBlock(edit,Blocks.DIAMOND_BLOCK.defaultBlockState(),2); WorldWorkData.get(level).protect(edit);
             helper.assertTrue(ExpeditionService.discover(level,base,"fort","protected:"+UUID.randomUUID())==null,"Ruins overwrote player construction");
             helper.assertTrue(level.getBlockState(edit).is(Blocks.DIAMOND_BLOCK),"Terrain survey changed the edit");

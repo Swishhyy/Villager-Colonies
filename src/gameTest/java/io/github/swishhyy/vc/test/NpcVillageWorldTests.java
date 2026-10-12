@@ -26,7 +26,7 @@ public final class NpcVillageWorldTests {
     }
     @GameTest(timeoutTicks=1200,batch="npcVillage")
     @EmptyTemplate
-    @TestHolder(description="A seven-block natural slope with trees on low-altitude ground builds a furnished village with separate cottages, real housing, warehouse stock and reachable doors. Its terrain plan survives serialization during construction.")
+    @TestHolder(description="A nine-block natural slope with trees on low-altitude ground builds a furnished village with separate cottages, real housing, warehouse stock and reachable doors. Its terrain plan survives serialization during construction.")
     static void buildsOnSlopesAndNaturalTrees(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); var candidate=NpcTownPlan.candidate(level.getSeed(),710,710,1408);

@@ -48,7 +48,7 @@ public final class NpcDevelopmentChecks {
         data.veins.put(iron,1234L); data.veins.put(coal,5678L);
         var restored=WorldWorkData.CODEC.parse(JsonOps.INSTANCE,WorldWorkData.CODEC.encodeStart(JsonOps.INSTANCE,data).getOrThrow()).getOrThrow();
         assertEquals(data.veins,restored.veins);
-        var layout=NpcVillageLayout.CODEC.encodeStart(JsonOps.INSTANCE,NpcVillageLayout.flat("spruce")).getOrThrow().getAsJsonObject();
+        var layout=NpcVillageLayout.CODEC.encodeStart(JsonOps.INSTANCE,NpcVillageLayout.flat("spruce",4)).getOrThrow().getAsJsonObject();
         layout.remove("design"); assertEquals(1,NpcVillageLayout.CODEC.parse(JsonOps.INSTANCE,layout).getOrThrow().design(),"Old saved construction must retain its blueprint order");
     }
     @Test void highwayGraphUsesConnectedRoadsAndHonoursBlockedLinks() {

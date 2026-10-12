@@ -18,7 +18,7 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 
 /** Saved, consent-based highway graph. Planning and construction never request or force a chunk. */
 public final class SharedRoads extends SavedData {
-    public static final int MAX_ROADS=128,MAX_LENGTH=4096,COLUMNS_PER_TICK=4;
+    public static final int MAX_ROADS=512,MAX_LENGTH=4096,COLUMNS_PER_TICK=4;
     public static final class Road {
         public static final Codec<Road> CODEC=RecordCodecBuilder.create(i -> i.group(
             Settlement.UUID_CODEC.fieldOf("a").forGetter(r -> r.a),Settlement.UUID_CODEC.fieldOf("b").forGetter(r -> r.b),
@@ -57,6 +57,7 @@ public final class SharedRoads extends SavedData {
     public Road between(UUID a,UUID b) { return roads.stream().filter(r -> key(r.a,r.b).equals(key(a,b))).findFirst().orElse(null); }
     private static BlockPos gate(Settlement town,Settlement other) {
         int dx=other.center.getX()-town.center.getX(),dz=other.center.getZ()-town.center.getZ();
+        if(town.trading.npc && NpcVillagePlan.walled(town)) return NpcVillagePlan.entrance(town,dx,dz);
         if(!town.trading.npc) return TradeRoutes.checkpoint(town).position().offset(Math.abs(dx)>Math.abs(dz) ? Integer.signum(dx)*2 : 0,0,
                 Math.abs(dx)>Math.abs(dz) ? 0 : Integer.signum(dz)*2);
         return Math.abs(dx)>Math.abs(dz) ? town.center.offset(dx>0 ? 22 : -22,0,6) : town.center.offset(0,0,dz>0 ? 22 : -22);

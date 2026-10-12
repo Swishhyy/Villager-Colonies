@@ -14,9 +14,12 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.Heightmap;
 
-/** Follow dry natural ground, clear vegetation, and reject construction only where the plan touches it. */
+/**
+ * Follow dry natural ground, clear vegetation, and reject construction only where the plan touches it. A walled village
+ * grades all of its land, so it needs gently rolling ground: a hillside would leave it on stilts or in a pit.
+ */
 public final class NpcVillageTerrain {
-    public static final int MAX_RELIEF=64,MAX_FOUNDATION=20,MAX_TREE_HEIGHT=NaturalTerrain.MAX_TREE_HEIGHT;
+    public static final int MAX_RELIEF=12,MAX_FOUNDATION=6,MAX_TREE_HEIGHT=NaturalTerrain.MAX_TREE_HEIGHT;
     public record Site(BlockPos center,NpcVillageLayout layout) {}
     private static final ThreadLocal<String> REJECTION=ThreadLocal.withInitial(() -> "no suitable plot");
     public static String lastRejection() { return REJECTION.get(); }
@@ -46,7 +49,7 @@ public final class NpcVillageTerrain {
             low=Math.min(low,y); high=Math.max(high,y);
             if(high-low>MAX_RELIEF) return reject(probe,p,"terrain relief exceeds "+MAX_RELIEF+" blocks");
         }
-        for(var lot:NpcVillagePlan.LOTS) {
+        for(var lot:NpcVillagePlan.lots(layout.design())) {
             int min=Integer.MAX_VALUE,max=Integer.MIN_VALUE;
             for(int x=-lot.radiusX();x<=lot.radiusX();x++) for(int z=-lot.radiusZ();z<=lot.radiusZ();z++) {
                 int y=layout.ground(lot.x()+x,lot.z()+z); min=Math.min(min,y); max=Math.max(max,y);

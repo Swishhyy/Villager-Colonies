@@ -26,12 +26,14 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class SettlementStructures {
     private static final DeferredRegister<StructureType<?>> TYPES=DeferredRegister.create(Registries.STRUCTURE_TYPE,VC.MODID);
     private static final DeferredRegister<StructurePieceType> PIECES=DeferredRegister.create(Registries.STRUCTURE_PIECE,VC.MODID);
+    private static final DeferredRegister<net.minecraft.world.level.levelgen.feature.Feature<?>> FEATURES=DeferredRegister.create(Registries.FEATURE,VC.MODID);
+    public static final DeferredHolder<net.minecraft.world.level.levelgen.feature.Feature<?>,RoadFeature> ROADS=FEATURES.register("roads",RoadFeature::new);
     public static final DeferredHolder<StructureType<?>,StructureType<NpcTownStructure>> TOWN_TYPE=TYPES.register("settlement",() -> () -> NpcTownStructure.CODEC);
     public static final DeferredHolder<StructurePieceType,StructurePieceType> TOWN_PIECE=PIECES.register("settlement",() -> NpcTownPiece::new);
     public static final ResourceKey<Structure> TOWN=ResourceKey.create(Registries.STRUCTURE,Identifier.fromNamespaceAndPath(VC.MODID,"settlement"));
     private final Map<ServerLevel,Map<UUID,NpcTownPiece>> pending=new WeakHashMap<>();
     private int activationCursor;
-    public static void register(IEventBus bus) { TYPES.register(bus); PIECES.register(bus); }
+    public static void register(IEventBus bus) { TYPES.register(bus); PIECES.register(bus); FEATURES.register(bus); }
 
     @SubscribeEvent public void loaded(ChunkEvent.Load event) {
         if(!(event.getLevel() instanceof ServerLevel level) || !level.dimension().equals(Level.OVERWORLD)) return;
@@ -81,8 +83,12 @@ public final class SettlementStructures {
         var protection=WorldWorkData.get(level);
         for(var p:piece.placements()) if(p.protect()) protection.protect(p.pos());
         NpcSettlements.finishFounding(level,town); data.setDirty();
+        RoadNetwork.connect(level,town);
         VC.LOGGER.info("[VC][worldgen] Activated town={} townId={} position={} citizens={}",town.name,town.id,town.center,town.citizens.size());
         return town;
     }
-    @SubscribeEvent public void stopped(ServerStoppedEvent event) { pending.keySet().removeIf(l -> l.getServer()==event.getServer()); }
+    @SubscribeEvent public void stopped(ServerStoppedEvent event) {
+        pending.keySet().removeIf(l -> l.getServer()==event.getServer());
+        RoadNetwork.forget(event.getServer());
+    }
 }

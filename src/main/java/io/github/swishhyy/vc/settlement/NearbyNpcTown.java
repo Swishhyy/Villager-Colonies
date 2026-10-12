@@ -26,7 +26,7 @@ import net.neoforged.neoforge.common.world.chunk.TicketController;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 
-/** One temporary nine-chunk search per world gives players a nearby NPC trading partner. */
+/** One temporary search per world, holding at most twenty-five chunks, gives players a nearby NPC trading partner. */
 public final class NearbyNpcTown {
     private static final TicketController CONTROLLER=new TicketController(
             Identifier.fromNamespaceAndPath(VC.MODID,"npc_discovery"),(level,helper) -> {
@@ -152,7 +152,7 @@ public final class NearbyNpcTown {
         Search(UUID owner,BlockPos origin,List<NpcTownPlan.Plot> plots) {
             this.owner=owner; this.origin=origin.immutable(); this.plots=new ArrayDeque<>(plots);
         }
-        void select(BlockPos pos) { center=pos; chunks=List.copyOf(TradeChunks.window(pos)); }
+        void select(BlockPos pos) { center=pos; chunks=List.copyOf(NpcSettlements.chunks(pos)); }
         void release(ServerLevel level) {
             for(long chunk:held) {
                 var pos=new ChunkPos((int)chunk,(int)(chunk>>32)); CONTROLLER.forceChunk(level,owner,pos.x(),pos.z(),false,false);

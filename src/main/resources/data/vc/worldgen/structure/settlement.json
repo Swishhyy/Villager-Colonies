@@ -2,6 +2,6 @@
   "type": "vc:settlement",
   "biomes": "#vc:has_structure/settlement",
   "spawn_overrides": {},
-  "step": "surface_structures",
+  "step": "top_layer_modification",
   "terrain_adaptation": "none"
 }

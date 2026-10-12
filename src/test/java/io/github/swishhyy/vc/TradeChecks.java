@@ -134,7 +134,7 @@ public final class TradeChecks {
             var states=new HashMap<BlockPos,net.minecraft.world.level.block.state.BlockState>();
             for(var p:plan) {
                 assertNull(states.put(p.pos(),p.state()));
-                assertTrue(TradeChunks.window(town.center).contains(net.minecraft.world.level.ChunkPos.containing(p.pos()).pack()),"Village exceeds its nine-chunk window");
+                assertTrue(NpcSettlements.chunks(town.center).contains(net.minecraft.world.level.ChunkPos.containing(p.pos()).pack()),"Village exceeds its twenty-five-chunk window");
             }
             var homes=NpcSettlements.stations(town).stream().filter(s -> s.role()==StructureRole.HOUSING).toList();
             assertEquals(3,homes.size()); int beds=0;
@@ -146,13 +146,15 @@ public final class TradeChecks {
             assertEquals(12,beds);
             for(var home:homes) assertEquals(4,states.entrySet().stream().filter(e -> home.contains(e.getKey())
                     && e.getValue().getBlock() instanceof BedBlock && e.getValue().getValue(BedBlock.PART)==BedPart.HEAD).count());
-            assertEquals(7,states.values().stream().filter(s -> s.is(Blocks.OAK_DOOR)
+            // Three cottages, the warehouse, bakery, smithy and watch post, and the four corner towers.
+            assertEquals(11,states.values().stream().filter(s -> s.is(Blocks.OAK_DOOR)
                     && s.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF)
                     ==net.minecraft.world.level.block.state.properties.DoubleBlockHalf.LOWER).count());
             assertTrue(states.values().stream().anyMatch(s -> s.is(Blocks.GLASS)));
             assertTrue(states.values().stream().anyMatch(s -> s.is(Blocks.SMOKER)));
             assertTrue(states.values().stream().anyMatch(s -> s.is(Blocks.ANVIL)));
-            assertEquals(8,NpcSettlements.stations(town).stream().filter(s -> s.role().providesWork()).count());
+            assertEquals(12,NpcSettlements.stations(town).stream().filter(s -> s.role().providesWork()).count());
+            assertEquals(25,NpcSettlements.chunks(town.center).size());
             var lumber=NpcSettlements.stations(town).stream().filter(s -> s.role()==StructureRole.LUMBER).findFirst().orElseThrow();
             assertTrue(lumber.contains(town.center.offset(-20,0,13)),"Generated forestry source must be inside the station's supported range");
             assertEquals(lumber.range(),states.get(lumber.position()).getValue(io.github.swishhyy.vc.block.StationBlock.RANGE));

@@ -18,14 +18,15 @@ import net.neoforged.testframework.gametest.GameTest;
 
 public final class StructureTownWorldTests {
     @GameTest(timeoutTicks=100,batch="structureTown") @EmptyTemplate
-    @TestHolder(description="Native town structure metadata survives serialization; a furnished worldgen town activates its saved claim and eight real workers exactly once, without rebuilding its blocks.")
+    @TestHolder(description="Native town structure metadata survives serialization; a furnished, walled worldgen town activates its saved claim and twelve real workers exactly once, without rebuilding its blocks.")
     static void savedStructureActivatesOnce(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel();
             var candidate=NpcTownPlan.candidate(level.getSeed(),811,811,1408);
             var base=new BlockPos(candidate.center().getX(),level.getSeaLevel()+12,candidate.center().getZ());
-            var chunks=CitizenNavigationTests.pinArea(level,base,-23,23,-23,23);
-            CitizenNavigationTests.meadow(level,base,-23,23,-23,23);
+            int extent=NpcSettlements.EXTENT;
+            var chunks=CitizenNavigationTests.pinArea(level,base,-extent,extent,-extent,extent);
+            CitizenNavigationTests.meadow(level,base,-extent,extent,-extent,extent);
             var site=NpcVillageTerrain.inspect(level,base);
             helper.assertTrue(site!=null,"Native activation meadow was rejected");
             var piece=new NpcTownPiece(NpcTownPlan.worldgenCandidate(level.getSeed(),site.center()),site,120);
@@ -38,10 +39,11 @@ public final class StructureTownWorldTests {
             helper.assertTrue(saved.candidate().equals(piece.candidate()) && saved.placements().equals(piece.placements()),"Saving changes the founding layout or identity");
             for(var placement:saved.placements()) level.setBlock(placement.pos(),placement.state(),2);
             var town=SettlementStructures.activate(level,saved);
-            helper.assertTrue(town!=null && town.trading.buildIndex<0 && town.citizens.size()==8,"Native town did not initialize its real workers");
+            helper.assertTrue(town!=null && town.trading.buildIndex<0 && town.citizens.size()==NpcSettlements.startingPopulation(town)
+                    && town.citizens.size()==12,"Native town did not staff every workstation and gate sentry");
             helper.assertTrue(SettlementService.housingBeds(level,town).size()==12 && level.getBlockState(town.center).is(VC.BANNER.get()),"Native buildings or beds are missing");
             level.setBlock(town.center.above(10),Blocks.DIAMOND_BLOCK.defaultBlockState(),2);
-            helper.assertTrue(SettlementStructures.activate(level,saved)==town && town.citizens.size()==8,"Reloading duplicates the claim or crew");
+            helper.assertTrue(SettlementStructures.activate(level,saved)==town && town.citizens.size()==12,"Reloading duplicates the claim or crew");
             helper.assertTrue(level.getBlockState(town.center.above(10)).is(Blocks.DIAMOND_BLOCK),"Activation rebuilt the player's changed blocks");
             test.whenDisabled(() -> {
                 for(var id:town.citizens) { var entity=level.getEntity(id); if(entity!=null) entity.discard(); }

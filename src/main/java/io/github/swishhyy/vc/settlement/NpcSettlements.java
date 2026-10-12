@@ -53,8 +53,16 @@ public final class NpcSettlements {
         return Config.RANDOM_TOWNS.get() && elapsedTicks>=Config.NPC_FOUNDING_DAYS.get()*24000L;
     }
     public static boolean loaded(ServerLevel level,BlockPos center) {
-        for(long chunk:TradeChunks.window(center)) { var p=new net.minecraft.world.level.ChunkPos((int)chunk,(int)(chunk >> 32)); if(!level.hasChunk(p.x(),p.z())) return false; }
+        for(long chunk:chunks(center)) { var p=new net.minecraft.world.level.ChunkPos((int)chunk,(int)(chunk >> 32)); if(!level.hasChunk(p.x(),p.z())) return false; }
         return true;
+    }
+    /** Every chunk a village centred here may build in: twenty-five for a walled village centred in its chunk. */
+    public static Set<Long> chunks(BlockPos center) {
+        Set<Long> result=new LinkedHashSet<>();
+        for(int x=Math.floorDiv(center.getX()-EXTENT,16);x<=Math.floorDiv(center.getX()+EXTENT,16);x++)
+            for(int z=Math.floorDiv(center.getZ()-EXTENT,16);z<=Math.floorDiv(center.getZ()+EXTENT,16);z++)
+                result.add(new net.minecraft.world.level.ChunkPos(x,z).pack());
+        return result;
     }
     private boolean discover(ServerLevel level,NpcTownPlan.Candidate candidate) {
         return discover(level,candidate,NpcTownPlan.sites(candidate))!=null;
@@ -81,6 +89,9 @@ public final class NpcSettlements {
         town.populationLevel=0; town.trading.npc=true; town.trading.specialty=candidate.specialty(); town.trading.buildIndex=0;
         town.trading.layout=terrain.layout();
         town.trading.development.enabled=true;
+        // Room from the first day for a citizen at every workstation, the gate sentries included.
+        int posts=(int)stations(town).stream().filter(s -> s.role().providesWork()).count();
+        while(town.populationLevel<8 && SettlementService.populationLimitAt(town,town.populationLevel)<posts) town.populationLevel++;
         switch(candidate.specialty()) {
             case "farming" -> town.trading.exports.add(new TradeSettings.Export("minecraft:carrot",64,32));
             case "timber" -> town.trading.exports.add(new TradeSettings.Export("minecraft:oak_log",16,32));
@@ -119,7 +130,7 @@ public final class NpcSettlements {
         CampaignService.journal(level,town,"Our settlement is ready for neighbours and trade.");
         SettlementData.get(level).setDirty();
     }
-    /** A founding village staffs its eight workstations, subject to the world's population cap. */
+    /** A founding village staffs its workstations, subject to the world's population cap. */
     public static int startingPopulation(Settlement town) {
         return Math.min((int)town.stations.stream().filter(s -> s.role().providesWork()).count(),SettlementService.populationLimit(town));
     }
@@ -198,6 +209,8 @@ public final class NpcSettlements {
                 new ItemStack(Items.COAL,64),new ItemStack(Items.OAK_SAPLING,16),new ItemStack(Items.COBBLESTONE,64),new ItemStack(Items.STONE_AXE),
                 new ItemStack(Items.STONE_AXE),new ItemStack(Items.STONE_PICKAXE),new ItemStack(Items.STONE_PICKAXE),new ItemStack(Items.IRON_SWORD),
                 new ItemStack(Items.LEATHER_HELMET),new ItemStack(Items.LEATHER_CHESTPLATE),new ItemStack(Items.LEATHER_LEGGINGS),new ItemStack(Items.LEATHER_BOOTS)));
+        // The walled design's four gate sentries carry their own swords.
+        if(NpcVillagePlan.walled(town)) for(int n=0;n<NpcVillagePlan.SENTRIES.size();n++) starter.add(new ItemStack(Items.IRON_SWORD));
         for(ItemStack offered:starter) for(Container box:containers) { offered=InventoryOps.insert(box,offered); if(offered.isEmpty()) break; }
     }
     @SubscribeEvent public void stopped(ServerStoppedEvent event) { PLANS.keySet().removeIf(l -> l.getServer()==event.getServer()); }

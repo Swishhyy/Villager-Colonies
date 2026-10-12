@@ -16,7 +16,8 @@ import net.minecraft.world.level.levelgen.structure.StructureType;
 /** A real structure start: terrain is sampled without loading chunks or accessing saved AI data. */
 public final class NpcTownStructure extends Structure {
     public static final MapCodec<NpcTownStructure> CODEC=simpleCodec(NpcTownStructure::new);
-    private static final int STEP=4,SAMPLES=13;
+    /** Heights are sampled every four blocks over the whole walled village and one sample beyond it. */
+    private static final int STEP=4,HALF=32,SAMPLES=2*HALF/STEP+1;
     public NpcTownStructure(StructureSettings settings) { super(settings); }
     @Override public StructureType<?> type() { return SettlementStructures.TOWN_TYPE.get(); }
 
@@ -36,7 +37,7 @@ public final class NpcTownStructure extends Structure {
         int[][] samples=new int[SAMPLES][SAMPLES];
         int low=Integer.MAX_VALUE,high=Integer.MIN_VALUE;
         for(int a=0;a<SAMPLES;a++) for(int b=0;b<SAMPLES;b++) {
-            int height=context.chunkGenerator().getBaseHeight(x-24+a*STEP,z-24+b*STEP,
+            int height=context.chunkGenerator().getBaseHeight(x-HALF+a*STEP,z-HALF+b*STEP,
                     Heightmap.Types.WORLD_SURFACE_WG,context.heightAccessor(),context.randomState());
             // Sea-level terrain includes river/ocean water, not a suitable town foundation.
             if(height<=context.chunkGenerator().getSeaLevel() || height<context.heightAccessor().getMinY()+4
@@ -44,7 +45,7 @@ public final class NpcTownStructure extends Structure {
             samples[a][b]=height; low=Math.min(low,height); high=Math.max(high,height);
         }
         if(high-low>NpcVillageTerrain.MAX_RELIEF) return null;
-        int centerY=samples[6][6];
+        int centerY=samples[HALF/STEP][HALF/STEP];
         if(!context.chunkGenerator().getBaseColumn(x,z,context.heightAccessor(),context.randomState())
                 .getBlock(centerY-1).getFluidState().isEmpty()) return null;
         var biome=context.biomeSource().getNoiseBiome(QuartPos.fromBlock(x),QuartPos.fromBlock(centerY),QuartPos.fromBlock(z),context.randomState().sampler());
@@ -54,7 +55,7 @@ public final class NpcTownStructure extends Structure {
                 || biome.is(Biomes.OLD_GROWTH_SPRUCE_TAIGA) || biome.is(Biomes.SNOWY_PLAINS) || biome.is(Biomes.GROVE) ? "spruce" : "oak";
         List<Integer> ground=new ArrayList<>(NpcVillageLayout.CELLS);
         for(int dx=-NpcVillageLayout.EXTENT;dx<=NpcVillageLayout.EXTENT;dx++) for(int dz=-NpcVillageLayout.EXTENT;dz<=NpcVillageLayout.EXTENT;dz++) {
-            int a=(dx+24)/STEP,b=(dz+24)/STEP,tx=(dx+24)%STEP,tz=(dz+24)%STEP;
+            int a=(dx+HALF)/STEP,b=(dz+HALF)/STEP,tx=(dx+HALF)%STEP,tz=(dz+HALF)%STEP;
             int height=Math.round((samples[a][b]*(STEP-tx)*(STEP-tz)+samples[a+1][b]*tx*(STEP-tz)
                     +samples[a][b+1]*(STEP-tx)*tz+samples[a+1][b+1]*tx*tz)/(float)(STEP*STEP));
             ground.add(height-centerY);
