@@ -40,7 +40,8 @@ public final class RoadNetworkWorldTests {
             var road=network.road(home,next);
             for(int n=1;n<road.length();n++) helper.assertTrue(Math.abs(road.xs()[n]-road.xs()[n-1])<=1 && Math.abs(road.zs()[n]-road.zs()[n-1])<=1,
                     "The road has a gap at "+road.xs()[n]+","+road.zs()[n]);
-            var first=home.key()<next.key() ? home : next,last=first==home ? next : home;
+            RoadNetwork.Node first=home.key()<next.key() ? home : next;
+            RoadNetwork.Node last=first==home ? next : home;
             int gate=io.github.swishhyy.vc.settlement.NpcVillageLayout.EXTENT+1;
             helper.assertTrue(Math.max(Math.abs(road.xs()[0]-first.x()),Math.abs(road.zs()[0]-first.z()))==gate
                     && Math.max(Math.abs(road.xs()[road.length()-1]-last.x()),Math.abs(road.zs()[road.length()-1]-last.z()))==gate,
@@ -54,7 +55,8 @@ public final class RoadNetworkWorldTests {
             helper.assertTrue(feature.place(level,level.getChunkSource().getGenerator(),RandomSource.create(1),origin),"The road feature paved nothing");
             helper.assertTrue(level.getBlockState(column.below()).is(Blocks.DIRT_PATH) && level.getBlockState(column).isAir(),
                     "The road is not paved where it was surveyed: "+level.getBlockState(column.below())+" at "+column.below());
-            var a=town(level,home,"Hearth"),b=town(level,next,"Ford");
+            Settlement a=town(level,home,"Hearth");
+            Settlement b=town(level,next,"Ford");
             var data=SettlementData.get(level); data.settlements.add(a); data.settlements.add(b); data.setDirty();
             test.whenDisabled(() -> {
                 var roads=SharedRoads.get(level); roads.roads.removeIf(r -> r.a.equals(a.id) || r.b.equals(a.id)); roads.setDirty();

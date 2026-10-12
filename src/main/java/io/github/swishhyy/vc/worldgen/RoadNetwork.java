@@ -34,7 +34,9 @@ import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStruct
 public final class RoadNetwork {
     static final ResourceKey<StructureSet> SETTLEMENTS=ResourceKey.create(Registries.STRUCTURE_SET,Identifier.fromNamespaceAndPath(VC.MODID,"settlements"));
     /** Blocks between survey samples; the most the ground may rise or fall between two samples on a road. */
-    private static final int GRID=8,MAX_RISE=5;
+    private static final int GRID=16,MAX_RISE=8;
+    /** Blocks between height samples along a surveyed road; the heights between are interpolated. */
+    private static final int PROFILE_STEP=4;
     /** Roads keep this far from other sites' centres, and give up rather than bridge more open water than this. */
     private static final int CLEARANCE=40,MAX_BRIDGE=64;
     /** Most a road cuts into or builds up the ground; a deeper dip is spanned by a plank deck instead. */
@@ -256,10 +258,17 @@ public final class RoadNetwork {
         int[] xs=new int[n],zs=new int[n],natural=new int[n],feet=new int[n];
         boolean[] water=new boolean[n];
         int minX=Integer.MAX_VALUE,maxX=Integer.MIN_VALUE,minZ=Integer.MAX_VALUE,maxZ=Integer.MIN_VALUE;
+        int[] sampled=new int[n];
         for(int i=0;i<n;i++) {
             xs[i]=columns.get(i)[0]; zs[i]=columns.get(i)[1];
-            int h=height(xs[i],zs[i]); water[i]=h<=seaLevel; natural[i]=water[i] ? seaLevel+1 : h;
+            if(i%PROFILE_STEP==0 || i==n-1) sampled[i]=height(xs[i],zs[i]);
             minX=Math.min(minX,xs[i]); maxX=Math.max(maxX,xs[i]); minZ=Math.min(minZ,zs[i]); maxZ=Math.max(maxZ,zs[i]);
+        }
+        // Terrain noise is costly to read: sample every few blocks and interpolate between.
+        for(int i=0;i<n;i++) {
+            int before=i-i%PROFILE_STEP,after=Math.min(before+PROFILE_STEP,n-1);
+            int h=after==before ? sampled[before] : Math.round(sampled[before]+(sampled[after]-sampled[before])*(float)(i-before)/(after-before));
+            water[i]=h<=seaLevel; natural[i]=water[i] ? seaLevel+1 : h;
         }
         int[] low=natural.clone(),high=natural.clone();
         for(int i=1;i<n;i++) { low[i]=Math.min(low[i],low[i-1]+1); high[i]=Math.max(high[i],high[i-1]-1); }

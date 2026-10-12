@@ -90,7 +90,7 @@ def start_and_stop(attempt):
                 print(f"Normal noise world: located vc:settlement at {x}, {z} before loading its village",flush=True)
             else:
                 x,z=json.loads((RUN / "native-town.json").read_text())
-            exchange(connection,21,2,f"forceload add {x-23} {z-23} {x+23} {z+23}")
+            exchange(connection,21,2,f"forceload add {x-29} {z-29} {x+29} {z+29}")
             town_deadline=time.monotonic()+100
             banner=crew="not inspected"
             while True:
