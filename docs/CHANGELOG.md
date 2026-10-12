@@ -15,6 +15,7 @@
 - Let NPC towns arrange one more neighbour route for every two buildings they add, up to four, so trade and its highways keep spreading as a world ages.
 - Send citizens to hospital only below half health. A fall no longer turns a trader back; lighter wounds mend while citizens sleep in ordinary beds.
 - Hold at most twenty-five temporary chunks, one 5x5 window, while establishing a nearby NPC neighbour, for the larger walled villages.
+- Keep citizens on their work when they plan a walk while in the air, such as hopping off a barrel. A craftsman fetching repair supplies no longer gives up on a reachable trap for half a minute.
 
 ## Unreleased
 

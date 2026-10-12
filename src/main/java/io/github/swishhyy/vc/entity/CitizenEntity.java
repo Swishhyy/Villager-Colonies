@@ -613,6 +613,12 @@ public final class CitizenEntity extends Villager {
         long now=level().getGameTime();
         if(getNavigation().isDone() || !pos.equals(pathDestination) || now>=nextPathAt) {
             var path=getNavigation().createPath(pos,accuracy);
+            // Minecraft plans no route while a walker is in the air, as when hopping off a barrel: that says nothing about
+            // the target, so keep walking and plan again on landing instead of giving the work up as unreachable.
+            if(path==null && !onGround() && !isInWater() && !isInLava()) {
+                getLookControl().setLookAt(pos.getX()+0.5,pos.getY()+0.5,pos.getZ()+0.5);
+                return true;
+            }
             if(path==null) { if(level() instanceof ServerLevel server && onGround()) failedJobPath(server); return false; }
             if(path.canReach()) clearBlockedJob();
             else if(level() instanceof ServerLevel server && onGround()) failedJobPath(server);
