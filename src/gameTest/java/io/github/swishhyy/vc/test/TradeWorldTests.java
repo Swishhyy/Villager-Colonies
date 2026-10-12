@@ -176,6 +176,8 @@ public final class TradeWorldTests {
             int cliff=12;
             var chunks=CitizenNavigationTests.pinArea(level,start,-48,48,-12,140);
             for(int x=-48;x<=48;x++) for(int z=-12;z<=140;z++) {
+                // Thick enough that the land map does not read it as a roof over the test world's ground below.
+                level.setBlockAndUpdate(start.offset(x,-3,z),Blocks.STONE.defaultBlockState());
                 level.setBlockAndUpdate(start.offset(x,-2,z),Blocks.STONE.defaultBlockState());
                 level.setBlockAndUpdate(start.offset(x,-1,z),Blocks.GRASS_BLOCK.defaultBlockState());
                 for(int y=0;y<=cliff+3;y++) level.setBlockAndUpdate(start.offset(x,y,z),
@@ -201,15 +203,12 @@ public final class TradeWorldTests {
             a.trading.exports.add(new TradeSettings.Export("minecraft:iron_ingot",0,16));
             TradeRoutes.link(a,b,data.settlements,8192);
             TradeAtlas.get(level).survey(level,start.offset(-48,0,-12),start.offset(48,0,140));
-            var planned=TradeAtlas.get(level).route(level,a.stations.getFirst().position(),b.stations.getFirst().position(),512);
-            VC.LOGGER.info("[VC tests] Cliff staircase route from the foot: {}",planned.stream().map(p -> p.subtract(start)).toList());
             CitizenEntity trader=new CitizenEntity(VC.CITIZEN.get(),level);
             trader.join(a.id); trader.setPos(start.getX()+2.5,start.getY(),start.getZ()+0.5);
             a.citizens.add(trader.getUUID()); level.addFreshEntity(trader); data.setDirty();
             var offStairs=new AtomicBoolean();
             helper.succeedWhen(() -> {
                 int x=trader.blockPosition().getX()-start.getX(),y=trader.blockPosition().getY()-start.getY();
-                if(level.getGameTime()%200==0) VC.LOGGER.info("[VC tests] Cliff trader at {} doing \"{}\"",trader.blockPosition().subtract(start),trader.activity());
                 if(y>=2 && y<=cliff-2 && Math.abs(x+20)>1) offStairs.set(true);
                 helper.assertTrue(trader.isAlive(),"Trader died: "+a.trading.status);
                 helper.assertTrue(!offStairs.get(),"Trader climbed somewhere other than the staircase");

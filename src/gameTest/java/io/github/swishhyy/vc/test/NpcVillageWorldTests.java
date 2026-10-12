@@ -89,7 +89,7 @@ public final class NpcVillageWorldTests {
     }
     @GameTest(timeoutTicks=20,batch="npcTerrain")
     @EmptyTemplate
-    @TestHolder(description="Expanded NPC terrain rules clear natural trees, ignore unused corners, and still reject protected player blocks, storage, water and cliffs without modifying terrain.")
+    @TestHolder(description="Expanded NPC terrain rules clear natural trees, ignore land outside the village, and still reject protected player blocks, storage, water and cliffs without modifying terrain.")
     static void terrainStillProtectsConstructionAndWater(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel(); var candidate=NpcTownPlan.candidate(level.getSeed(),720,720,1408);
@@ -97,7 +97,8 @@ public final class NpcVillageWorldTests {
             int extent=NpcSettlements.EXTENT;
             var chunks=CitizenNavigationTests.pinArea(level,base,-extent,extent,-extent,extent);
             terrain(level,base,false); var protection=WorldWorkData.get(level);
-            BlockPos used=base.offset(-13,0,-13),corner=base.offset(23,0,23);
+            // A walled village grades all of its land, so the untouched spot is just beyond it.
+            BlockPos used=base.offset(-13,0,-13),corner=base.offset(extent+2,0,extent+2);
             test.whenDisabled(() -> {
                 protection.protectedBlocks.remove(used); protection.protectedBlocks.remove(corner); protection.setDirty();
                 CitizenNavigationTests.release(level,base,chunks);
@@ -112,7 +113,7 @@ public final class NpcVillageWorldTests {
             helper.assertTrue(NpcVillageTerrain.inspect(level,candidate.center())==null,"An underwater building site was accepted");
             level.setBlock(used,Blocks.AIR.defaultBlockState(),2);
             level.setBlock(corner,Blocks.OAK_PLANKS.defaultBlockState(),2); protection.protect(corner);
-            helper.assertTrue(NpcVillageTerrain.inspect(level,candidate.center())!=null,"An unused corner unnecessarily rejected the entire village");
+            helper.assertTrue(NpcVillageTerrain.inspect(level,candidate.center())!=null,"A player block beside the village unnecessarily rejected it");
             for(int y=0;y<=NpcVillageTerrain.MAX_FOUNDATION+1;y++) level.setBlock(used.above(y),Blocks.STONE.defaultBlockState(),2);
             helper.assertTrue(NpcVillageTerrain.inspect(level,candidate.center())==null,"A cliff passed the terrain safety limit");
             helper.succeed();
