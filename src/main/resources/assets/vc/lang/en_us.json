@@ -198,8 +198,8 @@
   "vc.configuration.borderBlocksPerUpgrade.tooltip": "Radius added by each paid border expansion. Default: 32 blocks per edge, capped at radius 512. Expansion cannot overlap another town.",
   "vc.configuration.borderUpgradeCost": "Border upgrade cost",
   "vc.configuration.borderUpgradeCost.tooltip": "Emerald price of the first border expansion. Default: 16; later prices are 32, 48, 64 and so on.",
-  "vc.configuration.initialNpcTowns": "Initial world-generation towns",
+  "vc.configuration.initialNpcTowns": "Initial NPC towns",
   "vc.configuration.initialNpcTowns.tooltip": "Place furnished towns as Minecraft structures while new chunks generate. Enable Generate Structures.",
-  "vc.configuration.npcFoundingDelayDays": "Later town founding delay",
+  "vc.configuration.npcFoundingDelayDays": "Town founding delay",
   "vc.configuration.npcFoundingDelayDays.tooltip": "Elapsed Minecraft days before new towns may emerge in loaded terrain. Sleeping does not skip this delay."
 }
