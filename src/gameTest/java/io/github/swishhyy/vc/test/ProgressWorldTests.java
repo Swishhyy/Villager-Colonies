@@ -47,7 +47,7 @@ public final class ProgressWorldTests {
                 SettlementService.setJobLevel(level,town,StructureRole.COURIER,JobBoard.OFF);
                 helper.assertTrue(!SettlementService.couriers(level,town) && SettlementService.courierAdvice(level,town).startsWith("Enable Courier"),"Disabled courier work must be explained");
                 SettlementService.setJobLevel(level,town,StructureRole.COURIER,JobBoard.NORMAL); town.jobs.assign(worker.getUUID(),courier.position());
-                worker.setHealth(worker.getMaxHealth()-5);
+                worker.setHealth(worker.getMaxHealth()*io.github.swishhyy.vc.settlement.HospitalCare.ADMIT_SHARE-1);
                 helper.assertTrue(!SettlementService.couriers(level,town) && SettlementService.courierAdvice(level,town).contains("health"),"A courier receiving hospital care cannot haul");
                 worker.setHealth(worker.getMaxHealth());
                 helper.assertTrue(SettlementService.couriers(level,town),"A recovered courier can haul again");

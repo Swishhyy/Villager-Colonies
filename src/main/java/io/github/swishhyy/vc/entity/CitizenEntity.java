@@ -197,6 +197,8 @@ public final class CitizenEntity extends Villager {
     private boolean recovering;
     private BlockPos hospitalBed,hospitalStand;
     private int hospitalRestTicks,hospitalPathTicks;
+    /** Sleep accumulated toward mending a light wound in an ordinary bed. */
+    private int restHealTicks;
     private long nextTradeAt;
     private int lastNpcHurt=-1;
     /** Experience earned at each job, by job id; it stays with the citizen when it changes job. */
@@ -274,6 +276,7 @@ public final class CitizenEntity extends Villager {
             if(guardAttackTicks>0) guardAttackTicks--;
             if(WorkCadence.due(server.getGameTime(),getId(),20)) {
                 cargo.flush();
+                mendWhileSleeping();
                 Settlement town=town(server);
                 if(town!=null) {
                     if(isBaby()) {
@@ -2116,6 +2119,13 @@ public final class CitizenEntity extends Villager {
             return false;
         }
         return true;
+    }
+    /** Light wounds heal slowly in any bed; serious ones are handled by {@link HospitalCare} instead. */
+    private void mendWhileSleeping() {
+        if(!isSleeping() || hospitalBed!=null || recovering || inCombat() || getHealth()>=getMaxHealth()) { restHealTicks=0; return; }
+        restHealTicks+=20;
+        if(restHealTicks<HospitalCare.REST_HEAL_TICKS) return;
+        restHealTicks=0; heal(1);
     }
     public boolean hospitalHealingPulse() {
         hospitalRestTicks+=10;

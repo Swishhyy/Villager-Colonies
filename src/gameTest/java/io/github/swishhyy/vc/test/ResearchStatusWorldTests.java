@@ -80,7 +80,7 @@ public final class ResearchStatusWorldTests {
                 worker.startSleeping(foot);
                 check.accept(Research.WorkState.PAUSED,"sleeping");
                 worker.stopSleeping();
-                worker.setHealth(worker.getMaxHealth()-1);
+                worker.setHealth(worker.getMaxHealth()*io.github.swishhyy.vc.settlement.HospitalCare.ADMIT_SHARE-1);
                 check.accept(Research.WorkState.PAUSED,"hospital recovery");
                 worker.setHealth(worker.getMaxHealth());
                 DefenseService.toggle(level,town);

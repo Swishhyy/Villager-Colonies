@@ -177,7 +177,7 @@ public final class VillagerAIWorldTests {
         });
     }
 
-    @GameTest(timeoutTicks=1600)
+    @GameTest(timeoutTicks=2600)
     @EmptyTemplate
     @TestHolder(description="A guard keeps attacking after real hostile damage, receives no hospital healing in combat, then reaches a hospital bed and recovers after the attacker dies.")
     static void woundedGuardDefendsBeforeHospital(DynamicTest test) {
@@ -193,6 +193,8 @@ public final class VillagerAIWorldTests {
                 helper.assertTrue(!guard.recovering() && guard.hospitalBed()==null && guard.inCombat(),"Wounded guard abandoned combat: "+guard.activity());
                 helper.assertTrue(enemy.getHealth()<180,"Guard did not continue attacking the hostile: "+enemy.getHealth()+" / "+guard.activity());
                 enemy.kill(level);
+                // Only a serious wound, below half health, sends a guard to hospital once the fight is over.
+                guard.setHealth(Math.min(guard.getHealth(),guard.getMaxHealth()*io.github.swishhyy.vc.settlement.HospitalCare.ADMIT_SHARE-2));
                 helper.succeedWhen(() -> {
                     helper.assertTrue(guard.getHealth()==guard.getMaxHealth() && !guard.recovering(),"Guard has not recovered after combat: "+guard.activity());
                     helper.assertTrue(f.town.campaign.journal.stream().anyMatch(e -> e.text().contains("recovered at the hospital")),"Recovery did not occur in a hospital bed or reach the journal");

@@ -65,7 +65,30 @@ public final class CampaignWorldTests {
             });
         });
     }
-    @GameTest(timeoutTicks=1800)
+    @GameTest(timeoutTicks=600)
+    @EmptyTemplate
+    @TestHolder(description="A citizen with a light wound, above half health, keeps its job instead of taking a free hospital bed.")
+    static void lightlyInjuredCitizensKeepWorking(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel(); BlockPos start=helper.absolutePos(new BlockPos(0,2,-3740));
+            var chunks=CitizenNavigationTests.pinArea(level,start,-8,32,-12,12); CitizenNavigationTests.meadow(level,start,-8,32,-12,12);
+            Station hospital=new Station(start.east(8),StructureRole.HOSPITAL),farm=new Station(start.east(24),StructureRole.FARM);
+            var beds=Blocks.BED.red().defaultBlockState().setValue(BedBlock.FACING,Direction.NORTH); BlockPos foot=hospital.position().north(2);
+            level.setBlockAndUpdate(foot,beds.setValue(BedBlock.PART,BedPart.FOOT)); level.setBlockAndUpdate(foot.north(),beds.setValue(BedBlock.PART,BedPart.HEAD));
+            Settlement town=town(level,start.west(4),hospital,farm);
+            CitizenEntity worker=citizen(level,town,start); worker.setHealth(worker.getMaxHealth()*HospitalCare.ADMIT_SHARE+2);
+            town.jobs.assign(worker.getUUID(),farm.position());
+            helper.runAtTickTime(300,() -> {
+                helper.assertTrue(!HospitalCare.needsCare(town,worker) && !worker.recovering() && worker.hospitalBed()==null,
+                        "A light wound sent the citizen to hospital: "+worker.activity());
+                helper.assertTrue(farm.position().equals(town.jobs.home(worker.getUUID())),"A light wound discarded the citizen's job");
+                worker.setHealth(worker.getMaxHealth()*HospitalCare.ADMIT_SHARE-1);
+                helper.assertTrue(HospitalCare.needsCare(town,worker),"Losing half of its health must send a citizen to hospital");
+                leave(level,town,worker); CitizenNavigationTests.release(level,start,chunks); helper.succeed();
+            });
+        });
+    }
+    @GameTest(timeoutTicks=3400)
     @EmptyTemplate
     @TestHolder(description="Two injured citizens queue for one actual hospital bed, ignore nearer housing beds, heal gradually without a medic, and stay asleep through alarm wake requests until exactly full health.")
     static void injuredCitizensUseOnlyHospitalBedsUntilFull(DynamicTest test) {
@@ -80,7 +103,7 @@ public final class CampaignWorldTests {
             }
             Settlement town=town(level,start.west(4),hospital,housing,farm);
             CitizenEntity a=citizen(level,town,start),b=citizen(level,town,start.south(2));
-            a.setHealth(a.getMaxHealth()-3); b.setHealth(b.getMaxHealth()-2); town.jobs.assign(a.getUUID(),farm.position());
+            a.setHealth(a.getMaxHealth()*HospitalCare.ADMIT_SHARE-1); b.setHealth(b.getMaxHealth()*HospitalCare.ADMIT_SHARE-0.5F); town.jobs.assign(a.getUUID(),farm.position());
             Set<UUID> slept=new HashSet<>(); boolean[] violation={false};
             helper.succeedWhen(() -> {
                 int occupied=0;
@@ -98,7 +121,7 @@ public final class CampaignWorldTests {
             });
         });
     }
-    @GameTest(timeoutTicks=2000)
+    @GameTest(timeoutTicks=2800)
     @EmptyTemplate
     @TestHolder(description="Breaking a reserved hospital bed stops passive healing and releases its patient; rebuilding the bed lets the injured citizen resume recovery without using nearby housing.")
     static void brokenHospitalBedStopsHealingUntilRebuilt(DynamicTest test) {
@@ -108,7 +131,7 @@ public final class CampaignWorldTests {
             Station hospital=new Station(start.east(12),StructureRole.HOSPITAL); BlockPos foot=hospital.position().north(2),head=foot.north();
             var beds=Blocks.BED.red().defaultBlockState().setValue(BedBlock.FACING,Direction.NORTH);
             level.setBlockAndUpdate(foot,beds.setValue(BedBlock.PART,BedPart.FOOT)); level.setBlockAndUpdate(head,beds.setValue(BedBlock.PART,BedPart.HEAD));
-            Settlement town=town(level,start.west(4),hospital); CitizenEntity patient=citizen(level,town,start); patient.setHealth(patient.getMaxHealth()-6);
+            Settlement town=town(level,start.west(4),hospital); CitizenEntity patient=citizen(level,town,start); patient.setHealth(patient.getMaxHealth()*HospitalCare.ADMIT_SHARE-2);
             helper.runAtTickTime(230,() -> {
                 helper.assertTrue(HospitalCare.inBed(patient),"Patient never slept in the hospital bed: "+patient.activity()); float health=patient.getHealth();
                 level.setBlockAndUpdate(foot,Blocks.AIR.defaultBlockState()); level.setBlockAndUpdate(head,Blocks.AIR.defaultBlockState());

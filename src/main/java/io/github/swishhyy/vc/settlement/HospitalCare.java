@@ -10,14 +10,23 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.phys.Vec3;
 
-/** Injured citizens recover in a reserved hospital bed after combat, with optional assistance from a medic. */
+/**
+ * Badly injured citizens recover in a reserved hospital bed after combat, with optional assistance from a medic. Lighter
+ * wounds do not interrupt work: they mend while the citizen sleeps in an ordinary bed.
+ */
 public final class HospitalCare {
     public static final int HEAL_TICKS=100;
+    /** Below this share of full health a citizen leaves work for a hospital bed; once admitted, it stays until full. */
+    public static final float ADMIT_SHARE=0.5F;
+    /** Ticks of ordinary sleep per health point for lighter wounds, half the speed of a hospital bed. */
+    public static final int REST_HEAL_TICKS=2*HEAL_TICKS;
     private HospitalCare() {}
     public static boolean needsCare(Settlement town,CitizenEntity citizen) {
-        return town!=null && (citizen.recovering() || citizen.hospitalBed()!=null || citizen.getHealth()<citizen.getMaxHealth())
+        return town!=null && (citizen.recovering() || citizen.hospitalBed()!=null || seriouslyInjured(citizen))
                 && !citizen.inCombat();
     }
+    /** A fall or a scratch is not enough to abandon a trade trip or a job; losing half of one's health is. */
+    public static boolean seriouslyInjured(CitizenEntity citizen) { return citizen.getHealth()<citizen.getMaxHealth()*ADMIT_SHARE; }
     public static boolean inBed(CitizenEntity citizen) {
         return citizen.hospitalBed()!=null && citizen.isSleeping() && citizen.getSleepingPos().filter(citizen.hospitalBed()::equals).isPresent();
     }
