@@ -95,7 +95,7 @@ def start_and_stop(attempt):
             while True:
                 town=exchange(connection,22,2,f"execute positioned {x} 80 {z} run locate settlement")
                 if "The nearest AI settlement" in town:
-                    match=re.search(r"\[(-?\d+),\s*(-?\d+),\s*(-?\d+)\]",town)
+                    match=re.search(r"is at \[?(-?\d+),\s*(-?\d+),\s*(-?\d+)\]?",town)
                     if match and int(match[1])==x and int(match[3])==z:
                         y=int(match[2])
                         banner=exchange(connection,23,2,f"execute if block {x} {y} {z} vc:settlement_banner run say VC-worldgen-banner-present")
