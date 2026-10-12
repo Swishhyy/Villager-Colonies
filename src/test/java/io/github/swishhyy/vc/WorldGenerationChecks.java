@@ -62,8 +62,9 @@ public final class WorldGenerationChecks {
             assertTrue(states.get(new BlockPos(outside.x()-gate.out().getStepX(),-1,outside.z()-gate.out().getStepZ())).is(Blocks.DIRT_PATH),"The road does not leave the gate");
         }
         for(int n=-20;n<=20;n+=8) {
-            if(NpcVillagePlan.GATES.stream().anyMatch(g -> Math.abs(g.x()-(-wall))<=0 && Math.abs(g.z()-n)<=2)) continue;
-            for(int y=0;y<NpcVillagePlan.WALL_HEIGHT;y++) assertFalse(states.get(new BlockPos(-wall,y,n)).isAir(),"The west wall has a gap at "+n);
+            int row=n;
+            if(NpcVillagePlan.GATES.stream().anyMatch(g -> g.x()==-wall && Math.abs(g.z()-row)<=2)) continue;
+            for(int y=0;y<NpcVillagePlan.WALL_HEIGHT;y++) assertFalse(states.get(new BlockPos(-wall,y,row)).isAir(),"The west wall has a gap at "+row);
         }
         for(var tower:NpcVillagePlan.TOWERS)
             assertTrue(states.get(new BlockPos(tower.x(),NpcVillagePlan.TOWER_HEIGHT,tower.z()+Integer.signum(tower.z()))).is(Blocks.LADDER),"A corner tower cannot be climbed");

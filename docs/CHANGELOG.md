@@ -8,6 +8,12 @@
 - Keep later town founding, starting after three elapsed Minecraft days by default, alongside existing AI building growth. Add normal-level rejection summaries for failed later searches.
 - Follow natural ground with connected graded paths and reject excessive excavation/fill, preventing deep trenches and large hillside cuts. Preserve saved older layouts.
 - Complete the VC rename across Java packages, the internal mod ID, resources, translations, saved-data IDs, configuration, tests and tooling. This registry-namespace change requires a fresh test world or a separate conversion of older worlds.
+- Wall new NPC villages: a crenellated stone wall with four gatehouses, a roofed sentry post and guard station inside each gate, and a climbable corner tower at each corner. Build in timber rather than pale plaster. New villages get population room and swords for all twelve posts, the four gate sentries included; later additions stand outside the wall, joined to the nearest gate.
+- Grade every column of a new village's land into one slope of at most a block per block, level under each building and within a block of the land at the edge, instead of only its floors. This removes the trenches, terraces and retaining walls of hillside towns. Require gently rolling sites (at most 12 blocks of relief and five blocks of cut or fill anywhere); steep hillsides no longer receive towns. Place villages after trees grow and fell trees standing on their land whole.
+- Lay pregenerated dirt roads within `pregeneratedRoadRadius` (default 5,000) blocks of the world centre: the first 10,000 x 10,000 blocks. Roads join neighbouring native town sites gate to gate, bend around hills and other sites, bridge narrow rivers and are paved chunk by chunk as terrain generates. Towns found on the network trade along their roads, which the shared highway graph uses for NPC and player traders. Farther out, towns keep building highways as they trade.
+- Let traders follow staircases and steep roads, such as stairs up a cliff: a road sets its own height on the trade map, its steps may climb a block per block walked, and every steep step keeps its own waypoint.
+- Send citizens to hospital only below half health. A fall no longer turns a trader back; lighter wounds mend while citizens sleep in ordinary beds.
+- Hold at most twenty-five temporary chunks, one 5x5 window, while establishing a nearby NPC neighbour, for the larger walled villages.
 
 ## Unreleased
 
