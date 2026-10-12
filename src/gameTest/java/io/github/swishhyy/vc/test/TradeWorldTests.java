@@ -181,10 +181,11 @@ public final class TradeWorldTests {
                 for(int y=0;y<=cliff+3;y++) level.setBlockAndUpdate(start.offset(x,y,z),
                         (z<60 || y>=cliff ? Blocks.AIR : y==cliff-1 ? Blocks.GRASS_BLOCK : Blocks.STONE).defaultBlockState());
             }
-            // One-block stone brick steps climb the cliff face. Most of each atlas cell around them is the flat foot
-            // or the cliff top, so the steps are found only if a road sets its own cell's height.
+            // A one-block flight of stone brick stairs climbs the cliff face. Most of each atlas cell around it is the
+            // flat foot or the cliff top, so the stairs are found only if a road sets its own cell's height.
+            var step=Blocks.STONE_BRICK_STAIRS.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING,net.minecraft.core.Direction.SOUTH);
             for(int n=0;n<cliff;n++) for(int y=0;y<=n;y++)
-                level.setBlockAndUpdate(start.offset(-20,y,48+n),(y==n ? Blocks.STONE_BRICKS : Blocks.STONE).defaultBlockState());
+                level.setBlockAndUpdate(start.offset(-20,y,48+n),y==n ? step : Blocks.STONE.defaultBlockState());
             UUID owner=UUID.randomUUID();
             Settlement a=town(owner,"Foot",start),b=town(owner,"Mesa",start.offset(0,cliff,120));
             var data=SettlementData.get(level); data.settlements.add(a); data.settlements.add(b);
