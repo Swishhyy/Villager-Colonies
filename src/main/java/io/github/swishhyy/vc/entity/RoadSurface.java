@@ -4,6 +4,7 @@ import io.github.swishhyy.vc.VC;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.BlockGetter;
@@ -22,6 +23,9 @@ public final class RoadSurface {
                 && level.getBlockState(pos).getCollisionShape(level,pos).isEmpty();
     }
     public static boolean preferred(BlockGetter level,BlockPos feet) {
+        // On the lower half of a stair or slab step, a walker stands inside the step's own block.
+        var step=level.getBlockState(feet);
+        if(step.is(PAVING) && (step.is(BlockTags.STAIRS) || step.is(BlockTags.SLABS)) && !step.getCollisionShape(level,feet).isEmpty()) return true;
         BlockPos floor=feet.below();
         var support=level.getBlockState(floor);
         if(support.getCollisionShape(level,floor).isEmpty()) return false;

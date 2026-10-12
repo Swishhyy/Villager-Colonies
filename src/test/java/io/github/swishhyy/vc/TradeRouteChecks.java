@@ -86,6 +86,24 @@ public final class TradeRouteChecks {
         System.out.println("Passed "+checks+" cliff checks.");
     }
 
+    @Test void staircase() {
+        // A thirty-two block cliff whose only way up is a one-block staircase. Its cells rise five and three blocks in
+        // turn, more than open ground could climb between cells, but never more than the blocks walked between steps.
+        Land land=new Land().fill(-40,40,-20,60,OPEN).fill(-40,40,20,60,ground(96,0));
+        int[][] steps={{64,1,0},{69,1,1},{72,1,1},{77,1,2},{80,1,2},{85,1,3},{88,1,3},{93,0,3},{96,0,0}};
+        for(int n=0;n<steps.length;n++) land.fill(10,10,19+n,19+n,new Cell(steps[n][0],Cell.SEEN|Cell.PASSABLE|Cell.ROAD,steps[n][2]*4+steps[n][1]));
+        BlockPos market=new BlockPos(0,96,160);
+        var route=TradePlanner.plan(land,HOME,market,64);
+        check(!route.isEmpty() && route.getLast().equals(market),"The staircase leads up the cliff: "+route);
+        var climb=route.stream().filter(step -> step.getZ()>=80 && step.getZ()<108).toList();
+        check(climb.size()>=6 && climb.stream().allMatch(step -> step.getX()>=40 && step.getX()<44),"Every steep step keeps its own waypoint on the stairs: "+climb);
+        Land natural=new Land().fill(-40,40,-20,60,OPEN).fill(-40,40,20,60,ground(96,0));
+        for(int n=0;n<steps.length;n++) natural.fill(10,10,19+n,19+n,new Cell(steps[n][0],Cell.SEEN|Cell.PASSABLE,steps[n][2]*4+steps[n][1]));
+        var unpaved=TradePlanner.plan(natural,HOME,market,64);
+        check(unpaved.isEmpty() || !unpaved.getLast().equals(market),"Unpaved ground that steep is not climbed: "+unpaved);
+        System.out.println("Passed "+checks+" staircase checks.");
+    }
+
     @Test void noCrossing() {
         // Every cell within the search is seen, and the river has no bridge.
         Land land=new Land().fill(-60,60,-60,100,OPEN).fill(-60,60,18,20,WATER);

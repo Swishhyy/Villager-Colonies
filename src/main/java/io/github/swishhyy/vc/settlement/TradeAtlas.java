@@ -32,6 +32,8 @@ public final class TradeAtlas extends SavedData implements TradePlanner.Terrain 
     /** A cell a trader failed to reach is avoided this long. */
     private static final int BLOCKED_TICKS=6000;
     private static final int SAMPLES_PER_TICK=2,REFRESH_TICKS=100,MAX_QUEUE=8192;
+    /** Paved columns that make a cell a road: a one-block path through it, even where the path turns. */
+    private static final int ROAD_COLUMNS=2;
     /** Corridors up to this many chunks are read wherever loaded; larger ones only near players, towns and traders. */
     private static final int MAX_CORRIDOR_CHUNKS=4096;
     private record Stored(long key,ByteBuffer cells) {
@@ -160,7 +162,7 @@ public final class TradeAtlas extends SavedData implements TradePlanner.Terrain 
     public void sample(ServerLevel level,int chunkX,int chunkZ) {
         int[] heights=new int[16];
         for(int cellZ=0;cellZ<4;cellZ++) for(int cellX=0;cellX<4;cellX++) {
-            int walkable=0,roads=0,canopy=0,water=0,best=-1,bestScore=Integer.MAX_VALUE;
+            int walkable=0,roads=0,canopy=0,water=0,best=-1,bestScore=Integer.MAX_VALUE,bestFeet=0;
             for(int dz=0;dz<4;dz++) for(int dx=0;dx<4;dx++) {
                 int x=chunkX*16+cellX*4+dx,z=chunkZ*16+cellZ*4+dz;
                 int top=level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,x,z);
@@ -178,7 +180,7 @@ public final class TradeAtlas extends SavedData implements TradePlanner.Terrain 
                 if(crown>feet+1 && level.getBlockState(new BlockPos(x,crown,z)).is(BlockTags.LEAVES)) canopy++;
                 heights[walkable++]=feet;
                 int score=(paved ? 0 : 8)+Math.abs(2*dx-3)+Math.abs(2*dz-3);
-                if(score<bestScore) { bestScore=score; best=dz*4+dx; }
+                if(score<bestScore) { bestScore=score; best=dz*4+dx; bestFeet=feet; }
             }
             int flags=Cell.SEEN,height=0;
             if(water>0) flags|=Cell.WATER;
@@ -186,7 +188,8 @@ public final class TradeAtlas extends SavedData implements TradePlanner.Terrain 
                 flags|=Cell.PASSABLE;
                 Arrays.sort(heights,0,walkable);
                 height=heights[walkable/2];
-                if(roads>=3) flags|=Cell.ROAD;
+                // A road sets its cell's height, so steps up a cliff read as the steps rather than the cliff around them.
+                if(roads>=ROAD_COLUMNS) { flags|=Cell.ROAD; height=bestFeet; }
                 if(canopy*2>=walkable) flags|=Cell.FOREST;
             }
             put(chunkX*4+cellX,chunkZ*4+cellZ,height,flags,walkable>0 ? best : -1);

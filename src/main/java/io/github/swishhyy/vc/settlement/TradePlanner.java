@@ -91,7 +91,7 @@ public final class TradePlanner {
                 // Never slip diagonally between two impassable cells, such as across the corner of a river bend.
                 if(diagonal && (!walkable(terrain,cells,minX,minZ,width,cx+dx,cz) || !walkable(terrain,cells,minX,minZ,width,cx,cz+dz))) continue;
                 int climb=here.seen() && there.seen() && here.passable() && there.passable() ? Math.abs(here.height()-there.height()) : 0;
-                if(climb>MAX_STEP+(diagonal ? 1 : 0)) continue;
+                if(climb>MAX_STEP+(diagonal ? 1 : 0) && !(here.is(Cell.ROAD) && there.is(Cell.ROAD) && climb<=stride(here,cx,cz,there,nx,nz))) continue;
                 double step=(diagonal ? DIAGONAL : 1)*CELL*(cost(here)+cost(there))/2+CLIMB*climb;
                 double next=g[current]+step;
                 if(next<g[index]) {
@@ -110,10 +110,13 @@ public final class TradePlanner {
             int index=path.get(n);
             int cx=minX+index%width,cz=minZ+index/width;
             Cell cell=cell(terrain,cells,index,cx,cz);
+            int before=y;
             if(cell.seen() && cell.passable()) y=cell.height();
             if(n==path.size()-1) { waypoints.add(index==goal ? to.immutable() : position(cell,cx,cz,y)); break; }
-            // Keep every bridge and road step on narrow decks; elsewhere one waypoint every few cells is enough.
-            if((n+1)%SPACING!=0 && !(cell.is(Cell.WATER) && cell.is(Cell.ROAD))) continue;
+            // Keep every step on narrow bridge decks and on steep roads such as a staircase up a cliff, where a
+            // shortcut between distant waypoints would leave the steps; elsewhere one waypoint every few cells is enough.
+            boolean narrow=cell.is(Cell.ROAD) && (cell.is(Cell.WATER) || Math.abs(y-before)>1);
+            if((n+1)%SPACING!=0 && !narrow) continue;
             waypoints.add(position(cell,cx,cz,y));
         }
         return waypoints;
@@ -158,6 +161,14 @@ public final class TradePlanner {
     private static boolean walkable(Terrain terrain,Cell[] cells,int minX,int minZ,int width,int cx,int cz) {
         int index=(cz-minZ)*width+(cx-minX);
         return cell(terrain,cells,index,cx,cz).passable() && !terrain.blocked(cx,cz);
+    }
+    /**
+     * Blocks walked between the road columns of two neighbouring cells. Steps climb at most one block per block walked,
+     * so a staircase may rise this far between its cells even where open ground could not.
+     */
+    private static int stride(Cell a,int ax,int az,Cell b,int bx,int bz) {
+        if(a.column()<0 || b.column()<0) return 0;
+        return Math.abs(ax*CELL+(a.column()&3)-bx*CELL-(b.column()&3))+Math.abs(az*CELL+(a.column()>>2)-bz*CELL-(b.column()>>2));
     }
     private static double heuristic(int x,int z,int gx,int gz) { return Math.sqrt((double)(x-gx)*(x-gx)+(double)(z-gz)*(z-gz))*CELL*ESTIMATE; }
     /** The cell's best standing column (a road or the most central), or its middle when unseen. */

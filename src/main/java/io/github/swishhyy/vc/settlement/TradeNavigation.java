@@ -51,6 +51,15 @@ public final class TradeNavigation {
         return dx*dx+dz*dz;
     }
 
+    /**
+     * Beside a waypoint, or right under or over it. Height counts, so the top of a staircase is not passed while the
+     * trader is still at its foot; a waypoint guessed over unseen land is passed once the trader stands at its column.
+     */
+    private static boolean passed(BlockPos at,BlockPos waypoint) {
+        double distance=flat(at,waypoint);
+        return distance<=PASSED*PASSED && Math.abs(at.getY()-waypoint.getY())<=4 || distance<=9;
+    }
+
     /** Returns false while no walkable leg is moving; cargo and itinerary remain with the citizen. */
     public boolean walk(ServerLevel level,Mob mob,BlockPos target,double speed) {
         long now=level.getGameTime();
@@ -62,7 +71,7 @@ public final class TradeNavigation {
                 if(!highway) route=TradeAtlas.get(level).route(level,mob.blockPosition(),target,ROUTE_REACH);
                 next=0; replanAt=now+REPLAN_TICKS;
             }
-            while(next<route.size()-1 && flat(mob.blockPosition(),route.get(next))<=PASSED*PASSED) next++;
+            while(next<route.size()-1 && passed(mob.blockPosition(),route.get(next))) next++;
             if(next<route.size()) aim=route.get(next);
         }
         boolean moving=leg(level,mob,aim,speed);
@@ -142,16 +151,12 @@ public final class TradeNavigation {
                 if(!avoided(pos) && CitizenReach.standing(world,pos)) candidates.add(pos);
             }
         }
-        // Angular samples can miss a one-block bridge. Sample three bounded rings to find its deck.
+        // Angular samples can miss a one-block bridge or staircase. Sample three bounded rings to find its deck or steps.
         List<BlockPos> roads=new ArrayList<>();
         for(int radius:new int[]{6,10,16}) for(int side=-radius;side<=radius;side++) {
             for(int[] offset:new int[][]{{radius,side},{-radius,side},{side,radius},{side,-radius}}) {
-                for(int dy:new int[]{0,1,-1,2,-2,3,-3,4,-4}) {
-                    BlockPos pos=mob.blockPosition().offset(offset[0],dy,offset[1]);
-                    if(!world.available(pos) || avoided(pos) || !RoadSurface.preferred(level,pos)
-                            || !CitizenReach.standing(world,pos)) continue;
-                    roads.add(pos); break;
-                }
+                BlockPos road=road(level,world,mob.blockPosition().offset(offset[0],0,offset[1]),radius);
+                if(road!=null) roads.add(road);
             }
         }
         roads.stream().distinct().sorted(Comparator.comparingDouble(p -> score(level,mob,p,target)))
@@ -163,6 +168,14 @@ public final class TradeNavigation {
             if(tried++>=MAX_PATHS) break;
             Path path=mob.getNavigation().createPath(candidate,1);
             if(path!=null && path.canReach()) return path;
+        }
+        return null;
+    }
+    /** The nearest road footing in a column, looking as far up and down as a staircase could climb on the way there. */
+    private BlockPos road(ServerLevel level,CitizenReach.StandingView world,BlockPos column,int reach) {
+        for(int step=0;step<=reach;step++) for(int dy:step==0 ? new int[]{0} : new int[]{step,-step}) {
+            BlockPos pos=column.offset(0,dy,0);
+            if(world.available(pos) && RoadSurface.preferred(level,pos) && !avoided(pos) && CitizenReach.standing(world,pos)) return pos;
         }
         return null;
     }
