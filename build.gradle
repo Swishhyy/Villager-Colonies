@@ -92,7 +92,7 @@ neoForge {
         gameTestServer {
             type = "gameTestServer"
             sourceSet = sourceSets.gameTest
-            systemProperty 'neoforge.enabledGameTestNamespaces', 'wwmc_tests'
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'vc_tests'
             systemProperty 'neoforge.gameTestServer.report', 'build/reports/gametest.xml'
         }
 
@@ -128,7 +128,7 @@ neoForge {
         "${mod_id}" {
             sourceSet(sourceSets.main)
         }
-        wwmc_tests {
+        vc_tests {
             sourceSet(sourceSets.gameTest)
         }
     }
@@ -140,7 +140,7 @@ neoForge {
 }
 
 neoForge.runs.configureEach {
-    loadedMods = name == 'gameTestServer' ? [neoForge.mods."${mod_id}", neoForge.mods.wwmc_tests] : [neoForge.mods."${mod_id}"]
+    loadedMods = name == 'gameTestServer' ? [neoForge.mods."${mod_id}", neoForge.mods.vc_tests] : [neoForge.mods."${mod_id}"]
 }
 
 // Sets up a dependency configuration called 'localRuntime'.

@@ -2,6 +2,13 @@
 
 [Project overview](../README.md) · [All guides](README.md) · [Versioning rules](curseforge.md#public-version-format)
 
+## 0.1.1.0
+
+- Generate initial furnished NPC towns as native Minecraft structures in new terrain. Find them with `/locate structure vc:settlement`; activate their saved claim, supplies and workers once on the server thread.
+- Keep later town founding, starting after three elapsed Minecraft days by default, alongside existing AI building growth. Add normal-level rejection summaries for failed later searches.
+- Follow natural ground with connected graded paths and reject excessive excavation/fill, preventing deep trenches and large hillside cuts. Preserve saved older layouts.
+- Complete the VC rename across Java packages, the internal mod ID, resources, translations, saved-data IDs, configuration, tests and tooling. This registry-namespace change requires a fresh test world or a separate conversion of older worlds.
+
 ## Unreleased
 
 ## 0.1.0.1
@@ -70,7 +77,7 @@
 
 Villager Colonies starts at **0.1.0.0**, with settlement ages, research, traps and villager fixes. The mod remains playable and in development.
 
-- Rename the mod and distributable to **Villager Colonies** and **`villager-colonies-0.1.0.0.jar`**. Reset the version while retaining the `wwmc` mod ID and existing saves.
+- Rename the mod and distributable to **Villager Colonies** and **`villager-colonies-0.1.0.0.jar`**. Reset the version while retaining the `vc` mod ID and existing saves.
 - Use the Villager Colonies emblem in the mod list, mod information panel and configuration menu.
 - Carry forward the earlier **0.1.0.1** bug fixes and the additions below. Update in-game titles, guides, downloads and release packaging for the new name.
 

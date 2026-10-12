@@ -1,15 +1,15 @@
 {
   "replace": false,
   "values": [
-    "wwmc:tin_ore",
-    "wwmc:deepslate_tin_ore",
-    "wwmc:raw_tin_block",
-    "wwmc:tin_block",
-    "wwmc:bronze_block",
-    "wwmc:bronze_snare",
-    "wwmc:bronze_caltrops",
-    "wwmc:iron_spring_trap",
-    "wwmc:bronze_anvil",
-    "wwmc:alloy_furnace"
+    "vc:tin_ore",
+    "vc:deepslate_tin_ore",
+    "vc:raw_tin_block",
+    "vc:tin_block",
+    "vc:bronze_block",
+    "vc:bronze_snare",
+    "vc:bronze_caltrops",
+    "vc:iron_spring_trap",
+    "vc:bronze_anvil",
+    "vc:alloy_furnace"
   ]
 }

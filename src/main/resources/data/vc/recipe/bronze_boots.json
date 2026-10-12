@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "I I",
+    "I I"
+  ],
+  "key": {
+    "I": "vc:bronze_ingot"
+  },
+  "result": {
+    "id": "vc:bronze_boots",
+    "count": 1
+  }
+}

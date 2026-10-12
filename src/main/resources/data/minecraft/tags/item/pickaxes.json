@@ -1,7 +1,7 @@
 {
   "replace": false,
   "values": [
-    "wwmc:bronze_pickaxe",
-    "wwmc:steel_pickaxe"
+    "vc:bronze_pickaxe",
+    "vc:steel_pickaxe"
   ]
 }

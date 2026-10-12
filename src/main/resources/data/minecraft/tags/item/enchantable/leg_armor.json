@@ -1,7 +1,7 @@
 {
   "replace": false,
   "values": [
-    "wwmc:bronze_leggings",
-    "wwmc:steel_leggings"
+    "vc:bronze_leggings",
+    "vc:steel_leggings"
   ]
 }

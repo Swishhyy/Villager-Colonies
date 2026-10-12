@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "vc:block/gatherer_station",
+      "y": 0
+    },
+    "facing=east": {
+      "model": "vc:block/gatherer_station",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "vc:block/gatherer_station",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "vc:block/gatherer_station",
+      "y": 270
+    }
+  }
+}

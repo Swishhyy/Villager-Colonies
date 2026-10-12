@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "II ",
+    " S ",
+    " S "
+  ],
+  "key": {
+    "I": "vc:bronze_ingot",
+    "S": "minecraft:stick"
+  },
+  "result": {
+    "id": "vc:bronze_hoe",
+    "count": 1
+  }
+}

@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / 'src/main/resources'
-ASSETS = ROOT / 'assets/wwmc'
+ASSETS = ROOT / 'assets/vc'
 DATA = ROOT / 'data'
 TRAPS = {
     'wooden_spikes': ('Wooden Spikes', 12, 'wood'),
@@ -34,7 +34,7 @@ def model(name, status, material):
     broken = status == 'broken'
     armed = status == 'armed'
     textures = {'particle': '#wood', 'wood': 'minecraft:block/oak_planks', 'stake': 'minecraft:block/stripped_oak_log',
-                'bronze': 'wwmc:block/bronze_block', 'iron': 'minecraft:block/iron_block',
+                'bronze': 'vc:block/bronze_block', 'iron': 'minecraft:block/iron_block',
                 'rope': 'minecraft:block/white_wool', 'marker': 'minecraft:block/' + ('green' if armed else 'red') + '_wool'}
     if name == 'wooden_spikes':
         for z in (2, 7, 12):
@@ -88,45 +88,45 @@ for name, (title, uses, material) in TRAPS.items():
     for wear in range(13):
         for armed in (True, False):
             status = 'broken' if wear >= uses else 'armed' if armed else 'spent'
-            variants[f'armed={str(armed).lower()},wear={wear}'] = {'model': f'wwmc:block/{name}_{status}'}
+            variants[f'armed={str(armed).lower()},wear={wear}'] = {'model': f'vc:block/{name}_{status}'}
     write(ASSETS / 'blockstates' / f'{name}.json', {'variants': variants})
-    write(ASSETS / 'models/item' / f'{name}.json', {'parent': f'wwmc:block/{name}_armed'})
-    write(ASSETS / 'items' / f'{name}.json', {'model': {'type': 'minecraft:model', 'model': f'wwmc:item/{name}'}})
-    write(DATA / 'wwmc/loot_table/blocks' / f'{name}.json', {'type': 'minecraft:block', 'pools': [{
-        'rolls': 1, 'entries': [{'type': 'minecraft:item', 'name': 'wwmc:' + name,
-            'functions': [{'function': 'minecraft:copy_state', 'block': 'wwmc:' + name, 'properties': ['wear', 'armed'],
+    write(ASSETS / 'models/item' / f'{name}.json', {'parent': f'vc:block/{name}_armed'})
+    write(ASSETS / 'items' / f'{name}.json', {'model': {'type': 'minecraft:model', 'model': f'vc:item/{name}'}})
+    write(DATA / 'vc/loot_table/blocks' / f'{name}.json', {'type': 'minecraft:block', 'pools': [{
+        'rolls': 1, 'entries': [{'type': 'minecraft:item', 'name': 'vc:' + name,
+            'functions': [{'function': 'minecraft:copy_state', 'block': 'vc:' + name, 'properties': ['wear', 'armed'],
                 'conditions': [{'condition': 'minecraft:inverted', 'term': {'condition': 'minecraft:block_state_property',
-                    'block': 'wwmc:' + name, 'properties': {'wear': '0', 'armed': 'true'}}}]}]}],
+                    'block': 'vc:' + name, 'properties': {'wear': '0', 'armed': 'true'}}}]}]}],
         'conditions': [{'condition': 'minecraft:survives_explosion'}]}]})
 
 recipes = {
     'wooden_spikes': (['S S', 'SSS', 'PPP'], {'S': 'minecraft:stick', 'P': '#minecraft:planks'}, 2),
     'tangle_net': (['STS', 'T T', 'STS'], {'S': 'minecraft:string', 'T': 'minecraft:stick'}, 1),
-    'bronze_snare': (['B B', ' S ', 'PPP'], {'B': 'wwmc:bronze_ingot', 'S': 'minecraft:string', 'P': '#minecraft:planks'}, 1),
-    'bronze_caltrops': ([' B ', 'BBB'], {'B': 'wwmc:bronze_ingot'}, 4),
+    'bronze_snare': (['B B', ' S ', 'PPP'], {'B': 'vc:bronze_ingot', 'S': 'minecraft:string', 'P': '#minecraft:planks'}, 1),
+    'bronze_caltrops': ([' B ', 'BBB'], {'B': 'vc:bronze_ingot'}, 4),
     'iron_spring_trap': (['I I', 'IPI', 'PPP'], {'I': 'minecraft:iron_ingot', 'P': '#minecraft:planks'}, 1),
 }
 for name, (pattern, key, count) in recipes.items():
-    write(DATA / 'wwmc/recipe' / f'{name}.json', {'type': 'minecraft:crafting_shaped', 'category': 'equipment',
-        'pattern': pattern, 'key': key, 'result': {'id': 'wwmc:' + name, 'count': count}})
+    write(DATA / 'vc/recipe' / f'{name}.json', {'type': 'minecraft:crafting_shaped', 'category': 'equipment',
+        'pattern': pattern, 'key': key, 'result': {'id': 'vc:' + name, 'count': count}})
 
 for namespace, name, values in (
-    ('wwmc', 'requires_bronze', ['bronze_snare', 'bronze_caltrops']),
-    ('wwmc', 'requires_iron', ['iron_spring_trap']),
+    ('vc', 'requires_bronze', ['bronze_snare', 'bronze_caltrops']),
+    ('vc', 'requires_iron', ['iron_spring_trap']),
     ('minecraft', 'mineable/axe', ['wooden_spikes', 'tangle_net']),
     ('minecraft', 'mineable/pickaxe', ['bronze_snare', 'bronze_caltrops', 'iron_spring_trap']),
 ):
-    path = DATA / namespace / 'tags/item' / f'{name}.json' if namespace == 'wwmc' else DATA / namespace / 'tags/block' / f'{name}.json'
+    path = DATA / namespace / 'tags/item' / f'{name}.json' if namespace == 'vc' else DATA / namespace / 'tags/block' / f'{name}.json'
     value = json.loads(path.read_text()) if path.exists() else {'replace': False, 'values': []}
     for trap in values:
-        if 'wwmc:' + trap not in value['values']:
-            value['values'].append('wwmc:' + trap)
+        if 'vc:' + trap not in value['values']:
+            value['values'].append('vc:' + trap)
     write(path, value)
 
 path = ASSETS / 'lang/en_us.json'
 language = json.loads(path.read_text())
 for name, (title, _, _) in TRAPS.items():
-    language['block.wwmc.' + name] = title
-language['wwmc.configuration.maxSettlementTraps'] = 'Traps per settlement'
-language['wwmc.configuration.maxSettlementTraps.tooltip'] = 'Maximum placed traps per town. Only traps in ticking chunks activate; each activation spends durability.'
+    language['block.vc.' + name] = title
+language['vc.configuration.maxSettlementTraps'] = 'Traps per settlement'
+language['vc.configuration.maxSettlementTraps.tooltip'] = 'Maximum placed traps per town. Only traps in ticking chunks activate; each activation spends durability.'
 write(path, language)

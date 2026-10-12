@@ -1,0 +1,63 @@
+{
+  "replace": false,
+  "values": [
+    "vc:bronze_sword",
+    "vc:bronze_pickaxe",
+    "vc:bronze_axe",
+    "vc:bronze_shovel",
+    "vc:bronze_hoe",
+    "vc:bronze_helmet",
+    "vc:bronze_chestplate",
+    "vc:bronze_leggings",
+    "vc:bronze_boots",
+    "vc:bronze_blend",
+    "vc:bronze_ingot",
+    "vc:bronze_block",
+    "vc:quarry_station",
+    {
+      "id": "minecraft:copper_sword",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_pickaxe",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_axe",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_shovel",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_hoe",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_helmet",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_chestplate",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_leggings",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_boots",
+      "required": false
+    },
+    {
+      "id": "minecraft:copper_spear",
+      "required": false
+    },
+    "vc:bronze_snare",
+    "vc:bronze_caltrops",
+    "vc:bronze_anvil",
+    "vc:blacksmith_station",
+    "vc:alloy_furnace"
+  ]
+}

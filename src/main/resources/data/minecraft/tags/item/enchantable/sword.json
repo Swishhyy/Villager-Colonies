@@ -1,7 +1,7 @@
 {
   "replace": false,
   "values": [
-    "wwmc:bronze_sword",
-    "wwmc:steel_sword"
+    "vc:bronze_sword",
+    "vc:steel_sword"
   ]
 }

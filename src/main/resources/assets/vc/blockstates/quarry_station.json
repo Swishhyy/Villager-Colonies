@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "vc:block/quarry_station"
+    },
+    "facing=east": {
+      "model": "vc:block/quarry_station",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "vc:block/quarry_station",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "vc:block/quarry_station",
+      "y": 270
+    }
+  }
+}

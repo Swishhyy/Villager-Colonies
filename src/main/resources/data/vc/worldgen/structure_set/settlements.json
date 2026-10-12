@@ -1,0 +1,11 @@
+{
+  "structures": [{"structure": "vc:settlement", "weight": 1}],
+  "placement": {
+    "type": "minecraft:random_spread",
+    "locate_offset": [8, 0, 8],
+    "spacing": 48,
+    "separation": 24,
+    "salt": 68417293,
+    "exclusion_zone": {"other_set": "minecraft:villages", "chunk_count": 6}
+  }
+}

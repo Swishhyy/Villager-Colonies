@@ -1,0 +1,39 @@
+{
+  "display": {
+    "icon": {
+      "id": "vc:settlement_banner"
+    },
+    "title": {
+      "text": "Villager Colonies"
+    },
+    "description": {
+      "text": "Build a living town. Open the Settlement Guide for a six-step start."
+    },
+    "frame": "task",
+    "show_toast": false,
+    "announce_to_chat": false,
+    "hidden": false,
+    "background": "minecraft:gui/advancements/backgrounds/stone"
+  },
+  "criteria": {
+    "done": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "requirements": [
+    [
+      "done"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "vc:settlement_banner",
+      "vc:housing_station",
+      "vc:warehouse_station",
+      "vc:farm_station",
+      "vc:courier_station",
+      "vc:settlement_guide",
+      "vc:surveyor"
+    ]
+  }
+}

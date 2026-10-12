@@ -3,12 +3,12 @@ loaderVersion="[1,)"
 license="MIT"
 
 [[mods]]
-modId="wwmc_tests"
+modId="vc_tests"
 version="1"
 displayName="VC world tests"
 
-[[dependencies.wwmc_tests]]
-modId="wwmc"
+[[dependencies.vc_tests]]
+modId="vc"
 type="required"
 ordering="AFTER"
 side="BOTH"

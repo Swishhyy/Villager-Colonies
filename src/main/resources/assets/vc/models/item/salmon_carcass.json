@@ -1,0 +1,7 @@
+{
+  "parent": "vc:item/fish_carcass",
+  "textures": {
+    "skin": "minecraft:block/red_terracotta",
+    "fin": "minecraft:block/pink_terracotta"
+  }
+}

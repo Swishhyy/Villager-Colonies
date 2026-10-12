@@ -1,7 +1,7 @@
 {
   "replace": false,
   "values": [
-    "wwmc:bronze_helmet",
-    "wwmc:steel_helmet"
+    "vc:bronze_helmet",
+    "vc:steel_helmet"
   ]
 }

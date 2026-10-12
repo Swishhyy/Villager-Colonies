@@ -1,0 +1,15 @@
+{
+  "replace": false,
+  "values": [
+    "vc:steel_ingot",
+    "vc:steel_sword",
+    "vc:steel_pickaxe",
+    "vc:steel_axe",
+    "vc:steel_shovel",
+    "vc:steel_hoe",
+    "vc:steel_helmet",
+    "vc:steel_chestplate",
+    "vc:steel_leggings",
+    "vc:steel_boots"
+  ]
+}
