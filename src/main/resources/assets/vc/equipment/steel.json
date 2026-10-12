@@ -1,0 +1,14 @@
+{
+  "layers": {
+    "humanoid": [
+      {
+        "texture": "vc:steel"
+      }
+    ],
+    "humanoid_leggings": [
+      {
+        "texture": "vc:steel"
+      }
+    ]
+  }
+}

@@ -1,13 +1,13 @@
 {
   "replace": false,
   "values": [
-    "wwmc:bronze_helmet",
-    "wwmc:bronze_chestplate",
-    "wwmc:bronze_leggings",
-    "wwmc:bronze_boots",
-    "wwmc:steel_helmet",
-    "wwmc:steel_chestplate",
-    "wwmc:steel_leggings",
-    "wwmc:steel_boots"
+    "vc:bronze_helmet",
+    "vc:bronze_chestplate",
+    "vc:bronze_leggings",
+    "vc:bronze_boots",
+    "vc:steel_helmet",
+    "vc:steel_chestplate",
+    "vc:steel_leggings",
+    "vc:steel_boots"
   ]
 }

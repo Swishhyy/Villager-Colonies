@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "vc:block/tin_block"
+    }
+  }
+}

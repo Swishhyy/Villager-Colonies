@@ -2,8 +2,39 @@
 
 [Project overview](../README.md) · [All guides](README.md) · [Versioning rules](curseforge.md#public-version-format)
 
+## 0.1.1.0
+
+- Generate initial furnished NPC towns as native Minecraft structures in new terrain. Find them with `/locate structure vc:settlement`; activate their saved claim, supplies and workers once on the server thread.
+- Keep later town founding, starting after three elapsed Minecraft days by default, alongside existing AI building growth. Add normal-level rejection summaries for failed later searches.
+- Follow natural ground with connected graded paths and reject excessive excavation/fill, preventing deep trenches and large hillside cuts. Preserve saved older layouts.
+- Complete the VC rename across Java packages, the internal mod ID, resources, translations, saved-data IDs, configuration, tests and tooling. This registry-namespace change requires a fresh test world or a separate conversion of older worlds.
+- Wall new NPC villages: a crenellated stone wall with four gatehouses, a roofed sentry post and guard station inside each gate, and a climbable corner tower at each corner. Build in timber rather than pale plaster. New villages get population room and swords for all twelve posts, the four gate sentries included; later additions stand outside the wall, joined to the nearest gate.
+- Grade every column of a new village's land into one slope of at most a block per block, level under each building and within a block of the land at the edge, instead of only its floors. This removes the trenches, terraces and retaining walls of hillside towns. Require gently rolling sites (at most 12 blocks of relief and five blocks of cut or fill anywhere); steep hillsides no longer receive towns. Place villages after trees grow and fell trees standing on their land whole.
+- Lay pregenerated dirt roads within `pregeneratedRoadRadius` (default 5,000) blocks of the world centre: the first 10,000 x 10,000 blocks. Roads join neighbouring native town sites gate to gate, bend around hills and other sites, bridge narrow rivers and are paved chunk by chunk as terrain generates. Towns found on the network trade along their roads, which the shared highway graph uses for NPC and player traders. Farther out, towns keep building highways as they trade.
+- Let traders follow staircases and steep roads, such as stairs up a cliff: a road sets its own height on the trade map, its steps may climb a block per block walked, and every steep step keeps its own waypoint.
+- Let NPC towns arrange one more neighbour route for every two buildings they add, up to four, so trade and its highways keep spreading as a world ages.
+- Send citizens to hospital only below half health. A fall no longer turns a trader back; lighter wounds mend while citizens sleep in ordinary beds.
+- Hold at most twenty-five temporary chunks, one 5x5 window, while establishing a nearby NPC neighbour, for the larger walled villages.
+- Keep citizens on their work when they plan a walk while in the air, such as hopping off a barrel. A craftsman fetching repair supplies no longer gives up on a reachable trap for half a minute.
+
 ## Unreleased
 
+## 0.1.0.1
+
+- Halve new settlement claims to a 120-block radius and replace automatic claim widening with paid banner border upgrades. Expand by 32 blocks per purchase, starting at 16 emeralds; require the owner, prevent overlaps and preserve saved land, prices and corner markers.
+- Survey the actual soil beneath trees and terrace towns on hills. Check explored clearings as well as fixed region plots, while retaining one saved town identity per region and bounded chunk/search budgets.
+- Let mine, fort and camp ruins use protected, dry terrain terraces rather than requiring nearly flat treeless ground. Fill foundations and clear only validated natural vegetation.
+- Widen shared highways into joined five-block paths, including saved roads; resume their widening cursor without discarding routes or loading new terrain.
+- Keep JourneyMap town names visible on location markers, add a guarded late initialization fallback and expose throttled integration failures in latest.log.
+
+- Rotate miners between ready exposed ores beside their station; each physical ore block has its own saved cooldown across restarts.
+- Staff new NPC villages with one citizen per workstation (normally eight), spread recruitment spawns and provide varied starter meals. Repair unchanged old watchpost/well/bell details while retaining saved construction.
+- Add a shared saved NPC director for food and safety priorities, material-funded cottages, workshops and inns, and food-funded immigration. Resume paid construction and pause near players, unloaded terrain and protected edits.
+- Draw square town borders, names and authorized logistics paths in JourneyMap and Xaero World Map. Include public NPC trade while preserving private player/alliance routes and pings.
+- Build shared dirt highways along agreed trade connections in surveyed, already loaded land. Preserve player claims and construction, resume saved budgets and let NPC/player traders use the same road graph.
+- Replace sparse NPC town layouts with terraced, biome-themed villages: three furnished cottages, warehouse, bakery, smithy, market, watchpost, farm and covered work yards, with roofs, windows, lights, flowers and a village square. Preserve existing towns and saved construction.
+- Allow dry superflat and below-sea-level terrain, clear natural trees, check only the occupied footprint and accept ordinary slopes. Search more candidate plots and retry after exploring a new area; preserve water, cliffs, construction, player blocks, claims and the nine-chunk budget.
+- Replace the built-in map screen with optional JourneyMap and Xaero integrations. Automatically update dimension-specific town, expedition and shared-ping markers; open the installed map from More → Settlement map. Keep both maps optional on clients and unnecessary on servers, with no map API bundled in the JAR.
 - Complete VC branding in commands, guides, release text, source names and `[VC]` diagnostics. Keep existing registry IDs and saved keys so worlds still load.
 - Replace automatic monster waves with native barbarian foot soldiers, bowmen and armored veterans, staged by saved raid history and town development. Keep guard alarms, traps, safe approaches and offline protection.
 - Give fresh settings smaller raid parties and irregular three-to-seven-day gaps, preserve saved overrides, hide the exact countdown, and prevent manual raid overlap.
@@ -54,7 +85,7 @@
 
 Villager Colonies starts at **0.1.0.0**, with settlement ages, research, traps and villager fixes. The mod remains playable and in development.
 
-- Rename the mod and distributable to **Villager Colonies** and **`villager-colonies-0.1.0.0.jar`**. Reset the version while retaining the `wwmc` mod ID and existing saves.
+- Rename the mod and distributable to **Villager Colonies** and **`villager-colonies-0.1.0.0.jar`**. Reset the version while retaining the `vc` mod ID and existing saves.
 - Use the Villager Colonies emblem in the mod list, mod information panel and configuration menu.
 - Carry forward the earlier **0.1.0.1** bug fixes and the additions below. Update in-game titles, guides, downloads and release packaging for the new name.
 

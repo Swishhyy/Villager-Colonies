@@ -30,7 +30,7 @@ If a flag disappeared in an older build, its occupied town keeps the original id
 
 Open **Neighbours** at your main settlement banner. The first tab lists discovered towns within the configured trade distance, their public stock shortages, relationships, flags and your caravan status. Needs use last known warehouse stock minus incoming shipments; unloaded storage is not simulated. Propose or confirm a route here, accept an NPC supply request, or propose a player-town alliance. Route proposals between players still require both sides to agree. Alliances do not grant claim access or equipment research.
 
-Completed, loaded NPC towns arrange up to **two reciprocal neighbour routes**, preferring towns with a different industry. They use their existing citizen trader, warehouse stock, food reserves and ordinary road/bridge navigation. Their primary checkpoint remains available for player trade. Paused, hostile, unfinished or unloaded towns do not form new routes. There are no generated shipment rewards or extra caravan citizens. NPC imports target bread, carrots, timber, iron and furnace fuel; ordinary stock controls keep their own supplies reserved. Autonomous NPC caravans use spare slots within the existing server trader limit; player-connected trade takes priority.
+Completed, loaded NPC towns arrange up to **two reciprocal neighbour routes**, preferring towns with a different industry. A town arranges one more for every two buildings it adds, up to four, so trade, and the highways built along it, spread the longer a world runs. Towns on the [pregenerated roads](settlement-guide.md#trading-and-other-settlements) near the world centre also trade with up to four towns along their roads, as soon as both have been found. They use their existing citizen trader, warehouse stock, food reserves and ordinary road/bridge navigation. Their primary checkpoint remains available for player trade. Paused, hostile, unfinished or unloaded towns do not form new routes. There are no generated shipment rewards or extra caravan citizens. NPC imports target bread, carrots, timber, iron and furnace fuel; ordinary stock controls keep their own supplies reserved. Autonomous NPC caravans use spare slots within the existing server trader limit; player-connected trade takes priority.
 
 **News** collects your own town's journal and public news from nearby NPC towns: new trade agreements, arrivals, supply requests and food-funded population growth. Other player towns' private journals remain private. Routine shipments and neighbour opportunities stay on the board instead of interrupting chat or the hotbar. Caravan departure/delivery and contract payouts are also written to the server console.
 
@@ -151,7 +151,7 @@ Each defeated Bandit Captain gives one schematic the town does not yet hold.
 
 ### Recovery and supplies
 
-Every injured citizen now rests in a reserved Hospital Station bed until full health. Beds heal 1 health every 5 loaded seconds without supplies. Fund the Field Hospital to unlock a medic, who spends one real meal and one paper dressing for 1 additional health per treatment. See [Production and recovery](production-recovery.md).
+A citizen below half health rests in a reserved Hospital Station bed until full health; lighter wounds mend in sleep. Beds heal 1 health every 5 loaded seconds without supplies. Fund the Field Hospital to unlock a medic, who spends one real meal and one paper dressing for 1 additional health per treatment. See [Production and recovery](production-recovery.md).
 
 Hungry workers also visit the communal pantry while their station is idle. They approach from clear ground within four-block hand reach, including raised warehouses and stations beside storage barrels. Scarce meals remain shared one at a time; an empty pantry lets food producers continue working.
 
@@ -159,16 +159,15 @@ Couriers supply one usable tool per assigned worker and count tools already in w
 
 ## Shared map and pings
 
-Campaign -> **Map**, or `/vc map`, opens a top-down map centered on you. It shows:
+The banner's **More → Settlement map**, or `/vc map`, opens JourneyMap or Xaero's World Map when installed on your client. The old built-in map has been replaced by these optional integrations. Markers refresh about every ten seconds even when you open the map using its own key:
 
-- Every claim, colored by its relation to you: yours, allied, neutral, hostile or another player's.
-- The trade routes of your own and allied towns.
+- Completed towns, colored by their relation to you: yours, allied, neutral, hostile or another player's. JourneyMap's marker description includes the claim radius.
 - Expedition sites and raids.
-- Pings, and your own position.
+- Shared pings from your own and allied towns. Your map mod supplies the terrain, player position, zoom and navigation controls.
 
-Scroll or use - and + to zoom from 256 to 16,384 blocks across. N, S, E and W pan the map, and Me centers it on you. Hover anything for details.
+JourneyMap takes priority for the button when both maps are installed, and both receive markers. Xaero World Map can run alone; with Xaero Minimap installed, native third-party waypoints appear in both Xaero maps. With only Xaero Minimap, the button enlarges it. No map mod is needed on the server. Without a client map, use Neighbours or `/locate settlement`. JourneyMap and Xaero World Map show square claim borders, town names and logistics lines for agreed own/allied routes and public NPC trade. Completed highways supply the actual route path. Xaero Minimap alone supplies location waypoints. Personal waypoints remain separate and are never removed by Villager Colonies.
 
-Choose a ping kind with the Ping button: meet here, build a bridge, build here, danger or resources. Then click the map to place it. Right-click your own ping to remove it; a town's managers can remove any of its pings. `/vc ping <kind> [note]` marks where you stand.
+Use your map's normal waypoint tools for personal markers. `/vc ping <meet|bridge|build|danger|resource> [note]` shares a marker where you stand with your town and its allies. `/vc ping remove <id>` removes a shared ping you own or manage; JourneyMap includes that command in the marker description. Shared marker changes appear on the next refresh.
 
 A ping belongs to the managed town you stand in, or your nearest one. That town's managers and its allies' managers see it, and placing it is written in the town journal. Each town keeps its 16 newest pings.
 
@@ -204,7 +203,7 @@ For personal deliveries or remaining reward collection, bring goods to the reque
 | `/vc contract accept/deliver <contract UUID>` | Accept an offer or make a personal delivery/collect payment |
 | `/vc journal` | Read recent town history |
 | `/vc needs` | List the town's needs, most urgent first |
-| `/vc map` | Open the shared settlement map |
+| `/vc map` | Open the installed JourneyMap or Xaero map with settlement markers |
 | `/vc ping <kind> [note]` | Share a ping where you stand: meet, bridge, build, danger or resource |
 
 Town commands select the managed town you stand inside, then a town whose squad you lead, then your nearest managed town. Membership and alliance changes always require the immutable owner. Campaign board actions require being within eight blocks of the banner; field orders remain available away from it. All authority and item movement are checked on the server.

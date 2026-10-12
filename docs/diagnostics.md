@@ -26,7 +26,7 @@ Search attempts also use `citizen-search` at **DEBUG** level when the server's l
 
 ## Settings
 
-These flat keys live in the generated `wwmc-server.toml`. In a loaded single-player world, open **Mods → Villager Colonies → Config → Diagnostics**. Multiplayer settings are controlled by the server.
+These flat keys live in the generated `vc-server.toml`. In a loaded single-player world, open **Mods → Villager Colonies → Config → Diagnostics**. Multiplayer settings are controlled by the server.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |

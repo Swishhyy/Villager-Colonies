@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "vc:block/farm_station"
+    },
+    "facing=east": {
+      "model": "vc:block/farm_station",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "vc:block/farm_station",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "vc:block/farm_station",
+      "y": 270
+    }
+  }
+}

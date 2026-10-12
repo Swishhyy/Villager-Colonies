@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "III",
+    " S ",
+    " S "
+  ],
+  "key": {
+    "I": "vc:steel_ingot",
+    "S": "minecraft:stick"
+  },
+  "result": {
+    "id": "vc:steel_pickaxe",
+    "count": 1
+  }
+}

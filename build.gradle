@@ -28,7 +28,14 @@ sourceSets.main.resources {
 
 repositories {
     mavenCentral()
-    // Add here additional repositories if required by some of the dependencies below.
+    maven {
+        url = 'https://maven.blamejared.com'
+        content { includeGroup 'info.journeymap' }
+    }
+    maven {
+        url = 'https://chocolateminecraft.com/maven/'
+        content { includeGroupByRegex 'xaero\\..*' }
+    }
 }
 
 base {
@@ -85,7 +92,7 @@ neoForge {
         gameTestServer {
             type = "gameTestServer"
             sourceSet = sourceSets.gameTest
-            systemProperty 'neoforge.enabledGameTestNamespaces', 'wwmc_tests'
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'vc_tests'
             systemProperty 'neoforge.gameTestServer.report', 'build/reports/gametest.xml'
         }
 
@@ -121,7 +128,7 @@ neoForge {
         "${mod_id}" {
             sourceSet(sourceSets.main)
         }
-        wwmc_tests {
+        vc_tests {
             sourceSet(sourceSets.gameTest)
         }
     }
@@ -133,7 +140,7 @@ neoForge {
 }
 
 neoForge.runs.configureEach {
-    loadedMods = name == 'gameTestServer' ? [neoForge.mods."${mod_id}", neoForge.mods.wwmc_tests] : [neoForge.mods."${mod_id}"]
+    loadedMods = name == 'gameTestServer' ? [neoForge.mods."${mod_id}", neoForge.mods.vc_tests] : [neoForge.mods."${mod_id}"]
 }
 
 // Sets up a dependency configuration called 'localRuntime'.
@@ -145,6 +152,11 @@ configurations {
 }
 
 dependencies {
+    // Compile against the maps' APIs without bundling them or requiring them at runtime.
+    compileOnly('info.journeymap:journeymap-api-common:26.2-2.0.0') { transitive = false }
+    compileOnly('xaero.map:xaeroworldmap-common-26.2:1.41.2') { transitive = false }
+    compileOnly('xaero.minimap:xaerominimap-common-26.2:26.4.2') { transitive = false }
+    compileOnly('xaero.lib:xaerolib-common-26.2:1.4.0') { transitive = false }
     testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
     testImplementation "net.neoforged:testframework:${neo_version}"
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

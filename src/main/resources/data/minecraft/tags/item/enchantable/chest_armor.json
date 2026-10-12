@@ -1,7 +1,7 @@
 {
   "replace": false,
   "values": [
-    "wwmc:bronze_chestplate",
-    "wwmc:steel_chestplate"
+    "vc:bronze_chestplate",
+    "vc:steel_chestplate"
   ]
 }

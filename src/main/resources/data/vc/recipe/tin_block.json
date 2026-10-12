@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "III",
+    "III",
+    "III"
+  ],
+  "key": {
+    "I": "vc:tin_ingot"
+  },
+  "result": {
+    "id": "vc:tin_block",
+    "count": 1
+  }
+}

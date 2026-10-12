@@ -1,6 +1,6 @@
 """Generate the station and banner block models: small dioramas made from opaque vanilla block textures.
 
-Usage: python3 tools/station_models.py src/main/resources/assets/wwmc
+Usage: python3 tools/station_models.py src/main/resources/assets/vc
 """
 import json, os, sys
 
@@ -312,7 +312,7 @@ for name, data in M.items():
         f.write("\n")
     variants = {}
     for facing, y in (("north", 0), ("east", 90), ("south", 180), ("west", 270)):
-        variant = {"model": "wwmc:block/" + name}
+        variant = {"model": "vc:block/" + name}
         if y:
             variant["y"] = y
         variants["facing=" + facing] = variant

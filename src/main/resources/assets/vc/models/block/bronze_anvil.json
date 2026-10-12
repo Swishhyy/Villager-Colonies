@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/anvil",
+  "textures": {
+    "body": "vc:block/bronze_block",
+    "particle": "vc:block/bronze_block",
+    "top": "vc:block/bronze_block"
+  }
+}

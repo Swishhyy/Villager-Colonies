@@ -4,6 +4,8 @@ The isolated test world lives under build/. No development or player world is to
 """
 from pathlib import Path
 import os
+import json
+import re
 import socket
 import struct
 import subprocess
@@ -19,9 +21,9 @@ with socket.socket() as probe:
     rcon_port = probe.getsockname()[1]
 (RUN / "eula.txt").write_text("eula=true\n")
 (RUN / "server.properties").write_text(
-    "level-name=smoke-world\nonline-mode=false\nserver-ip=127.0.0.1\nserver-port=0\n"
-    "view-distance=2\nsimulation-distance=2\nspawn-protection=0\n"
-    "enable-rcon=true\nrcon.password=wwmc-local-smoke\n"
+    "level-name=smoke-world\nlevel-seed=246813579\ngenerate-structures=true\nonline-mode=false\nserver-ip=127.0.0.1\nserver-port=0\n"
+    "view-distance=2\nsimulation-distance=2\nspawn-protection=0\npause-when-empty-seconds=0\n"
+    "enable-rcon=true\nrcon.password=vc-local-smoke\n"
     f"rcon.port={rcon_port}\n"
 )
 
@@ -77,7 +79,34 @@ def start_and_stop(attempt):
             if process.poll() is not None or time.monotonic() >= deadline:
                 raise RuntimeError(f"Dedicated server did not become ready; see {log_path}")
         with socket.create_connection(("127.0.0.1", rcon_port), timeout=20) as connection:
-            exchange(connection, 10, 3, "wwmc-local-smoke")
+            exchange(connection, 10, 3, "vc-local-smoke")
+            if attempt==1:
+                located=exchange(connection, 20, 2, "locate structure vc:settlement")
+                match=re.search(r"\[(-?\d+),\s*(-?\d+|~),\s*(-?\d+)\]",located)
+                if not match:
+                    raise RuntimeError(f"Normal-world native structure locate failed: {located}")
+                x,z=int(match[1]),int(match[3])
+                (RUN / "native-town.json").write_text(json.dumps([x,z]))
+                print(f"Normal noise world: located vc:settlement at {x}, {z} before loading its village",flush=True)
+            else:
+                x,z=json.loads((RUN / "native-town.json").read_text())
+            exchange(connection,21,2,f"forceload add {x-29} {z-29} {x+29} {z+29}")
+            town_deadline=time.monotonic()+100
+            banner=crew="not inspected"
+            while True:
+                town=exchange(connection,22,2,f"execute positioned {x} 80 {z} run locate settlement")
+                if "The nearest AI settlement" in town:
+                    match=re.search(r"is at \[?(-?\d+),\s*(-?\d+),\s*(-?\d+)\]?",town)
+                    if match and int(match[1])==x and int(match[3])==z:
+                        y=int(match[2])
+                        banner=exchange(connection,23,2,f"execute if block {x} {y} {z} vc:settlement_banner")
+                        crew=exchange(connection,24,2,f"execute positioned {x} {y} {z} if entity @e[type=vc:citizen,distance=..64]")
+                        if "Test passed" in banner and "Test passed" in crew:break
+                if time.monotonic()>town_deadline:
+                    raise RuntimeError(f"Native structure verification timed out: town={town}; banner={banner}; crew={crew}")
+                time.sleep(0.25)
+            print(f"Native town startup {attempt}: physical village, saved settlement and real crew verified",flush=True)
+            exchange(connection,25,2,"forceload remove all")
             saved = exchange(connection, 11, 2, "save-all flush")
             if "Saved" not in saved:
                 raise RuntimeError(f"Server did not confirm a world save: {saved}")

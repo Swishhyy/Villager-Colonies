@@ -1,7 +1,0 @@
-{
-  "parent": "wwmc:item/fish_carcass",
-  "textures": {
-    "skin": "minecraft:block/terracotta",
-    "fin": "minecraft:block/brown_terracotta"
-  }
-}
