@@ -481,6 +481,14 @@ public final class SettlementService {
         source.sendSuccess(() -> Component.literal("Recruited "+result+" citizens. "+status(level,settlement)+" Supply food and tools in the warehouse."),false);
         return result;
     }
+    /** How far from the banner newcomers may appear once the spots right beside it are taken. */
+    private static final int SPAWN_REACH=8;
+    private static boolean spawnable(ServerLevel level,CitizenEntity citizen,BlockPos trial) {
+        if(!level.hasChunkAt(trial)) return false;
+        citizen.setPos(trial.getX()+0.5,trial.getY(),trial.getZ()+0.5);
+        return level.noCollision(citizen) && !level.getBlockState(trial.below()).isAir()
+                && level.getEntitiesOfClass(CitizenEntity.class,new net.minecraft.world.phys.AABB(trial).inflate(0.25)).isEmpty();
+    }
     /** New citizens appear beside the banner while housing beds and the population limit allow; returns how many joined. */
     public static int recruit(ServerLevel level,Settlement settlement,int count) {
         refreshResources(level,settlement);
@@ -491,12 +499,11 @@ public final class SettlementService {
             CitizenEntity citizen=VC.CITIZEN.get().create(level,EntitySpawnReason.COMMAND);
             if(citizen==null) break;
             BlockPos spawn=null;
-            for(int x=-3;x<=3 && spawn==null;x++) for(int z=-3;z<=3;z++) {
-                BlockPos trial=settlement.center.offset(x,0,z);
-                if(!level.hasChunkAt(trial)) continue;
-                citizen.setPos(trial.getX()+0.5,trial.getY(),trial.getZ()+0.5);
-                if(level.noCollision(citizen) && !level.getBlockState(trial.below()).isAir()
-                        && level.getEntitiesOfClass(CitizenEntity.class,new net.minecraft.world.phys.AABB(trial).inflate(0.25)).isEmpty()) { spawn=trial; break; }
+            for(int x=-3;x<=3 && spawn==null;x++) for(int z=-3;z<=3;z++) if(spawnable(level,citizen,settlement.center.offset(x,0,z))) { spawn=settlement.center.offset(x,0,z); break; }
+            // Each newcomer keeps the spots beside it clear, so a large founding crew spreads out over the square in rings.
+            for(int ring=4;ring<=SPAWN_REACH && spawn==null;ring++) for(int x=-ring;x<=ring && spawn==null;x++) for(int z=-ring;z<=ring;z++) {
+                if(Math.max(Math.abs(x),Math.abs(z))!=ring || !spawnable(level,citizen,settlement.center.offset(x,0,z))) continue;
+                spawn=settlement.center.offset(x,0,z); break;
             }
             if(spawn==null) break;
             citizen.join(settlement.id);
