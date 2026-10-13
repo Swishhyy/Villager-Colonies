@@ -78,7 +78,12 @@ def verify_settlement(connection, request, x, z, extent, crew_range, minimum, se
     /locate names the chunk that starts the structure; a city may stand up to `shift` blocks from it.
     """
     reach = extent + shift
-    exchange(connection, request, 2, f"forceload add {x-reach} {z-reach} {x+reach} {z+reach}")
+    # Forcing chunks generates them on the server thread before it answers; a city's wider search area takes a while.
+    connection.settimeout(300)
+    try:
+        exchange(connection, request, 2, f"forceload add {x-reach} {z-reach} {x+reach} {z+reach}")
+    finally:
+        connection.settimeout(20)
     deadline = time.monotonic() + seconds
     banner = crew = "not inspected"
     while True:

@@ -53,23 +53,28 @@ public final class NpcTownStructure extends Structure {
         var spread=RoadNetwork.placement(context.registryAccess());
         boolean region=spread!=null && NpcTownPlan.cityRegion(context.seed(),Math.floorDiv(chunk.x(),spread.spacing()),Math.floorDiv(chunk.z(),spread.spacing()));
         if(this.city && !region) return Optional.empty();
-        if(!this.city) {
+        NpcVillageTerrain.Site site;
+        if(this.city) site=citySite(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.chunkGenerator().getBiomeSource(),
+                cityBiomes(context.registryAccess()),chunk);
+        else {
             // A town stands on the surface at the chunk's middle, so a biome without settlements is known before the
             // survey; /locate asks this of every region it passes.
             int x=chunk.getMiddleBlockX(),z=chunk.getMiddleBlockZ();
             int y=context.chunkGenerator().getBaseHeight(x,z,Heightmap.Types.WORLD_SURFACE_WG,context.heightAccessor(),context.randomState());
             if(!context.validBiome().test(context.chunkGenerator().getBiomeSource().getNoiseBiome(QuartPos.fromBlock(x),QuartPos.fromBlock(y),
                     QuartPos.fromBlock(z),context.randomState().sampler()))) return Optional.empty();
+            site=terrain(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.biomeSource(),chunk,NpcVillageLayout.LEVELLED);
         }
-        // A region chosen for a city holds one where the land allows, and a town otherwise; the other structure stands aside.
-        var city=region ? citySite(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.chunkGenerator().getBiomeSource(),
-                cityBiomes(context.registryAccess()),chunk) : null;
-        if(this.city!=(city!=null)) return Optional.empty();
-        var site=city!=null ? city : terrain(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.biomeSource(),chunk,NpcVillageLayout.LEVELLED);
         if(site==null) return Optional.empty();
-        var candidate=NpcTownPlan.worldgenCandidate(context.seed(),site.center(),city!=null);
+        var candidate=NpcTownPlan.worldgenCandidate(context.seed(),site.center(),this.city);
         var town=NpcSettlements.createTown(candidate,site,Config.SETTLEMENT_RADIUS.get());
-        if(city==null && NpcVillagePlan.earthworkIssue(town)!=null) return Optional.empty();
+        if(!this.city) {
+            if(NpcVillagePlan.earthworkIssue(town)!=null) return Optional.empty();
+            // A region chosen for a city holds one where the land allows, and a town otherwise. Few sites take a town,
+            // so the town asks about the city, a wider survey, only once its own land would do.
+            if(region && citySite(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.chunkGenerator().getBiomeSource(),
+                    cityBiomes(context.registryAccess()),chunk)!=null) return Optional.empty();
+        }
         return Optional.of(new GenerationStub(site.center(),builder -> builder.addPiece(new NpcTownPiece(candidate,site,town.radius))));
     }
     /** The biomes a city may stand in, or none where a data pack removed cities. */
