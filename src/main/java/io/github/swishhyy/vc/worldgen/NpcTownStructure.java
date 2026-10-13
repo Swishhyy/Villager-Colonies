@@ -4,11 +4,14 @@ import com.mojang.serialization.MapCodec;
 import io.github.swishhyy.vc.Config;
 import io.github.swishhyy.vc.settlement.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntBinaryOperator;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
@@ -42,6 +45,8 @@ public final class NpcTownStructure extends Structure {
      * which world generation finds a structure's pieces.
      */
     public static final int CITY_REACH=5;
+    /** Each region's answer, per world's terrain noise: both structures, /locate and the road network ask it. */
+    private static final Map<RandomState,Map<Long,Optional<NpcVillageTerrain.Site>>> CITY_SITES=Collections.synchronizedMap(new WeakHashMap<>());
     private final boolean city;
     public NpcTownStructure(StructureSettings settings,boolean city) { super(settings); this.city=city; }
     public boolean city() { return city; }
@@ -91,12 +96,30 @@ public final class NpcTownStructure extends Structure {
      */
     public static NpcVillageTerrain.Site citySite(ChunkGenerator generator,LevelHeightAccessor heights,RandomState random,BiomeSource biomes,
             Predicate<Holder<Biome>> valid,ChunkPos chunk) {
+        var known=CITY_SITES.computeIfAbsent(random,key -> new ConcurrentHashMap<>());
+        var answer=known.get(chunk.pack());
+        if(answer==null) {
+            answer=Optional.ofNullable(surveyCity(generator,heights,random,biomes,valid,chunk));
+            known.putIfAbsent(chunk.pack(),answer);
+        }
+        return answer.orElse(null);
+    }
+    private static NpcVillageTerrain.Site surveyCity(ChunkGenerator generator,LevelHeightAccessor heights,RandomState random,BiomeSource biomes,
+            Predicate<Holder<Biome>> valid,ChunkPos chunk) {
         // Neighbouring sites share most of their samples, all on the same four-block lattice.
         Map<Long,Integer> surveyed=new HashMap<>();
         IntBinaryOperator height=(x,z) -> surveyed.computeIfAbsent((long)x<<32 | z&0xffffffffL,
                 key -> generator.getBaseHeight(x,z,Heightmap.Types.WORLD_SURFACE_WG,heights,random));
+        // Most regions hold no city, so first sample every sixteen blocks across the whole area: water there, or more
+        // than a city's relief between samples of one site's grid, turns that site away without surveying it. The
+        // answer is the one the full surveys give.
+        int half=STEP*((NpcVillageLayout.CITY_EXTENT+STEP)/STEP),span=CITY_REACH*16+half,cells=2*span/16+1;
+        int mx=chunk.getMiddleBlockX(),mz=chunk.getMiddleBlockZ();
+        int[][] coarse=new int[cells][cells];
+        for(int a=0;a<cells;a++) for(int b=0;b<cells;b++) coarse[a][b]=height.applyAsInt(mx-span+a*16,mz-span+b*16);
         for(int ring=0;ring<=CITY_REACH;ring++) for(int dx=-ring;dx<=ring;dx++) for(int dz=-ring;dz<=ring;dz++) {
             if(Math.max(Math.abs(dx),Math.abs(dz))!=ring) continue;
+            if(ruledOut(generator,heights,coarse,16*dx+span-half,16*dz+span-half,2*half)) continue;
             var near=new ChunkPos(chunk.x()+dx,chunk.z()+dz);
             int x=near.getMiddleBlockX(),z=near.getMiddleBlockZ(),y=height.applyAsInt(x,z);
             if(!valid.test(biomes.getNoiseBiome(QuartPos.fromBlock(x),QuartPos.fromBlock(y),QuartPos.fromBlock(z),random.sampler()))) continue;
@@ -107,6 +130,20 @@ public final class NpcTownStructure extends Structure {
             if(NpcVillagePlan.earthworkIssue(preview)==null) return site;
         }
         return null;
+    }
+    /** Whether the coarse samples within a site's grid, from {@code low} to {@code low+width} blocks into the area on each axis, already fail it. */
+    private static boolean ruledOut(ChunkGenerator generator,LevelHeightAccessor heights,int[][] coarse,int lowX,int lowZ,int width) {
+        int min=Integer.MAX_VALUE,max=Integer.MIN_VALUE;
+        for(int a=Math.ceilDiv(lowX,16);a<=Math.floorDiv(lowX+width,16);a++) for(int b=Math.ceilDiv(lowZ,16);b<=Math.floorDiv(lowZ+width,16);b++) {
+            int height=coarse[a][b];
+            if(unfit(generator,heights,height)) return true;
+            min=Math.min(min,height); max=Math.max(max,height);
+        }
+        return max-min>NpcVillageTerrain.MAX_RELIEF;
+    }
+    /** Sea-level terrain includes river and ocean water, not a suitable foundation; nor is land near the world's floor or ceiling. */
+    private static boolean unfit(ChunkGenerator generator,LevelHeightAccessor heights,int height) {
+        return height<=generator.getSeaLevel() || height<heights.getMinY()+4 || height+12>=heights.getMaxY();
     }
 
     /** A small noise-height grid bounds generation work; interpolation follows natural slopes. */
@@ -126,8 +163,7 @@ public final class NpcTownStructure extends Structure {
                 if(sampled[a][b]) continue;
                 sampled[a][b]=true;
                 int height=surface.applyAsInt(x-half+a*STEP,z-half+b*STEP);
-                // Sea-level terrain includes river/ocean water, not a suitable town foundation.
-                if(height<=generator.getSeaLevel() || height<heights.getMinY()+4 || height+12>=heights.getMaxY()) return null;
+                if(unfit(generator,heights,height)) return null;
                 grid[a][b]=height; low=Math.min(low,height); high=Math.max(high,height);
                 if(high-low>NpcVillageTerrain.MAX_RELIEF) return null;
             }

@@ -23,6 +23,8 @@ with socket.socket() as probe:
 (RUN / "server.properties").write_text(
     "level-name=smoke-world\nlevel-seed=246813579\ngenerate-structures=true\nonline-mode=false\nserver-ip=127.0.0.1\nserver-port=0\n"
     "view-distance=2\nsimulation-distance=2\nspawn-protection=0\npause-when-empty-seconds=0\n"
+    # /forceload generates its chunks within one server tick, which play never does; allow it five minutes.
+    "max-tick-time=300000\n"
     "enable-rcon=true\nrcon.password=vc-local-smoke\n"
     f"rcon.port={rcon_port}\n"
 )
