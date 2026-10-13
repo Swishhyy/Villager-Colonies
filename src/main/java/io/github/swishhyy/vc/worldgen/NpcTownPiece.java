@@ -53,6 +53,8 @@ public final class NpcTownPiece extends StructurePiece {
         return new BoundingBox(p.getX()-e,p.getY()+low-10,p.getZ()-e,p.getX()+e,p.getY()+high+12,p.getZ()+e);
     }
     public NpcTownPlan.Candidate candidate() { return candidate; }
+    /** How far the village's land reaches from its center. */
+    public int extent() { return site.layout().extent(); }
     public Settlement town() { return NpcSettlements.createTown(candidate,site,radius); }
     @Override public BlockPos getLocatorPosition() { return site.center(); }
     @Override protected void addAdditionalSaveData(StructurePieceSerializationContext context,CompoundTag tag) {

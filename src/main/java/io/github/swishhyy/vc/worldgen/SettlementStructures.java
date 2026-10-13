@@ -29,8 +29,10 @@ public final class SettlementStructures {
     private static final DeferredRegister<net.minecraft.world.level.levelgen.feature.Feature<?>> FEATURES=DeferredRegister.create(Registries.FEATURE,VC.MODID);
     public static final DeferredHolder<net.minecraft.world.level.levelgen.feature.Feature<?>,RoadFeature> ROADS=FEATURES.register("roads",RoadFeature::new);
     public static final DeferredHolder<StructureType<?>,StructureType<NpcTownStructure>> TOWN_TYPE=TYPES.register("settlement",() -> () -> NpcTownStructure.CODEC);
+    public static final DeferredHolder<StructureType<?>,StructureType<NpcTownStructure>> CITY_TYPE=TYPES.register("settlement_city",() -> () -> NpcTownStructure.CITY_CODEC);
     public static final DeferredHolder<StructurePieceType,StructurePieceType> TOWN_PIECE=PIECES.register("settlement",() -> NpcTownPiece::new);
     public static final ResourceKey<Structure> TOWN=ResourceKey.create(Registries.STRUCTURE,Identifier.fromNamespaceAndPath(VC.MODID,"settlement"));
+    public static final ResourceKey<Structure> CITY=ResourceKey.create(Registries.STRUCTURE,Identifier.fromNamespaceAndPath(VC.MODID,"settlement_city"));
     private final Map<ServerLevel,Map<UUID,NpcTownPiece>> pending=new WeakHashMap<>();
     private int activationCursor;
     public static void register(IEventBus bus) { TYPES.register(bus); PIECES.register(bus); FEATURES.register(bus); }
@@ -60,12 +62,12 @@ public final class SettlementStructures {
         var choices=queue.values().toArray(NpcTownPiece[]::new);
         for(int checked=0;checked<Math.min(16,choices.length);checked++) {
             var piece=choices[Math.floorMod(activationCursor++,choices.length)];
-            if(!NpcSettlements.loaded(level,piece.candidate().center())) continue;
+            if(!NpcSettlements.loaded(level,piece.candidate().center(),piece.extent())) continue;
             activate(level,piece); queue.remove(piece.candidate().id()); return;
         }
     }
     public static Settlement activate(ServerLevel level,NpcTownPiece piece) {
-        if(!NpcSettlements.loaded(level,piece.candidate().center())) return null;
+        if(!NpcSettlements.loaded(level,piece.candidate().center(),piece.extent())) return null;
         var data=SettlementData.get(level); var candidate=piece.candidate();
         var existing=data.byId(candidate.id()); if(existing!=null) return existing;
         var regions=NpcWorldData.get(level); if(regions.generated.contains(candidate.region())) return null;

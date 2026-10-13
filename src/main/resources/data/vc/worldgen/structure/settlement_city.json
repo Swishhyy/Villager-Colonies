@@ -1,0 +1,7 @@
+{
+  "type": "vc:settlement_city",
+  "biomes": "#vc:has_structure/settlement",
+  "spawn_overrides": {},
+  "step": "top_layer_modification",
+  "terrain_adaptation": "none"
+}

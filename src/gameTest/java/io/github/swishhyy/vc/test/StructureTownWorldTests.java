@@ -6,6 +6,8 @@ import io.github.swishhyy.vc.worldgen.*;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
@@ -56,10 +58,18 @@ public final class StructureTownWorldTests {
     }
 
     @GameTest(timeoutTicks=200,batch="structureCity") @EmptyTemplate
-    @TestHolder(description="A worldgen walled city activates once with forty citizens, every work post staffed and forty-six beds, without rebuilding its blocks.")
+    @TestHolder(description="A worldgen walled city is its own locatable structure in the settlement set, survives serialization, and activates once with forty citizens, every work post staffed and forty-six beds, without rebuilding its blocks.")
     static void savedCityActivatesOnce(DynamicTest test) {
         test.onGameTest(helper -> {
             var level=helper.getLevel();
+            var structures=level.registryAccess().lookupOrThrow(Registries.STRUCTURE);
+            var structure=structures.getOrThrow(SettlementStructures.CITY).value();
+            helper.assertTrue(structure instanceof NpcTownStructure asCity && asCity.city() && structure.type()==SettlementStructures.CITY_TYPE.get()
+                    && structures.getOrThrow(SettlementStructures.TOWN).value() instanceof NpcTownStructure asTown && !asTown.city(),"Cities and towns are not separate structures");
+            var set=level.registryAccess().lookupOrThrow(Registries.STRUCTURE_SET)
+                    .getOrThrow(ResourceKey.create(Registries.STRUCTURE_SET,Identifier.fromNamespaceAndPath(VC.MODID,"settlements"))).value();
+            helper.assertTrue(set.structures().stream().anyMatch(e -> e.structure().is(SettlementStructures.CITY))
+                    && set.structures().stream().anyMatch(e -> e.structure().is(SettlementStructures.TOWN)),"The settlement placement does not offer both towns and cities");
             var candidate=NpcTownPlan.candidate(level.getSeed(),830,830,1408);
             var base=new BlockPos(candidate.center().getX(),level.getSeaLevel()+12,candidate.center().getZ());
             int extent=NpcVillageLayout.CITY_EXTENT;
@@ -67,7 +77,14 @@ public final class StructureTownWorldTests {
             CitizenNavigationTests.meadow(level,base,-extent,extent,-extent,extent);
             var site=NpcVillageTerrain.inspect(level,base,NpcVillageLayout.CITY);
             helper.assertTrue(site!=null,"City meadow was rejected: "+NpcVillageTerrain.lastRejection());
-            var piece=new NpcTownPiece(NpcTownPlan.worldgenCandidate(level.getSeed(),site.center(),true),site,120);
+            var built=new NpcTownPiece(NpcTownPlan.worldgenCandidate(level.getSeed(),site.center(),true),site,120);
+            helper.assertTrue(built.extent()==extent,"The city piece does not cover the city's land");
+            var context=StructurePieceSerializationContext.fromLevel(level);
+            var start=new StructureStart(structure,ChunkPos.containing(base),0,new PiecesContainer(List.of(built)));
+            var restored=StructureStart.loadStaticStart(context,start.createTag(context,ChunkPos.containing(base)),level.getSeed());
+            helper.assertTrue(restored!=null && restored.isValid() && restored.getStructure()==structure,"The city start did not survive its save");
+            var piece=(NpcTownPiece)restored.getPieces().getFirst();
+            helper.assertTrue(piece.candidate().equals(built.candidate()) && piece.placements().equals(built.placements()),"Saving changes the city's layout or identity");
             for(var placement:piece.placements()) level.setBlock(placement.pos(),placement.state(),2);
             var town=SettlementStructures.activate(level,piece);
             test.whenDisabled(() -> {

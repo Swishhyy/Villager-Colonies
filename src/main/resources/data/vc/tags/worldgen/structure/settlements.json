@@ -1,0 +1,4 @@
+{
+  "replace": false,
+  "values": ["vc:settlement", "vc:settlement_city"]
+}

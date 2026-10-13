@@ -54,15 +54,18 @@ public final class NpcSettlements {
     public static boolean mayFoundNewTown(long elapsedTicks) {
         return Config.RANDOM_TOWNS.get() && elapsedTicks>=Config.NPC_FOUNDING_DAYS.get()*24000L;
     }
-    public static boolean loaded(ServerLevel level,BlockPos center) {
-        for(long chunk:chunks(center)) { var p=new net.minecraft.world.level.ChunkPos((int)chunk,(int)(chunk >> 32)); if(!level.hasChunk(p.x(),p.z())) return false; }
+    public static boolean loaded(ServerLevel level,BlockPos center) { return loaded(level,center,EXTENT); }
+    /** Whether every chunk of land reaching this far from the center is loaded; a city reaches further than a village. */
+    public static boolean loaded(ServerLevel level,BlockPos center,int extent) {
+        for(long chunk:chunks(center,extent)) { var p=new net.minecraft.world.level.ChunkPos((int)chunk,(int)(chunk >> 32)); if(!level.hasChunk(p.x(),p.z())) return false; }
         return true;
     }
     /** Every chunk a village centred here may build in: twenty-five for a walled village centred in its chunk. */
-    public static Set<Long> chunks(BlockPos center) {
+    public static Set<Long> chunks(BlockPos center) { return chunks(center,EXTENT); }
+    public static Set<Long> chunks(BlockPos center,int extent) {
         Set<Long> result=new LinkedHashSet<>();
-        for(int x=Math.floorDiv(center.getX()-EXTENT,16);x<=Math.floorDiv(center.getX()+EXTENT,16);x++)
-            for(int z=Math.floorDiv(center.getZ()-EXTENT,16);z<=Math.floorDiv(center.getZ()+EXTENT,16);z++)
+        for(int x=Math.floorDiv(center.getX()-extent,16);x<=Math.floorDiv(center.getX()+extent,16);x++)
+            for(int z=Math.floorDiv(center.getZ()-extent,16);z<=Math.floorDiv(center.getZ()+extent,16);z++)
                 result.add(new net.minecraft.world.level.ChunkPos(x,z).pack());
         return result;
     }

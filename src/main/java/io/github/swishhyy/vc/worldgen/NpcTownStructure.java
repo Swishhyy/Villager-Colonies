@@ -19,21 +19,29 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 
-/** A real structure start: terrain is sampled without loading chunks or accessing saved AI data. */
+/**
+ * A real structure start: terrain is sampled without loading chunks or accessing saved AI data. Towns and cities are two
+ * structures sharing one placement, so /locate can tell them apart; each region holds at most one of them.
+ */
 public final class NpcTownStructure extends Structure {
-    public static final MapCodec<NpcTownStructure> CODEC=simpleCodec(NpcTownStructure::new);
+    public static final MapCodec<NpcTownStructure> CODEC=simpleCodec(settings -> new NpcTownStructure(settings,false));
+    public static final MapCodec<NpcTownStructure> CITY_CODEC=simpleCodec(settings -> new NpcTownStructure(settings,true));
     /** Heights are sampled every four blocks over the whole walled site and one sample beyond it. */
     private static final int STEP=4;
-    public NpcTownStructure(StructureSettings settings) { super(settings); }
-    @Override public StructureType<?> type() { return SettlementStructures.TOWN_TYPE.get(); }
+    private final boolean city;
+    public NpcTownStructure(StructureSettings settings,boolean city) { super(settings); this.city=city; }
+    public boolean city() { return city; }
+    @Override public StructureType<?> type() { return city ? SettlementStructures.CITY_TYPE.get() : SettlementStructures.TOWN_TYPE.get(); }
 
     @Override protected Optional<GenerationStub> findGenerationPoint(GenerationContext context) {
         if(!Config.RANDOM_TOWNS.get() || !Config.INITIAL_NPC_TOWNS.get() || Config.MAX_NPC_TOWNS.get()==0) return Optional.empty();
         var chunk=context.chunkPos();
         var spread=RoadNetwork.placement(context.registryAccess());
-        // A region chosen for a city holds one where the land allows, and a town otherwise.
-        var city=spread!=null && NpcTownPlan.cityRegion(context.seed(),Math.floorDiv(chunk.x(),spread.spacing()),Math.floorDiv(chunk.z(),spread.spacing()))
-                ? citySite(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.biomeSource(),chunk) : null;
+        boolean region=spread!=null && NpcTownPlan.cityRegion(context.seed(),Math.floorDiv(chunk.x(),spread.spacing()),Math.floorDiv(chunk.z(),spread.spacing()));
+        if(this.city && !region) return Optional.empty();
+        // A region chosen for a city holds one where the land allows, and a town otherwise; the other structure stands aside.
+        var city=region ? citySite(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.biomeSource(),chunk) : null;
+        if(this.city!=(city!=null)) return Optional.empty();
         var site=city!=null ? city : terrain(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.biomeSource(),chunk,NpcVillageLayout.LEVELLED);
         if(site==null) return Optional.empty();
         var candidate=NpcTownPlan.worldgenCandidate(context.seed(),site.center(),city!=null);

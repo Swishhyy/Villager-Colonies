@@ -1,5 +1,5 @@
 {
-  "structures": [{"structure": "vc:settlement", "weight": 1}],
+  "structures": [{"structure": "vc:settlement", "weight": 1}, {"structure": "vc:settlement_city", "weight": 1}],
   "placement": {
     "type": "minecraft:random_spread",
     "locate_offset": [8, 0, 8],

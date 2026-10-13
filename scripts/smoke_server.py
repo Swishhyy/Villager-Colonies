@@ -54,6 +54,39 @@ def exchange(connection, request, kind, text):
     raise ConnectionError("RCON did not answer the smoke-test request")
 
 
+COORDINATES = re.compile(r"\[(-?\d+),\s*(-?\d+|~),\s*(-?\d+)\]")
+
+
+def locate(connection, request, target, label):
+    located = exchange(connection, request, 2, f"locate structure {target}")
+    match = COORDINATES.search(located)
+    if not match:
+        raise RuntimeError(f"Normal-world {label} locate failed: {located}")
+    return int(match[1]), int(match[3])
+
+
+def verify_settlement(connection, request, x, z, extent, crew_range, minimum, seconds, label):
+    """Load a located settlement's land and wait for its saved claim, banner and crew."""
+    exchange(connection, request, 2, f"forceload add {x-extent} {z-extent} {x+extent} {z+extent}")
+    deadline = time.monotonic() + seconds
+    banner = crew = "not inspected"
+    while True:
+        town = exchange(connection, request + 1, 2, f"execute positioned {x} 80 {z} run locate settlement")
+        if "The nearest AI settlement" in town:
+            match = re.search(r"is at \[?(-?\d+),\s*(-?\d+),\s*(-?\d+)\]?", town)
+            if match and int(match[1]) == x and int(match[3]) == z:
+                y = int(match[2])
+                banner = exchange(connection, request + 2, 2, f"execute if block {x} {y} {z} vc:settlement_banner")
+                crew = exchange(connection, request + 3, 2,
+                                f"execute positioned {x} {y} {z} if entity @e[type=vc:citizen,distance=..{crew_range}]")
+                count = re.search(r"count: (\d+)", crew)
+                if "Test passed" in banner and count and int(count[1]) >= minimum:
+                    return
+        if time.monotonic() > deadline:
+            raise RuntimeError(f"Native {label} verification timed out: town={town}; banner={banner}; crew={crew}")
+        time.sleep(0.25)
+
+
 def start_and_stop(attempt):
     ready = threading.Event()
     log_path = RUN / f"startup-{attempt}.log"
@@ -81,31 +114,22 @@ def start_and_stop(attempt):
         with socket.create_connection(("127.0.0.1", rcon_port), timeout=20) as connection:
             exchange(connection, 10, 3, "vc-local-smoke")
             if attempt==1:
-                located=exchange(connection, 20, 2, "locate structure vc:settlement")
-                match=re.search(r"\[(-?\d+),\s*(-?\d+|~),\s*(-?\d+)\]",located)
-                if not match:
-                    raise RuntimeError(f"Normal-world native structure locate failed: {located}")
-                x,z=int(match[1]),int(match[3])
+                x,z=locate(connection, 20, "vc:settlement", "native town")
                 (RUN / "native-town.json").write_text(json.dumps([x,z]))
                 print(f"Normal noise world: located vc:settlement at {x}, {z} before loading its village",flush=True)
+                cx,cz=locate(connection, 30, "vc:settlement_city", "city")
+                if (cx,cz)==(x,z):
+                    raise RuntimeError(f"The city and the town were located at the same site: {x}, {z}")
+                (RUN / "native-city.json").write_text(json.dumps([cx,cz]))
+                print(f"Normal noise world: located vc:settlement_city at {cx}, {cz} before loading it",flush=True)
+                locate(connection, 31, "#vc:settlements", "settlement tag")
             else:
                 x,z=json.loads((RUN / "native-town.json").read_text())
-            exchange(connection,21,2,f"forceload add {x-29} {z-29} {x+29} {z+29}")
-            town_deadline=time.monotonic()+100
-            banner=crew="not inspected"
-            while True:
-                town=exchange(connection,22,2,f"execute positioned {x} 80 {z} run locate settlement")
-                if "The nearest AI settlement" in town:
-                    match=re.search(r"is at \[?(-?\d+),\s*(-?\d+),\s*(-?\d+)\]?",town)
-                    if match and int(match[1])==x and int(match[3])==z:
-                        y=int(match[2])
-                        banner=exchange(connection,23,2,f"execute if block {x} {y} {z} vc:settlement_banner")
-                        crew=exchange(connection,24,2,f"execute positioned {x} {y} {z} if entity @e[type=vc:citizen,distance=..64]")
-                        if "Test passed" in banner and "Test passed" in crew:break
-                if time.monotonic()>town_deadline:
-                    raise RuntimeError(f"Native structure verification timed out: town={town}; banner={banner}; crew={crew}")
-                time.sleep(0.25)
+                cx,cz=json.loads((RUN / "native-city.json").read_text())
+            verify_settlement(connection, 21, x, z, 29, 64, 1, 100, "town")
             print(f"Native town startup {attempt}: physical village, saved settlement and real crew verified",flush=True)
+            verify_settlement(connection, 32, cx, cz, 39, 96, 40, 180, "city")
+            print(f"Native city startup {attempt}: physical city, saved settlement and forty citizens verified",flush=True)
             exchange(connection,25,2,"forceload remove all")
             saved = exchange(connection, 11, 2, "save-all flush")
             if "Saved" not in saved:
