@@ -18,7 +18,7 @@ Trade with other settlements, play alongside friends, and equip guards to defend
 - **Production:** farms, forests, gatherers, mines, quarries, cooking, workshops, metallurgy, forging, enchanting, and repairs.
 - **Friends and trade:** town permissions, alliances, and traders who carry goods between settlements.
 - **Settlement neighbours:** real caravans, paid supply contracts, nearby-town needs and quiet news at the banner. NPC towns arrange their own trade routes. See [settlement interactions](docs/multiplayer-campaign.md#settlement-neighbours).
-- **Walled NPC towns and old roads:** generated villages stand on graded ground behind stone walls, with gatehouses, sentries and corner towers. Near the world centre, dirt roads join them and their traders use those roads; farther out, towns build highways as they trade. See [NPC towns](docs/settlement-guide.md#trading-and-other-settlements).
+- **Walled NPC towns, cities and old roads:** generated villages stand on graded ground behind stone walls, with gatehouses, sentries and corner towers; a rare walled city houses forty citizens. Near the world centre, dirt roads join them, tunnelling through steep hills, and their traders use those roads; farther out, towns build highways as they trade. See [NPC towns](docs/settlement-guide.md#trading-and-other-settlements).
 - **Defense and exploration:** guards, patrols, irregular barbarian raids, bandit camps, and supplied outposts.
 - **Visible progress:** job outfits and work effects, town colors, upgrades, research, a visual handbook, and tutorial advancements.
 - **Settlement ages:** Stone → Bronze → Iron. Researchers make tradeable scrolls; towns unlock discoveries together, and blacksmiths forge advanced equipment.

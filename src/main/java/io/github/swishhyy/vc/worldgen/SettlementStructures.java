@@ -82,6 +82,8 @@ public final class SettlementStructures {
         data.settlements.add(town); regions.generated(candidate.region());
         var protection=WorldWorkData.get(level);
         for(var p:piece.placements()) if(p.protect()) protection.protect(p.pos());
+        // Every chunk of the land has finished generating, so no neighbour's trees can spill in after this pass.
+        if(NpcVillagePlan.walled(town)) VillageClearing.clear(level,town,piece.placements());
         NpcSettlements.finishFounding(level,town); data.setDirty();
         RoadNetwork.connect(level,town);
         VC.LOGGER.info("[VC][worldgen] Activated town={} townId={} position={} citizens={}",town.name,town.id,town.center,town.citizens.size());

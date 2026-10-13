@@ -1,16 +1,12 @@
 package io.github.swishhyy.vc.worldgen;
 
 import io.github.swishhyy.vc.settlement.*;
-import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.nbt.CompoundTag;
@@ -18,6 +14,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -25,17 +22,18 @@ import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 
 /**
- * Each chunk receives only its own part of the furnished village during the FEATURES stage. Villages are placed after
- * trees grow, so a walled village first fells every tree standing on its land, whole, and trims canopy reaching over it.
+ * Each chunk receives only its own part of the furnished village during the FEATURES stage, after trees grow. A walled
+ * village then clears the trees standing on its land and the canopy reaching over it, and trims natural soil left above
+ * its graded ground where the noise survey read the land a little low.
  */
 public final class NpcTownPiece extends StructurePiece {
-    /** Wood and foliage felled with one tree at most, and how far its leaves may reach from the wood. */
-    private static final int MAX_LOGS=1024,MAX_LEAVES=8192,LEAF_REACH=6,TREE_SPREAD=16;
     private final NpcTownPlan.Candidate candidate;
     private final NpcVillageTerrain.Site site;
     private final int radius;
     private volatile List<NpcSettlements.Placement> plan;
-    private volatile Set<BlockPos> built;
+    private volatile Map<BlockPos,Block> built;
+    private volatile Map<Long,List<NpcSettlements.Placement>> byChunk;
+    private volatile int[] grade;
     public NpcTownPiece(NpcTownPlan.Candidate candidate,NpcVillageTerrain.Site site,int radius) {
         super(SettlementStructures.TOWN_PIECE.get(),0,bounds(site));
         this.candidate=candidate; this.site=site; this.radius=radius;
@@ -70,89 +68,72 @@ public final class NpcTownPiece extends StructurePiece {
         }
         return result;
     }
-    /** Positions of the village's own blocks, which felling never touches. */
-    private Set<BlockPos> built() {
+    /** The village's own blocks by position, which clearing never touches once they stand. */
+    private Map<BlockPos,Block> built() {
         var result=built;
         if(result==null) synchronized(this) {
             if(built==null) {
-                Set<BlockPos> positions=new HashSet<>();
-                for(var p:placements()) if(!p.state().isAir()) positions.add(p.pos());
-                built=positions;
+                Map<BlockPos,Block> blocks=new HashMap<>();
+                for(var p:placements()) if(!p.state().isAir()) blocks.put(p.pos(),p.state().getBlock());
+                built=blocks;
             }
             result=built;
         }
         return result;
     }
-    private static boolean wood(BlockState state) { return state.is(BlockTags.LOGS) || state.is(net.minecraft.world.level.block.Blocks.MUSHROOM_STEM); }
-    private static boolean foliage(BlockState state) {
-        return state.is(BlockTags.LEAVES) || state.is(net.minecraft.world.level.block.Blocks.VINE) || state.is(net.minecraft.world.level.block.Blocks.COCOA)
-                || state.is(BlockTags.BEEHIVES) || state.is(net.minecraft.world.level.block.Blocks.RED_MUSHROOM_BLOCK)
-                || state.is(net.minecraft.world.level.block.Blocks.BROWN_MUSHROOM_BLOCK);
-    }
-    /** Fells trees growing on this chunk's share of the village land, and trims foliage over it. */
-    private void clearTrees(WorldGenLevel level,BoundingBox chunkBounds,ChunkPos chunk) {
-        var layout=site.layout(); BlockPos center=site.center(); int extent=layout.extent();
-        Set<BlockPos> ours=built();
-        for(int x=Math.max(chunkBounds.minX(),center.getX()-extent);x<=Math.min(chunkBounds.maxX(),center.getX()+extent);x++)
-            for(int z=Math.max(chunkBounds.minZ(),center.getZ()-extent);z<=Math.min(chunkBounds.maxZ(),center.getZ()+extent);z++) {
-                int ground=center.getY()+layout.ground(x-center.getX(),z-center.getZ());
-                int top=level.getHeight(Heightmap.Types.WORLD_SURFACE_WG,x,z);
-                for(int y=ground-1;y<top;y++) {
-                    BlockPos pos=new BlockPos(x,y,z);
-                    if(ours.contains(pos)) continue;
-                    BlockState state=level.getBlockState(pos);
-                    if(wood(state)) fell(level,pos,ours,chunk);
-                    else if(foliage(state)) level.setBlock(pos,net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),18);
-                }
+    /** Placements grouped by chunk, so each chunk walks only its own share of a large village. */
+    private List<NpcSettlements.Placement> inChunk(ChunkPos chunk) {
+        var result=byChunk;
+        if(result==null) synchronized(this) {
+            if(byChunk==null) {
+                Map<Long,List<NpcSettlements.Placement>> groups=new HashMap<>();
+                for(var p:placements()) groups.computeIfAbsent(ChunkPos.containing(p.pos()).pack(),k -> new ArrayList<>()).add(p);
+                byChunk=groups;
             }
+            result=byChunk;
+        }
+        return result.getOrDefault(chunk.pack(),List.of());
+    }
+    private int[] grade() {
+        var result=grade;
+        if(result==null) synchronized(this) {
+            if(grade==null) grade=NpcVillagePlan.grade(town());
+            result=grade;
+        }
+        return result;
     }
     /** Trees may spill into the chunks around the one generating, which world generation may also change. */
     private static boolean writable(ChunkPos chunk,BlockPos pos) {
         return Math.abs((pos.getX()>>4)-chunk.x())<=1 && Math.abs((pos.getZ()>>4)-chunk.z())<=1;
     }
-    /** Removes a whole tree: its connected wood, then the foliage that wood held up, sparing foliage beside other trees. */
-    private static void fell(WorldGenLevel level,BlockPos start,Set<BlockPos> ours,ChunkPos chunk) {
-        Set<BlockPos> logs=new HashSet<>(); var open=new ArrayDeque<BlockPos>();
-        logs.add(start); open.add(start);
-        while(!open.isEmpty() && logs.size()<MAX_LOGS) {
-            BlockPos at=open.poll();
-            for(int dx=-1;dx<=1;dx++) for(int dy=-1;dy<=1;dy++) for(int dz=-1;dz<=1;dz++) {
-                BlockPos next=at.offset(dx,dy,dz);
-                if(logs.contains(next) || ours.contains(next) || Math.abs(next.getX()-start.getX())>TREE_SPREAD
-                        || Math.abs(next.getZ()-start.getZ())>TREE_SPREAD || !writable(chunk,next) || !wood(level.getBlockState(next))) continue;
-                logs.add(next); open.add(next);
+    /**
+     * Natural soil above the graded ground of this chunk's untouched columns, with whatever grows on it. The survey reads
+     * the land from noise every few blocks, so a column it read a block low keeps a plug of earth beside the streets.
+     */
+    private void trimStrays(WorldGenLevel level,BoundingBox chunkBounds) {
+        int[] grade=grade(); if(grade==null) return;
+        var layout=site.layout(); BlockPos center=site.center(); int extent=layout.extent();
+        Map<BlockPos,Block> ours=built();
+        for(int x=Math.max(chunkBounds.minX(),center.getX()-extent);x<=Math.min(chunkBounds.maxX(),center.getX()+extent);x++)
+            for(int z=Math.max(chunkBounds.minZ(),center.getZ()-extent);z<=Math.min(chunkBounds.maxZ(),center.getZ()+extent);z++) {
+                int floor=center.getY()+grade[layout.cell(x-center.getX(),z-center.getZ())];
+                int top=level.getHeight(Heightmap.Types.WORLD_SURFACE,x,z);
+                boolean cut=false;
+                for(int y=floor;y<top;y++) {
+                    BlockPos pos=new BlockPos(x,y,z);
+                    if(ours.containsKey(pos)) { cut=false; continue; }
+                    BlockState state=level.getBlockState(pos);
+                    if(NaturalTerrain.soil(state)) { level.setBlock(pos,Blocks.AIR.defaultBlockState(),18); cut=true; }
+                    else if(cut && !state.isAir() && state.getFluidState().isEmpty() && state.canBeReplaced())
+                        level.setBlock(pos,Blocks.AIR.defaultBlockState(),18);
+                    else cut=false;
+                }
             }
-        }
-        Map<BlockPos,Integer> leaves=new HashMap<>(); var reach=new ArrayDeque<BlockPos>(logs);
-        for(BlockPos log:logs) leaves.put(log,0);
-        while(!reach.isEmpty() && leaves.size()<MAX_LEAVES) {
-            BlockPos at=reach.poll(); int depth=leaves.get(at);
-            if(depth>=LEAF_REACH) continue;
-            for(Direction direction:Direction.values()) {
-                BlockPos next=at.relative(direction);
-                if(leaves.containsKey(next) || ours.contains(next) || !writable(chunk,next) || !foliage(level.getBlockState(next))) continue;
-                leaves.put(next,depth+1); reach.add(next);
-            }
-        }
-        for(BlockPos log:logs) level.setBlock(log,net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),18);
-        for(BlockPos leaf:leaves.keySet()) {
-            if(logs.contains(leaf) || besideOtherWood(level,leaf,chunk)) continue;
-            level.setBlock(leaf,net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),18);
-        }
-    }
-    /** Foliage touching wood still standing belongs to a neighbouring tree. */
-    private static boolean besideOtherWood(WorldGenLevel level,BlockPos leaf,ChunkPos chunk) {
-        for(int dx=-1;dx<=1;dx++) for(int dy=-1;dy<=1;dy++) for(int dz=-1;dz<=1;dz++) {
-            BlockPos near=leaf.offset(dx,dy,dz);
-            if(writable(chunk,near) && wood(level.getBlockState(near))) return true;
-        }
-        return false;
     }
     @Override public void postProcess(WorldGenLevel level,StructureManager structures,ChunkGenerator generator,
             RandomSource random,BoundingBox chunkBounds,ChunkPos chunk,BlockPos pivot) {
-        if(site.layout().design()>=NpcVillageLayout.WALLED) clearTrees(level,chunkBounds,chunk);
         Map<NpcVillagePlan.Column,BlockPos> supports=new HashMap<>();
-        for(var placement:placements()) {
+        for(var placement:inChunk(chunk)) {
             BlockPos pos=placement.pos();
             if(!chunkBounds.isInside(pos) || !level.ensureCanWrite(pos)) continue;
             level.setBlock(pos,placement.state(),18);
@@ -167,5 +148,10 @@ public final class NpcTownPiece extends StructurePiece {
             if(!state.isAir() && state.getFluidState().isEmpty() && !NaturalTerrain.vegetation(state)) break;
             level.setBlock(pos,Blocks.COBBLESTONE.defaultBlockState(),18);
         }
+        if(site.layout().design()<NpcVillageLayout.WALLED) return;
+        Map<BlockPos,Block> ours=built();
+        VillageClearing.clear(level,site.center(),site.layout(),chunkBounds.minX(),chunkBounds.minZ(),chunkBounds.maxX(),chunkBounds.maxZ(),
+                pos -> { Block block=ours.get(pos); return block!=null && level.getBlockState(pos).is(block); },pos -> writable(chunk,pos),18);
+        trimStrays(level,chunkBounds);
     }
 }

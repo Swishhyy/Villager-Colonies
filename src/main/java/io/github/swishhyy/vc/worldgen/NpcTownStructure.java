@@ -6,8 +6,14 @@ import io.github.swishhyy.vc.settlement.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.QuartPos;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.biome.BiomeSource;
+import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -16,50 +22,61 @@ import net.minecraft.world.level.levelgen.structure.StructureType;
 /** A real structure start: terrain is sampled without loading chunks or accessing saved AI data. */
 public final class NpcTownStructure extends Structure {
     public static final MapCodec<NpcTownStructure> CODEC=simpleCodec(NpcTownStructure::new);
-    /** Heights are sampled every four blocks over the whole walled village and one sample beyond it. */
-    private static final int STEP=4,HALF=32,SAMPLES=2*HALF/STEP+1;
+    /** Heights are sampled every four blocks over the whole walled site and one sample beyond it. */
+    private static final int STEP=4;
     public NpcTownStructure(StructureSettings settings) { super(settings); }
     @Override public StructureType<?> type() { return SettlementStructures.TOWN_TYPE.get(); }
 
     @Override protected Optional<GenerationStub> findGenerationPoint(GenerationContext context) {
         if(!Config.RANDOM_TOWNS.get() || !Config.INITIAL_NPC_TOWNS.get() || Config.MAX_NPC_TOWNS.get()==0) return Optional.empty();
-        var site=terrain(context);
+        var chunk=context.chunkPos();
+        var spread=RoadNetwork.placement(context.registryAccess());
+        // A region chosen for a city holds one where the land allows, and a town otherwise.
+        var city=spread!=null && NpcTownPlan.cityRegion(context.seed(),Math.floorDiv(chunk.x(),spread.spacing()),Math.floorDiv(chunk.z(),spread.spacing()))
+                ? citySite(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.biomeSource(),chunk) : null;
+        var site=city!=null ? city : terrain(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.biomeSource(),chunk,NpcVillageLayout.LEVELLED);
         if(site==null) return Optional.empty();
-        var candidate=NpcTownPlan.worldgenCandidate(context.seed(),site.center());
+        var candidate=NpcTownPlan.worldgenCandidate(context.seed(),site.center(),city!=null);
         var town=NpcSettlements.createTown(candidate,site,Config.SETTLEMENT_RADIUS.get());
-        if(NpcVillagePlan.earthworkIssue(town)!=null) return Optional.empty();
+        if(city==null && NpcVillagePlan.earthworkIssue(town)!=null) return Optional.empty();
         return Optional.of(new GenerationStub(site.center(),builder -> builder.addPiece(new NpcTownPiece(candidate,site,town.radius))));
+    }
+    /** A city site in this chunk, or null where the land cannot hold one; shared with the road network so roads meet its gates. */
+    public static NpcVillageTerrain.Site citySite(ChunkGenerator generator,LevelHeightAccessor heights,RandomState random,BiomeSource biomes,ChunkPos chunk) {
+        var site=terrain(generator,heights,random,biomes,chunk,NpcVillageLayout.CITY);
+        if(site==null) return null;
+        var preview=new Settlement(new UUID(0,0),new UUID(0,0),"Placement",site.center(),240,List.of(),List.of(),"balanced");
+        preview.trading.layout=site.layout();
+        return NpcVillagePlan.earthworkIssue(preview)==null ? site : null;
     }
 
     /** A small noise-height grid bounds generation work; interpolation follows natural slopes. */
-    public static NpcVillageTerrain.Site terrain(GenerationContext context) {
-        int x=context.chunkPos().getMiddleBlockX(),z=context.chunkPos().getMiddleBlockZ();
-        int[][] samples=new int[SAMPLES][SAMPLES];
+    public static NpcVillageTerrain.Site terrain(ChunkGenerator generator,LevelHeightAccessor heights,RandomState random,BiomeSource biomes,ChunkPos chunk,int design) {
+        int x=chunk.getMiddleBlockX(),z=chunk.getMiddleBlockZ(),extent=NpcVillageLayout.extent(design);
+        int half=STEP*((extent+STEP)/STEP),samples=2*half/STEP+1;
+        int[][] grid=new int[samples][samples];
         int low=Integer.MAX_VALUE,high=Integer.MIN_VALUE;
-        for(int a=0;a<SAMPLES;a++) for(int b=0;b<SAMPLES;b++) {
-            int height=context.chunkGenerator().getBaseHeight(x-HALF+a*STEP,z-HALF+b*STEP,
-                    Heightmap.Types.WORLD_SURFACE_WG,context.heightAccessor(),context.randomState());
+        for(int a=0;a<samples;a++) for(int b=0;b<samples;b++) {
+            int height=generator.getBaseHeight(x-half+a*STEP,z-half+b*STEP,Heightmap.Types.WORLD_SURFACE_WG,heights,random);
             // Sea-level terrain includes river/ocean water, not a suitable town foundation.
-            if(height<=context.chunkGenerator().getSeaLevel() || height<context.heightAccessor().getMinY()+4
-                    || height+12>=context.heightAccessor().getMaxY()) return null;
-            samples[a][b]=height; low=Math.min(low,height); high=Math.max(high,height);
+            if(height<=generator.getSeaLevel() || height<heights.getMinY()+4 || height+12>=heights.getMaxY()) return null;
+            grid[a][b]=height; low=Math.min(low,height); high=Math.max(high,height);
         }
         if(high-low>NpcVillageTerrain.MAX_RELIEF) return null;
-        int centerY=samples[HALF/STEP][HALF/STEP];
-        if(!context.chunkGenerator().getBaseColumn(x,z,context.heightAccessor(),context.randomState())
-                .getBlock(centerY-1).getFluidState().isEmpty()) return null;
-        var biome=context.biomeSource().getNoiseBiome(QuartPos.fromBlock(x),QuartPos.fromBlock(centerY),QuartPos.fromBlock(z),context.randomState().sampler());
+        int centerY=grid[half/STEP][half/STEP];
+        if(!generator.getBaseColumn(x,z,heights,random).getBlock(centerY-1).getFluidState().isEmpty()) return null;
+        var biome=biomes.getNoiseBiome(QuartPos.fromBlock(x),QuartPos.fromBlock(centerY),QuartPos.fromBlock(z),random.sampler());
         String palette=biome.is(Biomes.DESERT) || biome.is(Biomes.BADLANDS) || biome.is(Biomes.WOODED_BADLANDS) ? "sandstone"
                 : biome.is(Biomes.SAVANNA) || biome.is(Biomes.SAVANNA_PLATEAU) ? "acacia"
                 : biome.is(Biomes.TAIGA) || biome.is(Biomes.SNOWY_TAIGA) || biome.is(Biomes.OLD_GROWTH_PINE_TAIGA)
                 || biome.is(Biomes.OLD_GROWTH_SPRUCE_TAIGA) || biome.is(Biomes.SNOWY_PLAINS) || biome.is(Biomes.GROVE) ? "spruce" : "oak";
-        List<Integer> ground=new ArrayList<>(NpcVillageLayout.CELLS);
-        for(int dx=-NpcVillageLayout.EXTENT;dx<=NpcVillageLayout.EXTENT;dx++) for(int dz=-NpcVillageLayout.EXTENT;dz<=NpcVillageLayout.EXTENT;dz++) {
-            int a=(dx+HALF)/STEP,b=(dz+HALF)/STEP,tx=(dx+HALF)%STEP,tz=(dz+HALF)%STEP;
-            int height=Math.round((samples[a][b]*(STEP-tx)*(STEP-tz)+samples[a+1][b]*tx*(STEP-tz)
-                    +samples[a][b+1]*(STEP-tx)*tz+samples[a+1][b+1]*tx*tz)/(float)(STEP*STEP));
+        List<Integer> ground=new ArrayList<>(NpcVillageLayout.cells(design));
+        for(int dx=-extent;dx<=extent;dx++) for(int dz=-extent;dz<=extent;dz++) {
+            int a=(dx+half)/STEP,b=(dz+half)/STEP,tx=(dx+half)%STEP,tz=(dz+half)%STEP;
+            int height=Math.round((grid[a][b]*(STEP-tx)*(STEP-tz)+grid[a+1][b]*tx*(STEP-tz)
+                    +grid[a][b+1]*(STEP-tx)*tz+grid[a+1][b+1]*tx*tz)/(float)(STEP*STEP));
             ground.add(height-centerY);
         }
-        return new NpcVillageTerrain.Site(new BlockPos(x,centerY,z),new NpcVillageLayout(palette,ground,ground));
+        return new NpcVillageTerrain.Site(new BlockPos(x,centerY,z),new NpcVillageLayout(palette,ground,ground,design));
     }
 }

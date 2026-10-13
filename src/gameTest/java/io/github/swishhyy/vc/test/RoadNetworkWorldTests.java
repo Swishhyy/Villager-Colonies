@@ -43,10 +43,13 @@ public final class RoadNetworkWorldTests {
                     "The road has a gap at "+road.xs()[n]+","+road.zs()[n]);
             RoadNetwork.Node first=home.key()<next.key() ? home : next;
             RoadNetwork.Node last=first==home ? next : home;
-            int gate=io.github.swishhyy.vc.settlement.NpcVillageLayout.EXTENT+1;
+            // A city's gates stand further out than a town's.
+            java.util.function.ToIntFunction<RoadNetwork.Node> gateOf=n -> NpcVillageLayout.extent(network.city(n) ? NpcVillageLayout.CITY : NpcVillageLayout.LEVELLED)+1;
+            int gate=gateOf.applyAsInt(first);
             helper.assertTrue(Math.max(Math.abs(road.xs()[0]-first.x()),Math.abs(road.zs()[0]-first.z()))==gate
-                    && Math.max(Math.abs(road.xs()[road.length()-1]-last.x()),Math.abs(road.zs()[road.length()-1]-last.z()))==gate,
+                    && Math.max(Math.abs(road.xs()[road.length()-1]-last.x()),Math.abs(road.zs()[road.length()-1]-last.z()))==gateOf.applyAsInt(last),
                     "The road does not run from gate to gate");
+            int homeGate=gateOf.applyAsInt(home);
             // Pave the chunk under the middle of the road, as world generation would.
             int middle=road.length()/2; BlockPos column=new BlockPos(road.xs()[middle],road.feet()[middle],road.zs()[middle]);
             var chunks=CitizenNavigationTests.pinArea(level,column,-8,8,-8,8);
@@ -70,7 +73,7 @@ public final class RoadNetworkWorldTests {
                 helper.assertTrue(TradeRoutes.agreed(a,b),"Neighbouring towns did not open trade along their road");
                 var shared=SharedRoads.get(level).between(a.id,b.id);
                 helper.assertTrue(shared!=null && shared.complete() && shared.line.size()>=2,"Traders were not given the road as a highway");
-                helper.assertTrue(shared.line.getFirst().distSqr(new BlockPos(a.center.getX(),shared.line.getFirst().getY(),a.center.getZ()))<=2*gate*gate,
+                helper.assertTrue(shared.line.getFirst().distSqr(new BlockPos(a.center.getX(),shared.line.getFirst().getY(),a.center.getZ()))<=2*homeGate*homeGate,
                         "The highway does not start at the first town's gate");
             });
         });

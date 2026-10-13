@@ -25,24 +25,26 @@ public final class NpcVillageTerrain {
     public static String lastRejection() { return REJECTION.get(); }
     private NpcVillageTerrain() {}
 
-    public static Site inspect(ServerLevel level,BlockPos probe) {
-        int extent=NpcVillageLayout.EXTENT;
-        List<Integer> ground=new ArrayList<>(NpcVillageLayout.CELLS),surface=new ArrayList<>(NpcVillageLayout.CELLS);
+    public static Site inspect(ServerLevel level,BlockPos probe) { return inspect(level,probe,NpcVillageLayout.LEVELLED); }
+    public static Site inspect(ServerLevel level,BlockPos probe,int design) {
+        int extent=NpcVillageLayout.extent(design),cells=NpcVillageLayout.cells(design);
+        List<Integer> ground=new ArrayList<>(cells),surface=new ArrayList<>(cells);
         for(int x=-extent;x<=extent;x++) for(int z=-extent;z<=extent;z++) {
             var column=NaturalTerrain.surface(level,probe.getX()+x,probe.getZ()+z);
             if(column==null) return reject(probe,probe.offset(x,0,z),"unloaded terrain");
             ground.add(column.ground()); surface.add(column.top());
         }
         List<Integer> plaza=new ArrayList<>();
-        for(int x=-4;x<=4;x++) for(int z=-4;z<=4;z++) plaza.add(ground.get(NpcVillageLayout.index(x,z)));
+        var square=NpcVillagePlan.plaza(design);
+        for(int x=-square.radiusX();x<=square.radiusX();x++) for(int z=-square.radiusZ();z<=square.radiusZ();z++) plaza.add(ground.get(NpcVillageLayout.index(design,x,z)));
         plaza.sort(Integer::compareTo); int banner=plaza.get(plaza.size()/2);
         BlockPos center=new BlockPos(probe.getX(),banner,probe.getZ());
         List<Integer> relativeGround=ground.stream().map(y -> y-center.getY()).toList();
         List<Integer> relativeSurface=surface.stream().map(y -> y-center.getY()).toList();
-        var layout=new NpcVillageLayout(palette(level,center),relativeGround,relativeSurface);
+        var layout=new NpcVillageLayout(palette(level,center),relativeGround,relativeSurface,design);
         int low=Integer.MAX_VALUE,high=Integer.MIN_VALUE;
-        for(var column:NpcVillagePlan.footprint()) {
-            int y=ground.get(NpcVillageLayout.index(column.x(),column.z()));
+        for(var column:NpcVillagePlan.footprint(design)) {
+            int y=ground.get(NpcVillageLayout.index(design,column.x(),column.z()));
             BlockPos p=new BlockPos(probe.getX()+column.x(),y-1,probe.getZ()+column.z());
             if(y<level.getMinY()+4 || y+12>=level.getMaxY()) return reject(probe,p,"surface height outside safe range");
             if(!soil(level.getBlockState(p))) return reject(probe,p,"unsupported ground "+level.getBlockState(p));

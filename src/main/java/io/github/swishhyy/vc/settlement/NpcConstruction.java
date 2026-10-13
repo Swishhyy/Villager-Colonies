@@ -49,8 +49,10 @@ public final class NpcConstruction {
                 && (current.is(Blocks.GRASS_BLOCK) || current.is(Blocks.DIRT));
     }
     public static NpcConstruction plan(ServerLevel level,Settlement town,String kind) {
-        for(int[] offset:new int[][]{{36,0},{0,-36},{-36,0},{0,36},{36,36},{-36,36},{-36,-36},{36,-36}}) {
-            NpcConstruction plan=at(level,town,town.center.offset(offset[0],0,offset[1]),kind);
+        // Additions stand clear of a village's land: further out around a city.
+        int reach=town.trading.layout==null ? 36 : Math.max(36,town.trading.layout.extent()+7);
+        for(int[] offset:new int[][]{{1,0},{0,-1},{-1,0},{0,1},{1,1},{-1,1},{-1,-1},{1,-1}}) {
+            NpcConstruction plan=at(level,town,town.center.offset(offset[0]*reach,0,offset[1]*reach),kind);
             if(plan!=null) return plan;
         }
         return null;

@@ -54,4 +54,37 @@ public final class StructureTownWorldTests {
             helper.succeed();
         });
     }
+
+    @GameTest(timeoutTicks=200,batch="structureCity") @EmptyTemplate
+    @TestHolder(description="A worldgen walled city activates once with forty citizens, every work post staffed and forty-six beds, without rebuilding its blocks.")
+    static void savedCityActivatesOnce(DynamicTest test) {
+        test.onGameTest(helper -> {
+            var level=helper.getLevel();
+            var candidate=NpcTownPlan.candidate(level.getSeed(),830,830,1408);
+            var base=new BlockPos(candidate.center().getX(),level.getSeaLevel()+12,candidate.center().getZ());
+            int extent=NpcVillageLayout.CITY_EXTENT;
+            var chunks=CitizenNavigationTests.pinArea(level,base,-extent,extent,-extent,extent);
+            CitizenNavigationTests.meadow(level,base,-extent,extent,-extent,extent);
+            var site=NpcVillageTerrain.inspect(level,base,NpcVillageLayout.CITY);
+            helper.assertTrue(site!=null,"City meadow was rejected: "+NpcVillageTerrain.lastRejection());
+            var piece=new NpcTownPiece(NpcTownPlan.worldgenCandidate(level.getSeed(),site.center(),true),site,120);
+            for(var placement:piece.placements()) level.setBlock(placement.pos(),placement.state(),2);
+            var town=SettlementStructures.activate(level,piece);
+            test.whenDisabled(() -> {
+                if(town!=null) {
+                    for(var id:town.citizens) { var entity=level.getEntity(id); if(entity!=null) entity.discard(); }
+                    SettlementData.get(level).settlements.remove(town); SettlementData.get(level).setDirty();
+                }
+                NpcWorldData.get(level).generated.remove(piece.candidate().region()); NpcWorldData.get(level).setDirty();
+                CitizenNavigationTests.release(level,base,chunks);
+            });
+            helper.assertTrue(town!=null && NpcVillagePlan.city(town),"The city did not activate");
+            helper.assertTrue(town.citizens.size()==NpcSettlements.CITY_POPULATION,"The city was not founded with forty citizens: "+town.citizens.size());
+            int beds=SettlementService.housingBeds(level,town).size();
+            helper.assertTrue(beds==46,"The city's homes hold "+beds+" beds, not forty-six");
+            helper.assertTrue(town.stations.stream().filter(s -> s.role().providesWork()).allMatch(s -> town.jobs.assigned(s.position())==1),"A city work post is unstaffed");
+            helper.assertTrue(SettlementStructures.activate(level,piece)==town && town.citizens.size()==NpcSettlements.CITY_POPULATION,"Reloading duplicates the city's claim or crew");
+            helper.succeed();
+        });
+    }
 }

@@ -25,6 +25,8 @@ import net.neoforged.neoforge.event.tick.LevelTickEvent;
 /** Small neutral towns are discovered in loaded terrain and built in bounded, restartable server-thread batches. */
 public final class NpcSettlements {
     public static final int BUILD_BUDGET=128,EXTENT=NpcVillageLayout.EXTENT;
+    /** Citizens a city is founded with and has room for. */
+    public static final int CITY_POPULATION=40;
     public record Placement(BlockPos pos,BlockState state,boolean protect) {}
     private static final Map<ServerLevel,Map<UUID,List<Placement>>> PLANS=new WeakHashMap<>();
     private int playerCursor,buildCursor,searchCursor;
@@ -92,6 +94,9 @@ public final class NpcSettlements {
         // Room from the first day for a citizen at every workstation, the gate sentries included.
         int posts=(int)stations(town).stream().filter(s -> s.role().providesWork()).count();
         while(town.populationLevel<8 && SettlementService.populationLimitAt(town,town.populationLevel)<posts) town.populationLevel++;
+        // A city has room for its full population from its first day, short of the world's own ceiling.
+        if(NpcVillagePlan.city(town)) while(town.populationLevel<16 && SettlementService.populationLimitAt(town,town.populationLevel)<CITY_POPULATION
+                && SettlementService.populationLimitAt(town,town.populationLevel+1)>SettlementService.populationLimitAt(town,town.populationLevel)) town.populationLevel++;
         switch(candidate.specialty()) {
             case "farming" -> town.trading.exports.add(new TradeSettings.Export("minecraft:carrot",64,32));
             case "timber" -> town.trading.exports.add(new TradeSettings.Export("minecraft:oak_log",16,32));
@@ -101,6 +106,8 @@ public final class NpcSettlements {
     }
     private void build(ServerLevel level,Settlement town) {
         List<Placement> plan=PLANS.computeIfAbsent(level,l -> new HashMap<>()).computeIfAbsent(town.id,id -> blueprint(town));
+        // The trees standing on the land go before the first block, so nothing is built around a trunk.
+        if(town.trading.buildIndex==0 && NpcVillagePlan.walled(town)) VillageClearing.clear(level,town,plan);
         int end=Math.min(plan.size(),town.trading.buildIndex+BUILD_BUDGET);
         WorldWorkData protection=WorldWorkData.get(level);
         while(town.trading.buildIndex<end) {
@@ -130,8 +137,9 @@ public final class NpcSettlements {
         CampaignService.journal(level,town,"Our settlement is ready for neighbours and trade.");
         SettlementData.get(level).setDirty();
     }
-    /** A founding village staffs its workstations, subject to the world's population cap. */
+    /** A founding village staffs its workstations, and a city fills its houses, subject to the world's population cap. */
     public static int startingPopulation(Settlement town) {
+        if(NpcVillagePlan.city(town)) return SettlementService.populationLimit(town);
         return Math.min((int)town.stations.stream().filter(s -> s.role().providesWork()).count(),SettlementService.populationLimit(town));
     }
     public static void assignCrew(Settlement town) {
@@ -209,8 +217,15 @@ public final class NpcSettlements {
                 new ItemStack(Items.COAL,64),new ItemStack(Items.OAK_SAPLING,16),new ItemStack(Items.COBBLESTONE,64),new ItemStack(Items.STONE_AXE),
                 new ItemStack(Items.STONE_AXE),new ItemStack(Items.STONE_PICKAXE),new ItemStack(Items.STONE_PICKAXE),new ItemStack(Items.IRON_SWORD),
                 new ItemStack(Items.LEATHER_HELMET),new ItemStack(Items.LEATHER_CHESTPLATE),new ItemStack(Items.LEATHER_LEGGINGS),new ItemStack(Items.LEATHER_BOOTS)));
-        // The walled design's four gate sentries carry their own swords.
-        if(NpcVillagePlan.walled(town)) for(int n=0;n<NpcVillagePlan.SENTRIES.size();n++) starter.add(new ItemStack(Items.IRON_SWORD));
+        // Every guard post of a walled village beyond the first has its own sword.
+        if(NpcVillagePlan.walled(town)) {
+            long guards=stations(town).stream().filter(s -> s.role()==StructureRole.GUARD).count();
+            for(int n=1;n<guards;n++) starter.add(new ItemStack(Items.IRON_SWORD));
+        }
+        // A city has food and fuel for its larger population from its first day.
+        if(NpcVillagePlan.city(town)) starter.addAll(List.of(new ItemStack(Items.BREAD,64),new ItemStack(Items.BREAD,64),new ItemStack(Items.CARROT,64),
+                new ItemStack(Items.BAKED_POTATO,32),new ItemStack(Items.APPLE,32),new ItemStack(Items.COAL,64),new ItemStack(Items.OAK_SAPLING,16),
+                new ItemStack(Items.STONE_AXE),new ItemStack(Items.STONE_PICKAXE)));
         for(ItemStack offered:starter) for(Container box:containers) { offered=InventoryOps.insert(box,offered); if(offered.isEmpty()) break; }
     }
     @SubscribeEvent public void stopped(ServerStoppedEvent event) { PLANS.keySet().removeIf(l -> l.getServer()==event.getServer()); }

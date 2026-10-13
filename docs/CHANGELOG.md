@@ -2,6 +2,14 @@
 
 [Project overview](../README.md) · [All guides](README.md) · [Versioning rules](curseforge.md#public-version-format)
 
+## Unreleased
+
+- Clear trees and huge mushrooms from native villages. World generation looked for them below a heightmap that does not include trees, so it felled nothing; trees rooted on a village's land are now felled whole and canopy reaching over it from outside is trimmed back, with a final pass once all of the village's chunks have generated. Villages founded later clear their land before building.
+- Remove plugs of earth left a block above the graded ground beside streets, where world generation's coarse height survey read the land a little low.
+- Level new villages' squares with the ring of streets around them, level each street across its width, and step streets with stairs (or a slab on a crest) wherever they rise a block, with turf beside a higher street raised to meet it. The square's bench sits a row in from the rim and the bell frame's posts reach the ground. Walls stand five blocks high with eight-block towers, and lanterns light the wall walk. Villages and partly generated villages of earlier designs keep their layout.
+- Add rare walled cities of forty citizens: one settlement region in nine offers its site to a city where the land allows. Thirty-two buildings in four quarters surround a market square with a market hall, a covered well and the alarm bell: cottages, bunkhouses and barracks with 46 beds, two warehouses, a bakery, inns, smithies, a forge, a workshop, mines, lumber yards and six farms, with 32 work posts. A five-block wall with twelve towers, four gatehouses and eight gate sentries surrounds them; pregenerated roads meet the city's gates. Roads paved after this update aim at a city's gates even where an earlier version already placed a town on that site.
+- Tunnel pregenerated roads through steep hills: a road keeps a gentle grade under the summit instead of stepping over it, and climbs a cliff inside it. Tunnels are four blocks high, lined with stone bricks that seal caves and water, and lit by hanging lanterns between timber frames so nothing spawns inside.
+
 ## 0.1.1.0
 
 - Generate initial furnished NPC towns as native Minecraft structures in new terrain. Find them with `/locate structure vc:settlement`; activate their saved claim, supplies and workers once on the server thread.
@@ -17,7 +25,6 @@
 - Hold at most twenty-five temporary chunks, one 5x5 window, while establishing a nearby NPC neighbour, for the larger walled villages.
 - Keep citizens on their work when they plan a walk while in the air, such as hopping off a barrel. A craftsman fetching repair supplies no longer gives up on a reachable trap for half a minute.
 
-## Unreleased
 
 ## 0.1.0.1
 

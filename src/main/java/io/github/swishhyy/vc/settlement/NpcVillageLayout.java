@@ -7,11 +7,15 @@ import java.util.List;
 
 /**
  * Original terrain is saved before the first block changes, so construction resumes identically. Walled villages
- * (design {@link #WALLED}) read a wider square than older designs, for their wall, corner towers and graded verge.
+ * (design {@link #WALLED} and later) read a wider square than older designs, for their wall, corner towers and graded
+ * verge; levelled villages ({@link #LEVELLED}) also level their square and streets, and a city ({@link #CITY}) reads the
+ * widest square of all.
  */
 public record NpcVillageLayout(String palette,List<Integer> ground,List<Integer> surface,int design) {
-    /** The walled design and the furthest reach of the newest village from its centre. */
-    public static final int WALLED=5,EXTENT=29;
+    /** The walled design, the walled design with level streets and stepped grades, and the furthest reach of a village from its centre. */
+    public static final int WALLED=5,LEVELLED=6,EXTENT=29;
+    /** The rare walled city and its reach from its centre: the most that still fits the five by five chunks around it. */
+    public static final int CITY=7,CITY_EXTENT=39;
     /** How far villages of the earlier, unwalled designs reach. */
     public static final int LEGACY_EXTENT=23;
     public static final int SIDE=2*EXTENT+1,CELLS=SIDE*SIDE;
@@ -26,18 +30,20 @@ public record NpcVillageLayout(String palette,List<Integer> ground,List<Integer>
         if(ground.size()!=cells || surface.size()!=cells) throw new IllegalArgumentException("Invalid NPC village terrain snapshot");
         ground=List.copyOf(ground); surface=List.copyOf(surface);
     }
-    public NpcVillageLayout(String palette,List<Integer> ground,List<Integer> surface) { this(palette,ground,surface,WALLED); }
-    public static int extent(int design) { return design>=WALLED ? EXTENT : LEGACY_EXTENT; }
+    public NpcVillageLayout(String palette,List<Integer> ground,List<Integer> surface) { this(palette,ground,surface,LEVELLED); }
+    public static int extent(int design) { return design>=CITY ? CITY_EXTENT : design>=WALLED ? EXTENT : LEGACY_EXTENT; }
     public static int side(int design) { return 2*extent(design)+1; }
     public static int cells(int design) { return side(design)*side(design); }
     public int extent() { return extent(design); }
     public int side() { return side(design); }
-    public static NpcVillageLayout flat(String palette) { return flat(palette,WALLED); }
+    public static NpcVillageLayout flat(String palette) { return flat(palette,LEVELLED); }
     public static NpcVillageLayout flat(String palette,int design) {
         return new NpcVillageLayout(palette,Collections.nCopies(cells(design),0),Collections.nCopies(cells(design),0),design);
     }
     /** A column's index in a walled layout's terrain lists. */
     public static int index(int x,int z) { return (x+EXTENT)*SIDE+z+EXTENT; }
+    /** A column's index in the terrain lists of a layout of this design. */
+    public static int index(int design,int x,int z) { int extent=extent(design); return (x+extent)*side(design)+z+extent; }
     /** A column's index in this layout's own terrain lists. */
     public int cell(int x,int z) { int extent=extent(); return (x+extent)*side()+z+extent; }
     public boolean contains(int x,int z) { int extent=extent(); return Math.abs(x)<=extent && Math.abs(z)<=extent; }

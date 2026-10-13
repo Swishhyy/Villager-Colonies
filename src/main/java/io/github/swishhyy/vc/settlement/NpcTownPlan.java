@@ -15,13 +15,26 @@ public final class NpcTownPlan {
     private static final String[] NAMES={"Oakridge","Redbrook","Stoneford","Willowfield","Pinehaven","Ashvale","Copperhill","Meadowcross","Foxglade","Birchmere","Westmere","Greenhollow"};
     private static final String[] SPECIALTIES={"farming","timber","mining"};
     private NpcTownPlan() {}
-    public static Candidate worldgenCandidate(long seed,BlockPos center) {
+    /** One settlement region in each three-by-three block of regions offers its site to a city. */
+    public static final int CITY_BLOCK=3;
+    public static Candidate worldgenCandidate(long seed,BlockPos center) { return worldgenCandidate(seed,center,false); }
+    public static Candidate worldgenCandidate(long seed,BlockPos center,boolean city) {
         int x=Math.floorDiv(center.getX(),16),z=Math.floorDiv(center.getZ(),16);
         String key="structure:"+seed+":"+x+":"+z;
         UUID id=UUID.nameUUIDFromBytes(("vc:npc:"+key).getBytes(StandardCharsets.UTF_8));
         Random random=new Random(id.getMostSignificantBits()^id.getLeastSignificantBits());
-        return new Candidate(id,center,NAMES[random.nextInt(NAMES.length)]+" "+Math.abs((long)x)+"-"+Math.abs((long)z),
+        return new Candidate(id,center,NAMES[random.nextInt(NAMES.length)]+(city ? " City " : " ")+Math.abs((long)x)+"-"+Math.abs((long)z),
                 SPECIALTIES[random.nextInt(SPECIALTIES.length)],key);
+    }
+    /**
+     * Whether the settlement region {@code i,j} (its chunk divided by the structure set's spacing) offers its site to a
+     * city: exactly one region in each three-by-three block does, chosen from the seed alone.
+     */
+    public static boolean cityRegion(long seed,int i,int j) {
+        long h=seed^0x5DEECE66DL^Math.floorDiv(i,CITY_BLOCK)*0x9E3779B97F4A7C15L^Math.floorDiv(j,CITY_BLOCK)*0xC2B2AE3D27D4EB4FL;
+        h=(h^h>>>30)*0xBF58476D1CE4E5B9L; h=(h^h>>>27)*0x94D049BB133111EBL; h^=h>>>31;
+        int pick=(int)Math.floorMod(h,(long)CITY_BLOCK*CITY_BLOCK);
+        return Math.floorMod(i,CITY_BLOCK)==pick%CITY_BLOCK && Math.floorMod(j,CITY_BLOCK)==pick/CITY_BLOCK;
     }
     public static Candidate candidate(long seed,int regionX,int regionZ,int spacing) {
         String key=seed+":"+regionX+":"+regionZ+":"+spacing;

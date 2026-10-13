@@ -28,7 +28,8 @@ public final class NaturalTerrain {
     }
     public static boolean vegetation(BlockState s) {
         if(!s.getFluidState().isEmpty()) return false;
-        return s.isAir() || s.canBeReplaced() || s.is(BlockTags.LOGS)
+        return s.isAir() || s.canBeReplaced() || s.is(BlockTags.LOGS) || s.is(Blocks.MUSHROOM_STEM)
+                || s.is(Blocks.RED_MUSHROOM_BLOCK) || s.is(Blocks.BROWN_MUSHROOM_BLOCK)
                 || s.getBlock() instanceof LeavesBlock && !s.getValue(BlockStateProperties.PERSISTENT);
     }
 }

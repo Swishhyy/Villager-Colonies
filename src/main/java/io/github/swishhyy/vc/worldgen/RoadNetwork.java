@@ -29,9 +29,10 @@ import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStruct
 
 /**
  * The old roads: dirt roads laid down with new terrain between the native town sites near the world centre. The
- * {@code vc:settlements} structure set offers one site in each of its regions; a walled town stands on most of them and
- * the rest become crossroads. Roads join neighbouring sites, follow gentle ground around hills, keep clear of other
- * sites and bridge only narrow water. Everything comes from the seed and the terrain noise, never from loaded chunks,
+ * {@code vc:settlements} structure set offers one site in each of its regions; a walled town stands on most of them, a
+ * walled city on one in nine where the land allows, and the rest become crossroads. Roads join neighbouring sites at
+ * their gates, follow gentle ground around hills, tunnel through steep ones, keep clear of other sites and bridge only
+ * narrow water. Everything comes from the seed and the terrain noise, never from loaded chunks,
  * so each chunk paves exactly its own part of every road in whatever order chunks generate. Towns joined by a road trade
  * along it once both have been found.
  */
@@ -43,6 +44,8 @@ public final class RoadNetwork {
     private static final int PROFILE_STEP=4;
     /** Roads keep this far from other sites' centres, and give up rather than bridge more open water than this. */
     private static final int CLEARANCE=40,MAX_BRIDGE=64;
+    /** Roads keep this far from a city's centre: clear of its corner towers, with room for the survey grid. */
+    private static final int CITY_CLEARANCE=64;
     /** Most a road cuts into or builds up the ground; a deeper dip is spanned by a plank deck instead. */
     private static final int MAX_CUT=4,MAX_FILL=4;
     /**
@@ -94,6 +97,7 @@ public final class RoadNetwork {
     private final Map<Long,Node> nodes=new ConcurrentHashMap<>();
     private final Map<Long,Optional<Road>> roads=new ConcurrentHashMap<>();
     private final Map<Long,Road> spokes=new ConcurrentHashMap<>();
+    private final Map<Long,Boolean> cities=new ConcurrentHashMap<>();
 
     private RoadNetwork(ServerLevel level,RandomSpreadStructurePlacement placement) {
         this.level=level; this.placement=placement; seed=level.getSeed();
@@ -106,12 +110,17 @@ public final class RoadNetwork {
         synchronized(NETWORKS) {
             var network=NETWORKS.get(level);
             if(network!=null) return network;
-            var set=level.registryAccess().lookupOrThrow(Registries.STRUCTURE_SET).get(SETTLEMENTS);
-            if(set.isEmpty() || !(set.get().value().placement() instanceof RandomSpreadStructurePlacement spread)) return null;
+            var spread=placement(level.registryAccess());
+            if(spread==null) return null;
             network=new RoadNetwork(level,spread);
             NETWORKS.put(level,network);
             return network;
         }
+    }
+    /** How the settlement structure set places its sites, or null when a data pack changed it. */
+    static RandomSpreadStructurePlacement placement(net.minecraft.core.RegistryAccess access) {
+        var set=access.lookupOrThrow(Registries.STRUCTURE_SET).get(SETTLEMENTS);
+        return set.isPresent() && set.get().value().placement() instanceof RandomSpreadStructurePlacement spread ? spread : null;
     }
     /** Forgets the networks of a stopping server; each holds its level. */
     public static void forget(net.minecraft.server.MinecraftServer server) {
@@ -162,8 +171,19 @@ public final class RoadNetwork {
         return result;
     }
     private static Direction side(Node from,Node to) { return NpcVillagePlan.side(to.x()-from.x(),to.z()-from.z()); }
-    private static BlockPos gate(Node node,Direction side) {
-        var offset=NpcVillagePlan.gateOffset(side); return new BlockPos(node.x()+offset.x(),0,node.z()+offset.z());
+    /** Whether a city stands, or would stand, on this site: the structure's own decision, from the seed and terrain noise. */
+    public boolean city(Node node) {
+        Boolean known=cities.get(node.key());
+        if(known!=null) return known;
+        // Worked out outside the map's lock: it reads a few hundred noise heights and grades the city.
+        boolean city=node.land() && NpcTownPlan.cityRegion(seed,node.i(),node.j())
+                && NpcTownStructure.citySite(generator,level,random,generator.getBiomeSource(),ChunkPos.containing(new BlockPos(node.x(),0,node.z())))!=null;
+        Boolean raced=cities.putIfAbsent(node.key(),city);
+        return raced==null ? city : raced;
+    }
+    private BlockPos gate(Node node,Direction side) {
+        var offset=NpcVillagePlan.gateOffset(city(node) ? NpcVillageLayout.CITY : NpcVillageLayout.LEVELLED,side);
+        return new BlockPos(node.x()+offset.x(),0,node.z()+offset.z());
     }
 
     // ---------- Surveying ----------
@@ -194,7 +214,7 @@ public final class RoadNetwork {
         List<int[]> avoid=new ArrayList<>();
         for(int i=Math.min(a.i(),b.i())-1;i<=Math.max(a.i(),b.i())+1;i++) for(int j=Math.min(a.j(),b.j())-1;j<=Math.max(a.j(),b.j())+1;j++) {
             Node other=node(i,j);
-            if(other.key()!=a.key() && other.key()!=b.key()) avoid.add(new int[]{other.x(),other.z()});
+            if(other.key()!=a.key() && other.key()!=b.key()) avoid.add(new int[]{other.x(),other.z(),city(other) ? CITY_CLEARANCE : CLEARANCE});
         }
         int startCell=index(start,minX,minZ,width),goal=index(end,minX,minZ,width);
         double[] cost=new double[cells]; Arrays.fill(cost,Double.POSITIVE_INFINITY);
@@ -216,7 +236,7 @@ public final class RoadNetwork {
                 int next=nz*width+nx;
                 if(closed[next]) continue;
                 int bx=minX+nx*GRID,bz=minZ+nz*GRID;
-                if(next!=goal && avoid.stream().anyMatch(p -> (p[0]-bx)*(p[0]-bx)+(p[1]-bz)*(p[1]-bz)<CLEARANCE*CLEARANCE)) continue;
+                if(next!=goal && avoid.stream().anyMatch(p -> (p[0]-bx)*(p[0]-bx)+(p[1]-bz)*(p[1]-bz)<p[2]*p[2])) continue;
                 int there=sample(heights,next,minX,minZ,width);
                 boolean wet=there<=seaLevel,dry=here>seaLevel;
                 int rise=Math.abs(Math.max(there,seaLevel+1)-Math.max(here,seaLevel+1));
