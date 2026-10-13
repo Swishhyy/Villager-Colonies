@@ -152,6 +152,7 @@ public final class NpcTownPiece extends StructurePiece {
         Map<BlockPos,Block> ours=built();
         VillageClearing.clear(level,site.center(),site.layout(),chunkBounds.minX(),chunkBounds.minZ(),chunkBounds.maxX(),chunkBounds.maxZ(),
                 pos -> { Block block=ours.get(pos); return block!=null && level.getBlockState(pos).is(block); },pos -> writable(chunk,pos),18);
-        trimStrays(level,chunkBounds);
+        // Earlier designs finish their partly generated chunks as they began; the activation pass still clears their trees.
+        if(site.layout().design()>=NpcVillageLayout.LEVELLED) trimStrays(level,chunkBounds);
     }
 }

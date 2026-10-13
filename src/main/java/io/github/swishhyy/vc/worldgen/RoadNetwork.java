@@ -176,7 +176,8 @@ public final class RoadNetwork {
         Boolean known=cities.get(node.key());
         if(known!=null) return known;
         // Worked out outside the map's lock: it reads a few hundred noise heights and grades the city.
-        boolean city=node.land() && NpcTownPlan.cityRegion(seed,node.i(),node.j())
+        // The structure checks no road radius, so neither does this: a city just beyond it still keeps roads clear.
+        boolean city=NpcTownPlan.cityRegion(seed,node.i(),node.j())
                 && NpcTownStructure.citySite(generator,level,random,generator.getBiomeSource(),ChunkPos.containing(new BlockPos(node.x(),0,node.z())))!=null;
         Boolean raced=cities.putIfAbsent(node.key(),city);
         return raced==null ? city : raced;

@@ -1,6 +1,7 @@
 package io.github.swishhyy.vc.settlement;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,9 +22,10 @@ import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
  * Clears trees and huge mushrooms from a native village's land. A tree rooted on the land is felled whole, with the
- * foliage its wood held up; wood and foliage from trees rooted outside are trimmed back to the edge of the land. The
- * village's own blocks, protected blocks and containers are never touched. The same pass serves world generation, a
- * village that has just been found, and a village founded later before it is built.
+ * foliage its wood held up; wood and foliage from trees rooted outside are trimmed back to the edge of the land. Moss,
+ * snow and the like left without support go too. The village's own blocks, protected blocks and containers are never
+ * touched. The same pass serves world generation, a village that has just been found, and a village founded later
+ * before it is built.
  */
 public final class VillageClearing {
     /** Highest a canopy reaches above the land, and the depth below the surveyed ground a trunk may stand. */
@@ -32,7 +34,7 @@ public final class VillageClearing {
     private static final int LEAF_REACH=7,TREE_SPREAD=16,MAX_WOOD=2048,MAX_FOLIAGE=16384;
     private VillageClearing() {}
 
-    public static boolean wood(BlockState state) { return state.is(BlockTags.LOGS) || state.is(Blocks.MUSHROOM_STEM); }
+    public static boolean wood(BlockState state) { return state.is(BlockTags.LOGS) || state.is(Blocks.MUSHROOM_STEM) || state.is(Blocks.CREAKING_HEART); }
     public static boolean foliage(BlockState state) {
         return state.getBlock() instanceof LeavesBlock && !state.getValue(BlockStateProperties.PERSISTENT)
                 || state.is(Blocks.VINE) || state.is(Blocks.COCOA) || state.is(BlockTags.BEEHIVES)
@@ -47,18 +49,21 @@ public final class VillageClearing {
             Predicate<BlockPos> keep,Predicate<BlockPos> writable,int flags) {
         int extent=layout.extent();
         var pass=new Pass(level,center,extent,keep,writable,flags);
+        // Trees first, so each takes all of the foliage it held up; loose foliage on the land goes afterwards.
+        List<BlockPos> loose=new ArrayList<>();
         for(int x=Math.max(minX,center.getX()-extent);x<=Math.min(maxX,center.getX()+extent);x++)
             for(int z=Math.max(minZ,center.getZ()-extent);z<=Math.min(maxZ,center.getZ()+extent);z++) {
                 int ground=center.getY()+layout.ground(x-center.getX(),z-center.getZ());
                 int top=Math.min(level.getMaxY()-1,Math.max(level.getHeight(Heightmap.Types.WORLD_SURFACE,x,z),ground+CANOPY));
                 for(int y=ground-ROOTS;y<=top;y++) {
                     BlockPos pos=new BlockPos(x,y,z);
-                    if(!writable.test(pos) || keep.test(pos)) continue;
+                    if(!pass.open(pos)) continue;
                     BlockState state=level.getBlockState(pos);
                     if(wood(state)) pass.tree(pos);
-                    else if(foliage(state)) pass.remove(pos);
+                    else if(foliage(state)) loose.add(pos);
                 }
             }
+        for(BlockPos pos:loose) if(pass.open(pos) && foliage(level.getBlockState(pos))) pass.remove(pos);
         return pass.finish();
     }
     /** The whole land of a village in a loaded world, keeping its plan, protected blocks and containers. */
@@ -71,7 +76,7 @@ public final class VillageClearing {
         Predicate<BlockPos> keep=pos -> {
             Block block=planned.get(pos); BlockState state=level.getBlockState(pos);
             return block!=null && state.is(block) || protection.contains(pos)
-                    || level.getBlockEntity(pos)!=null && !state.is(BlockTags.BEEHIVES);
+                    || level.getBlockEntity(pos)!=null && !state.is(BlockTags.BEEHIVES) && !state.is(Blocks.CREAKING_HEART);
         };
         int extent=layout.extent();
         return clear(level,town.center,layout,town.center.getX()-extent,town.center.getZ()-extent,town.center.getX()+extent,town.center.getZ()+extent,
@@ -106,39 +111,56 @@ public final class VillageClearing {
             Set<BlockPos> felled=new HashSet<>();
             for(BlockPos log:logs) if(rooted || land(log)) felled.add(log);
             // Foliage the felled wood held up, searched through touching foliage as a leaf's distance is.
+            Map<BlockPos,Integer> reach=foliageFrom(felled,Set.of());
+            // Foliage a neighbouring tree still standing holds up stays, however it touches this canopy.
+            Set<BlockPos> standing=new HashSet<>();
+            for(BlockPos leaf:reach.keySet()) if(!land(leaf)) for(int dx=-1;dx<=1;dx++) for(int dy=-1;dy<=1;dy++) for(int dz=-1;dz<=1;dz++) {
+                BlockPos near=leaf.offset(dx,dy,dz);
+                if(!felled.contains(near) && open(near) && wood(level.getBlockState(near))) standing.add(near);
+            }
+            Set<BlockPos> held=standing.isEmpty() ? Set.of() : foliageFrom(standing,felled).keySet();
+            for(BlockPos log:felled) remove(log);
+            for(BlockPos leaf:reach.keySet()) {
+                if(felled.contains(leaf)) continue;
+                if(land(leaf) || rooted && !held.contains(leaf)) remove(leaf);
+            }
+        }
+        /** Foliage within a leaf's reach of this wood, through touching foliage only. */
+        Map<BlockPos,Integer> foliageFrom(Set<BlockPos> wood,Set<BlockPos> excluded) {
             Map<BlockPos,Integer> reach=new HashMap<>(); var search=new ArrayDeque<BlockPos>();
-            for(BlockPos log:felled) { reach.put(log,0); search.add(log); }
+            for(BlockPos log:wood) { reach.put(log,0); search.add(log); }
             while(!search.isEmpty() && reach.size()<MAX_FOLIAGE) {
                 BlockPos at=search.poll(); int depth=reach.get(at);
                 if(depth>=LEAF_REACH) continue;
                 for(int dx=-1;dx<=1;dx++) for(int dy=-1;dy<=1;dy++) for(int dz=-1;dz<=1;dz++) {
                     BlockPos next=at.offset(dx,dy,dz);
-                    if(reach.containsKey(next) || !open(next) || !foliage(level.getBlockState(next))) continue;
+                    if(reach.containsKey(next) || excluded.contains(next) || !open(next) || !foliage(level.getBlockState(next))) continue;
                     reach.put(next,depth+1); search.add(next);
                 }
             }
-            for(BlockPos log:felled) {
-                remove(log);
-                // Mushrooms and moss growing on a fallen log go with it.
-                BlockPos above=log.above();
-                if(!felled.contains(above) && open(above) && !level.getBlockState(above).isAir() && !level.getBlockState(above).canSurvive(level,above)) remove(above);
-            }
-            for(BlockPos leaf:reach.keySet()) {
-                if(felled.contains(leaf)) continue;
-                if(land(leaf) || rooted && !besideStandingWood(leaf,logs)) remove(leaf);
-            }
+            return reach;
         }
-        /** Foliage off the land that touches wood still standing belongs to another tree. */
-        boolean besideStandingWood(BlockPos leaf,Set<BlockPos> tree) {
-            for(int dx=-1;dx<=1;dx++) for(int dy=-1;dy<=1;dy++) for(int dz=-1;dz<=1;dz++) {
-                BlockPos near=leaf.offset(dx,dy,dz);
-                if(tree.contains(near) || removed.contains(near) || !writable.test(near) || keep.test(near)) continue;
-                if(wood(level.getBlockState(near))) return true;
-            }
-            return false;
+        /** Whether a block and everything around it can be read here, so asking whether it still stands reads nothing beyond. */
+        boolean readable(BlockPos pos) {
+            if(!writable.test(pos)) return false;
+            for(Direction direction:Direction.values()) if(!writable.test(pos.relative(direction))) return false;
+            return true;
         }
-        /** Leaves left beside a cleared block learn they lost their wood, so a cut canopy decays as it would. */
+        /**
+         * Moss hanging under a cleared block, snow and carpets on one, and anything else left without support go too, a
+         * chain at a time; then leaves beside a cleared block learn they lost their wood, so a cut canopy decays as it would.
+         */
         int finish() {
+            var check=new ArrayDeque<>(removed);
+            while(!check.isEmpty()) {
+                BlockPos pos=check.poll();
+                for(BlockPos near:new BlockPos[]{pos.above(),pos.below()}) {
+                    if(!open(near) || !readable(near)) continue;
+                    BlockState state=level.getBlockState(near);
+                    if(state.isAir() || state.canSurvive(level,near)) continue;
+                    remove(near); check.add(near);
+                }
+            }
             Set<BlockPos> told=new HashSet<>();
             for(BlockPos pos:removed) for(Direction direction:Direction.values()) {
                 BlockPos near=pos.relative(direction);

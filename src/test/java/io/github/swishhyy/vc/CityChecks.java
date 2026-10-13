@@ -85,8 +85,15 @@ public final class CityChecks {
             if(walls.gates().stream().anyMatch(g -> g.x()==-wall && Math.abs(g.z()-r)<=2) || walls.towers().stream().anyMatch(t -> t.x()==-wall && Math.abs(t.z()-r)<=2)) continue;
             for(int y=0;y<walls.height();y++) assertFalse(states.get(new BlockPos(-wall,y,row)).isAir(),"The west wall has a gap at "+row);
         }
-        for(var tower:walls.towers())
-            assertTrue(states.get(new BlockPos(tower.x(),walls.towerHeight(),tower.z()+Integer.signum(tower.z()))).is(Blocks.LADDER),"A city tower cannot be climbed");
+        for(var tower:walls.towers()) {
+            // Corner towers climb their outer face; towers along the north and south walls climb their inner face.
+            int side=Integer.signum(tower.z());
+            assertTrue(states.get(new BlockPos(tower.x(),walls.towerHeight(),tower.z()+side)).is(Blocks.LADDER)
+                    || states.get(new BlockPos(tower.x(),walls.towerHeight(),tower.z()-side)).is(Blocks.LADDER),"A city tower cannot be climbed at "+tower);
+            // Every tower has a slit in a face that looks out of the city: a north or south wall tower's outer face, otherwise its east or west one.
+            var outward=Math.abs(tower.z())>Math.abs(tower.x()) ? new BlockPos(tower.x(),3,tower.z()+2*side) : new BlockPos(tower.x()+2*Integer.signum(tower.x()),3,tower.z());
+            assertTrue(states.get(outward).isAir(),"A city tower has no arrow slit facing out at "+tower);
+        }
     }
 
     @Test void cityGradesRollingGroundAndRejectsSteepHills() {

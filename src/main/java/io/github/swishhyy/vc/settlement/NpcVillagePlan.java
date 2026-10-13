@@ -390,9 +390,13 @@ public final class NpcVillagePlan {
                 for(int n=0;n<lots.size();n++) {
                     int reach=separation(lots.get(n),anchor); lotHeights[n]=Math.clamp(lotHeights[n],-reach,reach);
                 }
-                // One block per road step between terraces, including on steeper natural hills.
-                for(int pass=0;pass<lots.size();pass++) for(int a=0;a<lots.size();a++) for(int b=0;b<lots.size();b++)
-                    lotHeights[a]=Math.min(lotHeights[a],lotHeights[b]+separation(lots.get(a),lots.get(b)));
+                // One block per road step between terraces, including on steeper natural hills. A levelled village's square
+                // keeps its own level, which its banner and fittings are built at; land that cannot meet it is refused.
+                boolean square=layout.design()>=NpcVillageLayout.LEVELLED;
+                for(int pass=0;pass<lots.size();pass++) for(int a=0;a<lots.size();a++) {
+                    if(square && lots.get(a)==plaza) continue;
+                    for(int b=0;b<lots.size();b++) lotHeights[a]=Math.min(lotHeights[a],lotHeights[b]+separation(lots.get(a),lots.get(b)));
+                }
             }
         }
         /**
@@ -782,8 +786,8 @@ public final class NpcVillagePlan {
         }
         /** A market hall, a covered well, the alarm bell, noticeboards over the couriers, the banner, lamps and planters. */
         void citySquare() {
-            shed(6,-6,4,2,0);
-            for(int x=2;x<=10;x++) for(int z=-8;z<=-4;z++) block(x,3,z,Math.floorMod(x,3)==0 ? nativeBlock("red_wool") : nativeBlock("white_wool"));
+            shed(6,-6,3,2,0);
+            for(int x=3;x<=9;x++) for(int z=-8;z<=-4;z++) block(x,3,z,Math.floorMod(x,3)==0 ? nativeBlock("red_wool") : nativeBlock("white_wool"));
             for(int x:new int[]{3,4,8,9}) slab(x,0,-5,Blocks.OAK_SLAB,SlabType.TOP);
             block(3,0,-7,Blocks.BARREL); block(9,0,-7,Blocks.BARREL);
             block(4,1,-5,Blocks.POTTED_DANDELION); block(8,1,-5,Blocks.POTTED_POPPY);
@@ -937,17 +941,22 @@ public final class NpcVillagePlan {
                     if(((dx+dz)&1)==0) block(x,y+height+1,z,masonry(x,y+height+1,z));
                 } else block(x,y+height,z,palette.fort());
             }
+            // A tower part way along a wall (a city's) looks out of its outer face alone: its sides meet the wall, and on
+            // the north and south walls the ladder moves to the inner face to leave the outer one open.
+            boolean along=Math.abs(cx)!=Math.abs(cz),northSouth=Math.abs(cz)>Math.abs(cx);
             // Arrow slits in the faces that do not hold the ladder or the door.
             for(int[] face:new int[][]{{2,0},{-2,0},{0,2},{0,-2}}) {
-                if(face[0]==0 && face[1]==2*sz || face[1]==0 && face[0]==-2*sx) continue;
+                if(along) { if(northSouth ? face[0]!=0 || face[1]!=2*sz : face[1]!=0 || face[0]!=2*sx) continue; }
+                else if(face[0]==0 && face[1]==2*sz || face[1]==0 && face[0]==-2*sx) continue;
                 put(cx+face[0],y+3,cz+face[1],Blocks.AIR.defaultBlockState(),false);
             }
             // A door faces into the village; a ladder climbs the outer wall to the lookout.
             BlockState door=Blocks.OAK_DOOR.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING,sx<0 ? Direction.EAST : Direction.WEST);
             put(cx-2*sx,y,cz-sz,door.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF,DoubleBlockHalf.LOWER),true);
             put(cx-2*sx,y+1,cz-sz,door.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF,DoubleBlockHalf.UPPER),true);
-            BlockState ladder=Blocks.LADDER.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING,sz<0 ? Direction.SOUTH : Direction.NORTH);
-            for(int h=0;h<=height;h++) put(cx,y+h,cz+sz,ladder,true);
+            int ladderZ=along && northSouth ? -sz : sz;
+            BlockState ladder=Blocks.LADDER.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING,ladderZ<0 ? Direction.SOUTH : Direction.NORTH);
+            for(int h=0;h<=height;h++) put(cx,y+h,cz+ladderZ,ladder,true);
             block(cx,y+height+1,cz,Blocks.LANTERN);
         }
         void sentry(Lot lot) {
@@ -980,19 +989,29 @@ public final class NpcVillagePlan {
                 Column c=entry.getKey(); Floor f=entry.getValue();
                 boolean rim=square(c) && f.block()==Blocks.STONE_BRICKS;
                 if(f.block()!=Blocks.DIRT_PATH && !rim) continue;
-                Direction down=null; int lower=0;
+                Direction down=null; int lower=0; boolean higher=false;
                 for(Direction d:Direction.Plane.HORIZONTAL) {
                     Column next=new Column(c.x()+d.getStepX(),c.z()+d.getStepZ()); Floor n=floors.get(next);
-                    if(n!=null && n.height()==f.height()-1 && (n.block()==Blocks.DIRT_PATH || square(next))) { lower++; down=d; }
+                    if(n==null) continue;
+                    higher|=n.height()>f.height();
+                    if(n.height()==f.height()-1 && walkable(next,n)) { lower++; down=d; }
                 }
                 BlockPos at=town.center.offset(c.x(),f.height()-1,c.z());
-                if(lower==0 || detail.containsKey(at)) continue;
+                // A slab beside higher ground would leave a step and a half up to it.
+                if(lower==0 || lower>1 && higher || detail.containsKey(at)) continue;
                 Block stair=rim ? Blocks.STONE_BRICK_STAIRS : palette.stairs(),slab=rim ? Blocks.STONE_BRICK_SLAB : palette.slab();
                 put(c.x(),f.height()-1,c.z(),lower==1 ? stair.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING,down.getOpposite())
                         : slab.defaultBlockState(),true);
             }
         }
         boolean square(Column c) { return Math.abs(c.x()-plaza.x())<=plaza.radiusX() && Math.abs(c.z()-plaza.z())<=plaza.radiusZ(); }
+        /** Ground a walker steps down onto: a street, the square or a building's lot, such as its doorstep. */
+        boolean walkable(Column c,Floor f) {
+            if(f.block()==Blocks.DIRT_PATH || square(c)) return true;
+            for(Lot lot:lots) if(Math.abs(c.x()-lot.x())<=lot.radiusX() && Math.abs(c.z()-lot.z())<=lot.radiusZ())
+                return !walls.towers().contains(lot) && !walls.sentries().contains(lot);
+            return false;
+        }
         /** Every remaining column of a walled village takes its graded height; plants stay where the ground is unchanged. */
         void terrain() {
             int extent=layout.extent();
