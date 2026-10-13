@@ -18,7 +18,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.FallingBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
@@ -43,6 +45,18 @@ public final class RoadNetwork {
     private static final int CLEARANCE=40,MAX_BRIDGE=64;
     /** Most a road cuts into or builds up the ground; a deeper dip is spanned by a plank deck instead. */
     private static final int MAX_CUT=4,MAX_FILL=4;
+    /**
+     * Where a hill is too steep to climb gently, the road keeps a gentle grade and tunnels through. A road deeper under
+     * the land than an open cutting may go runs in a tunnel, which needs two blocks of rock over its roof somewhere and
+     * a sensible length; gaps too short to open to the sky are roofed over, and no tunnel starts beside a gate.
+     */
+    private static final int ENTER=MAX_CUT+1,COVER=7,MERGE=4,MIN_TUNNEL=8,MAX_TUNNEL=48,TUNNEL_MARGIN=12;
+    /** Grades tried through a hill, gentlest first, as rise over run; the steepest is a stair cut through a cliff. */
+    private static final int[][] GRADES={{1,4},{1,2},{1,1}};
+    /** Clear height in a tunnel, the open road this close to a tunnel that may cut deeper to meet it, and blocks between lanterns. */
+    private static final int HEADROOM=4,APPROACH=8,LAMP_SPACING=6;
+    /** Blocks around a chunk whose roads it works out, so walls, timbers and lanterns agree with the chunks beside it. */
+    private static final int REACH=8;
     /** Largest survey corridor, in samples. */
     private static final int MAX_CELLS=60000;
     /** Shortest stretch of saved road between traders' waypoints, so long roads stay small in the save. */
@@ -58,11 +72,18 @@ public final class RoadNetwork {
     public record Node(int i,int j,int x,int z,boolean land) {
         public long key() { return pack(i,j); }
     }
-    /** A surveyed road: its centre line, with the height a walker stands at and whether it crosses water. */
-    public record Road(int[] xs,int[] zs,int[] feet,boolean[] water,int minX,int maxX,int minZ,int maxZ) {
+    /** A surveyed road: its centre line, with the height a walker stands at, whether it crosses water and where it runs underground. */
+    public record Road(int[] xs,int[] zs,int[] feet,boolean[] water,boolean[] tunnel,int minX,int maxX,int minZ,int maxZ) {
         public int length() { return xs.length; }
         boolean near(int x0,int z0,int x1,int z1) { return maxX>=x0-1 && minX<=x1+1 && maxZ>=z0-1 && minZ<=z1+1; }
+        /** Whether this column of open road leads into a tunnel, so it cuts down to the portal rather than stepping up. */
+        boolean approach(int n) {
+            for(int k=Math.max(0,n-APPROACH);k<=Math.min(length()-1,n+APPROACH);k++) if(tunnel[k]) return true;
+            return false;
+        }
     }
+    /** Heights along a course and the columns that run in a tunnel. */
+    public record Profile(int[] feet,boolean[] tunnel) {}
 
     private final long seed;
     private final ChunkGenerator generator;
@@ -156,7 +177,7 @@ public final class RoadNetwork {
     public Road spoke(Node node,Direction side) {
         return spokes.computeIfAbsent(node.key()*8+side.ordinal(),k -> {
             BlockPos gate=gate(node,side);
-            return profile(line(List.of(new double[]{gate.getX(),gate.getZ()},new double[]{node.x(),node.z()})));
+            return profile(line(List.of(new double[]{gate.getX(),gate.getZ()},new double[]{node.x(),node.z()})),false);
         });
     }
     private record Cell(int x,int z) {}
@@ -220,7 +241,7 @@ public final class RoadNetwork {
         }
         Collections.reverse(points);
         points.set(0,new double[]{start.getX(),start.getZ()}); points.set(points.size()-1,new double[]{end.getX(),end.getZ()});
-        return profile(line(smooth(smooth(points))));
+        return profile(line(smooth(smooth(points))),true);
     }
     private static int index(BlockPos pos,int minX,int minZ,int width) {
         return Math.floorDiv(pos.getZ()-minZ+GRID/2,GRID)*width+Math.floorDiv(pos.getX()-minX+GRID/2,GRID);
@@ -254,10 +275,10 @@ public final class RoadNetwork {
         }
         return columns;
     }
-    /** Heights along a course, eased to at most a block per block walked within the cut and fill a road may make. */
-    private Road profile(List<int[]> columns) {
+    /** The road along a course, with tunnels through steep hills where it is not a town's own street. */
+    private Road profile(List<int[]> columns,boolean tunnels) {
         int n=columns.size();
-        int[] xs=new int[n],zs=new int[n],natural=new int[n],feet=new int[n];
+        int[] xs=new int[n],zs=new int[n],natural=new int[n];
         boolean[] water=new boolean[n];
         int minX=Integer.MAX_VALUE,maxX=Integer.MIN_VALUE,minZ=Integer.MAX_VALUE,maxZ=Integer.MIN_VALUE;
         int[] sampled=new int[n];
@@ -272,14 +293,75 @@ public final class RoadNetwork {
             int h=after==before ? sampled[before] : Math.round(sampled[before]+(sampled[after]-sampled[before])*(float)(i-before)/(after-before));
             water[i]=h<=seaLevel; natural[i]=water[i] ? seaLevel+1 : h;
         }
-        int[] low=natural.clone(),high=natural.clone();
+        Profile graded=grade(natural,water,tunnels);
+        return new Road(xs,zs,graded.feet(),water,graded.tunnel(),minX,maxX,minZ,maxZ);
+    }
+    /**
+     * Heights along a course from the land under it (water reads as one above sea level): eased to at most a block per
+     * block walked within the cut and fill a road may make, except where a gentler grade through a hill is better.
+     */
+    public static Profile grade(int[] natural,boolean[] water,boolean tunnels) {
+        int n=natural.length;
+        int[] low=natural.clone(),high=natural.clone(),eased=new int[n],feet=new int[n];
         for(int i=1;i<n;i++) { low[i]=Math.min(low[i],low[i-1]+1); high[i]=Math.max(high[i],high[i-1]-1); }
         for(int i=n-2;i>=0;i--) { low[i]=Math.min(low[i],low[i+1]+1); high[i]=Math.max(high[i],high[i+1]-1); }
         for(int i=0;i<n;i++) {
-            int eased=Math.floorDiv(low[i]+high[i],2);
-            feet[i]=water[i] ? Math.max(eased,seaLevel+1) : Math.clamp(eased,natural[i]-MAX_CUT,natural[i]+MAX_FILL);
+            eased[i]=Math.floorDiv(low[i]+high[i],2);
+            feet[i]=water[i] ? Math.max(eased[i],natural[i]) : Math.clamp(eased[i],natural[i]-MAX_CUT,natural[i]+MAX_FILL);
         }
-        return new Road(xs,zs,feet,water,minX,maxX,minZ,maxZ);
+        boolean[] tunnel=new boolean[n],done=new boolean[n];
+        if(!tunnels) return new Profile(feet,tunnel);
+        for(int[] grade:GRADES) {
+            // The highest line at this grade that never rises above the land: it follows the valleys and runs under the hills.
+            int[] gentle=new int[n];
+            for(int i=0;i<n;i++) gentle[i]=natural[i]*grade[1];
+            for(int i=1;i<n;i++) gentle[i]=Math.min(gentle[i],gentle[i-1]+grade[0]);
+            for(int i=n-2;i>=0;i--) gentle[i]=Math.min(gentle[i],gentle[i+1]+grade[0]);
+            for(int i=0;i<n;i++) gentle[i]=Math.floorDiv(gentle[i],grade[1]);
+            for(int a=0,b;a<n;a=b+1) {
+                b=a;
+                if(gentle[a]>=eased[a]) continue;
+                while(b+1<n && gentle[b+1]<eased[b+1]) b++;
+                bore(natural,water,gentle,feet,tunnel,done,a,b,grade[0]>=grade[1]);
+            }
+        }
+        return new Profile(feet,tunnel);
+    }
+    /**
+     * Takes the gentle line along a stretch where it dips under the eased road, if every part too deep for a cutting can
+     * be a tunnel. A tunnel as steep as the open road only climbs a cliff the open road cannot step up.
+     */
+    private static void bore(int[] natural,boolean[] water,int[] gentle,int[] feet,boolean[] tunnel,boolean[] done,int a,int b,boolean steepest) {
+        int n=natural.length;
+        for(int i=a;i<=b;i++) if(done[i]) return;
+        if(steepest) {
+            boolean cliff=false;
+            for(int i=Math.max(1,a);i<=Math.min(n-1,b+1);i++) cliff|=Math.abs(feet[i]-feet[i-1])>1;
+            if(!cliff) return;
+        }
+        List<int[]> runs=new ArrayList<>();
+        for(int i=a;i<=b;i++) {
+            if(water[i] || natural[i]-gentle[i]<ENTER) continue;
+            int start=i;
+            while(i<b && !water[i+1] && natural[i+1]-gentle[i+1]>=ENTER) i++;
+            int[] last=runs.isEmpty() ? null : runs.getLast();
+            boolean wet=false;
+            if(last!=null) for(int k=last[1]+1;k<start;k++) wet|=water[k];
+            // A gap too short to open to the sky is roofed over, so a tunnel has no skylights or stubs.
+            if(last!=null && start-last[1]-1<=MERGE && !wet) last[1]=i;
+            else runs.add(new int[]{start,i});
+        }
+        if(runs.isEmpty()) return;
+        boolean[] under=new boolean[n];
+        for(int[] run:runs) {
+            int deepest=0,length=run[1]-run[0]+1;
+            for(int i=run[0];i<=run[1];i++) { deepest=Math.max(deepest,natural[i]-gentle[i]); under[i]=true; }
+            if(length<MIN_TUNNEL || length>MAX_TUNNEL || deepest<COVER || run[0]<TUNNEL_MARGIN || run[1]>n-1-TUNNEL_MARGIN) return;
+        }
+        // Out of the tunnels the road cuts no deeper than an open road may, and it meets the road either side without a step.
+        for(int i=a;i<=b;i++) if(!under[i] && natural[i]-gentle[i]>MAX_CUT) return;
+        if(a>0 && Math.abs(gentle[a]-feet[a-1])>1 || b<n-1 && Math.abs(gentle[b]-feet[b+1])>1) return;
+        for(int i=a;i<=b;i++) { feet[i]=gentle[i]; tunnel[i]=under[i]; done[i]=true; }
     }
 
     // ---------- Paving a generating chunk ----------
@@ -294,7 +376,7 @@ public final class RoadNetwork {
             Node node=node(i,j);
             for(Node other:neighbours(node)) {
                 BlockPos a=gate(node,side(node,other)),b=gate(other,side(other,node));
-                int margin=Math.max(96,(int)(Math.sqrt(a.distSqr(b))/3))+2;
+                int margin=Math.max(96,(int)(Math.sqrt(a.distSqr(b))/3))+2+REACH;
                 if(Math.max(a.getX(),b.getX())+margin<x0 || Math.min(a.getX(),b.getX())-margin>x1
                         || Math.max(a.getZ(),b.getZ())+margin<z0 || Math.min(a.getZ(),b.getZ())-margin>z1) continue;
                 Road road=road(node,other);
@@ -302,31 +384,17 @@ public final class RoadNetwork {
                 Node first=node.key()<other.key() ? node : other;
                 near.put(first.key()*31+(first==node ? other : node).key(),road);
                 Road spoke=spoke(node,side(node,other));
-                if(spoke.near(x0,z0,x1,z1)) streets.put(node.key()*8+side(node,other).ordinal(),spoke);
+                if(spoke.near(x0-REACH,z0-REACH,x1+REACH,z1+REACH)) streets.put(node.key()*8+side(node,other).ordinal(),spoke);
             }
         }
-        Set<Long> paved=new HashSet<>();
-        boolean changed=false;
-        // World generation reads the generation heightmaps; a finished world (the place command) keeps only live ones.
-        boolean live=world instanceof ServerLevel;
         List<Road> ordered=new ArrayList<>(near.values()); ordered.addAll(streets.values());
-        for(Road road:ordered) {
-            if(!road.near(x0,z0,x1,z1)) continue;
-            for(int n=0;n<road.length();n++) {
-                int x=road.xs()[n],z=road.zs()[n];
-                if(x<x0-1 || x>x1+1 || z<z0-1 || z>z1+1) continue;
-                // A three-block road: each column takes the height of the first stretch of road to reach it.
-                for(int dx=-1;dx<=1;dx++) for(int dz=-1;dz<=1;dz++) {
-                    int cx=x+dx,cz=z+dz;
-                    if(cx<x0 || cx>x1 || cz<z0 || cz>z1 || !paved.add(pack(cx,cz))) continue;
-                    pave(world,cx,cz,road.feet()[n],live);
-                    changed=true;
-                }
-            }
-        }
+        var plan=new Plan(ordered,x0-REACH,z0-REACH,16+2*REACH);
+        // World generation reads the generation heightmaps; a finished world (the place command) keeps only live ones.
+        boolean live=world instanceof ServerLevel,changed=false;
+        for(int x=x0;x<=x1;x++) for(int z=z0;z<=z1;z++) changed|=plan.pave(world,x,z,live);
         return changed;
     }
-    private static void pave(WorldGenLevel world,int x,int z,int feet,boolean live) {
+    private static void pave(WorldGenLevel world,int x,int z,int feet,boolean live,boolean approach) {
         int surface=world.getHeight(live ? Heightmap.Types.WORLD_SURFACE : Heightmap.Types.WORLD_SURFACE_WG,x,z);
         int ground=world.getHeight(live ? Heightmap.Types.OCEAN_FLOOR : Heightmap.Types.OCEAN_FLOOR_WG,x,z);
         int top=ground-1,road=feet-1;
@@ -337,10 +405,151 @@ public final class RoadNetwork {
             clear(world,x,deck+1,deck+3,z);
             return;
         }
-        if(road<top-MAX_CUT) road=top;
+        // Where the land is higher than surveyed the road steps up onto it, except on the way into a tunnel, which it must meet.
+        if(road<top-(approach ? 2*MAX_CUT : MAX_CUT)) road=top;
         for(int y=top+1;y<road;y++) set(world,x,y,z,Blocks.DIRT.defaultBlockState());
         set(world,x,road,z,Blocks.DIRT_PATH.defaultBlockState());
         clear(world,x,road+1,Math.max(top,road)+3,z);
+    }
+    /** A column of road: which road (in a chunk's fixed order) and which column of it reached here first, and its height. */
+    private record Claim(int road,int n,int feet) {
+        boolean before(Claim other) { return road<other.road || road==other.road && n<other.n; }
+    }
+    /**
+     * The roads in and around a chunk: which reaches each column first, in open air or in a tunnel, the tunnels' walls,
+     * timbers and lanterns. Each chunk works this out for the columns around it from the surveyed roads alone, so
+     * neighbouring chunks agree on every column they share, and each paves only its own.
+     */
+    private static final class Plan {
+        private static final int[][] SIDES={{1,0},{-1,0},{0,1},{0,-1}};
+        private final List<Road> roads;
+        private final int ox,oz,size;
+        private final Claim[] open,bore;
+        /** The lowest block of each tunnel column's roof: headroom over the highest stretch of tunnel to reach it. */
+        private final int[] roof;
+        /** Tunnel columns with a timber beam in the roof or a lantern under it, and wall columns holding a post under a beam's end. */
+        private final Set<Integer> beams=new HashSet<>(),lamps=new HashSet<>();
+        private final Map<Integer,Integer> posts=new HashMap<>();
+
+        Plan(List<Road> roads,int ox,int oz,int size) {
+            this.roads=roads; this.ox=ox; this.oz=oz; this.size=size;
+            open=new Claim[size*size]; bore=new Claim[size*size]; roof=new int[size*size];
+            for(int r=0;r<roads.size();r++) {
+                Road road=roads.get(r);
+                if(!road.near(ox,oz,ox+size-1,oz+size-1)) continue;
+                for(int n=0;n<road.length();n++) {
+                    int x=road.xs()[n],z=road.zs()[n],feet=road.feet()[n];
+                    if(x<ox-1 || x>ox+size || z<oz-1 || z>oz+size) continue;
+                    // A three-block road: each column takes the height of the first stretch of road to reach it.
+                    for(int dx=-1;dx<=1;dx++) for(int dz=-1;dz<=1;dz++) {
+                        int i=index(x+dx,z+dz);
+                        if(i<0) continue;
+                        if(!road.tunnel()[n]) { if(open[i]==null) open[i]=new Claim(r,n,feet); }
+                        else if(bore[i]==null) { bore[i]=new Claim(r,n,feet); roof[i]=feet+HEADROOM; }
+                        else if(bore[i].road()==r) roof[i]=Math.max(roof[i],feet+HEADROOM);
+                    }
+                }
+            }
+            for(int i=0;i<open.length;i++) if(open[i]!=null && bore[i]!=null && open[i].feet()-1<=roof[i]) {
+                // A tunnel's mouth is roofed, at the height of the first stretch to reach it so the floor has no step.
+                if(open[i].road()==bore[i].road()) {
+                    if(open[i].before(bore[i])) { bore[i]=open[i]; roof[i]=Math.max(roof[i],open[i].feet()+HEADROOM); }
+                    open[i]=null;
+                }
+                // Where roads cross, one passing over a tunnel keeps both; otherwise the first to reach the column wins.
+                else if(open[i].before(bore[i])) bore[i]=null;
+                else open[i]=null;
+            }
+            for(int r=0;r<roads.size();r++) {
+                Road road=roads.get(r);
+                for(int s=0;s<road.length();s++) {
+                    if(!road.tunnel()[s] || s>0 && road.tunnel()[s-1]) continue;
+                    int e=s;
+                    while(e+1<road.length() && road.tunnel()[e+1]) e++;
+                    // A timber frame with a lantern under it at both mouths and every few blocks between, so nothing inside is dark.
+                    int span=e-s+2,gaps=(span+LAMP_SPACING-1)/LAMP_SPACING;
+                    for(int k=0;k<=gaps;k++) frame(r,road,s-1+Math.round((float)k*span/gaps));
+                    s=e;
+                }
+            }
+        }
+        private int index(int x,int z) {
+            x-=ox; z-=oz;
+            return x<0 || z<0 || x>=size || z>=size ? -1 : z*size+x;
+        }
+        /** A beam across the tunnel at a column of its road, on posts set into the walls, with a lantern hung from its middle. */
+        private void frame(int r,Road road,int n) {
+            int x=road.xs()[n],z=road.zs()[n],at=index(x,z);
+            if(at<0 || bore[at]==null || bore[at].road()!=r) return;
+            lamps.add(at); beams.add(at);
+            boolean alongX=Math.abs(road.xs()[n+1]-road.xs()[n-1])>=Math.abs(road.zs()[n+1]-road.zs()[n-1]);
+            for(int side=-1;side<=1;side+=2) for(int k=1,last=at;k<=4;k++) {
+                int cx=alongX ? x : x+side*k,cz=alongX ? z+side*k : z,i=index(cx,cz);
+                if(i<0) break;
+                if(bore[i]!=null && bore[i].road()==r) { beams.add(i); last=i; continue; }
+                if(wall(cx,cz)!=null) posts.put(i,last);
+                break;
+            }
+        }
+        /** The blocks of a column beside a tunnel that wall it in, from its neighbours' floor to their roof; null if it is no wall. */
+        private int[] wall(int x,int z) {
+            int i=index(x,z);
+            if(i<0 || bore[i]!=null) return null;
+            int low=Integer.MAX_VALUE,high=Integer.MIN_VALUE;
+            for(int[] d:SIDES) {
+                int j=index(x+d[0],z+d[1]);
+                if(j>=0 && bore[j]!=null) { low=Math.min(low,bore[j].feet()-1); high=Math.max(high,roof[j]); }
+            }
+            // An open road at the tunnel's height meets it here; one passing well above leaves the wall below it.
+            if(low>high || open[i]!=null && open[i].feet()-1<=high) return null;
+            return new int[]{low,high};
+        }
+        boolean pave(WorldGenLevel world,int x,int z,boolean live) {
+            int i=index(x,z);
+            boolean changed=false;
+            if(open[i]!=null) {
+                RoadNetwork.pave(world,x,z,open[i].feet(),live,roads.get(open[i].road()).approach(open[i].n()));
+                changed=true;
+            }
+            if(bore[i]!=null) { dig(world,x,z,i); changed=true; }
+            else {
+                int[] wall=wall(x,z);
+                if(wall!=null) { for(int y=wall[0];y<=wall[1];y++) set(world,x,y,z,lining(x,y,z)); changed=true; }
+            }
+            Integer post=posts.get(i);
+            if(post!=null) {
+                for(int y=bore[post].feet();y<roof[post];y++) set(world,x,y,z,Blocks.SPRUCE_LOG.defaultBlockState());
+                set(world,x,roof[post],z,Blocks.SPRUCE_PLANKS.defaultBlockState());
+            }
+            if(beams.contains(i)) set(world,x,roof[i],z,Blocks.SPRUCE_PLANKS.defaultBlockState());
+            if(lamps.contains(i)) set(world,x,roof[i]-1,z,Blocks.LANTERN.defaultBlockState().setValue(BlockStateProperties.HANGING,true));
+            return changed;
+        }
+        /**
+         * A tunnel column: a path on firm ground, headroom cleared of rock and water, and a stone roof. The roof and the
+         * ground under the path rise and fall to close off any step to the next column, so caves and water stay out.
+         */
+        private void dig(WorldGenLevel world,int x,int z,int i) {
+            int feet=bore[i].feet(),low=feet-2,high=roof[i];
+            for(int[] d:SIDES) {
+                int j=index(x+d[0],z+d[1]);
+                if(j>=0 && bore[j]!=null) { low=Math.min(low,bore[j].feet()); high=Math.max(high,roof[j]-1); }
+            }
+            for(int y=low;y<feet-1;y++) {
+                BlockState state=world.getBlockState(new BlockPos(x,y,z));
+                if(state.canBeReplaced() || state.getBlock() instanceof FallingBlock) set(world,x,y,z,Blocks.COBBLESTONE.defaultBlockState());
+            }
+            set(world,x,feet-1,z,Blocks.DIRT_PATH.defaultBlockState());
+            clear(world,x,feet,roof[i]-1,z);
+            for(int y=roof[i];y<=high;y++) set(world,x,y,z,lining(x,y,z));
+        }
+    }
+    /** Stone bricks, here and there mossy or cracked: the same block whichever chunk asks. */
+    private static BlockState lining(int x,int y,int z) {
+        int h=x*0x1B873593^y*0x5BD1E995^z*0x27D4EB2D;
+        h^=h>>>15; h*=0x2C1B3C6D; h^=h>>>12;
+        int pick=Math.floorMod(h,12);
+        return (pick<2 ? Blocks.MOSSY_STONE_BRICKS : pick<3 ? Blocks.CRACKED_STONE_BRICKS : Blocks.STONE_BRICKS).defaultBlockState();
     }
     private static void set(WorldGenLevel world,int x,int y,int z,BlockState state) { world.setBlock(new BlockPos(x,y,z),state,2); }
     private static void clear(WorldGenLevel world,int x,int from,int to,int z) {
