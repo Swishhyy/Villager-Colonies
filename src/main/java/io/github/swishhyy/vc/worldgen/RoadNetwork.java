@@ -71,8 +71,11 @@ public final class RoadNetwork {
         Thread thread=new Thread(task,"VC road survey"); thread.setDaemon(true); return thread;
     });
 
-    /** A site the structure set offers in region {@code i,j}, and whether a road may reach it. */
-    public record Node(int i,int j,int x,int z,boolean land) {
+    /**
+     * A site the structure set offers in region {@code i,j}: its centre, whether a road may reach it, and whether a city
+     * stands there, whose centre may lie a few chunks from the region's own site.
+     */
+    public record Node(int i,int j,int x,int z,boolean land,boolean city) {
         public long key() { return pack(i,j); }
     }
     /** A surveyed road: its centre line, with the height a walker stands at, whether it crosses water and where it runs underground. */
@@ -97,12 +100,13 @@ public final class RoadNetwork {
     private final Map<Long,Node> nodes=new ConcurrentHashMap<>();
     private final Map<Long,Optional<Road>> roads=new ConcurrentHashMap<>();
     private final Map<Long,Road> spokes=new ConcurrentHashMap<>();
-    private final Map<Long,Boolean> cities=new ConcurrentHashMap<>();
+    private final java.util.function.Predicate<net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>> cityBiomes;
 
     private RoadNetwork(ServerLevel level,RandomSpreadStructurePlacement placement) {
         this.level=level; this.placement=placement; seed=level.getSeed();
         generator=level.getChunkSource().getGenerator(); random=level.getChunkSource().randomState();
         spacing=placement.spacing(); seaLevel=generator.getSeaLevel();
+        cityBiomes=NpcTownStructure.cityBiomes(level.registryAccess());
     }
     /** The network of an Overworld, or null when roads are disabled or a data pack changed how towns are placed. */
     public static RoadNetwork of(ServerLevel level) {
@@ -134,17 +138,33 @@ public final class RoadNetwork {
 
     // ---------- Sites and their links ----------
     public Node node(int i,int j) {
-        return nodes.computeIfAbsent(pack(i,j),key -> {
-            ChunkPos chunk=placement.getPotentialStructureChunk(seed,i*spacing,j*spacing);
-            int x=chunk.x()*16+8,z=chunk.z()*16+8;
-            return new Node(i,j,x,z,inside(x,z) && height(x,z)>seaLevel);
-        });
+        long key=pack(i,j);
+        Node known=nodes.get(key);
+        if(known!=null) return known;
+        // Worked out outside the map's lock: a city region reads noise heights around its site and grades its city.
+        // The structure checks no road radius, so neither does this: a city just beyond it still keeps roads clear.
+        ChunkPos chunk=placement.getPotentialStructureChunk(seed,i*spacing,j*spacing);
+        var city=NpcTownPlan.cityRegion(seed,i,j) ? NpcTownStructure.citySite(generator,level,random,generator.getBiomeSource(),cityBiomes,chunk) : null;
+        int x=city!=null ? city.center().getX() : chunk.x()*16+8,z=city!=null ? city.center().getZ() : chunk.z()*16+8;
+        Node made=new Node(i,j,x,z,inside(x,z) && height(x,z)>seaLevel,city!=null);
+        Node raced=nodes.putIfAbsent(key,made);
+        return raced==null ? made : raced;
     }
-    /** The site whose centre is this town's centre, if the town stands on the network. */
+    /**
+     * The site whose centre is this town's centre, if the town stands on the network. A city may stand a few chunks before
+     * its own region's site, across the edge of the region before it, so near that edge the next region is asked too.
+     * Asking may grade a city, so this runs off the server thread.
+     */
     public Node nodeAt(BlockPos center) {
         var chunk=ChunkPos.containing(center);
-        Node node=node(Math.floorDiv(chunk.x(),spacing),Math.floorDiv(chunk.z(),spacing));
-        return node.land() && node.x()==center.getX() && node.z()==center.getZ() ? node : null;
+        int i=Math.floorDiv(chunk.x(),spacing),j=Math.floorDiv(chunk.z(),spacing);
+        int lastI=Math.floorMod(chunk.x(),spacing)>=spacing-NpcTownStructure.CITY_REACH ? i+1 : i;
+        int lastJ=Math.floorMod(chunk.z(),spacing)>=spacing-NpcTownStructure.CITY_REACH ? j+1 : j;
+        for(int a=i;a<=lastI;a++) for(int b=j;b<=lastJ;b++) {
+            Node node=node(a,b);
+            if(node.land() && node.x()==center.getX() && node.z()==center.getZ()) return node;
+        }
+        return null;
     }
     /** Hashes a square of four sites, deciding its diagonal road. */
     private long mix(int i,int j) {
@@ -172,16 +192,7 @@ public final class RoadNetwork {
     }
     private static Direction side(Node from,Node to) { return NpcVillagePlan.side(to.x()-from.x(),to.z()-from.z()); }
     /** Whether a city stands, or would stand, on this site: the structure's own decision, from the seed and terrain noise. */
-    public boolean city(Node node) {
-        Boolean known=cities.get(node.key());
-        if(known!=null) return known;
-        // Worked out outside the map's lock: it reads a few hundred noise heights and grades the city.
-        // The structure checks no road radius, so neither does this: a city just beyond it still keeps roads clear.
-        boolean city=NpcTownPlan.cityRegion(seed,node.i(),node.j())
-                && NpcTownStructure.citySite(generator,level,random,generator.getBiomeSource(),ChunkPos.containing(new BlockPos(node.x(),0,node.z())))!=null;
-        Boolean raced=cities.putIfAbsent(node.key(),city);
-        return raced==null ? city : raced;
-    }
+    public boolean city(Node node) { return node.city(); }
     private BlockPos gate(Node node,Direction side) {
         var offset=NpcVillagePlan.gateOffset(city(node) ? NpcVillageLayout.CITY : NpcVillageLayout.LEVELLED,side);
         return new BlockPos(node.x()+offset.x(),0,node.z()+offset.z());
@@ -629,16 +640,19 @@ public final class RoadNetwork {
      */
     public static CompletableFuture<Void> connect(ServerLevel level,Settlement town) {
         var network=of(level);
-        Node home=network==null ? null : network.nodeAt(town.center);
-        if(home==null) return CompletableFuture.completedFuture(null);
-        Map<Long,UUID> towns=new HashMap<>();
-        for(Settlement other:SettlementData.get(level).settlements) if(other!=town && other.trading.npc && other.trading.buildIndex<0) {
-            Node node=network.nodeAt(other.center);
-            if(node!=null) towns.put(node.key(),other.id);
-        }
-        if(towns.isEmpty()) return CompletableFuture.completedFuture(null);
+        if(network==null) return CompletableFuture.completedFuture(null);
+        BlockPos center=town.center;
+        Map<UUID,BlockPos> others=new HashMap<>();
+        for(Settlement other:SettlementData.get(level).settlements) if(other!=town && other.trading.npc && other.trading.buildIndex<0) others.put(other.id,other.center);
+        if(others.isEmpty()) return CompletableFuture.completedFuture(null);
         return CompletableFuture.runAsync(() -> {
-            try { network.links(home,towns.keySet(),link -> level.getServer().execute(() -> network.apply(level,town,towns,link))); }
+            try {
+                Node home=network.nodeAt(center);
+                if(home==null) return;
+                Map<Long,UUID> towns=new HashMap<>();
+                others.forEach((id,at) -> { Node node=network.nodeAt(at); if(node!=null) towns.put(node.key(),id); });
+                if(!towns.isEmpty()) network.links(home,towns.keySet(),link -> level.getServer().execute(() -> network.apply(level,town,towns,link)));
+            }
             catch(RuntimeException e) { VC.LOGGER.warn("[VC][roads] Survey from town={} failed",town.id,e); }
         },SURVEYOR);
     }

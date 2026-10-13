@@ -72,23 +72,27 @@ def locate(connection, request, target, label):
     return int(match[1]), int(match[3])
 
 
-def verify_settlement(connection, request, x, z, extent, crew_range, minimum, seconds, label):
-    """Load a located settlement's land and wait for its saved claim, banner and crew."""
-    exchange(connection, request, 2, f"forceload add {x-extent} {z-extent} {x+extent} {z+extent}")
+def verify_settlement(connection, request, x, z, extent, crew_range, minimum, seconds, label, shift=0):
+    """Load a located settlement's land and wait for its saved claim, banner and crew.
+
+    /locate names the chunk that starts the structure; a city may stand up to `shift` blocks from it.
+    """
+    reach = extent + shift
+    exchange(connection, request, 2, f"forceload add {x-reach} {z-reach} {x+reach} {z+reach}")
     deadline = time.monotonic() + seconds
     banner = crew = "not inspected"
     while True:
         town = exchange(connection, request + 1, 2, f"execute positioned {x} 80 {z} run locate settlement")
         if "The nearest AI settlement" in town:
             match = re.search(r"is at \[?(-?\d+),\s*(-?\d+),\s*(-?\d+)\]?", town)
-            if match and int(match[1]) == x and int(match[3]) == z:
-                y = int(match[2])
-                banner = exchange(connection, request + 2, 2, f"execute if block {x} {y} {z} vc:settlement_banner")
+            if match and abs(int(match[1]) - x) <= shift and abs(int(match[3]) - z) <= shift:
+                sx, y, sz = int(match[1]), int(match[2]), int(match[3])
+                banner = exchange(connection, request + 2, 2, f"execute if block {sx} {y} {sz} vc:settlement_banner")
                 crew = exchange(connection, request + 3, 2,
-                                f"execute positioned {x} {y} {z} if entity @e[type=vc:citizen,distance=..{crew_range}]")
+                                f"execute positioned {sx} {y} {sz} if entity @e[type=vc:citizen,distance=..{crew_range}]")
                 count = re.search(r"count: (\d+)", crew, re.IGNORECASE)
                 if "Test passed" in banner and count and int(count[1]) >= minimum:
-                    return
+                    return sx, sz
         if time.monotonic() > deadline:
             raise RuntimeError(f"Native {label} verification timed out: town={town}; banner={banner}; crew={crew}")
         time.sleep(0.25)
@@ -135,8 +139,9 @@ def start_and_stop(attempt):
                 cx,cz=json.loads((RUN / "native-city.json").read_text())
             verify_settlement(connection, 21, x, z, 29, 64, 1, 100, "town")
             print(f"Native town startup {attempt}: physical village, saved settlement and real crew verified",flush=True)
-            verify_settlement(connection, 32, cx, cz, 39, 96, 40, 180, "city")
-            print(f"Native city startup {attempt}: physical city, saved settlement and forty citizens verified",flush=True)
+            # A city stands up to five chunks from the chunk /locate names.
+            sx,sz=verify_settlement(connection, 32, cx, cz, 39, 96, 40, 240, "city", shift=80)
+            print(f"Native city startup {attempt}: physical city at {sx}, {sz}, saved settlement and forty citizens verified",flush=True)
             exchange(connection,25,2,"forceload remove all")
             saved = exchange(connection, 11, 2, "save-all flush")
             if "Saved" not in saved:

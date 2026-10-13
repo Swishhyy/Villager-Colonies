@@ -48,12 +48,15 @@ public final class SettlementStructures {
                 pending.computeIfAbsent(level,l -> new LinkedHashMap<>()).putIfAbsent(piece.candidate().id(),piece);
         });
     }
+    /** A start leaves the queue with the chunk that holds it, and returns when that chunk loads; a city's centre may lie a few chunks away. */
     @SubscribeEvent public void unloaded(ChunkEvent.Unload event) {
         if(!(event.getLevel() instanceof ServerLevel level)) return;
-        var chunk=event.getChunk().getPos();
+        var ids=event.getChunk().getAllStarts().values().stream().filter(s -> s.getStructure() instanceof NpcTownStructure)
+                .flatMap(s -> s.getPieces().stream()).filter(NpcTownPiece.class::isInstance).map(p -> ((NpcTownPiece)p).candidate().id()).toList();
+        if(ids.isEmpty()) return;
         level.getServer().execute(() -> {
             var queue=pending.get(level);
-            if(queue!=null) queue.values().removeIf(p -> net.minecraft.world.level.ChunkPos.containing(p.candidate().center()).equals(chunk));
+            if(queue!=null) ids.forEach(queue::remove);
         });
     }
     @SubscribeEvent public void tick(LevelTickEvent.Post event) {
