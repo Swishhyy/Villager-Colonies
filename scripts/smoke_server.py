@@ -86,7 +86,7 @@ def verify_settlement(connection, request, x, z, extent, crew_range, minimum, se
                 banner = exchange(connection, request + 2, 2, f"execute if block {x} {y} {z} vc:settlement_banner")
                 crew = exchange(connection, request + 3, 2,
                                 f"execute positioned {x} {y} {z} if entity @e[type=vc:citizen,distance=..{crew_range}]")
-                count = re.search(r"count: (\d+)", crew)
+                count = re.search(r"count: (\d+)", crew, re.IGNORECASE)
                 if "Test passed" in banner and count and int(count[1]) >= minimum:
                     return
         if time.monotonic() > deadline:
