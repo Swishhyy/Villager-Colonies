@@ -58,10 +58,17 @@ COORDINATES = re.compile(r"\[(-?\d+),\s*(-?\d+|~),\s*(-?\d+)\]")
 
 
 def locate(connection, request, target, label):
-    located = exchange(connection, request, 2, f"locate structure {target}")
+    # A structure search runs on the server thread and may pass many regions before it finds a rare one.
+    connection.settimeout(120)
+    started = time.monotonic()
+    try:
+        located = exchange(connection, request, 2, f"locate structure {target}")
+    finally:
+        connection.settimeout(20)
     match = COORDINATES.search(located)
     if not match:
         raise RuntimeError(f"Normal-world {label} locate failed: {located}")
+    print(f"Located {target} in {time.monotonic() - started:.1f} s", flush=True)
     return int(match[1]), int(match[3])
 
 

@@ -39,6 +39,12 @@ public final class NpcTownStructure extends Structure {
         var spread=RoadNetwork.placement(context.registryAccess());
         boolean region=spread!=null && NpcTownPlan.cityRegion(context.seed(),Math.floorDiv(chunk.x(),spread.spacing()),Math.floorDiv(chunk.z(),spread.spacing()));
         if(this.city && !region) return Optional.empty();
+        // The start stands on the surface at the chunk's middle, so a biome without settlements is known before the survey;
+        // /locate asks this of every region it passes.
+        int x=chunk.getMiddleBlockX(),z=chunk.getMiddleBlockZ();
+        int y=context.chunkGenerator().getBaseHeight(x,z,Heightmap.Types.WORLD_SURFACE_WG,context.heightAccessor(),context.randomState());
+        if(!context.validBiome().test(context.chunkGenerator().getBiomeSource().getNoiseBiome(QuartPos.fromBlock(x),QuartPos.fromBlock(y),
+                QuartPos.fromBlock(z),context.randomState().sampler()))) return Optional.empty();
         // A region chosen for a city holds one where the land allows, and a town otherwise; the other structure stands aside.
         var city=region ? citySite(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.biomeSource(),chunk) : null;
         if(this.city!=(city!=null)) return Optional.empty();
@@ -63,13 +69,19 @@ public final class NpcTownStructure extends Structure {
         int x=chunk.getMiddleBlockX(),z=chunk.getMiddleBlockZ(),extent=NpcVillageLayout.extent(design);
         int half=STEP*((extent+STEP)/STEP),samples=2*half/STEP+1;
         int[][] grid=new int[samples][samples];
+        boolean[][] sampled=new boolean[samples][samples];
         int low=Integer.MAX_VALUE,high=Integer.MIN_VALUE;
-        for(int a=0;a<samples;a++) for(int b=0;b<samples;b++) {
-            int height=generator.getBaseHeight(x-half+a*STEP,z-half+b*STEP,Heightmap.Types.WORLD_SURFACE_WG,heights,random);
-            // Sea-level terrain includes river/ocean water, not a suitable town foundation.
-            if(height<=generator.getSeaLevel() || height<heights.getMinY()+4 || height+12>=heights.getMaxY()) return null;
-            grid[a][b]=height; low=Math.min(low,height); high=Math.max(high,height);
-        }
+        // Coarse samples first, so water or too steep a slope rejects the site after a few of them.
+        for(int stride=Integer.highestOneBit(samples-1);stride>=1;stride>>=1)
+            for(int a=0;a<samples;a+=stride) for(int b=0;b<samples;b+=stride) {
+                if(sampled[a][b]) continue;
+                sampled[a][b]=true;
+                int height=generator.getBaseHeight(x-half+a*STEP,z-half+b*STEP,Heightmap.Types.WORLD_SURFACE_WG,heights,random);
+                // Sea-level terrain includes river/ocean water, not a suitable town foundation.
+                if(height<=generator.getSeaLevel() || height<heights.getMinY()+4 || height+12>=heights.getMaxY()) return null;
+                grid[a][b]=height; low=Math.min(low,height); high=Math.max(high,height);
+                if(high-low>NpcVillageTerrain.MAX_RELIEF) return null;
+            }
         if(high-low>NpcVillageTerrain.MAX_RELIEF) return null;
         int centerY=grid[half/STEP][half/STEP];
         if(!generator.getBaseColumn(x,z,heights,random).getBlock(centerY-1).getFluidState().isEmpty()) return null;
