@@ -45,8 +45,13 @@ public final class NpcTownStructure extends Structure {
      * which world generation finds a structure's pieces.
      */
     public static final int CITY_REACH=5;
-    /** Each region's answer, per world's terrain noise: both structures, /locate and the road network ask it. */
-    private static final Map<RandomState,Map<Long,Optional<NpcVillageTerrain.Site>>> CITY_SITES=Collections.synchronizedMap(new WeakHashMap<>());
+    /** How many chunks from its region's site a town may stand, for the same reason; its land then reaches five chunks from the start's. */
+    public static final int TOWN_REACH=3;
+    /** The furthest a settlement's centre may stand from its region's site. */
+    public static final int REACH=Math.max(CITY_REACH,TOWN_REACH);
+    private record Asked(long chunk,int design) {}
+    /** Each region's answers, per world's terrain noise: both structures, /locate and the road network ask them. */
+    private static final Map<RandomState,Map<Asked,Optional<NpcVillageTerrain.Site>>> SITES=Collections.synchronizedMap(new WeakHashMap<>());
     private final boolean city;
     public NpcTownStructure(StructureSettings settings,boolean city) { super(settings); this.city=city; }
     public boolean city() { return city; }
@@ -61,30 +66,23 @@ public final class NpcTownStructure extends Structure {
         NpcVillageTerrain.Site site;
         if(this.city) site=citySite(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.chunkGenerator().getBiomeSource(),
                 cityBiomes(context.registryAccess()),chunk);
-        else {
-            // A town stands on the surface at the chunk's middle, so a biome without settlements is known before the
-            // survey; /locate asks this of every region it passes.
-            int x=chunk.getMiddleBlockX(),z=chunk.getMiddleBlockZ();
-            int y=context.chunkGenerator().getBaseHeight(x,z,Heightmap.Types.WORLD_SURFACE_WG,context.heightAccessor(),context.randomState());
-            if(!context.validBiome().test(context.chunkGenerator().getBiomeSource().getNoiseBiome(QuartPos.fromBlock(x),QuartPos.fromBlock(y),
-                    QuartPos.fromBlock(z),context.randomState().sampler()))) return Optional.empty();
-            site=terrain(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.biomeSource(),chunk,NpcVillageLayout.LEVELLED);
-        }
+        else site=townSite(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.chunkGenerator().getBiomeSource(),
+                townBiomes(context.registryAccess()),chunk);
         if(site==null) return Optional.empty();
+        // A region chosen for a city holds one where the land allows, and a town otherwise. The town asks about the city,
+        // a wider survey, only once its own land would do.
+        if(!this.city && region && citySite(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.chunkGenerator().getBiomeSource(),
+                cityBiomes(context.registryAccess()),chunk)!=null) return Optional.empty();
         var candidate=NpcTownPlan.worldgenCandidate(context.seed(),site.center(),this.city);
         var town=NpcSettlements.createTown(candidate,site,Config.SETTLEMENT_RADIUS.get());
-        if(!this.city) {
-            if(NpcVillagePlan.earthworkIssue(town)!=null) return Optional.empty();
-            // A region chosen for a city holds one where the land allows, and a town otherwise. Few sites take a town,
-            // so the town asks about the city, a wider survey, only once its own land would do.
-            if(region && citySite(context.chunkGenerator(),context.heightAccessor(),context.randomState(),context.chunkGenerator().getBiomeSource(),
-                    cityBiomes(context.registryAccess()),chunk)!=null) return Optional.empty();
-        }
         return Optional.of(new GenerationStub(site.center(),builder -> builder.addPiece(new NpcTownPiece(candidate,site,town.radius))));
     }
     /** The biomes a city may stand in, or none where a data pack removed cities. */
-    public static Predicate<Holder<Biome>> cityBiomes(RegistryAccess access) {
-        var structure=access.lookupOrThrow(Registries.STRUCTURE).get(SettlementStructures.CITY);
+    public static Predicate<Holder<Biome>> cityBiomes(RegistryAccess access) { return biomes(access,SettlementStructures.CITY); }
+    /** The biomes a town may stand in, or none where a data pack removed towns. */
+    public static Predicate<Holder<Biome>> townBiomes(RegistryAccess access) { return biomes(access,SettlementStructures.TOWN); }
+    private static Predicate<Holder<Biome>> biomes(RegistryAccess access,net.minecraft.resources.ResourceKey<Structure> key) {
+        var structure=access.lookupOrThrow(Registries.STRUCTURE).get(key);
         if(structure.isEmpty()) return biome -> false;
         var biomes=structure.get().value().biomes();
         return biomes::contains;
@@ -96,34 +94,44 @@ public final class NpcTownStructure extends Structure {
      */
     public static NpcVillageTerrain.Site citySite(ChunkGenerator generator,LevelHeightAccessor heights,RandomState random,BiomeSource biomes,
             Predicate<Holder<Biome>> valid,ChunkPos chunk) {
-        var known=CITY_SITES.computeIfAbsent(random,key -> new ConcurrentHashMap<>());
-        var answer=known.get(chunk.pack());
+        return site(generator,heights,random,biomes,valid,chunk,NpcVillageLayout.CITY,CITY_REACH);
+    }
+    /** The town a region offering its site at this chunk could hold, found as a city is, within {@link #TOWN_REACH}. */
+    public static NpcVillageTerrain.Site townSite(ChunkGenerator generator,LevelHeightAccessor heights,RandomState random,BiomeSource biomes,
+            Predicate<Holder<Biome>> valid,ChunkPos chunk) {
+        return site(generator,heights,random,biomes,valid,chunk,NpcVillageLayout.LEVELLED,TOWN_REACH);
+    }
+    private static NpcVillageTerrain.Site site(ChunkGenerator generator,LevelHeightAccessor heights,RandomState random,BiomeSource biomes,
+            Predicate<Holder<Biome>> valid,ChunkPos chunk,int design,int reach) {
+        var known=SITES.computeIfAbsent(random,key -> new ConcurrentHashMap<>());
+        var asked=new Asked(chunk.pack(),design);
+        var answer=known.get(asked);
         if(answer==null) {
-            answer=Optional.ofNullable(surveyCity(generator,heights,random,biomes,valid,chunk));
-            known.putIfAbsent(chunk.pack(),answer);
+            answer=Optional.ofNullable(survey(generator,heights,random,biomes,valid,chunk,design,reach));
+            known.putIfAbsent(asked,answer);
         }
         return answer.orElse(null);
     }
-    private static NpcVillageTerrain.Site surveyCity(ChunkGenerator generator,LevelHeightAccessor heights,RandomState random,BiomeSource biomes,
-            Predicate<Holder<Biome>> valid,ChunkPos chunk) {
+    private static NpcVillageTerrain.Site survey(ChunkGenerator generator,LevelHeightAccessor heights,RandomState random,BiomeSource biomes,
+            Predicate<Holder<Biome>> valid,ChunkPos chunk,int design,int reach) {
         // Neighbouring sites share most of their samples, all on the same four-block lattice.
         Map<Long,Integer> surveyed=new HashMap<>();
         IntBinaryOperator height=(x,z) -> surveyed.computeIfAbsent((long)x<<32 | z&0xffffffffL,
                 key -> generator.getBaseHeight(x,z,Heightmap.Types.WORLD_SURFACE_WG,heights,random));
-        // Most regions hold no city, so first sample every sixteen blocks across the whole area: water there, or more
-        // than a city's relief between samples of one site's grid, turns that site away without surveying it. The
-        // answer is the one the full surveys give.
-        int half=STEP*((NpcVillageLayout.CITY_EXTENT+STEP)/STEP),span=CITY_REACH*16+half,cells=2*span/16+1;
+        // Most sites fail, so first sample every sixteen blocks across the whole area: water there, or more than the
+        // allowed relief between samples of one site's grid, turns that site away without surveying it. The answer is
+        // the one the full surveys give.
+        int half=STEP*((NpcVillageLayout.extent(design)+STEP)/STEP),span=reach*16+half,cells=2*span/16+1;
         int mx=chunk.getMiddleBlockX(),mz=chunk.getMiddleBlockZ();
         int[][] coarse=new int[cells][cells];
         for(int a=0;a<cells;a++) for(int b=0;b<cells;b++) coarse[a][b]=height.applyAsInt(mx-span+a*16,mz-span+b*16);
-        for(int ring=0;ring<=CITY_REACH;ring++) for(int dx=-ring;dx<=ring;dx++) for(int dz=-ring;dz<=ring;dz++) {
+        for(int ring=0;ring<=reach;ring++) for(int dx=-ring;dx<=ring;dx++) for(int dz=-ring;dz<=ring;dz++) {
             if(Math.max(Math.abs(dx),Math.abs(dz))!=ring) continue;
             if(ruledOut(generator,heights,coarse,16*dx+span-half,16*dz+span-half,2*half)) continue;
             var near=new ChunkPos(chunk.x()+dx,chunk.z()+dz);
             int x=near.getMiddleBlockX(),z=near.getMiddleBlockZ(),y=height.applyAsInt(x,z);
             if(!valid.test(biomes.getNoiseBiome(QuartPos.fromBlock(x),QuartPos.fromBlock(y),QuartPos.fromBlock(z),random.sampler()))) continue;
-            var site=terrain(generator,heights,random,biomes,near,NpcVillageLayout.CITY,height);
+            var site=terrain(generator,heights,random,biomes,near,design,height);
             if(site==null) continue;
             var preview=new Settlement(new UUID(0,0),new UUID(0,0),"Placement",site.center(),240,List.of(),List.of(),"balanced");
             preview.trading.layout=site.layout();

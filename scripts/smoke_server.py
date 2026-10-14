@@ -74,23 +74,18 @@ def locate(connection, request, target, label):
     return int(match[1]), int(match[3])
 
 
-def settlement_boxes(x, z, extent):
-    """The area a settlement centred here builds on, as one forceload box."""
-    return [(x - extent, z - extent, x + extent, z + extent)]
+def area_boxes(x, z, reach_chunks, size=5):
+    """Forceload boxes covering every chunk within reach_chunks of the one holding x, z, nearest first.
 
-
-def city_boxes(x, z, reach_chunks=7):
-    """A city stands up to five chunks from the chunk /locate names, so its land lies within seven chunks of it.
-
-    Forcing all of that in one command generates it in one server tick, long enough for the watchdog to stop the
-    server, so it is forced five by five chunks at a time, nearest first.
+    A town or city stands a few chunks from the chunk /locate names. Forcing a wide area in one command generates it
+    within one server tick, so it is forced at most size by size chunks at a time.
     """
     cx, cz = x // 16, z // 16
-    step = (2 * reach_chunks + 1) // 3
-    offsets = sorted(((dx, dz) for dx in (-step, 0, step) for dz in (-step, 0, step)), key=lambda d: abs(d[0]) + abs(d[1]))
-    half = step // 2
-    return [((cx + dx - half) * 16, (cz + dz - half) * 16, (cx + dx + half) * 16 + 15, (cz + dz + half) * 16 + 15)
-            for dx, dz in offsets]
+    starts = range(-reach_chunks, reach_chunks + 1, size)
+    spans = [(a, min(a + size - 1, reach_chunks)) for a in starts]
+    boxes = sorted(((ax, az, bx, bz) for ax, bx in spans for az, bz in spans),
+                   key=lambda b: abs(b[0] + b[2]) + abs(b[1] + b[3]))
+    return [((cx + ax) * 16, (cz + az) * 16, (cx + bx) * 16 + 15, (cz + bz) * 16 + 15) for ax, az, bx, bz in boxes]
 
 
 def verify_settlement(connection, request, x, z, boxes, crew_range, minimum, seconds, label, shift=0):
@@ -166,10 +161,10 @@ def start_and_stop(attempt):
             else:
                 x,z=json.loads((RUN / "native-town.json").read_text())
                 cx,cz=json.loads((RUN / "native-city.json").read_text())
-            verify_settlement(connection, 21, x, z, settlement_boxes(x, z, 29), 64, 1, 100, "town")
-            print(f"Native town startup {attempt}: physical village, saved settlement and real crew verified",flush=True)
-            # A city stands up to five chunks from the chunk /locate names.
-            sx,sz=verify_settlement(connection, 32, cx, cz, city_boxes(cx, cz), 96, 40, 300, "city", shift=80)
+            # A town stands up to three chunks, and its land five, from the chunk /locate names; a city five and seven.
+            tx,tz=verify_settlement(connection, 21, x, z, area_boxes(x, z, 5), 64, 1, 240, "town", shift=48)
+            print(f"Native town startup {attempt}: physical village at {tx}, {tz}, saved settlement and real crew verified",flush=True)
+            sx,sz=verify_settlement(connection, 32, cx, cz, area_boxes(cx, cz, 7), 96, 40, 300, "city", shift=80)
             print(f"Native city startup {attempt}: physical city at {sx}, {sz}, saved settlement and forty citizens verified",flush=True)
             exchange(connection,25,2,"forceload remove all")
             saved = exchange(connection, 11, 2, "save-all flush")

@@ -29,8 +29,8 @@ import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStruct
 
 /**
  * The old roads: dirt roads laid down with new terrain between the native town sites near the world centre. The
- * {@code vc:settlements} structure set offers one site in each of its regions; a walled town stands on most of them, a
- * walled city on one in nine where the land allows, and the rest become crossroads. Roads join neighbouring sites at
+ * {@code vc:settlements} structure set offers one site in each of its regions; a walled town, or in one region of nine a
+ * walled city, stands near it where the land allows, and the rest become crossroads. Roads join neighbouring sites at
  * their gates, follow gentle ground around hills, tunnel through steep ones, keep clear of other sites and bridge only
  * narrow water. Everything comes from the seed and the terrain noise, never from loaded chunks,
  * so each chunk paves exactly its own part of every road in whatever order chunks generate. Towns joined by a road trade
@@ -72,8 +72,8 @@ public final class RoadNetwork {
     });
 
     /**
-     * A site the structure set offers in region {@code i,j}: its centre, whether a road may reach it, and whether a city
-     * stands there, whose centre may lie a few chunks from the region's own site.
+     * A site the structure set offers in region {@code i,j}: its centre, which is a town's or city's when one stands a few
+     * chunks from the region's own site, whether a road may reach it, and whether a city stands there.
      */
     public record Node(int i,int j,int x,int z,boolean land,boolean city) {
         public long key() { return pack(i,j); }
@@ -100,13 +100,13 @@ public final class RoadNetwork {
     private final Map<Long,Node> nodes=new ConcurrentHashMap<>();
     private final Map<Long,Optional<Road>> roads=new ConcurrentHashMap<>();
     private final Map<Long,Road> spokes=new ConcurrentHashMap<>();
-    private final java.util.function.Predicate<net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>> cityBiomes;
+    private final java.util.function.Predicate<net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>> cityBiomes,townBiomes;
 
     private RoadNetwork(ServerLevel level,RandomSpreadStructurePlacement placement) {
         this.level=level; this.placement=placement; seed=level.getSeed();
         generator=level.getChunkSource().getGenerator(); random=level.getChunkSource().randomState();
         spacing=placement.spacing(); seaLevel=generator.getSeaLevel();
-        cityBiomes=NpcTownStructure.cityBiomes(level.registryAccess());
+        cityBiomes=NpcTownStructure.cityBiomes(level.registryAccess()); townBiomes=NpcTownStructure.townBiomes(level.registryAccess());
     }
     /** The network of an Overworld, or null when roads are disabled or a data pack changed how towns are placed. */
     public static RoadNetwork of(ServerLevel level) {
@@ -141,25 +141,27 @@ public final class RoadNetwork {
         long key=pack(i,j);
         Node known=nodes.get(key);
         if(known!=null) return known;
-        // Worked out outside the map's lock: a city region reads noise heights around its site and grades its city.
-        // The structure checks no road radius, so neither does this: a city just beyond it still keeps roads clear.
+        // Worked out outside the map's lock: a region reads noise heights around its site and grades its town or city.
+        // The structure checks no road radius, so neither does this: a settlement just beyond it still keeps roads clear.
         ChunkPos chunk=placement.getPotentialStructureChunk(seed,i*spacing,j*spacing);
         var city=NpcTownPlan.cityRegion(seed,i,j) ? NpcTownStructure.citySite(generator,level,random,generator.getBiomeSource(),cityBiomes,chunk) : null;
-        int x=city!=null ? city.center().getX() : chunk.x()*16+8,z=city!=null ? city.center().getZ() : chunk.z()*16+8;
+        // Where no settlement stands the roads still meet, at a crossroads on the region's own site.
+        var site=city!=null ? city : NpcTownStructure.townSite(generator,level,random,generator.getBiomeSource(),townBiomes,chunk);
+        int x=site!=null ? site.center().getX() : chunk.x()*16+8,z=site!=null ? site.center().getZ() : chunk.z()*16+8;
         Node made=new Node(i,j,x,z,inside(x,z) && height(x,z)>seaLevel,city!=null);
         Node raced=nodes.putIfAbsent(key,made);
         return raced==null ? made : raced;
     }
     /**
-     * The site whose centre is this town's centre, if the town stands on the network. A city may stand a few chunks before
-     * its own region's site, across the edge of the region before it, so near that edge the next region is asked too.
-     * Asking may grade a city, so this runs off the server thread.
+     * The site whose centre is this town's centre, if the town stands on the network. A town or city may stand a few
+     * chunks before its own region's site, across the edge of the region before it, so near that edge the next region is
+     * asked too. Asking may grade a settlement, so this runs off the server thread.
      */
     public Node nodeAt(BlockPos center) {
         var chunk=ChunkPos.containing(center);
         int i=Math.floorDiv(chunk.x(),spacing),j=Math.floorDiv(chunk.z(),spacing);
-        int lastI=Math.floorMod(chunk.x(),spacing)>=spacing-NpcTownStructure.CITY_REACH ? i+1 : i;
-        int lastJ=Math.floorMod(chunk.z(),spacing)>=spacing-NpcTownStructure.CITY_REACH ? j+1 : j;
+        int lastI=Math.floorMod(chunk.x(),spacing)>=spacing-NpcTownStructure.REACH ? i+1 : i;
+        int lastJ=Math.floorMod(chunk.z(),spacing)>=spacing-NpcTownStructure.REACH ? j+1 : j;
         for(int a=i;a<=lastI;a++) for(int b=j;b<=lastJ;b++) {
             Node node=node(a,b);
             if(node.land() && node.x()==center.getX() && node.z()==center.getZ()) return node;
